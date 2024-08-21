@@ -1,0 +1,49 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Toast Notification Test</title>
+</head>
+
+<body>
+    <button id="show-toast">Show Toast</button>
+    <h2>createToast</h2>
+<p>Creates a toast notification.</p>
+<h3>Parameters:</h3>
+<ul>
+  <li><strong>options</strong> <em>(Object)</em>: Options for the toast notification.
+    <ul>
+      <li><strong>message</strong> <em>(string)</em> <em>(optional)</em>: The message to display in the toast. Defaults based on type if not provided.</li>
+      <li><strong>duration</strong> <em>(number)</em> <em>(optional)</em>: The duration the toast should be displayed, in milliseconds. Default is 3000.</li>
+      <li><strong>position</strong> <em>(string)</em> <em>(optional)</em>: The position of the toast on the screen. Default is 'bottom-right'.</li>
+      <li><strong>type</strong> <em>(string)</em> <em>(optional)</em>: The type of the toast ('info', 'warning', 'success', 'error'). Default is 'info'.</li>
+    </ul>
+  </li>
+</ul>
+
+
+    <script src="/dist/index.cjs.js"></script>
+    <!-- <script>
+        document.getElementById('show-toast').addEventListener('click', () => {
+            createToast({ duration: 5000, type: 'success' });
+        });
+    </script> -->
+    <script>
+        // document.getElementById('show-toast').addEventListener('click', () => {
+        //     createToast({ duration: 5000, type: 'info' });
+        // });
+        // document.getElementById('show-toast').addEventListener('click', () => {
+        //     createToast({ duration: 5000, type: 'error' });
+        // });
+        // document.getElementById('show-toast').addEventListener('click', () => {
+        //     createToast({ duration: 5000, type: 'warning' });
+        // });
+        document.getElementById('show-toast').addEventListener('click', () => {
+            createToast({ textColor: 'black',color: '#ffffff', message:"Hehehehhehe" ,duration: 5000, type: 'warning', position: 'center' });
+        });
+    </script>
+</body>
+
+</html>

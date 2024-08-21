@@ -1,0 +1,51 @@
+{
+  "name": "customizable-toast-notification",
+  "version": "1.0.0",
+  "description": "A highly customizable toast notification library for modern web applications.",
+  "main": "dist/index.cjs.js",
+  "module": "dist/index.esm.mjs",
+  "scripts": {
+    "build": "rollup -c",
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "keywords": [
+    "toast",
+    "notification",
+    "customizable",
+    "UI",
+    "library",
+    "JavaScript",
+    "ESM",
+    "CJS",
+    "best-toast-notification",
+    "best-library",
+    "priyanshu",
+    "priyanshu-patel",
+    "toast-notification",
+    "npm-library",
+    "toast-library",
+    "toast",
+    "notification",
+    "npm",
+    "npm-package",
+    "javascript",
+    "javascript-library"
+  ],
+  "author": "Priyanshu Patel",
+  "license": "MIT",
+  "files": [
+    "dist"
+  ],
+  "devDependencies": {
+    "@rollup/plugin-commonjs": "^26.0.1",
+    "@rollup/plugin-node-resolve": "^15.2.3",
+    "@rollup/plugin-terser": "^0.4.4",
+    "rollup": "^2.78.0",
+    "rollup-plugin-size-snapshot": "^0.12.0",
+    "rollup-plugin-visualizer": "^5.12.0"
+  },
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/yourusername/customizable-toast-notification"
+  }
+}

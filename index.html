@@ -1,0 +1,43 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Toast Notification Example</title>
+</head>
+<body>
+  <button id="showToast">Show Toast</button>
+
+  <script type="module">
+    import { createToast, setDefaultColors, setDefaultMessages } from './dist/index.esm.mjs'; // Adjust the path as needed
+
+    // Optional: Set default colors and messages
+    setDefaultColors({
+      success: 'darkgreen',
+      error: 'darkred',
+      warning: 'darkorange',
+      info: 'yellow'
+    });
+
+    setDefaultMessages({
+      info: 'Updated info message!',
+      success: 'Updated success message!',
+      error: 'Updated error message!',
+      warning: 'Updated warning message!'
+    });
+
+    // Example usage
+    document.getElementById('showToast').addEventListener('click', () => {
+      createToast({
+        message: 'This is a toast with a close button.',
+        duration: 5000,
+        position: 'bottom-right',
+        type: 'info',
+        showCloseButton: true,
+        color: 'yellow', // Custom background color
+        textColor: 'black' // Custom text color
+      });
+    });
+  </script>
+</body>
+</html>
