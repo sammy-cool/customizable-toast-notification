@@ -16,7 +16,7 @@
       success: 'darkgreen',
       error: 'darkred',
       warning: 'darkorange',
-      info: 'yellow'
+      info: 'black'
     });
 
     setDefaultMessages({
@@ -29,13 +29,13 @@
     // Example usage
     document.getElementById('showToast').addEventListener('click', () => {
       createToast({
-        message: 'This is a toast with a close button.',
+        // message: 'This is a toast with a close button.',
         duration: 5000,
         position: 'bottom-right',
         type: 'info',
         showCloseButton: true,
-        color: 'yellow', // Custom background color
-        textColor: 'black' // Custom text color
+        // backgroundColor: 'red', // Custom background color
+        textColor: 'white' // Custom text color
       });
     });
   </script>

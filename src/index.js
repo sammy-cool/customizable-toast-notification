@@ -25,7 +25,7 @@
  * @param {number} [options.duration=3000] - The duration the toast should be displayed, in milliseconds.
  * @param {string} [options.position='bottom-right'] - The position of the toast on the screen.
  * @param {string} [options.type='info'] - The type of the toast ('info', 'success', 'error', 'warning').
- * @param {string} [options.color] - Custom background color for the toast notification.
+ * @param {string} [options.backgroundColor] - Custom background color for the toast notification.
  * @param {string} [options.textColor='white'] - Custom text color for the toast notification.
  * @param {string} [options.animationDuration='0.5s'] - Duration of the fade-in and fade-out animations.
  * @param {string} [options.animationEasing='ease'] - Easing function for the animations.
@@ -33,7 +33,8 @@
  * @return {void}
  */
 
-// Define global variables to hold default colors and messages
+/** ########################################### Defaults ############################################ */
+
 let defaultColors = {
   info: "blue",
   success: "green",
@@ -48,20 +49,19 @@ let defaultMessages = {
   warning: "This is a warning message!",
 };
 
-function createToast({
-  message,
-  duration = 3000,
-  position = "bottom-right",
-  type = "info",
-  backgroundColor,
-  textColor,
-}) {
-  const finalMessage =
-    message || defaultMessages[type] || "This is a default message.";
+// Queue to manage active toasts
+const toastQueue = [];
+let isToastShowing = false;
 
-  const toastBackgroundColor = backgroundColor || defaultColors[type] || "gray";
-  const toastTextColor =
-    textColor || (toastBackgroundColor === "white" ? "black" : "white");
+function showNextToast() {
+  if (toastQueue.length === 0 || isToastShowing) return;
+
+  isToastShowing = true;
+  const { message, duration, position, type, backgroundColor, textColor, showCloseButton } = toastQueue.shift();
+
+  const finalMessage = message || defaultMessages[type] || "This is a default message.";
+  const toastBackgroundColor = backgroundColor || defaultColors[type] || "gray"; // Use backgroundColor first
+  const toastTextColor = textColor || (toastBackgroundColor === "white" ? "black" : "white");
 
   let toastContainer = document.getElementById(`toast-container-${position}`);
   if (!toastContainer) {
@@ -70,7 +70,6 @@ function createToast({
     toastContainer.style.position = "fixed";
     toastContainer.style.zIndex = "9999";
 
-    // Position logic
     if (position.includes("bottom")) {
       toastContainer.style.bottom = "10px";
     } else if (position.includes("top")) {
@@ -91,7 +90,7 @@ function createToast({
 
   const toast = document.createElement("div");
   toast.textContent = finalMessage;
-  toast.style.background = toastBackgroundColor;
+  toast.style.background = toastBackgroundColor; // Use the determined background color
   toast.style.color = toastTextColor;
   toast.style.padding = "10px 20px";
   toast.style.marginTop = "10px";
@@ -101,15 +100,29 @@ function createToast({
   toast.style.transition = "opacity 0.5s";
 
   // Close button
-  const closeButton = document.createElement("button");
-  closeButton.textContent = "×";
-  closeButton.style.marginLeft = "10px";
-  closeButton.style.background = "transparent";
-  closeButton.style.border = "none";
-  closeButton.style.color = toastTextColor;
-  closeButton.style.cursor = "pointer";
-  closeButton.onclick = () => toast.remove();
-  toast.appendChild(closeButton);
+  if (showCloseButton) {
+    const closeButton = document.createElement("button");
+    closeButton.textContent = "×";
+    closeButton.style.marginLeft = "10px";
+    closeButton.style.background = "transparent";
+    closeButton.style.border = "none";
+    closeButton.style.color = toastTextColor;
+    closeButton.style.cursor = "pointer";
+
+    closeButton.onclick = () => {
+      toast.style.opacity = "0"; // Start fade out
+      toast.addEventListener("transitionend", () => {
+        toast.remove();
+        isToastShowing = false;
+        showNextToast(); // Show the next toast in the queue
+        if (!toastContainer.hasChildNodes()) {
+          toastContainer.remove();
+        }
+      });
+    };
+
+    toast.appendChild(closeButton);
+  }
 
   toastContainer.appendChild(toast);
 
@@ -118,14 +131,42 @@ function createToast({
   });
 
   setTimeout(() => {
-    toast.style.opacity = "0";
-    toast.addEventListener("transitionend", () => {
-      toast.remove();
-      if (!toastContainer.hasChildNodes()) {
-        toastContainer.remove();
-      }
-    });
+    if (toast.parentNode) {
+      toast.style.opacity = "0";
+      toast.addEventListener("transitionend", () => {
+        toast.remove();
+        isToastShowing = false;
+        showNextToast(); // Show the next toast in the queue
+        if (!toastContainer.hasChildNodes()) {
+          toastContainer.remove();
+        }
+      });
+    }
   }, duration);
+}
+
+function createToast(options) {
+  const {
+    message,
+    duration = 3000,
+    position = "bottom-right",
+    type = "info",
+    backgroundColor,
+    textColor,
+    showCloseButton = false,
+  } = options;
+
+  toastQueue.push({
+    message,
+    duration,
+    position,
+    type,
+    backgroundColor,
+    textColor,
+    showCloseButton,
+  });
+  
+  showNextToast(); // Attempt to show the next toast
 }
 
 function setDefaultColors(newColors) {
