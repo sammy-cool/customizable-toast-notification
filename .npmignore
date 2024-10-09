@@ -1,0 +1,8 @@
+/src
+/old_not_in_use
+/.size-snapshot.js
+/bundle-analysis.html
+/esm.html
+/index.html
+/rollup.config.js
+/node_modules
