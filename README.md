@@ -1,81 +1,139 @@
-#Customizable Toast Notification Library
-A highly customizable toast notification library for modern web applications, providing a simple way to create notifications with dynamic options.
+# Customizable Toast Notification Library
 
-#Features
-Supports info, success, error, and warning notification types.
-Customizable message, background color, text color, and duration.
-Allows setting the position of the toast (e.g., top-right, bottom-left, etc.).
-Includes an optional close button.
-Built-in queuing mechanism to ensure notifications do not overlap.
-Supports dynamic options like custom colors and messages.
-Installation
-To install this package, run:
+A simple and highly customizable toast notification library for modern JavaScript applications. This library allows you to easily display toast notifications with various configurations to enhance user experience.
 
-#bash
-Copy code
+## Table of Contents
+- [Features](#features)
+- [Installation](#installation)
+- [Usage](#usage)
+- [API Reference](#api-reference)
+- [Examples](#examples)
+- [Contributing](#contributing)
+- [License](#license)
+
+## Features
+- Display notifications of different types: info, success, error, and warning.
+- Customizable background and text colors.
+- Support for custom messages and default messages.
+- Adjustable display duration and positioning on the screen.
+- Close button functionality for user control.
+- Animation effects for a smooth appearance and disappearance.
+
+## Installation
+You can install the library via npm:
+```bash
 npm install customizable-toast-notification
-Usage
-Importing the Library
-javascript
-Copy code
-import { createToast, setDefaultColors, setDefaultMessages } from 'customizable-toast-notification';
-Creating a Toast Notification
-You can create a toast notification by calling the createToast function with various options:
+```
+Or, if you prefer using yarn:
+```bash
+yarn add customizable-toast-notification
+```
 
-javascript
-Copy code
+## Usage
+To use the toast notification library, you need to import it in your JavaScript or TypeScript file:
+```javascript
+import { createToast, setDefaultColors, setDefaultMessages } from 'customizable-toast-notification';
+
+// Create a toast notification
 createToast({
-  message: 'This is a custom message',
-  duration: 5000, // Display for 5 seconds
-  position: 'top-right', // Position on the screen
-  type: 'success', // Type of toast (info, success, warning, error)
+  message: 'This is a custom message!',
+  duration: 5000, // Duration in milliseconds
+  position: 'top-right', // Position of the toast
+  type: 'success', // Type of notification
   backgroundColor: 'green', // Custom background color
   textColor: 'white', // Custom text color
-  showCloseButton: true // Display the close button
+  showCloseButton: true, // Show close button
+  animationDuration: '0.5s', // Duration of the animations
+  animationEasing: 'ease', // Easing function for the animations
 });
+```
 
-#Available Options
-Option	Type	Default	Description
-message	String	Depends on type	The message to display in the toast.
-duration	Number	3000	The duration (in ms) to display the toast.
-position	String	bottom-right	Where to position the toast (top-right, bottom-left, etc.).
-type	String	info	Type of the toast (info, success, error, warning).
-backgroundColor	String	Depends on type	Custom background color for the toast.
-textColor	String	white	Custom text color.
-showCloseButton	Boolean	false	Whether to show a close button in the toast.
-Customizing Default Colors and Messages
-You can customize default colors and messages for different toast types:
+## API Reference
+### createToast
+Creates a toast notification with the provided options.
 
-javascript
-Copy code
+#### Parameters
+- `options` (Object): Options for the toast notification.
+  - `message` (string, optional): The message to display in the toast. Defaults based on type if not provided.
+  - `duration` (number, optional): The duration the toast should be displayed, in milliseconds (default is 3000).
+  - `position` (string, optional): The position of the toast on the screen (default is 'bottom-right').
+  - `type` (string, optional): The type of the toast (info, success, error, warning, default is 'info').
+  - `backgroundColor` (string, optional): Custom background color for the toast notification.
+  - `textColor` (string, optional): Custom text color for the toast notification (default is 'white').
+  - `showCloseButton` (boolean, optional): Whether to show a close button (default is false).
+  - `animationDuration` (string, optional): Duration of the fade-in and fade-out animations (default is '0.5s').
+  - `animationEasing` (string, optional): Easing function for the animations (default is 'ease').
+
+#### Example
+```javascript
+createToast({
+  message: 'Operation completed successfully!',
+  type: 'success',
+});
+```
+
+### setDefaultColors
+Sets default colors for different toast types.
+
+#### Parameters
+- `newColors` (Object): New colors to set for toast types, where keys are the toast types (info, success, error, warning).
+
+#### Example
+```javascript
 setDefaultColors({
+  info: 'blue',
   success: 'green',
-  error: 'darkred'
+  error: 'red',
+  warning: 'orange',
+});
+```
+
+### setDefaultMessages
+Sets default messages for different toast types.
+
+#### Parameters
+- `newMessages` (Object): New messages to set for toast types, where keys are the toast types (info, success, error, warning).
+
+#### Example
+```javascript
+setDefaultMessages({
+  info: 'This is an informational message!',
+  success: 'Your action was successful!',
+  error: 'An error has occurred!',
+  warning: 'This is a warning message!',
+});
+```
+
+## Examples
+### Basic Usage
+```javascript
+createToast({
+  message: 'Welcome to our website!',
+  duration: 4000,
+  type: 'info',
+});
+```
+
+### Custom Colors and Messages
+```javascript
+setDefaultColors({
+  success: '#28a745',
+  error: '#dc3545',
 });
 
 setDefaultMessages({
-  success: 'Operation completed!',
-  error: 'Something went wrong!'
+  success: 'Data saved successfully!',
+  error: 'Failed to save data.',
 });
-Example Usage in HTML
-html
-Copy code
-<button id="showToast">Show Toast</button>
 
-<script>
-  document.getElementById('showToast').addEventListener('click', () => {
-    createToast({
-      message: 'This is a custom toast message.',
-      duration: 4000,
-      position: 'top-right',
-      type: 'warning',
-      backgroundColor: 'red',
-      textColor: 'yellow',
-      showCloseButton: true
-    });
-  });
-</script>
+createToast({
+  type: 'success',
+  message: 'Data saved successfully!',
+});
+```
 
-#License
-This project is licensed under the MIT License.
+## Contributing
+Contributions are welcome! Please read the [CONTRIBUTING.md](link-to-your-contributing-file) for details on our code of conduct, and the process for submitting pull requests.
 
+## License
+This project is licensed under the MIT License - see the [LICENSE.md](link-to-your-license-file) file for details.
