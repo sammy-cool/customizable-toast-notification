@@ -133,7 +133,7 @@ createToast({
 ```
 
 ## Contributing
-Contributions are welcome! Please read the [CONTRIBUTING.md](link-to-your-contributing-file) for details on our code of conduct, and the process for submitting pull requests.
+Contributions are welcome! Please read the [CONTRIBUTING.md]() for details on our code of conduct, and the process for submitting pull requests.
 
 ## License
-This project is licensed under the MIT License - see the [LICENSE.md](link-to-your-license-file) file for details.
+This project is licensed under the MIT License - see the [LICENSE.md](LICENSE) file for details.
