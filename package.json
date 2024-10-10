@@ -1,6 +1,6 @@
 {
   "name": "customizable-toast-notification",
-  "version": "1.0.0",
+  "version": "2.0.0",
   "description": "A highly customizable toast notification library for modern web applications.",
   "main": "dist/index.cjs.js",
   "module": "dist/index.esm.mjs",
@@ -9,19 +9,15 @@
     "test": "echo \"Error: no test specified\" && exit 1"
   },
   "keywords": [
+    "javascript-library",
+    "toast-notification-library",
+    "toast-notification",
     "toast",
     "notification",
     "customizable",
     "UI",
     "library",
     "JavaScript",
-    "ESM",
-    "CJS",
-    "best-toast-notification",
-    "best-library",
-    "priyanshu",
-    "priyanshu-patel",
-    "toast-notification",
     "npm-library",
     "toast-library",
     "toast",
@@ -29,7 +25,10 @@
     "npm",
     "npm-package",
     "javascript",
-    "javascript-library"
+    "best-toast-notification",
+    "best-library",
+    "ESM",
+    "CJS"
   ],
   "author": "Priyanshu Patel",
   "license": "MIT",
