@@ -45,6 +45,6 @@
   },
   "repository": {
     "type": "git",
-    "url": "https://github.com/sammy-cool/customizable-toast-notification"
+    "url": "git+https://github.com/sammy-cool/customizable-toast-notification.git"
   }
 }
