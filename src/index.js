@@ -49,18 +49,16 @@ let defaultMessages = {
   warning: "This is a warning message!",
 };
 
-// Queue to manage active toasts
-const toastQueue = [];
+// Flag to manage if a toast is currently being shown
 let isToastShowing = false;
 
-function showNextToast() {
-  if (toastQueue.length === 0 || isToastShowing) return;
+function showToast({ message, duration, position, type, backgroundColor, textColor, showCloseButton, animationDuration, animationEasing }) {
+  if (isToastShowing) return;
 
   isToastShowing = true;
-  const { message, duration, position, type, backgroundColor, textColor, showCloseButton } = toastQueue.shift();
 
   const finalMessage = message || defaultMessages[type] || "This is a default message.";
-  const toastBackgroundColor = backgroundColor || defaultColors[type] || "gray"; // Use backgroundColor first
+  const toastBackgroundColor = backgroundColor || defaultColors[type] || "gray";
   const toastTextColor = textColor || (toastBackgroundColor === "white" ? "black" : "white");
 
   let toastContainer = document.getElementById(`toast-container-${position}`);
@@ -70,6 +68,7 @@ function showNextToast() {
     toastContainer.style.position = "fixed";
     toastContainer.style.zIndex = "9999";
 
+    // Positioning logic
     if (position.includes("bottom")) {
       toastContainer.style.bottom = "10px";
     } else if (position.includes("top")) {
@@ -81,8 +80,9 @@ function showNextToast() {
     } else if (position.includes("left")) {
       toastContainer.style.left = "10px";
     } else if (position.includes("center")) {
+      toastContainer.style.top = "50%";
       toastContainer.style.left = "50%";
-      toastContainer.style.transform = "translateX(-50%)";
+      toastContainer.style.transform = "translate(-50%, -50%)";
     }
 
     document.body.appendChild(toastContainer);
@@ -90,14 +90,14 @@ function showNextToast() {
 
   const toast = document.createElement("div");
   toast.textContent = finalMessage;
-  toast.style.background = toastBackgroundColor; // Use the determined background color
+  toast.style.background = toastBackgroundColor;
   toast.style.color = toastTextColor;
   toast.style.padding = "10px 20px";
   toast.style.marginTop = "10px";
   toast.style.borderRadius = "5px";
   toast.style.boxShadow = "0 0 10px rgba(0, 0, 0, 0.1)";
   toast.style.opacity = "0";
-  toast.style.transition = "opacity 0.5s";
+  toast.style.transition = `opacity ${animationDuration || '0.5s'} ${animationEasing || 'ease'}`;
 
   // Close button
   if (showCloseButton) {
@@ -113,11 +113,7 @@ function showNextToast() {
       toast.style.opacity = "0"; // Start fade out
       toast.addEventListener("transitionend", () => {
         toast.remove();
-        isToastShowing = false;
-        showNextToast(); // Show the next toast in the queue
-        if (!toastContainer.hasChildNodes()) {
-          toastContainer.remove();
-        }
+        isToastShowing = false; // Reset the flag when the toast is removed
       });
     };
 
@@ -127,53 +123,91 @@ function showNextToast() {
   toastContainer.appendChild(toast);
 
   requestAnimationFrame(() => {
-    toast.style.opacity = "1";
+    toast.style.opacity = "1"; // Fade in effect
   });
 
   setTimeout(() => {
     if (toast.parentNode) {
-      toast.style.opacity = "0";
+      toast.style.opacity = "0"; // Fade out effect
       toast.addEventListener("transitionend", () => {
         toast.remove();
-        isToastShowing = false;
-        showNextToast(); // Show the next toast in the queue
-        if (!toastContainer.hasChildNodes()) {
-          toastContainer.remove();
-        }
+        isToastShowing = false; // Reset the flag when the toast is removed
       });
     }
-  }, duration);
+  }, duration || 3000);
 }
 
+/**
+ * Create a toast notification with the provided options.
+ * 
+ * @param {Object} options - Options for the toast notification.
+ * @param {string} [options.message] - The message to display in the toast.
+ * @param {number} [options.duration=3000] - The duration of the toast in milliseconds.
+ * @param {string} [options.position='bottom-right'] - The position of the toast.
+ * @param {string} [options.type='info'] - The type of the toast.
+ * @param {string} [options.backgroundColor] - The custom background color.
+ * @param {string} [options.textColor='white'] - The custom text color.
+ * @param {boolean} [options.showCloseButton=false] - Whether to show a close button.
+ * @param {string} [options.animationDuration='0.5s'] - Duration of animations.
+ * @param {string} [options.animationEasing='ease'] - Easing function for animations.
+ * @return {void}
+ */
 function createToast(options) {
+  // Validate options
+  if (typeof options !== 'object') {
+    console.error("Options should be an object.");
+    return;
+  }
+
   const {
     message,
-    duration = 3000,
+    duration,
     position = "bottom-right",
     type = "info",
     backgroundColor,
     textColor,
     showCloseButton = false,
+    animationDuration,
+    animationEasing,
   } = options;
 
-  toastQueue.push({
-    message,
-    duration,
-    position,
-    type,
-    backgroundColor,
-    textColor,
-    showCloseButton,
-  });
-  
-  showNextToast(); // Attempt to show the next toast
+  // Validate duration
+  if (duration && typeof duration !== 'number') {
+    console.warn("Duration should be a number. Falling back to default value.");
+  }
+
+  showToast({ message, duration: duration || 3000, position, type, backgroundColor, textColor, showCloseButton, animationDuration, animationEasing });
 }
 
+/**
+ * Set default colors for toast types.
+ * 
+ * @param {Object} newColors - New colors to set for toast types.
+ * @return {void}
+ */
 function setDefaultColors(newColors) {
+  // Validate newColors
+  if (typeof newColors !== 'object') {
+    console.error("New colors should be an object.");
+    return;
+  }
+  
   Object.assign(defaultColors, newColors);
 }
 
+/**
+ * Set default messages for toast types.
+ * 
+ * @param {Object} newMessages - New messages to set for toast types.
+ * @return {void}
+ */
 function setDefaultMessages(newMessages) {
+  // Validate newMessages
+  if (typeof newMessages !== 'object') {
+    console.error("New messages should be an object.");
+    return;
+  }
+
   Object.assign(defaultMessages, newMessages);
 }
 
