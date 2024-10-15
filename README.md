@@ -1,3 +1,16 @@
+# 🌟 Connect with Me!
+
+Please feel free to connect or reach out for **feedback**, **suggestions**, or any kind of **requirements** or **fixes**—just anything—at:
+
+📧 **priyanshu.alt191@gmail.com**  
+
+Your support is highly appreciated! 🙌 If you'd like to show some love, please leave a message of appreciation and don't forget to add your message when supporting me through the QR code below! 💬💖
+
+![Support Me](./dist/external_asset/support_qr.png)
+
+**will surely revert!**
+---->
+
 # Customizable Toast Notification Library
 
 A simple and highly customizable toast notification library for modern JavaScript applications. This library allows you to easily display toast notifications with various configurations to enhance user experience.
