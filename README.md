@@ -6,7 +6,7 @@ Please feel free to connect or reach out for **feedback**, **suggestions**, or a
 
 Your support is highly appreciated! 🙌 If you'd like to show some love, please leave a message of appreciation and don't forget to add your message when supporting me through the QR code below! 💬💖
 
-![Support Me](./dist/external_asset/support_qr.png)
+![Support Me](https://github.com/sammy-cool/support_qr/blob/eb14a600e04dc48dacab11e22cd28f18a31f7a12/support_qr.png)
 
 **will surely revert!**
 ---->
