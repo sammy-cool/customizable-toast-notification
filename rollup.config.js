@@ -3,6 +3,7 @@ import commonjs from '@rollup/plugin-commonjs';
 import terser from '@rollup/plugin-terser';
 import { sizeSnapshot } from 'rollup-plugin-size-snapshot'; // For bundle size analysis
 import { visualizer } from 'rollup-plugin-visualizer'; // For bundle size visualization
+import replace from '@rollup/plugin-replace';
 
 export default {
   input: 'src/index.js',
@@ -20,6 +21,10 @@ export default {
     }
   ],
   plugins: [
+    replace({
+      'process.env.NODE_ENV': JSON.stringify('production'),
+      preventAssignment: true,
+    }),
     resolve(),
     commonjs(),
     terser({

@@ -35,6 +35,8 @@
 
 /** ########################################### Defaults ############################################ */
 
+console.log("Before toast creation");
+
 let defaultColors = {
     info: "blue",
     success: "green",
@@ -225,3 +227,5 @@ function setDefaultMessages(newMessages) {
 }
 
 export { createToast, setDefaultColors, setDefaultMessages };
+
+console.log("After toast creation");
