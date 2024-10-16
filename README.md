@@ -37,10 +37,6 @@ You can install the library via npm:
 ```bash
 npm install customizable-toast-notification
 ```
-Or, if you prefer using yarn:
-```bash
-yarn add customizable-toast-notification
-```
 
 ## Usage
 To use the toast notification library, you need to import it in your JavaScript or TypeScript file:
