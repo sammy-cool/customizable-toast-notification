@@ -10,6 +10,7 @@ GlobalUPI(eureka91@upi)
 or
 Paypal(paypal.me/priyanshupatel1)! 💬💖
 </u>
+
 ![Support Me](https://github.com/sammy-cool/support_qr/blob/eb14a600e04dc48dacab11e22cd28f18a31f7a12/support_qr.png)
 
 **will surely revert!**
