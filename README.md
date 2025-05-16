@@ -6,16 +6,16 @@ Please feel free to connect or reach out for **feedback**, **suggestions**, or a
 
 <u>Your support is highly appreciated! 🙌 If you'd like to show some love, please leave a message of appreciation and don't forget to add your message when supporting me through the **QR Code** below 
 or
-**GlobalUPI(eureka91@upi)**
+**GlobalUPI_ID(eureka91@upi)**
 or
-**👉 [Click here to send support via PayPal](paypal.me/priyanshupatel1)**! 💬💖
+**👉 [Click here to send via PayPal](https://paypal.me/priyanshupatel1)**! 💬💖
 </u>
 
 ![Support Me](https://github.com/sammy-cool/support_qr/blob/eb14a600e04dc48dacab11e22cd28f18a31f7a12/support_qr.png)
 
 **will surely revert!**
-Thank you for your generosity! 🙏
 ---->
+**💖Thank you for your generosity!** 🙏
 
 # Customizable Toast Notification Library
 
