@@ -1,6 +1,6 @@
 {
   "name": "customizable-toast-notification",
-  "version": "3.0.4",
+  "version": "3.0.5",
   "description": "A lightweight and highly customizable toast notification library or component for modern web applications.",
   "main": "dist/index.cjs.js",
   "module": "dist/index.esm.mjs",
