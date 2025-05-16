@@ -4,8 +4,12 @@ Please feel free to connect or reach out for **feedback**, **suggestions**, or a
 
 📧 **priyanshu.alt191@gmail.com**  
 
-Your support is highly appreciated! 🙌 If you'd like to show some love, please leave a message of appreciation and don't forget to add your message when supporting me through the QR code below! 💬💖
-
+<u>Your support is highly appreciated! 🙌 If you'd like to show some love, please leave a message of appreciation and don't forget to add your message when supporting me through the QR code below 
+or
+GlobalUPI(eureka91@upi)
+or
+Paypal(paypal.me/priyanshupatel1)! 💬💖
+</u>
 ![Support Me](https://github.com/sammy-cool/support_qr/blob/eb14a600e04dc48dacab11e22cd28f18a31f7a12/support_qr.png)
 
 **will surely revert!**
