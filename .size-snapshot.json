@@ -17,5 +17,10 @@
         "code": 951
       }
     }
+  },
+  "index.umd.js": {
+    "bundled": 3193,
+    "minified": 3178,
+    "gzipped": 1363
   }
 }

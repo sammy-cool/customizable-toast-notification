@@ -4,6 +4,13 @@
   "description": "A lightweight and highly customizable toast notification library or component for modern web applications.",
   "main": "dist/index.cjs.js",
   "module": "dist/index.esm.mjs",
+  "unpkg": "dist/index.umd.js",
+  "jsdelivr": "dist/index.umd.js",
+  "exports": {
+    "import": "./dist/index.esm.mjs",
+    "require": "./dist/index.cjs.js",
+    "default": "./dist/index.umd.js"
+  },
   "scripts": {
     "build": "rollup -c",
     "test": "echo \"Error: no test specified\" && exit 1"
@@ -42,12 +49,24 @@
     "frontend",
     "frontend library",
     "ESM",
-    "CJS"
+    "CJS",
+    "cdn",
+    "umd",
+    "notification",
+    "custom-toast",
+    "vanilla-js",
+    "lightweight"
   ],
-  "author": "Priyanshu Patel",
-  "license": "MIT",
+  "author": {
+    "name": "Priyanshu Patel",
+    "email": "priyanshu.alt191@gmail.com",
+    "url": "https://github.com/sammy-cool"
+  },
+  "license": "Apache-2.0",
   "files": [
-    "dist"
+    "dist",
+    "README.md",
+    "LICENSE"
   ],
   "devDependencies": {
     "@rollup/plugin-commonjs": "^26.0.1",
@@ -55,11 +74,16 @@
     "@rollup/plugin-replace": "^6.0.1",
     "@rollup/plugin-terser": "^0.4.4",
     "rollup": "^2.78.0",
+    "rollup-plugin-postcss": "^4.0.2",
     "rollup-plugin-size-snapshot": "^0.12.0",
     "rollup-plugin-visualizer": "^5.12.0"
   },
   "repository": {
     "type": "git",
     "url": "git+https://github.com/sammy-cool/customizable-toast-notification.git"
-  }
+  },
+  "bugs": {
+    "url": "https://github.com/sammy-cool/customizable-toast-notification/issues"
+  },
+  "homepage": "https://github.com/sammy-cool/customizable-toast-notification#readme"
 }
