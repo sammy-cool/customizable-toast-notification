@@ -12,7 +12,7 @@ export default {
   input: "src/index.js",
   output: [
     {
-      file: "dist/index.cjs.js",
+      file: "dist/index.cjs",
       format: "cjs",
       exports: "named",
       sourcemap: true, // Enable source maps for debugging
@@ -35,7 +35,11 @@ export default {
       "process.env.NODE_ENV": JSON.stringify("production"),
       preventAssignment: true,
     }),
-    postcss({ extract: true }),
+    postcss({
+      extract: false, // no CSS file output yet
+      minimize: true, // minify any styles you add later
+      modules: false, // change to true if you use CSS modules
+    }),
     resolve(),
     commonjs(),
     terser({
