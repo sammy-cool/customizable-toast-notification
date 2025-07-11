@@ -11,12 +11,13 @@ import pkg from "./package.json";
 export default {
   input: "src/index.js",
   output: [
-    {
-      file: "dist/index.cjs",
-      format: "cjs",
-      exports: "named",
-      sourcemap: true, // Enable source maps for debugging
-    },
+    // { TODO: not in use as of now will Add CJS support LATER
+    //   file: "dist/index.cjs",
+    //   format: "cjs",
+    //   exports: "auto",
+    //   interop: "auto", // handles default interop with ESM/
+    //   sourcemap: true, // Enable source maps for debugging
+    // },
     {
       file: "dist/index.esm.mjs",
       format: "esm",
@@ -29,11 +30,18 @@ export default {
       sourcemap: true,
     },
   ],
-  external: Object.keys(pkg.dependencies || {}), // Add any external dependencies here if needed
+  external: [
+    ...Object.keys(pkg.dependencies || {}),
+    ...Object.keys(pkg.peerDependencies || {}),
+  ], // Add any external dependencies here if needed
   plugins: [
     replace({
       "process.env.NODE_ENV": JSON.stringify("production"),
       preventAssignment: true,
+      values: {
+        __VERSION__: JSON.stringify(pkg.version),
+        "process.env.NODE_ENV": JSON.stringify("production"),
+      },
     }),
     postcss({
       extract: false, // no CSS file output yet
