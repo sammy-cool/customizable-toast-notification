@@ -39,6 +39,7 @@ A simple and highly customizable toast notification library for modern JavaScrip
 - Adjustable display duration and positioning on the screen.
 - Close button functionality for user control.
 - Animation effects for a smooth appearance and disappearance.
+- **NEW**: Optional animated progress bar synced to duration
 
 ## Installation
 
@@ -97,23 +98,35 @@ Creates a toast notification with the provided options.
 
 #### Parameters
 
-- `options` (Object): Options for the toast notification.
-  - `message` (string, optional): The message to display in the toast. Defaults based on type if not provided.
-  - `duration` (number, optional): The duration the toast should be displayed, in milliseconds (default is 3000).
-  - `position` (string, optional): The position of the toast on the screen (default is 'bottom-right').
-  - `type` (string, optional): The type of the toast (info, success, error, warning, default is 'info').
-  - `backgroundColor` (string, optional): Custom background color for the toast notification.
-  - `textColor` (string, optional): Custom text color for the toast notification (default is 'white').
-  - `showCloseButton` (boolean, optional): Whether to show a close button (default is false).
-  - `animationDuration` (string, optional): Duration of the fade-in and fade-out animations (default is '0.5s').
-  - `animationEasing` (string, optional): Easing function for the animations (default is 'ease').
+### ⚙️ Options
+
+| Option              | Type      | Default         | Description                                           |
+| ------------------- | --------- | --------------- | ----------------------------------------------------- |
+| `message`           | `string`  | Based on `type` | The toast content/message.                            |
+| `duration`          | `number`  | `3000`          | Time in milliseconds to auto-dismiss.                 |
+| `position`          | `string`  | `bottom-right`  | Position on screen (`top-left`, `bottom-right`, etc.) |
+| `type`              | `string`  | `info`          | One of: `info`, `success`, `error`, `warning`         |
+| `backgroundColor`   | `string`  | Based on `type` | Override background color.                            |
+| `textColor`         | `string`  | `white`         | Override text color.                                  |
+| `showCloseButton`   | `boolean` | `false`         | Show a close (×) button.                              |
+| `animationDuration` | `string`  | `0.5s`          | CSS duration for fade in/out.                         |
+| `animationEasing`   | `string`  | `ease`          | CSS easing function for transitions.                  |
+| `showProgressBar`   | `boolean` | `false`         | Show a countdown progress bar.                        |
+| `progressColor`     | `string`  | `textColor`     | Color of the progress bar.                            |
+| `progressHeight`    | `string`  | `4px`           | Height of the progress bar.                           |
+| `progressPosition`  | `string`  | `bottom`        | Position of the progress bar: `top` or `bottom`.      |
 
 #### Example
 
 ```javascript
 createToast({
-  message: "Operation completed successfully!",
-  type: "success",
+  message: "Uploading file...",
+  type: "info",
+  duration: 5000,
+  showProgressBar: true,
+  progressColor: "#ffffff",
+  progressHeight: "4px",
+  progressPosition: "top",
 });
 ```
 
