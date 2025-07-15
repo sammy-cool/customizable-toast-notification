@@ -7,6 +7,19 @@
     <title>Toast Notification Example</title>
   </head>
   <body>
+    <script src="https://cdn.jsdelivr.net/npm/customizable-toast-notification/dist/index.umd.js"></script>
+    <script>
+      customizableToast.createToast({
+        message: "Hello from the browser!",
+        type: "success",
+        position: "top-center",
+        duration: 4000,
+        showProgressBar: true,
+        progressColor: "red",
+        progressHeight: "3px",
+        progressPosition: "top",
+      });
+    </script>
     <button id="showToast">Show Toast</button>
 
     <script type="module">
@@ -34,13 +47,17 @@
       // Example usage
       document.getElementById("showToast").addEventListener("click", () => {
         createToast({
-          // message: 'This is a toast with a close button.',
+          message: "This is a toast with a close button.",
           duration: 5000,
           position: "bottom-right",
           type: "info",
           showCloseButton: true,
-          // backgroundColor: 'red', // Custom background color
+          backgroundColor: "black", // Custom background color
           textColor: "white", // Custom text color
+          showProgressBar: true,
+          progressColor: "red",
+          progressHeight: "3px",
+          progressPosition: "top",
         });
       });
     </script>

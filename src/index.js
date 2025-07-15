@@ -93,7 +93,12 @@ function createToastElement(
   textColor,
   animationDuration,
   animationEasing,
-  showCloseButton
+  showCloseButton,
+  showProgressBar,
+  progressColor,
+  progressHeight,
+  progressPosition,
+  duration
 ) {
   const toast = document.createElement("div");
   toast.textContent = finalMessage;
@@ -105,9 +110,29 @@ function createToastElement(
   toast.style.boxShadow = "0 0 10px rgba(0, 0, 0, 0.1)";
   toast.style.opacity = "0";
   toast.style.transition = `opacity ${animationDuration} ${animationEasing}`;
+  toast.style.position = "relative";
+  toast.style.overflow = "hidden";
 
   if (showCloseButton) {
     addCloseButton(toast, textColor);
+  }
+
+  if (showProgressBar) {
+    const progressBar = document.createElement("div");
+    progressBar.style.position = "absolute";
+    progressBar.style[progressPosition === "top" ? "top" : "bottom"] = "0";
+    progressBar.style.left = "0";
+    progressBar.style.height = progressHeight || "4px";
+    progressBar.style.backgroundColor = progressColor || textColor;
+    progressBar.style.width = "100%";
+    progressBar.style.transition = `width ${duration}ms linear`;
+
+    // Trigger animation
+    requestAnimationFrame(() => {
+      progressBar.style.width = "0%";
+    });
+
+    toast.appendChild(progressBar);
   }
 
   return toast;
@@ -143,9 +168,12 @@ function showToast({
   showCloseButton,
   animationDuration,
   animationEasing,
+  showProgressBar,
+  progressColor,
+  progressHeight,
+  progressPosition,
 }) {
   if (isToastShowing) return;
-
   isToastShowing = true;
 
   const finalMessage =
@@ -161,20 +189,25 @@ function showToast({
     toastTextColor,
     animationDuration || "0.5s",
     animationEasing || "ease",
-    showCloseButton
+    showCloseButton,
+    showProgressBar,
+    progressColor,
+    progressHeight,
+    progressPosition,
+    duration || 3000
   );
 
   toastContainer.appendChild(toast);
   requestAnimationFrame(() => {
-    toast.style.opacity = "1"; // Fade in effect
+    toast.style.opacity = "1";
   });
 
   setTimeout(() => {
     if (toast.parentNode) {
-      toast.style.opacity = "0"; // Fade out effect
+      toast.style.opacity = "0";
       toast.addEventListener("transitionend", () => {
         toast.remove();
-        isToastShowing = false; // Reset the flag when the toast is removed
+        isToastShowing = false;
       });
     }
   }, duration || 3000);
@@ -193,10 +226,13 @@ function showToast({
  * @param {boolean} [options.showCloseButton=false] - Whether to show a close button.
  * @param {string} [options.animationDuration='0.5s'] - Duration of animations.
  * @param {string} [options.animationEasing='ease'] - Easing function for animations.
+ * @param {boolean} [options.showProgressBar=false] - Show a visual progress bar.
+ * @param {string} [options.progressColor] - Color of the progress bar.
+ * @param {string} [options.progressHeight='4px'] - Height of the progress bar.
+ * @param {string} [options.progressPosition='bottom'] - 'top' or 'bottom' placement of the progress bar.
  * @return {void}
  */
 function createToast(options) {
-  // Validate options
   if (typeof options !== "object") {
     console.error("Options should be an object.");
     return;
@@ -212,9 +248,12 @@ function createToast(options) {
     showCloseButton = false,
     animationDuration,
     animationEasing,
+    showProgressBar = false,
+    progressColor,
+    progressHeight = "4px",
+    progressPosition = "bottom",
   } = options;
 
-  // Validate duration
   if (duration && typeof duration !== "number") {
     console.warn("Duration should be a number. Falling back to default value.");
   }
@@ -229,6 +268,10 @@ function createToast(options) {
     showCloseButton,
     animationDuration,
     animationEasing,
+    showProgressBar,
+    progressColor,
+    progressHeight,
+    progressPosition,
   });
 }
 

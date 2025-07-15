@@ -5,9 +5,9 @@
     "gzipped": 1057
   },
   "index.esm.mjs": {
-    "bundled": 2997,
-    "minified": 2993,
-    "gzipped": 1363,
+    "bundled": 3611,
+    "minified": 3607,
+    "gzipped": 1554,
     "treeshaked": {
       "rollup": {
         "code": 0,
@@ -19,9 +19,9 @@
     }
   },
   "index.umd.js": {
-    "bundled": 3310,
-    "minified": 3305,
-    "gzipped": 1467
+    "bundled": 3924,
+    "minified": 3919,
+    "gzipped": 1664
   },
   "index.cjs": {
     "bundled": 3259,
