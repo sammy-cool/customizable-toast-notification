@@ -19,6 +19,7 @@
 
 ## Documentation
 
+- [ ] Adding a prepublish hook in package.json to verify the readme or run a linter/check.
 - [x] Write README examples
 - [x] Add usage guide for developers
 - [P0] Post published need to clear the cache of umd url.

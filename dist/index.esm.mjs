@@ -2,7 +2,7 @@
  * @fileoverview A simple toast notification library for any JavaScript framework.
  * @name Customizable Toast Notifications
  * @author Priyanshu Patel
- * @version "3.2.0"
+ * @version "3.3.1"
  * @build Production
  * @license Apache-2.0
  * @depends None
