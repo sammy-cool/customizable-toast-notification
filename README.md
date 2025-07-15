@@ -193,3 +193,9 @@ Contributions are welcome! Please read the [CONTRIBUTING.md]() for details on ou
 ## License
 
 This project is licensed under the Apache-2.0 License - see the [LICENSE.md](LICENSE) file for details.
+
+## 👨‍💻 Author
+
+Made with ❤️ by [Priyanshu Patel](https://github.com/sammy-cool/customizable-toast-notification)
+
+Feel free to ⭐ this repository if you found it helpful!
