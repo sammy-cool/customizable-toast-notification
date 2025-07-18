@@ -20,18 +20,21 @@
  */
 
 /**
- * Creates a toast notification.
- *
+ * Create a toast notification with the provided options.
  * @param {Object} options - Options for the toast notification.
- * @param {string} [options.message] - The message to display in the toast. Defaults based on type if not provided.
- * @param {number} [options.duration=3000] - The duration the toast should be displayed, in milliseconds.
- * @param {string} [options.position='bottom-right'] - The position of the toast on the screen.
- * @param {string} [options.type='info'] - The type of the toast ('info', 'success', 'error', 'warning').
- * @param {string} [options.backgroundColor] - Custom background color for the toast notification.
- * @param {string} [options.textColor='white'] - Custom text color for the toast notification.
- * @param {string} [options.animationDuration='0.5s'] - Duration of the fade-in and fade-out animations.
- * @param {string} [options.animationEasing='ease'] - Easing function for the animations.
+ * @param {string} [options.message] - The message to display in the toast.
+ * @param {number} [options.duration=3000] - The duration of the toast in milliseconds.
+ * @param {string} [options.position='bottom-right'] - The position of the toast.
+ * @param {string} [options.type='info'] - The type of the toast.
+ * @param {string} [options.backgroundColor] - The custom background color.
+ * @param {string} [options.textColor='white'] - The custom text color.
  * @param {boolean} [options.showCloseButton=false] - Whether to show a close button.
+ * @param {string} [options.animationDuration='0.5s'] - Duration of animations.
+ * @param {string} [options.animationEasing='ease'] - Easing function for animations.
+ * @param {boolean} [options.showProgressBar=false] - Show a visual progress bar.
+ * @param {string} [options.progressColor] - Color of the progress bar.
+ * @param {string} [options.progressHeight='4px'] - Height of the progress bar.
+ * @param {string} [options.progressPosition='bottom'] - 'top' or 'bottom' placement of the progress bar.
  * @return {void}
  */
 
@@ -40,10 +43,10 @@
 console.log("Before toast creation");
 
 let defaultColors = {
-  info: "blue",
-  success: "green",
-  error: "red",
-  warning: "darkorange",
+  info: "#3498db",
+  success: "#2ecc71",
+  error: "#e74c3c",
+  warning: "#f39c12",
 };
 
 let defaultMessages = {
@@ -213,25 +216,6 @@ function showToast({
   }, duration || 3000);
 }
 
-/**
- * Create a toast notification with the provided options.
- *
- * @param {Object} options - Options for the toast notification.
- * @param {string} [options.message] - The message to display in the toast.
- * @param {number} [options.duration=3000] - The duration of the toast in milliseconds.
- * @param {string} [options.position='bottom-right'] - The position of the toast.
- * @param {string} [options.type='info'] - The type of the toast.
- * @param {string} [options.backgroundColor] - The custom background color.
- * @param {string} [options.textColor='white'] - The custom text color.
- * @param {boolean} [options.showCloseButton=false] - Whether to show a close button.
- * @param {string} [options.animationDuration='0.5s'] - Duration of animations.
- * @param {string} [options.animationEasing='ease'] - Easing function for animations.
- * @param {boolean} [options.showProgressBar=false] - Show a visual progress bar.
- * @param {string} [options.progressColor] - Color of the progress bar.
- * @param {string} [options.progressHeight='4px'] - Height of the progress bar.
- * @param {string} [options.progressPosition='bottom'] - 'top' or 'bottom' placement of the progress bar.
- * @return {void}
- */
 function createToast(options) {
   if (typeof options !== "object") {
     console.error("Options should be an object.");
