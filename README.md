@@ -1,214 +1,247 @@
-# 🌟 Connect with Me!
+# 🍞 Customizable Toast Notifications
 
-Please feel free to connect or reach out for **feedback**, **suggestions**, or any kind of **requirements** or **fixes**—just anything—at:
+[![npm version](https://badge.fury.io/js/customizable-toast-notification.svg)](https://www.npmjs.com/package/customizable-toast-notification)
+[![License: Apache-2.0](https://img.shields.io/badge/License-Apache%202.0-blue.svg)](https://opensource.org/licenses/Apache-2.0)
+[![Downloads](https://img.shields.io/npm/dm/customizable-toast-notification.svg)](https://www.npmjs.com/package/customizable-toast-notification)
+[![Bundle Size](https://img.shields.io/bundlephobia/minzip/customizable-toast-notification)](https://bundlephobia.com/package/customizable-toast-notification)
 
-📧 **priyanshu.alt191@gmail.com**
+A **lightweight**, **zero-dependency** toast notification library for modern JavaScript applications. Built with production-grade reliability and comprehensive secret mechanisms.
 
-<u>Your support is highly appreciated! 🙌 If you'd like to show some love, please leave a message of appreciation and don't forget to add your message when supporting me through the **QR Code** below
-or
-**GlobalUPI_ID(eureka91@upi)**
-or
-**👉 [Click here to send via PayPal](https://paypal.me/priyanshupatel1)**! 💬💖
-</u>
+## ✨ Key Features
 
-![Support Me](https://github.com/sammy-cool/support_qr/blob/eb14a600e04dc48dacab11e22cd28f18a31f7a12/support_qr.png)
+- 🚫 **Zero Dependencies** - Lightweight and fast
+- 🛡️ **Production Ready** - Reliable and scalable for production environments
+- 🎨 **Highly Customizable** - Colors, positions, animations, progress bars
+- 🌐 **Framework Agnostic** - Works with React, Vue, Angular, or vanilla JS
+- 📱 **Responsive** - Works on all screen sizes and devices
+- ⚡ **CDN Ready** - Easy integration via CDN or npm
+- 🔧 **TypeScript Ready** - Full type support (coming soon)
 
-**will surely revert!**
----->
-**💖Thank you for your generosity!** 🙏
+## 📦 Installation
 
-# Customizable Toast Notification Library
+### NPM/Yarn
 
-A simple and highly customizable toast notification library for modern JavaScript applications. This library allows you to easily display toast notifications with various configurations to enhance user experience.
-
-## Table of Contents
-
-- [Features](#features)
-- [Installation](#installation)
-- [Usage](#usage)
-- [API Reference](#api-reference)
-- [Examples](#examples)
-- [Contributing](#contributing)
-- [License](#license)
-
-## Features
-
-- Display notifications of different types: info, success, error, and warning.
-- Customizable background and text colors.
-- Support for custom messages and default messages.
-- Adjustable display duration and positioning on the screen.
-- Close button functionality for user control.
-- Animation effects for a smooth appearance and disappearance.
-- **NEW**: Optional animated progress bar synced to duration
-
-## Installation
-
-You can install the library via npm:
-
-```bash
 npm install customizable-toast-notification
-```
 
-## Usage
+or
+yarn add customizable-toast-notification
 
-🔌 CDN Usage (UMD:Universal Module Definition Build)
-You can use this toast notification library directly in your HTML file via a <script> tag:
+text
 
-<script src="https://cdn.jsdelivr.net/npm/customizable-toast-notification/dist/index.umd.js"></script>
-<script>
-  customizableToast.createToast({
-    message: "Hello from the browser!",
-    type: "success",
-    position: "top-center",
-    duration: 4000
-  });
-</script>
+### CDN (UMD Build)
 
-✅ No build tools or framework needed
-✅ Works in all modern browsers
+<script src="https://cdn.jsdelivr.net/npm/customizable-toast-notification@latest/dist/index.umd.js"></script>
 
-or To use the toast notification library, you need to import it in your JavaScript or TypeScript file:
+text
 
-```javascript
-import {
-  createToast,
-  setDefaultColors,
-  setDefaultMessages,
-} from "customizable-toast-notification";
+## 🚀 Quick Start
 
-// Create a toast notification
+### ES Modules
+
+import { createToast, setDefaultColors, setDefaultMessages } from 'customizable-toast-notification';
+
+// Simple usage
 createToast({
-  message: "This is a custom message!",
-  duration: 5000, // Duration in milliseconds
-  position: "top-right", // Position of the toast
-  type: "success", // Type of notification
-  backgroundColor: "green", // Custom background color
-  textColor: "white", // Custom text color
-  showCloseButton: true, // Show close button
-  animationDuration: "0.5s", // Duration of the animations
-  animationEasing: "ease", // Easing function for the animations
+message: "Hello World!",
+type: "success",
+duration: 3000
 });
-```
 
-## API Reference
+text
 
-### createToast
+### CDN/Browser
 
-Creates a toast notification with the provided options.
+<script src="https://cdn.jsdelivr.net/npm/customizable-toast-notification@latest/dist/index.umd.js"></script> <script> customizableToast.createToast({ message: "Hello from CDN!", type: "success", position: "top-right" }); </script>
 
-#### Parameters
+text
 
-### ⚙️ Options
+## 📖 API Reference
 
-| Option              | Type      | Default         | Description                                           |
-| ------------------- | --------- | --------------- | ----------------------------------------------------- |
-| `message`           | `string`  | Based on `type` | The toast content/message.                            |
-| `duration`          | `number`  | `3000`          | Time in milliseconds to auto-dismiss.                 |
-| `position`          | `string`  | `bottom-right`  | Position on screen (`top-left`, `bottom-right`, etc.) |
-| `type`              | `string`  | `info`          | One of: `info`, `success`, `error`, `warning`         |
-| `backgroundColor`   | `string`  | Based on `type` | Override background color.                            |
-| `textColor`         | `string`  | `white`         | Override text color.                                  |
-| `showCloseButton`   | `boolean` | `false`         | Show a close (×) button.                              |
-| `animationDuration` | `string`  | `0.5s`          | CSS duration for fade in/out.                         |
-| `animationEasing`   | `string`  | `ease`          | CSS easing function for transitions.                  |
-| `showProgressBar`   | `boolean` | `false`         | Show a countdown progress bar.                        |
-| `progressColor`     | `string`  | `textColor`     | Color of the progress bar.                            |
-| `progressHeight`    | `string`  | `4px`           | Height of the progress bar.                           |
-| `progressPosition`  | `string`  | `bottom`        | Position of the progress bar: `top` or `bottom`.      |
+### `createToast(options)`
 
-#### Example
+Creates and displays a toast notification.
 
-```javascript
-createToast({
-  message: "Uploading file...",
-  type: "info",
-  duration: 5000,
-  showProgressBar: true,
-  progressColor: "#ffffff",
-  progressHeight: "4px",
-  progressPosition: "top",
-});
-```
+#### Options
 
-### setDefaultColors
+| Parameter           | Type      | Default                 | Description                                   |
+| ------------------- | --------- | ----------------------- | --------------------------------------------- |
+| `message`           | `string`  | Based on `type`         | Toast message content                         |
+| `type`              | `string`  | `"info"`                | `"info"`, `"success"`, `"error"`, `"warning"` |
+| `duration`          | `number`  | `3000`                  | Auto-dismiss time in milliseconds             |
+| `position`          | `string`  | `"bottom-right"`        | Toast position on screen                      |
+| `backgroundColor`   | `string`  | Based on `type`         | Custom background color                       |
+| `textColor`         | `string`  | `"white"`               | Custom text color                             |
+| `showCloseButton`   | `boolean` | `false`                 | Show close (×) button                         |
+| `showProgressBar`   | `boolean` | `false`                 | Show countdown progress bar                   |
+| `animationDuration` | `string`  | `"0.5s"`                | CSS animation duration                        |
+| `animationEasing`   | `string`  | `"ease"`                | CSS animation easing function                 |
+| `progressColor`     | `string`  | `rgba(255,255,255,0.3)` | Progress bar color                            |
+| `progressHeight`    | `string`  | `"4px"`                 | Progress bar height                           |
+| `progressPosition`  | `string`  | `"bottom"`              | Progress bar position: `"top"` or `"bottom"`  |
 
-Sets default colors for different toast types.
+#### Position Options
 
-#### Parameters
+- `"top-left"`, `"top-right"`, `"top-center"`
+- `"bottom-left"`, `"bottom-right"`, `"bottom-center"`
 
-- `newColors` (Object): New colors to set for toast types, where keys are the toast types (info, success, error, warning).
+### `setDefaultColors(colors)`
 
-#### Example
+Configure default colors for toast types.
 
-```javascript
 setDefaultColors({
-  info: "blue",
-  success: "green",
-  error: "red",
-  warning: "orange",
+success: "#10b981",
+error: "#ef4444",
+warning: "#f59e0b",
+info: "#3b82f6"
 });
-```
 
-### setDefaultMessages
+text
 
-Sets default messages for different toast types.
+### `setDefaultMessages(messages)`
 
-#### Parameters
-
-- `newMessages` (Object): New messages to set for toast types, where keys are the toast types (info, success, error, warning).
-
-#### Example
-
-```javascript
-setDefaultMessages({
-  info: "This is an informational message!",
-  success: "Your action was successful!",
-  error: "An error has occurred!",
-  warning: "This is a warning message!",
-});
-```
-
-## Examples
-
-### Basic Usage
-
-```javascript
-createToast({
-  message: "Welcome to our website!",
-  duration: 4000,
-  type: "info",
-});
-```
-
-### Custom Colors and Messages
-
-```javascript
-setDefaultColors({
-  success: "#28a745",
-  error: "#dc3545",
-});
+Configure default messages for toast types.
 
 setDefaultMessages({
-  success: "Data saved successfully!",
-  error: "Failed to save data.",
+success: "Operation completed successfully!",
+error: "Something went wrong!",
+warning: "Please check your input!",
+info: "Here's some information!"
 });
+
+text
+
+## 💡 Examples
+
+### Basic Toast Types
+
+// Success
+createToast({ type: "success", message: "Data saved!" });
+
+// Error
+createToast({ type: "error", message: "Save failed!" });
+
+// Warning
+createToast({ type: "warning", message: "Please confirm!" });
+
+// Info
+createToast({ type: "info", message: "New update available!" });
+
+text
+
+### Advanced Customization
 
 createToast({
-  type: "success",
-  message: "Data saved successfully!",
+message: "File uploading...",
+type: "info",
+duration: 5000,
+position: "top-center",
+showProgressBar: true,
+showCloseButton: true,
+backgroundColor: "#6366f1",
+textColor: "white",
+progressColor: "#e0e7ff",
+progressPosition: "top",
+animationDuration: "0.8s",
+animationEasing: "ease-out"
 });
-```
 
-## Contributing
+text
 
-Contributions are welcome! Please read the [CONTRIBUTING.md]() for details on our code of conduct, and the process for submitting pull requests.
+### App-wide Configuration
 
-## License
+// Set your brand colors once
+setDefaultColors({
+success: "#10b981", // Your brand green
+error: "#ef4444", // Your brand red
+warning: "#f59e0b", // Your brand yellow
+info: "#3b82f6" // Your brand blue
+});
 
-This project is licensed under the Apache-2.0 License - see the [LICENSE.md](LICENSE) file for details.
+// Set your app messages
+setDefaultMessages({
+success: "✅ Success! Changes saved.",
+error: "❌ Error! Please try again.",
+warning: "⚠️ Warning! Check your input.",
+info: "💡 Info! Here's a tip."
+});
+
+// Now just use types throughout your app
+createToast({ type: "success" }); // Uses your custom colors & messages
+
+text
+
+## 🛡️ Reliability Features
+
+### Production-Grade System
+
+- \*\*Rich toast → Basic toast → Emergency alert
+- **Zero-Crash Guarantee**: Comprehensive error handling prevents application crashes
+- **Memory Management**: Automatic cleanup prevents memory leaks
+- **CDN Cache-Busting**: Ensures fresh content delivery
+
+### Browser Compatibility
+
+- ✅ Chrome
+- ✅ Firefox
+- ✅ Safari
+- ✅ Edge
+- ✅ Mobile browsers
+
+## 📁 Bundle Information
+
+- **Size**: ~13KB minified, ~4KB gzipped
+- **Dependencies**: Zero
+- **Formats**: UMD, ES Modules
+- **TypeScript**: Definitions included (coming soon)
+
+## 🤝 Contributing
+
+Exciting times ahead! Looking for sponsors and eager to explore new collaborations:) . Contributions are welcome! Please read our [Contributing Guidelines](CONTRIBUTING.md) for details.
+
+### Development Setup
+
+git clone https://github.com/sammy-cool/customizable-toast-notification.git
+cd customizable-toast-notification
+npm install
+npm run build
+
+text
+
+## 📄 License
+
+This project is licensed under the [Apache-2.0 License](LICENSE).
 
 ## 👨‍💻 Author
 
-Made with ❤️ by [Priyanshu Patel](https://github.com/sammy-cool/customizable-toast-notification)
+**Priyanshu Patel**
 
-Feel free to ⭐ this repository if you found it helpful!
+- 📧 Email: priyanshu.alt191@gmail.com
+- 🐙 GitHub: [@sammy-cool](https://github.com/sammy-cool)
+
+---
+
+## 💖 Support
+
+If this library helped your project, please consider:
+
+⭐ **Star this repository** to show your support!
+
+💌 **Share feedback** at priyanshu.alt191@gmail.com
+
+☕ **Buy me a coffee** if you'd like to support development:
+
+- 🌐 PayPal: [paypal.me/priyanshupatel1](https://paypal.me/priyanshupatel1)
+- 💳 UPI: `eureka91@upi`
+
+<details>
+<summary>📱 Support via QR Code</summary>
+
+![Support QR](https://github.com/sammy-cool/support_qr/blob/eb14a600e04dc48dacab11e22cd28f18a31f7a12/support_qr.png)
+
+</details>
+
+**Thank you for your support! 🙏**
+
+---
+
+_Made with ❤️ for the JavaScript community_

@@ -28,8 +28,9 @@ try {
       count === 5
         ? "🎯Thanks for sticking with it!\nThis is the final message. 🚀"
         : `📦Thanks for using this package!`,
-      "📘 For help: Check the README.md",
-      "🤝 Open to collaboration & teamwork.",
+      "📘 In README.md - More professional",
+      "👨‍💻 Author **Priyanshu Patel** -",
+      "🤝 Open to collaboration & teamwork",
       "💼 Looking for exciting dev opportunities.",
       "🔗 Contact: priyanshu.alt191@gmail.com",
       "🚀 Built different. Stay creative.",
@@ -58,7 +59,7 @@ try {
       console.log(center(`\x1b[36m╚${"═".repeat(boxWidth)}╝\x1b[0m`) + "\n");
 
       process.exit(0); // ✅ Exit only after message shown
-    }, 1200);
+    }, 300);
   }
 } catch (error) {
   process.exit(0); // Exit silently

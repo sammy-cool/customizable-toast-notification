@@ -19,7 +19,11 @@
 
 ## Documentation
 
-**IMPORTANT NEED TO BE DONE\***>>> Like if we have or document.getElementById, document.createElement jo bhi element create ho wo random id bhi sath add rkhe taki agar same element user ke existing project me ho to conflict create na ho. thank you
+## **\*\*\***FALLBACK MECHANISM FOR EVERY CODE BASE WHICH I HAVE TO FOLLOW ALWAYS EVERYTIME FOR EVERYTHING.**\*\*\***
+
+**\*\*\*\*** \***\*BACKWARD COMPATIBILITY NEEED TO TAKE CARE IN CODE MIGRATION**\*\*\*\*\*
+Flexible (future upgrades ke liye restrict na kare: aage progress bar, confirm modal, ya notification bell bhi ho paye!)
+\*\*IMPORTANT NEED TO BE DONE\*\*\* >>> Like if we have or document.getElementById, document.createElement jo bhi element create ho wo random id bhi sath add rkhe taki agar same element user ke existing project me ho to conflict create na ho. thank you
 ✅ 3. Using Telemetry / Opt-In Tracking
 Aap ek opt-in system bana sakte ho jahan users voluntarily tracking enable karte hain — jaise VS Code ya Next.js karte hain.
 

@@ -7,18 +7,24 @@
     <title>Toast Notification Example</title>
   </head>
   <body>
-    <script src="https://cdn.jsdelivr.net/npm/customizable-toast-notification/dist/index.umd.js"></script>
+    <script src="../dist/index.umd.js"></script>
     <script>
+      customizableToast.setDefaultColors({ success: "yellow" });
+      customizableToast.setDefaultMessages({ success: "GG" });
       customizableToast.createToast({
-        message: "Hello from the browser!",
+        message: "Full feature test",
         type: "success",
-        position: "top-center",
-        duration: 4000,
+        duration: 5000,
+        position: "top-right",
+        backgroundColor: "white",
+        textColor: "#111",
+        showCloseButton: true,
+        animationDuration: "1s",
+        animationEasing: "ease-in-out",
         showProgressBar: true,
         progressColor: "red",
-        progressHeight: "3px",
+        progressHeight: "5px",
         progressPosition: "top",
-        showCloseButton: true,
       });
     </script>
     <button id="showToast">Show Toast</button>
