@@ -21,22 +21,27 @@ A **lightweight**, **zero-dependency** toast notification library for modern Jav
 
 ### NPM/Yarn
 
+```bash
 npm install customizable-toast-notification
+```
 
 or
-yarn add customizable-toast-notification
 
-text
+```bash
+yarn add customizable-toast-notification
+```
 
 ### CDN (UMD Build)
 
+```bash
 <script src="https://cdn.jsdelivr.net/npm/customizable-toast-notification@latest/dist/index.umd.js"></script>
-
-text
+```
 
 ## 🚀 Quick Start
 
 ### ES Modules
+
+```json
 
 import { createToast, setDefaultColors, setDefaultMessages } from 'customizable-toast-notification';
 
@@ -47,13 +52,16 @@ type: "success",
 duration: 3000
 });
 
-text
+```
 
 ### CDN/Browser
 
-<script src="https://cdn.jsdelivr.net/npm/customizable-toast-notification@latest/dist/index.umd.js"></script> <script> customizableToast.createToast({ message: "Hello from CDN!", type: "success", position: "top-right" }); </script>
+```json
 
-text
+<script src="https://cdn.jsdelivr.net/npm/customizable-toast-notification@latest/dist/index.umd.js"></script>
+<script> customizableToast.createToast({ message: "Hello from CDN!", type: "success", position: "top-right" }); </script>
+
+```
 
 ## 📖 API Reference
 
@@ -81,10 +89,16 @@ Creates and displays a toast notification.
 
 #### Position Options
 
+```josn
+
 - `"top-left"`, `"top-right"`, `"top-center"`
 - `"bottom-left"`, `"bottom-right"`, `"bottom-center"`
 
+```
+
 ### `setDefaultColors(colors)`
+
+```json
 
 Configure default colors for toast types.
 
@@ -95,10 +109,11 @@ warning: "#f59e0b",
 info: "#3b82f6"
 });
 
-text
+```
 
 ### `setDefaultMessages(messages)`
 
+```json
 Configure default messages for toast types.
 
 setDefaultMessages({
@@ -108,12 +123,13 @@ warning: "Please check your input!",
 info: "Here's some information!"
 });
 
-text
+```
 
 ## 💡 Examples
 
 ### Basic Toast Types
 
+```json
 // Success
 createToast({ type: "success", message: "Data saved!" });
 
@@ -126,10 +142,11 @@ createToast({ type: "warning", message: "Please confirm!" });
 // Info
 createToast({ type: "info", message: "New update available!" });
 
-text
+```
 
 ### Advanced Customization
 
+```json
 createToast({
 message: "File uploading...",
 type: "info",
@@ -144,8 +161,6 @@ progressPosition: "top",
 animationDuration: "0.8s",
 animationEasing: "ease-out"
 });
-
-text
 
 ### App-wide Configuration
 
@@ -168,7 +183,7 @@ info: "💡 Info! Here's a tip."
 // Now just use types throughout your app
 createToast({ type: "success" }); // Uses your custom colors & messages
 
-text
+```
 
 ## 🛡️ Reliability Features
 
@@ -200,12 +215,14 @@ Exciting times ahead! Looking for sponsors and eager to explore new collaboratio
 
 ### Development Setup
 
+```bash
+
 git clone https://github.com/sammy-cool/customizable-toast-notification.git
 cd customizable-toast-notification
 npm install
 npm run build
 
-text
+```
 
 ## 📄 License
 
