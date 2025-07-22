@@ -119,3 +119,14 @@ postinstall script Custom install tracking ⚠️ Use with caution
 GitHub Traffic Visitor + Clone data ✅ Yes
 Dependents tab Package consumers ✅ Yes
 Opt-in telemetry Usage analytics ✅ Yes
+
+---
+
+have to promote my library
+Interceptor or intercept the console error and based on that show the popup
+
+P0:- toast ka msg dynamically update krna hai in any case like framework ke case me ya html ya khi bhi...NNED TO VALIDATE=> kya possibility hai and impact and how much useful is this and suggestions or recommendation. AND MUST BE ISKE LIYE EK NAYA UPDATE API METHOD CREATE KRNA HOGA nyc
+
+---
+
+HAVE TO FIND OUT ALL THE LOOPHOLES OF MY LIBRARY ALMOMST AT THE END.
