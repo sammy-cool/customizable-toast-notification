@@ -25,13 +25,13 @@ const banner = `/*!
 export default {
   input: "src/index.js",
   output: [
-    // { TODO: not in use as of now will Add CJS support LATER
-    //   file: "dist/index.cjs",
-    //   format: "cjs",
-    //   exports: "auto",
-    //   interop: "auto", // handles default interop with ESM/
-    //   sourcemap: true, // Enable source maps for debugging
-    // },
+    {
+      file: "dist/index.cjs",
+      format: "cjs",
+      exports: "named",
+      interop: "auto", // handles default interop with ESM/
+      sourcemap: true, // Enable source maps for debugging
+    },
     {
       file: "dist/index.esm.mjs",
       format: "esm",
