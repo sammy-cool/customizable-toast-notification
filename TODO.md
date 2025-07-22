@@ -105,7 +105,7 @@ PRO\_\_
 📊 Analytics (Pro)
 🔐 License key / SaaS hooks (Pro)
 
-===stat ==> https://npm-stat.com/charts.html?package=customizable-toast-notification&from=2025-06-01&to=2025-07-16
+===stat ==> https://npm-stat.com/charts.html?package=customizable-toast-notification
 \*\*\*\*IMPORTANT BUT TODO BE LATER
 ✅ 6. Using Sentry, LogRocket, or Self-Hosted Analytics
 Agar aapka package frontend ke liye hai (e.g., React component library), to aap runtime pe analytics SDKs integrate kar sakte ho (with user consent):
