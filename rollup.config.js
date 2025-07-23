@@ -1,8 +1,8 @@
 import resolve from "@rollup/plugin-node-resolve";
 import commonjs from "@rollup/plugin-commonjs";
 import terser from "@rollup/plugin-terser";
-import bundleSize from "rollup-plugin-bundle-size"; // For bundle size analysis
-import { visualizer } from "rollup-plugin-visualizer"; // For bundle size visualization
+import bundleSize from "rollup-plugin-bundle-size";
+import { visualizer } from "rollup-plugin-visualizer";
 import replace from "@rollup/plugin-replace";
 import postcss from "rollup-plugin-postcss";
 
@@ -28,14 +28,15 @@ export default {
     {
       file: "dist/index.cjs",
       format: "cjs",
-      exports: "named",
-      interop: "auto", // handles default interop with ESM/
-      sourcemap: true, // Enable source maps for debugging
+      exports: "auto",
+      interop: "auto",
+      sourcemap: true,
+      banner,
     },
     {
       file: "dist/index.esm.mjs",
       format: "esm",
-      sourcemap: true, // Enable source maps for debugging
+      sourcemap: true,
       banner,
     },
     {
@@ -73,7 +74,7 @@ export default {
       },
       mangle: true, // Mangle variable names
     }),
-    bundleSize(), // Analyze bundle size
+    bundleSize(),
     visualizer({
       filename: "./bundle-analysis.html",
       open: false,

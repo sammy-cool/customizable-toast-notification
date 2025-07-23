@@ -9,7 +9,21 @@ const toast = require("../dist/index.cjs");
 
 // Trigger the toast
 toast.setDefaultMessages({ info: "Updated info message!" });
-toast.createToast({ type: "info" });
+toast.createToast({
+  message: "Loading",
+  type: "success",
+  duration: 5000,
+  position: "top-right",
+  backgroundColor: "white",
+  textColor: "#111",
+  showCloseButton: true,
+  animationDuration: "1s",
+  animationEasing: "ease-in-out",
+  showProgressBar: true,
+  progressColor: "red",
+  progressHeight: "5px",
+  progressPosition: "top",
+});
 
 // Log the DOM content to see what happened
 console.log("📦 Toast created in fake DOM:");
