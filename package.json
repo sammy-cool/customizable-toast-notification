@@ -16,7 +16,15 @@
     "test:watch": "jest --watch",
     "test:coverage": "jest --coverage",
     "postinstall": "node postinstall.js",
-    "build": "rollup -c"
+    "build": "rollup -c",
+    "prepublishOnly": "npm run build",
+    "test:e2e": "playwright test",
+    "test:e2e:ssupdate": "playwright test --update-snapshots",
+    "test:e2e:headed": "playwright test --headed",
+    "test:e2e:debug": "playwright test --debug",
+    "test:e2e:report": "playwright show-report",
+    "test:all": "npm test && npm run test:e2e",
+    "serve": "npx http-server . -p 3000 -c-1"
   },
   "keywords": [
     "javascript",
@@ -84,6 +92,7 @@
     "@rollup/plugin-terser": "^0.4.4",
     "@testing-library/jest-dom": "^6.6.3",
     "autoprefixer": "^10.4.21",
+    "http-server": "^14.1.1",
     "jest": "^30.0.5",
     "jest-environment-jsdom": "^30.0.5",
     "jsdom": "^26.1.0",

@@ -1,0 +1,246 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Toast Library Visual Test</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            margin: 20px;
+            background-color: #f5f5f5;
+        }
+        .test-container {
+            max-width: 800px;
+            background: white;
+            padding: 20px;
+            border-radius: 8px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+        }
+        .button-group {
+            display: flex;
+            gap: 10px;
+            margin: 10px 0;
+            flex-wrap: wrap;
+        }
+        button {
+            padding: 10px 20px;
+            border: none;
+            border-radius: 5px;
+            cursor: pointer;
+            font-weight: bold;
+            transition: all 0.3s;
+        }
+        .success-btn { background: #28a745; color: white; }
+        .error-btn { background: #dc3545; color: white; }
+        .warning-btn { background: #ffc107; color: black; }
+        .info-btn { background: #17a2b8; color: white; }
+        
+        button:hover { transform: translateY(-2px); opacity: 0.9; }
+        
+        .test-section {
+            margin: 20px 0;
+            padding: 15px;
+            border-left: 4px solid #007bff;
+            background: #f8f9fa;
+        }
+        .test-title {
+            font-size: 18px;
+            font-weight: bold;
+            margin-bottom: 10px;
+            color: #333;
+        }
+        .test-description {
+            color: #666;
+            margin-bottom: 15px;
+        }
+        
+        .toast-counter {
+            position: fixed;
+            top: 10px;
+            right: 10px;
+            background: #333;
+            color: white;
+            padding: 5px 10px;
+            border-radius: 5px;
+            font-size: 12px;
+        }
+    </style>
+</head>
+<body>
+    <div class="test-container">
+        <h1>🍞 Toast Library Visual Testing Suite</h1>
+        <p>Professional E2E testing environment for toast notifications</p>
+        
+        <div class="toast-counter" id="toastCounter">Toasts: 0</div>
+        
+        <!-- Basic Toast Tests -->
+        <div class="test-section">
+            <div class="test-title">📋 Basic Toast Types</div>
+            <div class="test-description">Test all four toast types with default styling</div>
+            <div class="button-group">
+                <button class="success-btn" onclick="testSuccess()">Success Toast</button>
+                <button class="error-btn" onclick="testError()">Error Toast</button>
+                <button class="warning-btn" onclick="testWarning()">Warning Toast</button>
+                <button class="info-btn" onclick="testInfo()">Info Toast</button>
+            </div>
+        </div>
+        
+        <!-- Custom Message Tests -->
+        <div class="test-section">
+            <div class="test-title">✏️ Custom Messages</div>
+            <div class="test-description">Test custom message functionality</div>
+            <div class="button-group">
+                <button class="success-btn" onclick="testCustomSuccess()">Custom Success</button>
+                <button class="error-btn" onclick="testCustomError()">Custom Error</button>
+            </div>
+        </div>
+        
+        <!-- Rapid Fire Test -->
+        <div class="test-section">
+            <div class="test-title">⚡ Stress Testing</div>
+            <div class="test-description">Test multiple rapid toast creation</div>
+            <div class="button-group">
+                <button class="info-btn" onclick="testRapidFire()">Rapid Fire (5 toasts)</button>
+                <button class="warning-btn" onclick="testMixed()">Mixed Types</button>
+            </div>
+        </div>
+        
+        <!-- Edge Cases -->
+        <div class="test-section">
+            <div class="test-title">🔍 Edge Cases</div>
+            <div class="test-description">Test error handling and edge cases</div>
+            <div class="button-group">
+                <button class="error-btn" onclick="testInvalidType()">Invalid Type</button>
+                <button class="warning-btn" onclick="testEmptyMessage()">Empty Message</button>
+            </div>
+        </div>
+        
+        <div class="test-section">
+            <div class="test-title">🧹 Utilities</div>
+            <div class="test-description">Reset and clear functionality</div>
+            <div class="button-group">
+                <button onclick="clearAllToasts()" style="background: #6c757d; color: white;">Clear All Toasts</button>
+                <button onclick="resetCounter()" style="background: #343a40; color: white;">Reset Counter</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Include Toast Library -->
+    <script src="/dist/index.umd.js"></script>
+    
+    <script>
+        let toastCount = 0;
+        
+        function updateCounter() {
+            toastCount++;
+            document.getElementById('toastCounter').textContent = `Toasts: ${toastCount}`;
+        }
+        
+        function resetCounter() {
+            toastCount = 0;
+            document.getElementById('toastCounter').textContent = `Toasts: 0`;
+        }
+        
+        // Basic toast tests - CORRECTED WITH OBJECT PARAMETERS
+        function testSuccess() {
+            customizableToast.createToast({type: 'success'});
+            updateCounter();
+        }
+        
+        function testError() {
+            customizableToast.createToast({type: 'error'});
+            updateCounter();
+        }
+        
+        function testWarning() {
+            customizableToast.createToast({type: 'warning'});
+            updateCounter();
+        }
+        
+        function testInfo() {
+            customizableToast.createToast({type: 'info'});
+            updateCounter();
+        }
+        
+        // Custom message tests - CORRECTED WITH OBJECT PARAMETERS
+        function testCustomSuccess() {
+            customizableToast.createToast({
+                type: 'success', 
+                message: 'Custom success message - Operation completed successfully!'
+            });
+            updateCounter();
+        }
+        
+        function testCustomError() {
+            customizableToast.createToast({
+                type: 'error', 
+                message: 'Custom error message - Something went wrong, please try again.'
+            });
+            updateCounter();
+        }
+        
+        // Stress tests - CORRECTED WITH OBJECT PARAMETERS
+        function testRapidFire() {
+            for(let i = 1; i <= 5; i++) {
+                setTimeout(() => {
+                    customizableToast.createToast({
+                        type: 'info', 
+                        message: `Rapid toast #${i} - Testing multiple toasts`
+                    });
+                    updateCounter();
+                }, i * 200);
+            }
+        }
+        
+        function testMixed() {
+            const types = ['success', 'error', 'warning', 'info'];
+            types.forEach((type, index) => {
+                setTimeout(() => {
+                    customizableToast.createToast({
+                        type: type, 
+                        message: `Mixed test - ${type.toUpperCase()} notification`
+                    });
+                    updateCounter();
+                }, index * 300);
+            });
+        }
+        
+        // Edge case tests - CORRECTED WITH OBJECT PARAMETERS
+        function testInvalidType() {
+            try {
+                customizableToast.createToast({
+                    type: 'invalid', 
+                    message: 'Testing invalid type'
+                });
+                updateCounter();
+            } catch(error) {
+                alert('Error caught: ' + error.message);
+            }
+        }
+        
+        function testEmptyMessage() {
+            customizableToast.createToast({
+                type: 'warning', 
+                message: ''
+            });
+            updateCounter();
+        }
+        
+        // Utility functions
+        function clearAllToasts() {
+            const containers = document.querySelectorAll('[class*="toast"], [id*="toast"]');
+            containers.forEach(container => {
+                if (container.remove) container.remove();
+            });
+            console.log('All toasts cleared');
+        }
+        
+        // Initialize
+        document.addEventListener('DOMContentLoaded', function() {
+            console.log('Toast test page loaded successfully');
+            console.log('customizableToast available:', typeof customizableToast !== 'undefined');
+        });
+    </script>
+</body>
+</html>
