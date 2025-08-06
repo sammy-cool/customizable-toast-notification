@@ -19,7 +19,10 @@ const banner = `/*!
  * License: Apache-2.0
  * Dependencies: None
  * Created: July 31, 2024
- * A lightweight toast notification library for any JavaScript framework
+ * A lightweight and fully customizable toast notification library
+ * designed for seamless integration with any JavaScript or framework-based UI.
+ * Supports flexible positioning, theming, icons, animations, and timing options
+ * out of the box — with zero dependencies.
  */`;
 
 export default {
