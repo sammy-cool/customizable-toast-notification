@@ -3,303 +3,337 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>Toast Library Visual Test</title>
+    <title>Toast Library E2E Test Page</title>
     <style>
-      /* Disable Animations for Regression Tests for Playwright Test */
-      * {
-        transition: none !important;
-        animation: none !important;
-        caret-color: transparent !important;
-      }
-
       body {
-        font-family: Arial, sans-serif;
-        margin: 20px;
-        background-color: #f5f5f5;
-      }
-      .test-container {
-        /* adding border for testing purpose only */
-        border: 2px solid red;
-
-        max-width: 800px;
-        background: white;
+        font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto,
+          sans-serif;
+        margin: 0;
         padding: 20px;
+        background-color: #f5f5f5;
+        color: #333;
+      }
+
+      .container {
+        max-width: 800px;
+        margin: 0 auto;
+        background: white;
+        padding: 30px;
         border-radius: 8px;
         box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
       }
-      .button-group {
-        display: flex;
-        gap: 10px;
-        margin: 10px 0;
-        flex-wrap: wrap;
-      }
-      button {
-        padding: 10px 20px;
-        border: none;
-        border-radius: 5px;
-        cursor: pointer;
-        font-weight: bold;
-        transition: all 0.3s;
-      }
-      .success-btn {
-        background: #28a745;
-        color: white;
-      }
-      .error-btn {
-        background: #dc3545;
-        color: white;
-      }
-      .warning-btn {
-        background: #ffc107;
-        color: black;
-      }
-      .info-btn {
-        background: #17a2b8;
-        color: white;
-      }
 
-      button:hover {
-        transform: translateY(-2px);
-        opacity: 0.9;
+      h1 {
+        color: #2c3e50;
+        margin-bottom: 30px;
+        text-align: center;
       }
 
       .test-section {
-        margin: 20px 0;
-        padding: 15px;
-        border-left: 4px solid #007bff;
-        background: #f8f9fa;
-      }
-      .test-title {
-        font-size: 18px;
-        font-weight: bold;
-        margin-bottom: 10px;
-        color: #333;
-      }
-      .test-description {
-        color: #666;
-        margin-bottom: 15px;
+        margin-bottom: 30px;
+        padding: 20px;
+        border: 1px solid #e0e0e0;
+        border-radius: 6px;
+        background: #fafafa;
       }
 
-      .toast-counter {
-        position: fixed;
-        top: 10px;
-        right: 10px;
-        background: #333;
+      .test-section h2 {
+        color: #34495e;
+        margin-top: 0;
+        margin-bottom: 15px;
+        font-size: 18px;
+      }
+
+      button {
+        background: #3498db;
         color: white;
-        padding: 5px 10px;
-        border-radius: 5px;
-        font-size: 12px;
+        border: none;
+        padding: 10px 20px;
+        border-radius: 4px;
+        cursor: pointer;
+        margin: 5px;
+        font-size: 14px;
+        transition: background-color 0.2s;
+      }
+
+      button:hover {
+        background: #2980b9;
+      }
+
+      button.success {
+        background: #27ae60;
+      }
+      button.success:hover {
+        background: #229954;
+      }
+
+      button.warning {
+        background: #f39c12;
+      }
+      button.warning:hover {
+        background: #d68910;
+      }
+
+      button.error {
+        background: #e74c3c;
+      }
+      button.error:hover {
+        background: #c0392b;
+      }
+
+      .info-box {
+        background: #ecf0f1;
+        padding: 15px;
+        border-radius: 4px;
+        margin-top: 20px;
+        border-left: 4px solid #3498db;
+      }
+
+      .status {
+        margin-top: 20px;
+        padding: 10px;
+        border-radius: 4px;
+        background: #d5f4e6;
+        color: #155724;
+        border: 1px solid #c3e6cb;
+      }
+
+      code {
+        background: #f8f9fa;
+        padding: 2px 6px;
+        border-radius: 3px;
+        font-family: "Monaco", "Consolas", monospace;
+        color: #e83e8c;
       }
     </style>
   </head>
   <body>
-    <div class="test-container">
-      <h1>🍞 Toast Library Visual Testing Suite</h1>
-      <p>Professional E2E testing environment for toast notifications</p>
+    <div class="container">
+      <h1>🍞 Toast Library E2E Test Environment</h1>
 
-      <div class="toast-counter" id="toastCounter">Toasts: 0</div>
-
-      <!-- Basic Toast Tests -->
       <div class="test-section">
-        <div class="test-title">📋 Basic Toast Types</div>
-        <div class="test-description">
-          Test all four toast types with default styling
-        </div>
-        <div class="button-group">
-          <button class="success-btn" onclick="testSuccess()">
-            Success Toast
-          </button>
-          <button class="error-btn" onclick="testError()">Error Toast</button>
-          <button class="warning-btn" onclick="testWarning()">
-            Warning Toast
-          </button>
-          <button class="info-btn" onclick="testInfo()">Info Toast</button>
-        </div>
-      </div>
-
-      <!-- Custom Message Tests -->
-      <div class="test-section">
-        <div class="test-title">✏️ Custom Messages</div>
-        <div class="test-description">Test custom message functionality</div>
-        <div class="button-group">
-          <button class="success-btn" onclick="testCustomSuccess()">
-            Custom Success
-          </button>
-          <button class="error-btn" onclick="testCustomError()">
-            Custom Error
-          </button>
-        </div>
-      </div>
-
-      <!-- Rapid Fire Test -->
-      <div class="test-section">
-        <div class="test-title">⚡ Stress Testing</div>
-        <div class="test-description">Test multiple rapid toast creation</div>
-        <div class="button-group">
-          <button class="info-btn" onclick="testRapidFire()">
-            Rapid Fire (5 toasts)
-          </button>
-          <button class="warning-btn" onclick="testMixed()">Mixed Types</button>
-        </div>
-      </div>
-
-      <!-- Edge Cases -->
-      <div class="test-section">
-        <div class="test-title">🔍 Edge Cases</div>
-        <div class="test-description">Test error handling and edge cases</div>
-        <div class="button-group">
-          <button class="error-btn" onclick="testInvalidType()">
-            Invalid Type
-          </button>
-          <button class="warning-btn" onclick="testEmptyMessage()">
-            Empty Message
-          </button>
-        </div>
+        <h2>📋 Basic Toast Tests</h2>
+        <button onclick="testBasicToast()">Basic Toast</button>
+        <button onclick="testLongMessage()">Long Message with Emojis</button>
+        <button onclick="testTemplateMessage()">Template Literal</button>
+        <button onclick="testMinimalOptions()">Minimal Options</button>
       </div>
 
       <div class="test-section">
-        <div class="test-title">🧹 Utilities</div>
-        <div class="test-description">Reset and clear functionality</div>
-        <div class="button-group">
-          <button
-            onclick="clearAllToasts()"
-            style="background: #6c757d; color: white"
-          >
-            Clear All Toasts
-          </button>
-          <button
-            onclick="resetCounter()"
-            style="background: #343a40; color: white"
-          >
-            Reset Counter
-          </button>
-        </div>
+        <h2>🎨 Toast Types & Styling</h2>
+        <button class="success" onclick="testToastType('success')">
+          Success Toast
+        </button>
+        <button class="error" onclick="testToastType('error')">
+          Error Toast
+        </button>
+        <button class="warning" onclick="testToastType('warning')">
+          Warning Toast
+        </button>
+        <button onclick="testToastType('info')">Info Toast</button>
+      </div>
+
+      <div class="test-section">
+        <h2>⏱️ Duration & Timing Tests</h2>
+        <button onclick="testShortDuration()">Short Duration (1s)</button>
+        <button onclick="testLongDuration()">Long Duration (5s)</button>
+        <button onclick="testMultipleToasts()">Multiple Rapid Calls</button>
+      </div>
+
+      <div class="test-section">
+        <h2>🔧 Configuration Tests</h2>
+        <button onclick="testCustomColors()">Custom Colors</button>
+        <button onclick="testCustomMessages()">Custom Messages</button>
+        <button onclick="testInvalidInputs()">Invalid Inputs</button>
+      </div>
+
+      <div class="test-section">
+        <h2>🎯 Advanced Features</h2>
+        <button onclick="testPositioning()">Positioning Test</button>
+        <button onclick="testAccessibility()">Accessibility Test</button>
+        <button onclick="testCleanup()">Cleanup Test</button>
+      </div>
+
+      <div class="info-box">
+        <strong>📝 Test Environment Info:</strong><br />
+        This page is designed for Playwright E2E testing of the toast
+        notification library.<br />
+        All functions are available globally: <code>createToast()</code>,
+        <code>setDefaultColors()</code>, <code>setDefaultMessages()</code>
+      </div>
+
+      <div id="status" class="status">
+        ✅ Test environment loaded successfully. Ready for E2E tests.
       </div>
     </div>
 
-    <!-- Include Toast Library -->
-    <script src="/dist/index.umd.js"></script>
+    <!-- Load the toast library using ES6 modules -->
+    <!-- <script src="http://localhost:3000/dist/index.umd.js">  Have to change function name as global variable is customizableToast for cdn link
+      <script src="../../dist/index.umd.js"> -->
+    <script type="module">
+      // Import directly from source files (not built dist)
+      import {
+        createToast,
+        setDefaultColors,
+        setDefaultMessages,
+        emergencyCleanup,
+      } from "../../src/index.js";
 
-    <script>
-      let toastCount = 0;
+      // Make functions globally available for E2E tests
+      window.createToast = createToast;
+      window.setDefaultColors = setDefaultColors;
+      window.setDefaultMessages = setDefaultMessages;
+      window.emergencyCleanup = emergencyCleanup;
 
-      function updateCounter() {
-        toastCount++;
-        document.getElementById(
-          "toastCounter"
-        ).textContent = `Toasts: ${toastCount}`;
+      // Utility function for status updates
+      function updateStatus(message) {
+        const statusEl = document.getElementById("status");
+        statusEl.textContent = `✅ ${message} - ${new Date().toLocaleTimeString()}`;
       }
 
-      function resetCounter() {
-        toastCount = 0;
-        document.getElementById("toastCounter").textContent = `Toasts: 0`;
-      }
+      // Make updateStatus globally available
+      window.updateStatus = updateStatus;
 
-      // Basic toast tests - CORRECTED WITH OBJECT PARAMETERS
-      function testSuccess() {
-        customizableToast.createToast({ type: "success" });
-        updateCounter();
-      }
+      // Test utility functions for manual testing
+      window.testBasicToast = function () {
+        createToast({ message: "E2E Test Message", type: "info" });
+        updateStatus("Basic toast created");
+      };
 
-      function testError() {
-        customizableToast.createToast({ type: "error" });
-        updateCounter();
-      }
+      window.testLongMessage = function () {
+        const message =
+          "🚀 This is a very long message with emojis 💬 and unicode characters ✨ that should be displayed properly 🔥 without breaking the layout or functionality 🎉";
+        createToast({ message: message, type: "warning" });
+        updateStatus("Long message toast created");
+      };
 
-      function testWarning() {
-        customizableToast.createToast({ type: "warning" });
-        updateCounter();
-      }
+      window.testTemplateMessage = function () {
+        const timestamp = Date.now();
+        createToast({ message: `Dynamic message ${timestamp}`, type: "info" });
+        updateStatus("Template literal toast created");
+      };
 
-      function testInfo() {
-        customizableToast.createToast({ type: "info" });
-        updateCounter();
-      }
+      window.testMinimalOptions = function () {
+        createToast({});
+        updateStatus("Minimal options toast created");
+      };
 
-      // Custom message tests - CORRECTED WITH OBJECT PARAMETERS
-      function testCustomSuccess() {
-        customizableToast.createToast({
+      window.testToastType = function (type) {
+        createToast({
+          message: `${
+            type.charAt(0).toUpperCase() + type.slice(1)
+          } toast message`,
+          type: type,
+        });
+        updateStatus(`${type} toast created`);
+      };
+
+      window.testShortDuration = function () {
+        createToast({
+          message: "Short duration toast",
+          type: "info",
+          duration: 1000,
+        });
+        updateStatus("Short duration toast created (1s)");
+      };
+
+      window.testLongDuration = function () {
+        createToast({
+          message: "Long duration toast",
           type: "success",
-          message: "Custom success message - Operation completed successfully!",
+          duration: 5000,
         });
-        updateCounter();
-      }
+        updateStatus("Long duration toast created (5s)");
+      };
 
-      function testCustomError() {
-        customizableToast.createToast({
-          type: "error",
-          message:
-            "Custom error message - Something went wrong, please try again.",
-        });
-        updateCounter();
-      }
-
-      // Stress tests - CORRECTED WITH OBJECT PARAMETERS
-      function testRapidFire() {
-        for (let i = 1; i <= 5; i++) {
+      window.testMultipleToasts = function () {
+        for (let i = 0; i < 3; i++) {
           setTimeout(() => {
-            customizableToast.createToast({
-              type: "info",
-              message: `Rapid toast #${i} - Testing multiple toasts`,
-            });
-            updateCounter();
-          }, i * 200);
+            createToast({ message: `Rapid toast ${i + 1}`, type: "info" });
+          }, i * 100);
         }
-      }
+        updateStatus("Multiple rapid toasts created");
+      };
 
-      function testMixed() {
-        const types = ["success", "error", "warning", "info"];
-        types.forEach((type, index) => {
+      window.testCustomColors = function () {
+        setDefaultColors({
+          success: "#00ff00",
+          error: "#ff0000",
+          warning: "#ffaa00",
+          info: "#0099ff",
+        });
+        createToast({ message: "Custom color success toast", type: "success" });
+        updateStatus("Custom colors set and toast created");
+      };
+
+      window.testCustomMessages = function () {
+        setDefaultMessages({
+          info: "Custom info message",
+          warning: "Custom warning message",
+          success: "Custom success message",
+          error: "Custom error message",
+        });
+        createToast({ type: "info" });
+        updateStatus("Custom messages set and default toast created");
+      };
+
+      window.testInvalidInputs = function () {
+        const invalidInputs = [null, undefined, "string", 123, []];
+        invalidInputs.forEach((input, index) => {
           setTimeout(() => {
-            customizableToast.createToast({
-              type: type,
-              message: `Mixed test - ${type.toUpperCase()} notification`,
-            });
-            updateCounter();
-          }, index * 300);
+            try {
+              createToast(input);
+            } catch (error) {
+              console.log("Handled error for input:", input, error);
+            }
+          }, index * 200);
         });
-      }
+        updateStatus("Invalid inputs test completed");
+      };
 
-      // Edge case tests - CORRECTED WITH OBJECT PARAMETERS
-      function testInvalidType() {
-        try {
-          customizableToast.createToast({
-            type: "invalid",
-            message: "Testing invalid type",
-          });
-          updateCounter();
-        } catch (error) {
-          alert("Error caught: " + error.message);
-        }
-      }
-
-      function testEmptyMessage() {
-        customizableToast.createToast({
-          type: "warning",
-          message: "",
+      window.testPositioning = function () {
+        createToast({
+          message: "Position test message",
+          type: "info",
+          position: "bottom-right",
         });
-        updateCounter();
-      }
+        updateStatus("Positioning test toast created");
+      };
 
-      // Utility functions
-      function clearAllToasts() {
-        const containers = document.querySelectorAll(
-          '[class*="toast"], [id*="toast"]'
-        );
-        containers.forEach((container) => {
-          if (container.remove) container.remove();
+      window.testAccessibility = function () {
+        createToast({
+          message: "Accessibility test with ARIA attributes",
+          type: "info",
         });
-        console.log("All toasts cleared");
-      }
+        updateStatus("Accessibility test toast created");
+      };
+
+      window.testCleanup = function () {
+        emergencyCleanup();
+        updateStatus("Emergency cleanup executed");
+      };
 
       // Initialize
-      document.addEventListener("DOMContentLoaded", function () {
-        console.log("Toast test page loaded successfully");
-        console.log(
-          "customizableToast available:",
-          typeof customizableToast !== "undefined"
-        );
+      console.log("🚀 Toast Library E2E Test Environment Ready");
+      console.log("Available functions:", {
+        createToast,
+        setDefaultColors,
+        setDefaultMessages,
       });
+
+      // Error handling for page
+      window.addEventListener("error", (event) => {
+        console.error("Page error:", event.error);
+        updateStatus(`❌ Error: ${event.error.message}`);
+      });
+
+      window.addEventListener("unhandledrejection", (event) => {
+        console.error("Unhandled promise rejection:", event.reason);
+        updateStatus(`❌ Promise rejection: ${event.reason}`);
+      });
+
+      // Update status to show successful load
+      updateStatus("Toast library loaded and all functions available");
     </script>
   </body>
 </html>

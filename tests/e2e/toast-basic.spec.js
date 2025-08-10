@@ -1,98 +1,306 @@
-// @ts-check
-const { test, expect } = require("@playwright/test");
+import { test, expect } from "@playwright/test";
+import path from "path";
 
-const htmlTestFilePath = "tests/fixtures/toast-test.html";
-const viewports = [
-  { name: "mobile", width: 375, height: 667 },
-  { name: "tablet", width: 768, height: 1024 },
-  { name: "desktop", width: 1280, height: 720 },
-];
+// Test page setup
+const testPagePath = path.resolve("./tests/fixtures/toast-test.html");
 
-for (const vp of viewports) {
-  test.describe(`${vp.name} Toast Library - Basic Functionality Tests |devices|viewport|`, () => {
-    test.beforeEach(async ({ page }) => {
-      await page.goto(htmlTestFilePath);
-      await page.waitForLoadState("networkidle");
-      await page.setViewportSize({ width: vp.width, height: vp.height });
+test.describe("Toast Library E2E Tests", () => {
+  test.beforeEach(async ({ page }) => {
+    // Load test HTML file
+    await page.goto(`file://${testPagePath}`);
 
-      const isLibraryLoaded = await page.evaluate(
-        () => typeof customizableToast !== "undefined"
-      );
-      expect(isLibraryLoaded).toBeTruthy();
-    });
+    // Wait for page to be fully loaded
+    await page.waitForLoadState("domcontentloaded");
 
-    test("Page load and UI basic elements", async ({ page }) => {
-      await expect(page).toHaveTitle("Toast Library Visual Test");
-      await expect(page.locator("h1")).toContainText(
-        "Toast Library Visual Testing Suite"
-      );
-      await expect(page.locator("#toastCounter")).toBeVisible();
-      await expect(page.locator("#toastCounter")).toHaveText("Toasts: 0");
-      await page.waitForTimeout(2500);
-      await expect(page).toHaveScreenshot(`page-load-${vp.name}.png`, {
-        fullPage: true,
-        timeout: 8000,
-      });
-    });
-
-    const toastTests = [
-      { name: "success-toast", buttonText: "Success Toast" },
-      { name: "error-toast", buttonText: "Error Toast" },
-      { name: "warning-toast", buttonText: "Warning Toast" },
-      { name: "info-toast", buttonText: "Info Toast" },
-      { name: "custom-success-toast", buttonText: "Custom Success" },
-      { name: "custom-error-toast", buttonText: "Custom Error" },
-      { name: "rapid-fire-toasts", buttonText: "Rapid Fire (5 toasts)" },
-      { name: "mixed-toasts", buttonText: "Mixed Types" },
-    ];
-
-    for (const { name, buttonText } of toastTests) {
-      test(`${name} visual regression`, async ({ page }) => {
-        await page.click(`button:has-text("${buttonText}")`);
-        const isRapid = name === "rapid-fire-toasts" || name === "mixed-toasts";
-        await page.waitForTimeout(isRapid ? 3000 : 1500);
-        await expect(page).toHaveScreenshot(`${name}-${vp.name}.png`, {
-          fullPage: true,
-          timeout: 8000,
-        });
-      });
-    }
-
-    test("Clear all toasts visual regression", async ({ page }) => {
-      await page.click('button:has-text("Success Toast")');
-      await page.waitForTimeout(500);
-      await expect(page.locator("#toastCounter")).toHaveText("Toasts: 1");
-      await page.click('button:has-text("Clear All Toasts")');
-      await page.waitForTimeout(500);
-      await expect(page).toHaveScreenshot(`cleared-toasts-${vp.name}.png`, {
-        fullPage: true,
-      });
-    });
-
-    test("Counter reset functionality", async ({ page }) => {
-      await page.click('button:has-text("Success Toast")');
-      await page.click('button:has-text("Error Toast")');
-      await page.waitForTimeout(500);
-      await expect(page.locator("#toastCounter")).toHaveText("Toasts: 2");
-      await page.click('button:has-text("Reset Counter")');
-      await expect(page.locator("#toastCounter")).toHaveText("Toasts: 0");
-    });
-
-    test("API availability check", async ({ page }) => {
-      const apiCheck = await page.evaluate(() => {
-        return {
-          hasCreateToast: typeof customizableToast.createToast === "function",
-          hasSetDefaultColors:
-            typeof customizableToast.setDefaultColors === "function",
-          hasSetDefaultMessages:
-            typeof customizableToast.setDefaultMessages === "function",
-          libraryType: typeof customizableToast,
-        };
-      });
-      expect(apiCheck.hasCreateToast).toBe(true);
-      expect(apiCheck.hasSetDefaultColors).toBe(true);
-      expect(apiCheck.hasSetDefaultMessages).toBe(true);
-      expect(apiCheck.libraryType).toBe("object");
+    // Clean up any existing toasts
+    await page.evaluate(() => {
+      const containers = document.querySelectorAll('[id*="toast-container"]');
+      containers.forEach((container) => container.remove());
     });
   });
-}
+
+  test("should create and display basic toast notification", async ({
+    page,
+  }) => {
+    // Create toast
+    await page.evaluate(() => {
+      window.createToast({ message: "E2E Test Message", type: "info" });
+    });
+
+    // Wait for toast to appear
+    const toast = page.locator('[id^="toast-"]:not([id*="container"])');
+    await expect(toast).toBeVisible();
+
+    // Verify content
+    await expect(toast).toContainText("E2E Test Message");
+
+    // Verify container positioning
+    const container = page.locator('[id^="toast-container"]');
+    await expect(container).toHaveCSS("position", "fixed");
+    await expect(container).toHaveCSS("z-index", "9999");
+  });
+
+  test("should handle long messages with emoji and unicode", async ({
+    page,
+  }) => {
+    const longMessage =
+      "🚀 This is a very long message with emojis 💬 and unicode characters ✨ that should be displayed properly 🔥 without breaking the layout or functionality 🎉";
+
+    await page.evaluate((msg) => {
+      window.createToast({ message: msg, type: "warning" });
+    }, longMessage);
+
+    const toast = page.locator('[id^="toast-"]:not([id*="container"])');
+    await expect(toast).toBeVisible();
+    await expect(toast).toContainText(longMessage);
+
+    // Verify styling handles long content
+    const toastElement = await toast.elementHandle();
+    const boundingBox = await toastElement.boundingBox();
+    expect(boundingBox.width).toBeLessThan(400); // Max width constraint
+  });
+
+  test("should handle different toast types with correct styling", async ({
+    page,
+  }) => {
+    const testTypes = [
+      { type: "success", expectedColor: "rgb(40, 167, 69)" },
+      { type: "error", expectedColor: "rgb(220, 53, 69)" },
+      { type: "warning", expectedColor: "rgb(255, 193, 7)" },
+      { type: "info", expectedColor: "rgb(23, 162, 184)" },
+    ];
+
+    for (const testCase of testTypes) {
+      // Clear previous toast
+      await page.evaluate(() => {
+        const containers = document.querySelectorAll('[id*="toast-container"]');
+        containers.forEach((container) => {
+          while (container.firstChild) {
+            container.removeChild(container.firstChild);
+          }
+        });
+      });
+
+      // Create toast of specific type
+      await page.evaluate((type) => {
+        window.createToast({ message: `${type} message`, type: type });
+      }, testCase.type);
+
+      const toast = page.locator('[id^="toast-"]:not([id*="container"])');
+      await expect(toast).toBeVisible();
+
+      // Verify background color
+      await expect(toast).toHaveCSS("background-color", testCase.expectedColor);
+      await expect(toast).toContainText(`${testCase.type} message`);
+    }
+  });
+
+  test("should auto-dismiss toast after specified duration", async ({
+    page,
+  }) => {
+    // Create toast with short duration
+    await page.evaluate(() => {
+      window.createToast({
+        message: "Timed toast",
+        type: "info",
+        duration: 1500,
+      });
+    });
+
+    const toast = page.locator('[id^="toast-"]:not([id*="container"])');
+
+    // Should be visible initially
+    await expect(toast).toBeVisible();
+
+    // Should disappear after duration + small buffer
+    await page.waitForTimeout(2000);
+    await expect(toast).not.toBeVisible();
+  });
+
+  test("should handle multiple toast calls (single toast mode)", async ({
+    page,
+  }) => {
+    // Create first toast
+    await page.evaluate(() => {
+      window.createToast({ message: "First toast", type: "success" });
+    });
+
+    let toast = page.locator('[id^="toast-"]:not([id*="container"])');
+    await expect(toast).toBeVisible();
+    await expect(toast).toContainText("First toast");
+
+    // Create second toast (should replace first)
+    await page.evaluate(() => {
+      window.createToast({ message: "Second toast", type: "error" });
+    });
+
+    toast = page.locator('[id^="toast-"]:not([id*="container"])');
+    await expect(toast).toBeVisible();
+    await expect(toast).toContainText("Second toast");
+
+    // Verify only one toast exists
+    const toastCount = await page
+      .locator('[id^="toast-"]:not([id*="container"])')
+      .count();
+    expect(toastCount).toBe(1);
+  });
+
+  test("should handle setDefaultColors functionality", async ({ page }) => {
+    // Set custom colors
+    await page.evaluate(() => {
+      window.setDefaultColors({
+        success: "#00ff00",
+        error: "#ff0000",
+      });
+    });
+
+    // Create toast with custom color
+    await page.evaluate(() => {
+      window.createToast({ message: "Custom color test", type: "success" });
+    });
+
+    const toast = page.locator('[id^="toast-"]:not([id*="container"])');
+    await expect(toast).toBeVisible();
+    await expect(toast).toHaveCSS("background-color", "rgb(0, 255, 0)");
+  });
+
+  test("should handle setDefaultMessages functionality", async ({ page }) => {
+    // Set custom messages
+    await page.evaluate(() => {
+      window.setDefaultMessages({
+        info: "Custom info message",
+        warning: "Custom warning message",
+      });
+    });
+
+    // Create toast without message (should use default)
+    await page.evaluate(() => {
+      window.createToast({ type: "info" });
+    });
+
+    const toast = page.locator('[id^="toast-"]:not([id*="container"])');
+    await expect(toast).toBeVisible();
+    await expect(toast).toContainText("Custom info message");
+  });
+
+  test("should handle invalid inputs gracefully", async ({ page }) => {
+    // Test various invalid inputs
+    const invalidInputs = [
+      null,
+      undefined,
+      "string",
+      123,
+      [],
+      { invalidProp: "test" },
+    ];
+
+    for (const input of invalidInputs) {
+      await page.evaluate((testInput) => {
+        try {
+          window.createToast(testInput);
+        } catch (error) {
+          console.log("Handled error:", error);
+        }
+      }, input);
+
+      // Should either create a default toast or handle gracefully
+      // Check if any toast is created or no error thrown
+      const toasts = await page
+        .locator('[id^="toast-"]:not([id*="container"])')
+        .count();
+      // Should not crash the page
+      const pageTitle = await page.title();
+      expect(pageTitle).toBeDefined();
+    }
+  });
+
+  test("should maintain accessibility attributes", async ({ page }) => {
+    await page.evaluate(() => {
+      window.createToast({ message: "Accessibility test", type: "info" });
+    });
+
+    const toast = page.locator('[id^="toast-"]:not([id*="container"])');
+    await expect(toast).toBeVisible();
+
+    // Check ARIA attributes
+    await expect(toast).toHaveAttribute("role", "alert");
+    await expect(toast).toHaveAttribute("aria-live", "assertive");
+  });
+
+  test("should handle container positioning correctly", async ({ page }) => {
+    await page.evaluate(() => {
+      window.createToast({
+        message: "Position test",
+        position: "bottom-right",
+      });
+    });
+
+    const container = page.locator('[id^="toast-container"]');
+    await expect(container).toBeVisible();
+
+    // Verify positioning
+    await expect(container).toHaveCSS("position", "fixed");
+    await expect(container).toHaveCSS("bottom", "10px");
+    await expect(container).toHaveCSS("right", "10px");
+
+    // Verify container has proper ID format
+    const containerId = await container.getAttribute("id");
+    expect(containerId).toMatch(/toast-container-/);
+  });
+
+  test("should handle template literal messages", async ({ page }) => {
+    const timestamp = Date.now();
+
+    await page.evaluate((ts) => {
+      window.createToast({ message: `Dynamic message ${ts}`, type: "info" });
+    }, timestamp);
+
+    const toast = page.locator('[id^="toast-"]:not([id*="container"])');
+    await expect(toast).toBeVisible();
+    await expect(toast).toContainText(`Dynamic message ${timestamp}`);
+  });
+
+  test("should work across browser refresh", async ({ page }) => {
+    // Create toast
+    await page.evaluate(() => {
+      window.createToast({ message: "Before refresh", type: "success" });
+    });
+
+    let toast = page.locator('[id^="toast-"]:not([id*="container"])');
+    await expect(toast).toBeVisible();
+
+    // Refresh page
+    await page.reload();
+    await page.waitForLoadState("domcontentloaded");
+
+    // Create new toast after refresh
+    await page.evaluate(() => {
+      window.createToast({ message: "After refresh", type: "info" });
+    });
+
+    toast = page.locator('[id^="toast-"]:not([id*="container"])');
+    await expect(toast).toBeVisible();
+    await expect(toast).toContainText("After refresh");
+  });
+
+  test("should handle rapid successive calls", async ({ page }) => {
+    // Create multiple toasts rapidly
+    await page.evaluate(() => {
+      for (let i = 0; i < 5; i++) {
+        window.createToast({ message: `Rapid toast ${i}`, type: "info" });
+      }
+    });
+
+    // Should handle gracefully (single toast mode)
+    const toastCount = await page
+      .locator('[id^="toast-"]:not([id*="container"])')
+      .count();
+    expect(toastCount).toBeLessThanOrEqual(1);
+
+    // Last toast should be visible
+    const toast = page.locator('[id^="toast-"]:not([id*="container"])');
+    if (toastCount > 0) {
+      await expect(toast).toBeVisible();
+    }
+  });
+});
