@@ -108,7 +108,7 @@ function createSimpleToast(options) {
 /**
  * Close toast with multi-strategy cleanup
  */
-function closeToast(toast) {
+export function closeToast(toast) {
   try {
     if (!toast) {
       resetToastState();
