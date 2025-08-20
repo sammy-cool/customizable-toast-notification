@@ -172,18 +172,23 @@
       <script src="../../dist/index.umd.js"> -->
     <script type="module">
       // Import directly from source files (not built dist)
+      // import {
+      //   createToast,
+      //   setDefaultColors,
+      //   setDefaultMessages,
+      //   emergencyCleanup,
+      // } from "../../src/index.js";
+
       import {
         createToast,
         setDefaultColors,
         setDefaultMessages,
-        emergencyCleanup,
       } from "../../src/index.js";
-
       // Make functions globally available for E2E tests
       window.createToast = createToast;
       window.setDefaultColors = setDefaultColors;
       window.setDefaultMessages = setDefaultMessages;
-      window.emergencyCleanup = emergencyCleanup;
+      // window.emergencyCleanup = emergencyCleanup;
 
       // Utility function for status updates
       function updateStatus(message) {

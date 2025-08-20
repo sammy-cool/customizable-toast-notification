@@ -15,6 +15,7 @@
     "postinstall": "node postinstall.js",
     "prepublishOnly": "npm run build",
     "test": "jest",
+    "test:raw": "jest",
     "test:watch": "jest --watch",
     "test:coverage": "jest --coverage",
     "e2e:firstbrowser:initialization": "npx playwright install",

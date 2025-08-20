@@ -20,7 +20,7 @@
 
 "use strict";
 
-import { showToast } from "./components/ToastManager.js";
+import { closeToast, showToast } from "./components/ToastManager.js";
 
 // Protected state with fallbacks
 let defaultColors = {
@@ -151,8 +151,13 @@ function setDefaultMessages(messages) {
   }
 }
 
+function noop() {
+  const toast = document.querySelector('[id^="toast-"]:not([id*="container"])');
+  closeToast(toast);
+}
+
 // Module exports
-export { createToast, setDefaultColors, setDefaultMessages };
+export { createToast, setDefaultColors, setDefaultMessages, noop };
 
 // Global assignment with protection
 try {
