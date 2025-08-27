@@ -4,81 +4,56 @@
 import { createToastContainer } from "./ToastContainer.js";
 import { createToastElement } from "./Toast.js";
 import { removeElement } from "../utils/dom.js";
+import { createEmergencyToast, safeSetTimeout } from "./toast-utils.js";
 
 // State management with fallback tracking
 let isToastShowing = false;
-let currentToast = null;
-let emergencyTimeouts = new Set();
 let emergencyCleanupScheduled = false;
+let currentToast = [];
+let emergencyTimeouts = [];
 
 /**
  * Show toast with comprehensive fallback system
  */
-export function showToast(options) {
-  // Prevent multiple toasts (original behavior)
-  if (isToastShowing) {
-    console.warn("Toast already showing, ignoring request");
-    return;
-  }
-
-  isToastShowing = true;
-
+export async function showToast(options) {
   // PRIMARY: Full toast system
   try {
-    const container = createToastContainer(options.position);
-    const toast = createToastElement(options, closeToast);
+    const container = await createToastContainer(options.position);
+    const toast = await createToastElement(options, closeToast);
 
     if (!toast) {
-      throw new Error("Toast creation returned null");
+      throw new Error("Toast element creation failed!");
     }
 
-    currentToast = toast;
+    currentToast.push(toast);
 
     // Append to container
-    if (container.appendChild) {
+    if (container.id.includes("toast-container-")) {
       container.appendChild(toast);
-    } else {
-      // Container is emergency fallback
-      document.body.appendChild(toast);
     }
 
     // Schedule auto-dismiss
-    const dismissTimeout = setTimeout(() => {
-      closeToast(toast);
-    }, options.duration || 3000);
-
-    emergencyTimeouts.add(dismissTimeout);
-
-    // Emergency cleanup backup
-    scheduleEmergencyCleanup(options.duration || 3000);
-
+    const cleanUpTime =
+      typeof options.duration === "number" && options.duration > 0
+        ? options.duration + 2
+        : 1800; //safety margin
+    const dismissTimeout = await safeSetTimeout(
+      () => closeToast(toast),
+      cleanUpTime
+    );
+    emergencyTimeouts.push(dismissTimeout);
     return;
   } catch (primaryError) {
-    console.warn("Primary toast system failed:", primaryError);
-  }
-
-  // FALLBACK-A: Direct body placement
-  try {
-    const simpleToast = createSimpleToast(options);
-    currentToast = simpleToast;
-    document.body.appendChild(simpleToast);
-
-    setTimeout(() => {
-      closeToast(simpleToast);
-    }, options.duration || 3000);
-
+    console.warn(
+      "Primary toast system failed showing emergency toast:",
+      primaryError
+    );
+    const elContainer = document.querySelector('[id^="toast-container-"]');
+    const emergencyToast = createEmergencyToast(options, closeToast);
+    elContainer && elContainer?.id?.includes("toast-container-")
+      ? elContainer.appendChild(emergencyToast)
+      : alert(primaryError.substring(0, 200));
     return;
-  } catch (fallbackError) {
-    console.warn("Fallback toast failed:", fallbackError);
-  }
-
-  // FALLBACK-B: Browser alert
-  try {
-    alert(options.message || "Notification");
-    isToastShowing = false;
-  } catch (alertError) {
-    console.error("All toast systems failed:", alertError);
-    isToastShowing = false;
   }
 }
 
@@ -100,7 +75,7 @@ function createSimpleToast(options) {
     font-family: Arial, sans-serif !important;
     cursor: pointer !important;
   `;
-  simple.textContent = options.message || "Notification";
+  simple.textContent = options.message || "Created Simple Toast!";
   simple.onclick = () => closeToast(simple);
   return simple;
 }
@@ -108,36 +83,20 @@ function createSimpleToast(options) {
 /**
  * Close toast with multi-strategy cleanup
  */
-export function closeToast(toast) {
-  try {
-    if (!toast) {
-      resetToastState();
-      return;
+export async function closeToast(toast) {
+  if (currentToast.length > 0) {
+    const index = currentToast.indexOf(toast);
+    if (index !== -1) {
+      currentToast.splice(index, 1);
     }
-
-    // Animation if supported
-    if (toast.style && !toast._isEmergencyToast) {
-      toast.style.opacity = "0";
-      toast.style.transform = "translateY(-20px)";
-
-      const animDuration = toast._animationDuration || 500;
-      setTimeout(() => {
-        performCleanup(toast);
-      }, animDuration);
-    } else {
-      // Immediate cleanup for emergency toasts
-      performCleanup(toast);
-    }
-  } catch (error) {
-    console.error("Close toast failed:", error);
-    forceEmergencyCleanup();
   }
+  await removeElement(toast);
 }
 
 /**
  * Perform comprehensive cleanup
  */
-function performCleanup(toast) {
+async function performCleanup(toast) {
   try {
     // Cleanup event listeners
     if (toast._cleanupCloseButton) {
@@ -160,7 +119,7 @@ function performCleanup(toast) {
  */
 function resetToastState() {
   isToastShowing = false;
-  currentToast = null;
+  currentToast = [];
 
   // Clear all timeouts
   emergencyTimeouts.forEach((id) => {
@@ -170,7 +129,7 @@ function resetToastState() {
       console.warn("Timeout clear failed:", error);
     }
   });
-  emergencyTimeouts.clear();
+  emergencyTimeouts.pop();
   emergencyCleanupScheduled = false;
 }
 
@@ -178,21 +137,19 @@ function resetToastState() {
  * Schedule emergency cleanup
  */
 function scheduleEmergencyCleanup(duration) {
-  if (emergencyCleanupScheduled) return;
-
-  emergencyCleanupScheduled = true;
+  const cleanUpTime = typeof duration === "number" ? duration + 2 : 1800; //safety margin
   const emergencyTimeout = setTimeout(() => {
     console.warn("Emergency cleanup triggered");
     forceEmergencyCleanup();
-  }, duration * 2.5); // 2.5x safety margin
+  }, cleanUpTime);
 
-  emergencyTimeouts.add(emergencyTimeout);
+  emergencyTimeouts.push(emergencyTimeout);
 }
 
 /**
  * Force emergency cleanup of everything
  */
-function forceEmergencyCleanup() {
+async function forceEmergencyCleanup() {
   try {
     // Remove current toast
     if (currentToast) {
@@ -201,7 +158,7 @@ function forceEmergencyCleanup() {
 
     // Clean up any orphaned toast elements
     const orphanedToasts = document.querySelectorAll(
-      '[id*="toast"], [id*="emergency"]'
+      '[id^="toast-"]:not([id*="container"]), [id*="emergency"]'
     );
     orphanedToasts.forEach((element) => {
       try {
@@ -217,6 +174,6 @@ function forceEmergencyCleanup() {
     console.error("Force cleanup failed:", error);
     // Final state reset
     isToastShowing = false;
-    currentToast = null;
+    currentToast = [];
   }
 }

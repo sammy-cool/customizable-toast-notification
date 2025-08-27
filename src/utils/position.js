@@ -6,7 +6,7 @@
  * @param {HTMLElement} container - Toast container element
  * @param {string} position - Position string
  */
-export function setPosition(container, position) {
+export async function setPosition(container, position) {
   // Reset all position properties first
   container.style.top = "auto";
   container.style.bottom = "auto";

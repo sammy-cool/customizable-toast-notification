@@ -41,7 +41,7 @@ export function createProgressBar(toast, options) {
     height: options.progressHeight || "4px",
     background: options.progressColor || "rgba(255, 255, 255, 0.3)",
     width: "100%",
-    transition: `width ${options.duration || 3000}ms linear`,
+    transition: `width ${options.duration || 1800}ms linear`,
     [options.progressPosition === "top" ? "top" : "bottom"]: "0",
   });
 
@@ -71,9 +71,7 @@ export function runToastAnimation(toast) {
  * @param {Function} onClose - Close callback
  */
 export function applyRichStyling(toast, options, onClose) {
-  const animDurationMs = parseAnimationDuration(
-    options.animationDuration || "0.5s"
-  );
+  const animDurationMs = parseAnimationDuration(options.animationDuration);
 
   // Apply full styling
   Object.assign(toast.style, {
@@ -90,9 +88,9 @@ export function applyRichStyling(toast, options, onClose) {
     maxWidth: "400px",
     opacity: "0",
     position: "relative",
-    transition: `opacity ${options.animationDuration || "0.5s"} ${
+    transition: `opacity ${animDurationMs || "0.5s"} ${
       options.animationEasing || "ease"
-    }, transform ${options.animationDuration || "0.5s"} ${
+    }, transform ${animDurationMs || "0.5s"} ${
       options.animationEasing || "ease"
     }`,
     transform: "translateY(20px)",
@@ -180,7 +178,7 @@ export function createEmergencyToast(options, onClose) {
         box-shadow: 0 2px 10px rgba(0,0,0,0.3) !important;
         cursor: pointer !important;
       " onclick="this.parentNode.removeChild(this)">
-        ${options.message || "Notification"}
+        ${options.message || "Emergency Toast Creation Showing!"}
         <span style="float: right; margin-left: 10px; font-weight: bold;">&times;</span>
       </div>
     `;
@@ -198,7 +196,7 @@ export function createEmergencyToast(options, onClose) {
       } catch (error) {
         console.warn("Emergency cleanup failed:", error);
       }
-    }, options.duration || 3000);
+    }, options.duration || 1800);
 
     return emergency;
   } catch (emergencyError) {
@@ -207,7 +205,7 @@ export function createEmergencyToast(options, onClose) {
     // ULTIMATE FALLBACK: Alert
     setTimeout(() => {
       try {
-        alert(options.message || "Toast Notification");
+        alert(options.message || "Toast Creation Failed!");
         onClose(null);
       } catch (alertError) {
         console.error("Ultimate fallback failed:", alertError);
@@ -217,4 +215,14 @@ export function createEmergencyToast(options, onClose) {
 
     return null;
   }
+}
+
+export async function safeSetTimeout(fn, delay) {
+  const id = setTimeout(() => {
+    console.warn("Timer fired after", delay, "ms");
+    fn();
+  }, delay);
+
+  console.warn("Timer scheduled with id:", id, "delay:", delay);
+  return id;
 }

@@ -6,35 +6,27 @@ import { generateUniqueId } from "./id.js";
 /**
  * Multi-layer fallback DOM element creation
  */
-export function createElementWithId(tagName, prefix) {
+export async function createElementWithId(tagName, prefix) {
   // PRIMARY: Standard createElement
   try {
+    if (!tagName || !prefix) throw new Error(`tagName and prefix is required`);
+
     const el = document.createElement(tagName);
     el.id = generateUniqueId(prefix);
     return el;
   } catch (error) {
-    console.warn(`Primary createElement failed for ${tagName}:`, error);
+    console.warn(`Primary createElement failed for`, error);
 
     // FALLBACK-A: Try div as alternative
     try {
-      const fallbackEl = document.createElement("div");
-      fallbackEl.id = generateUniqueId(prefix || "fallback");
-      fallbackEl.setAttribute("data-original-tag", tagName);
+      const fallbackTag = "div";
+      const fallbackPrefix = "fallback";
+      const fallbackEl = document.createElement(fallbackTag);
+      fallbackEl.id = generateUniqueId(fallbackPrefix);
+      fallbackEl.setAttribute("data-original-tag", fallbackTag);
       return fallbackEl;
     } catch (fallbackError) {
       console.error("All DOM creation methods failed:", fallbackError);
-
-      // FALLBACK-B: Return minimal object that won't crash
-      return {
-        id: generateUniqueId(prefix || "emergency"),
-        style: {},
-        appendChild: () => {},
-        setAttribute: () => {},
-        innerHTML: "",
-        textContent: "",
-        onclick: null,
-        _isEmergencyElement: true,
-      };
     }
   }
 }
@@ -42,7 +34,7 @@ export function createElementWithId(tagName, prefix) {
 /**
  * Multi-strategy appendChild with graceful degradation
  */
-export function appendChild(parent, child) {
+export async function appendChild(parent, child) {
   if (!parent || !child) return false;
 
   // PRIMARY: Standard appendChild
@@ -84,12 +76,12 @@ export function appendChild(parent, child) {
 /**
  * Safe element removal with multiple strategies
  */
-export function removeElement(el) {
+export async function removeElement(el) {
   if (!el) return true;
 
   // PRIMARY: parentNode.removeChild
   try {
-    if (el.parentNode) {
+    if (el?.parentNode?.id.includes("toast-container-")) {
       el.parentNode.removeChild(el);
       return true;
     }

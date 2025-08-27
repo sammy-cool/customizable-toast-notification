@@ -9,7 +9,7 @@ import { appendChild } from "../utils/dom.js";
  * @param {string} position - Toast position
  * @returns {HTMLElement} Toast container element
  */
-export function createToastContainer(position) {
+export async function createToastContainer(position) {
   try {
     let toastContainer = document.getElementById(`toast-container-${position}`);
 
@@ -18,8 +18,8 @@ export function createToastContainer(position) {
       toastContainer.id = `toast-container-${position}`;
       toastContainer.style.position = "fixed";
       toastContainer.style.zIndex = "9999";
-      setPosition(toastContainer, position);
-      appendChild(document.body, toastContainer);
+      await setPosition(toastContainer, position);
+      await appendChild(document.body, toastContainer);
     }
 
     return toastContainer;
