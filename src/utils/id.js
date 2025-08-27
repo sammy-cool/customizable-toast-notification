@@ -6,6 +6,6 @@
  * @param {string} prefix - Optional prefix for ID
  * @returns {string} Unique ID
  */
-export function generateUniqueId(prefix = "toast") {
+export async function generateUniqueId(prefix) {
   return `${prefix}-${Date.now()}-${Math.floor(Math.random() * 100000)}`;
 }

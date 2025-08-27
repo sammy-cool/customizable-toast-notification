@@ -40,36 +40,30 @@ let defaultMessages = {
 /**
  * Create toast with satellite-grade reliability
  */
-function createToast(options = {}) {
+async function createToast(options = {}) {
   try {
     // Input sanitization and validation
-    const sanitizedOptions = sanitizeToastOptions(options);
+    const sanitizedOptions = await sanitizeToastOptions(options);
 
     // Call main toast system
-    showToast(sanitizedOptions);
+    await showToast(sanitizedOptions);
   } catch (error) {
     console.error("CreateToast failed:", error);
 
     // ULTIMATE FALLBACK: Browser alert with sanitized message
     const safeMessage =
       typeof options?.message === "string"
-        ? options.message.substring(0, 200)
-        : "Toast notification failed";
+        ? `${options.message.substring(0, 200)} toast creation failed!`
+        : "Toast creation failed!";
 
-    try {
-      alert(safeMessage);
-    } catch (alertError) {
-      console.error("Ultimate fallback failed:", alertError);
-    }
+    alert(safeMessage);
   }
 }
 
-/**
- * Sanitize and normalize toast options
- */
-function sanitizeToastOptions(options) {
+// Params sanitization and validation for toast creation
+async function sanitizeToastOptions(options) {
   const defaults = {
-    duration: 3000,
+    duration: 1800,
     position: "bottom-right",
     type: "info",
     backgroundColor: undefined,
@@ -95,7 +89,7 @@ function sanitizeToastOptions(options) {
     });
 
     // Handle message separately
-    if (options.message !== undefined) {
+    if (options.message !== undefined || options.message !== "undefined") {
       final.message = options.message;
     }
   }
@@ -115,12 +109,12 @@ function sanitizeToastOptions(options) {
 
   // Final safety checks
   if (!final.message || typeof final.message !== "string") {
-    final.message = "Notification";
+    final.message = "No Message Provided!";
   }
 
-  if (typeof final.duration !== "number" || final.duration < 100) {
-    final.duration = 3000;
-  }
+  // should dlt  if (typeof final.duration !== "number" || final.duration < 100) {
+  //   final.duration = defaults.duration;
+  // }
 
   return final;
 }
