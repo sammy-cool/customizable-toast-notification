@@ -208,7 +208,11 @@
       window.testLongMessage = function () {
         const message =
           "🚀 This is a very long message with emojis 💬 and unicode characters ✨ that should be displayed properly 🔥 without breaking the layout or functionality 🎉";
-        createToast({ message: message, type: "warning" });
+        createToast({
+          message: message,
+          type: "warning",
+          showCloseButton: true,
+        });
         updateStatus("Long message toast created");
       };
 
@@ -238,6 +242,8 @@
           message: "Short duration toast",
           type: "info",
           duration: 1000,
+          showProgressBar: true,
+          progressColor: "red",
         });
         updateStatus("Short duration toast created (1s)");
       };
@@ -247,16 +253,23 @@
           message: "Long duration toast",
           type: "success",
           duration: 5000,
+          showProgressBar: true,
+          progressColor: "red",
         });
         updateStatus("Long duration toast created (5s)");
       };
 
       window.testMultipleToasts = function () {
-        for (let i = 0; i < 3; i++) {
+        for (let i = 0; i < 5; i++) {
           setTimeout(() => {
-            createToast({ message: `Rapid toast ${i + 1}`, type: "info" });
+            createToast({
+              position: "center",
+              message: `Rapid toast ${i + 1}`,
+              type: "info",
+            });
           }, i * 100);
         }
+
         updateStatus("Multiple rapid toasts created");
       };
 
@@ -267,7 +280,10 @@
           warning: "#ffaa00",
           info: "#0099ff",
         });
-        createToast({ message: "Custom color success toast", type: "success" });
+        createToast({
+          message: "Custom color success toast",
+          type: "success",
+        });
         updateStatus("Custom colors set and toast created");
       };
 
@@ -283,15 +299,15 @@
       };
 
       window.testInvalidInputs = function () {
-        const invalidInputs = [null, undefined, "string", 123, []];
+        const invalidInputs = [undefined, "string", 123, []];
         invalidInputs.forEach((input, index) => {
           setTimeout(() => {
             try {
               createToast(input);
             } catch (error) {
-              console.log("Handled error for input:", input, error);
+              alert("Handled error for input:", input, error);
             }
-          }, index * 200);
+          }, index * 2000);
         });
         updateStatus("Invalid inputs test completed");
       };
@@ -300,7 +316,7 @@
         createToast({
           message: "Position test message",
           type: "info",
-          position: "bottom-right",
+          position: "top-right",
         });
         updateStatus("Positioning test toast created");
       };

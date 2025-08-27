@@ -14,7 +14,7 @@ test.describe("Toast Library E2E Tests", () => {
 
     // Clean up any existing toasts
     await page.evaluate(() => {
-      const containers = document.querySelectorAll('[id*="toast-container"]');
+      const containers = document.querySelectorAll('[id*="toast-container-"]');
       containers.forEach((container) => container.remove());
     });
   });

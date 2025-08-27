@@ -27,14 +27,14 @@
         progressPosition: "top",
       });
     </script>
-    <button id="showToast">Show Toast</button>
+    <button id="showToast" onclick="createToasty()">Show Toast</button>
 
     <script type="module">
       import {
         createToast,
         setDefaultColors,
         setDefaultMessages,
-      } from "../dist/index.esm.mjs";
+      } from "../src/index.js";
 
       // Optional: Set default colors and messages
       setDefaultColors({
@@ -51,8 +51,7 @@
         warning: "Updated warning message!",
       });
 
-      // Example usage
-      document.getElementById("showToast").addEventListener("click", () => {
+      window.createToasty = function () {
         createToast({
           message: "This is a toast with a close button.",
           duration: 5000,
@@ -66,7 +65,24 @@
           progressHeight: "3px",
           progressPosition: "top",
         });
-      });
+      };
+
+      // Example usage
+      // document.getElementById("showToast").addEventListener("click", () => {
+      //   createToast({
+      //     message: "This is a toast with a close button.",
+      //     duration: 5000,
+      //     position: "bottom-right",
+      //     type: "info",
+      //     showCloseButton: true,
+      //     backgroundColor: "black", // Custom background color
+      //     textColor: "white", // Custom text color
+      //     showProgressBar: true,
+      //     progressColor: "red",
+      //     progressHeight: "3px",
+      //     progressPosition: "top",
+      //   });
+      // });
     </script>
   </body>
 </html>
