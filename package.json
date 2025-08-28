@@ -14,16 +14,6 @@
   "scripts": {
     "postinstall": "node postinstall.js",
     "prepublishOnly": "npm run build",
-    "test": "jest",
-    "test:raw": "jest",
-    "test:watch": "jest --watch",
-    "test:coverage": "jest --coverage",
-    "e2e:firstbrowser:initialization": "npx playwright install",
-    "test:e2e": "playwright test",
-    "test:e2e:ui": "playwright test --ui",
-    "test:e2e:headed": "playwright test --headed",
-    "test:all": "npm run test && npm run playwright test",
-    "test:ci": "jest --coverage --ci --watchAll=true",
     "build": "rollup -c"
   },
   "keywords": [
