@@ -70,8 +70,10 @@ export function runToastAnimation(toast) {
  * @param {Object} options - Toast options
  * @param {Function} onClose - Close callback
  */
-export function applyRichStyling(toast, options, onClose) {
-  const animDurationMs = parseAnimationDuration(options.animationDuration);
+export async function applyRichStyling(toast, options, onClose) {
+  const animDurationMs = await parseAnimationDuration(
+    options.animationDuration
+  );
 
   // Apply full styling
   Object.assign(toast.style, {
@@ -88,11 +90,7 @@ export function applyRichStyling(toast, options, onClose) {
     maxWidth: "400px",
     opacity: "0",
     position: "relative",
-    transition: `opacity ${animDurationMs || "0.5s"} ${
-      options.animationEasing || "ease"
-    }, transform ${animDurationMs || "0.5s"} ${
-      options.animationEasing || "ease"
-    }`,
+    transition: `opacity ${options.animationDuration} ${options.animationEasing}, transform ${options.animationDuration} ${options.animationEasing}`,
     transform: "translateY(20px)",
     zIndex: "9999",
   });
@@ -101,7 +99,7 @@ export function applyRichStyling(toast, options, onClose) {
 
   // Message span
   const messageSpan = document.createElement("span");
-  messageSpan.textContent = options.message || "Notification";
+  messageSpan.textContent = options.message || "Notification!";
   messageSpan.style.flex = "1";
   toast.appendChild(messageSpan);
 

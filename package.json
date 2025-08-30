@@ -6,12 +6,26 @@
   "module": "dist/index.esm.mjs",
   "unpkg": "dist/index.umd.js",
   "jsdelivr": "dist/index.umd.js",
+  "types": "dist/index.d.ts",
   "exports": {
-    "import": "./dist/index.esm.mjs",
-    "require": "./dist/index.cjs",
-    "default": "./dist/index.umd.js"
+    ".": {
+      "import": "./dist/index.esm.mjs",
+      "require": "./dist/index.cjs",
+      "default": "./dist/index.umd.js"
+    },
+    "./package.json": "./package.json"
   },
+  "sideEffects": [
+    false,
+    "*.css"
+  ],
   "scripts": {
+    "dist:clean": "rm -rf dist",
+    "build:js": "rollup -c",
+    "build:types:emit": "tsc -p tsconfig.types.json",
+    "build:types:bundle": "rollup -c rollup.dts.config.mjs",
+    "build:types": "npm run build:types:emit && npm run build:types:bundle",
+    "zone-build": "npm run dist:clean && npm run build:js && npm run build:types",
     "postinstall": "node postinstall.js",
     "prepublishOnly": "npm run build",
     "test": "jest",
@@ -36,7 +50,7 @@
     "test:e2e:ssupdate": "playwright test --update-snapshots",
     "test:e2e:debug": "playwright test --debug",
     "test:e2e:report": "playwright show-report",
-    "serve": "npx http-server . -p 3000 -c-1"
+    "serve": "npx http-server . -p 3001 -c-1"
   },
   "keywords": [
     "javascript",
@@ -82,6 +96,9 @@
     "frontend-library",
     "custom-toast"
   ],
+  "publishConfig": {
+    "access": "public"
+  },
   "author": {
     "name": "Priyanshu Patel",
     "email": "priyanshu.alt191@gmail.com",
@@ -90,7 +107,13 @@
   "license": "Apache-2.0",
   "files": [
     "postinstall.js",
-    "dist",
+    "dist/index.cjs",
+    "dist/index.cjs.map",
+    "dist/index.esm.mjs",
+    "dist/index.esm.mjs.map",
+    "dist/index.umd.js",
+    "dist/index.umd.js.map",
+    "dist/index.d.ts",
     "README.md",
     "LICENSE",
     "CHANGELOG.md"
@@ -98,9 +121,9 @@
   "devDependencies": {
     "@babel/preset-env": "^7.28.0",
     "@playwright/test": "^1.54.1",
-    "@rollup/plugin-commonjs": "^26.0.1",
+    "@rollup/plugin-commonjs": "^28.0.6",
     "@rollup/plugin-node-resolve": "^15.2.3",
-    "@rollup/plugin-replace": "^6.0.1",
+    "@rollup/plugin-replace": "^6.0.2",
     "@rollup/plugin-terser": "^0.4.4",
     "@testing-library/jest-dom": "^6.6.3",
     "autoprefixer": "^10.4.21",
@@ -110,10 +133,12 @@
     "jsdom": "^26.1.0",
     "postcss": "^8.5.6",
     "postcss-import": "^16.1.1",
-    "rollup": "^2.78.0",
-    "rollup-plugin-bundle-size": "^1.0.3",
+    "rollup": "^4.49.0",
+    "rollup-plugin-dts": "^6.2.3",
+    "rollup-plugin-filesize": "^10.0.0",
     "rollup-plugin-postcss": "^4.0.2",
-    "rollup-plugin-visualizer": "^5.12.0"
+    "rollup-plugin-visualizer": "^6.0.3",
+    "typescript": "^5.9.2"
   },
   "repository": {
     "type": "git",

@@ -1,12 +1,15 @@
+import { createRequire } from "module";
+const require = createRequire(import.meta.url);
+const pkg = require("./package.json");
+
 import resolve from "@rollup/plugin-node-resolve";
 import commonjs from "@rollup/plugin-commonjs";
 import terser from "@rollup/plugin-terser";
-import bundleSize from "rollup-plugin-bundle-size";
+import filesize from "rollup-plugin-filesize";
 import { visualizer } from "rollup-plugin-visualizer";
 import replace from "@rollup/plugin-replace";
 import postcss from "rollup-plugin-postcss";
 
-import pkg from "./package.json";
 const buildTime = new Date().toISOString().slice(0, 19).replace("T", " ");
 
 // SINGLE DEFINITION - DRY Principle
@@ -77,7 +80,7 @@ export default {
       },
       mangle: true, // Mangle variable names
     }),
-    bundleSize(),
+    filesize(),
     visualizer({
       filename: "./bundle-analysis.html",
       open: false,
