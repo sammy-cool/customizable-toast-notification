@@ -1,7 +1,7 @@
 /*!
- * Customizable Toast Notifications 3.5.1
- * Build: 2025-09-01 12:43:01
- * Cache-Buster: 1756730581802 
+ * Customizable Toast Notifications 3.6.0
+ * Build: 2025-09-01 12:54:10
+ * Cache-Buster: 1756731250978 
  * Author: Priyanshu Patel
  * Email: priyanshu.alt191@gmail.com
  * License: Apache-2.0
@@ -17,7 +17,7 @@
  * @fileoverview A simple toast notification library for any JavaScript framework.
  * @name Customizable Toast Notifications
  * @author Priyanshu Patel
- * @version "3.5.1"
+ * @version "3.6.0"
  * @build Production
  * @license Apache-2.0
  * @depends None
