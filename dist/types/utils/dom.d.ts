@@ -25,3 +25,4 @@ export function forceReflow(el: any): any;
  * @returns {Element|null}
  */
 export function query(selector: string, root?: Document | HTMLElement): Element | null;
+export function getTextColor(options: any): Promise<"black" | "white">;

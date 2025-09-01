@@ -1,6 +1,3 @@
-/**
- * Create toast with satellite-grade reliability
- */
 export function createToast(options?: {}): Promise<void>;
 /**
  * Set default colors with validation
