@@ -9,22 +9,64 @@
   <body>
     <script src="../dist/index.umd.js"></script>
     <script>
-      // customizableToast.setDefaultColors({ success: "yellow" });
-      // customizableToast.setDefaultMessages({ success: "GG" });
+      customizableToast.setDefaultColors({ success: "yellow" });
+      customizableToast.setDefaultMessages({ success: "GG" });
       customizableToast.createToast({
-        message: "Full feature test",
+        message:
+          "Full feature test Long emojis lorem ipsum dolor sit amet consectetur adipisicing elit. Quos, officiis. Lorem1 ipsum yo priyanshu hehe :)    kkk ;akdo917397&((*!)&^# HHEHEHHEOUUP)",
+        // fontBackgroundColor: "black",
+        fontFamily: "Roboto, Helvetica, Arial, sans-serif",
         type: "success",
-        duration: 5000,
-        position: "center",
+        duration: 500000,
+        position: "bottom-right",
         backgroundColor: "white",
-        textColor: "#111",
+        // textColor: "#111",
         showCloseButton: true,
         animationDuration: "1s",
         animationEasing: "ease-in-out",
         showProgressBar: true,
-        progressColor: "red",
+        // progressColor: "red",
         progressHeight: "5px",
         progressPosition: "top",
+      });
+      customizableToast.createToast({
+        // message: "Welcome hohoho hoho",
+        // type: "success",
+        fontBorderRadius: "5px",
+        position: "top-right",
+        duration: 30000,
+        fontBackgroundColor: "yellow",
+        fontPadding: "10px",
+      });
+      customizableToast.createToast({
+        position: "center",
+        type: "error",
+        duration: 30000,
+        showProgressBar: true,
+      });
+      customizableToast.createToast({
+        position: "center",
+        type: "info",
+        showProgressBar: true,
+        duration: 30000,
+      });
+      customizableToast.createToast({
+        position: "center",
+        showProgressBar: true,
+        type: "error",
+        duration: 30000,
+      });
+      customizableToast.createToast({
+        position: "top-left",
+        showProgressBar: true,
+        type: "error",
+        duration: 30000,
+      });
+      customizableToast.createToast({
+        position: "bottom-left",
+        showProgressBar: true,
+        type: "warning",
+        duration: 30000,
       });
     </script>
     <button id="showToast" onclick="createToasty()">Show Toast</button>
@@ -53,18 +95,22 @@
 
       window.createToasty = function () {
         createToast({
+          animationEasing: "ease-in-out",
+          animationDuration: "1s",
           message: "This is a toast with a close button.",
           duration: 5000,
           position: "bottom-right",
           type: "info",
           showCloseButton: true,
-          backgroundColor: "black", // Custom background color
+          backgroundColor: "#111", // Custom background color
           textColor: "white", // Custom text color
           showProgressBar: true,
-          progressColor: "red",
+          progressColor: "yellow",
           progressHeight: "3px",
           progressPosition: "top",
         });
+        createToast();
+        createToast({ position: "bottom-left" });
       };
 
       // Example usage
@@ -83,6 +129,31 @@
       //     progressPosition: "top",
       //   });
       // });
+      console.log("Initial document.readyState:", document.readyState);
+
+      // Heavy function simulation
+      function heavyLoad(ms) {
+        const start = performance.now();
+        while (performance.now() - start < ms) {
+          // busy-wait loop to block the main thread
+          // simulates heavy computation / blocking script
+        }
+      }
+
+      // Simulate heavy load for 5 seconds
+      console.log("Starting heavy load...");
+      heavyLoad(5000);
+      console.log("Finished heavy load");
+      console.log("document.readyState after heavy load:", document.readyState);
+
+      // Observe DOM ready
+      document.addEventListener("DOMContentLoaded", () => {
+        console.log("DOMContentLoaded fired! ReadyState:", document.readyState);
+      });
+
+      window.addEventListener("load", () => {
+        console.log("window load fired! ReadyState:", document.readyState);
+      });
     </script>
   </body>
 </html>
