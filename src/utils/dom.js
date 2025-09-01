@@ -117,7 +117,7 @@ export async function removeElement(el) {
 /**
  * Animation duration parser with fallbacks
  */
-export function parseAnimationDuration(duration) {
+export async function parseAnimationDuration(duration) {
   // PRIMARY: Parse provided duration
   try {
     if (typeof duration === "number" && duration > 0) return duration;
