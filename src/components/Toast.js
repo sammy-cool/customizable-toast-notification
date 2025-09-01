@@ -21,11 +21,11 @@ export async function createToastElement(options, onClose) {
   // PRIMARY: Full-featured toast
   try {
     toast = await createElementWithId(tagName, prefix);
-    applyRichStyling(toast, options, onClose);
+    await applyRichStyling(toast, options, onClose);
     return toast;
   } catch (error) {
     console.warn("error:", error);
-    createEmergencyToast(options, onClose);
+    await createEmergencyToast(options, onClose);
     return toast;
   }
 }

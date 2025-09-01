@@ -21,7 +21,7 @@
 "use strict";
 
 import { closeToast, showToast } from "./components/ToastManager.js";
-import { appendChild } from "./utils/dom.js";
+import { appendChild, getTextColor } from "./utils/dom.js";
 import { setPosition } from "./utils/position.js";
 
 // Protected state with fallbacks
@@ -42,23 +42,94 @@ let defaultMessages = {
 /**
  * Create toast with satellite-grade reliability
  */
-async function createToast(options = {}) {
+// Toast queue for calls before DOM ready
+const pendingToasts = [];
+
+// Flag to indicate DOM ready for toast execution
+let domReady = false;
+
+// DOM ready check
+async function checkDOMReady() {
+  if (domReady) return;
+
+  if (typeof window !== "undefined" && typeof document !== "undefined") {
+    if (
+      document.readyState === "complete" ||
+      document.readyState === "interactive"
+    ) {
+      domReady = true;
+      // Flush queued toasts after 2s delay
+      pendingToasts.forEach((options) =>
+        setTimeout(() => createToastNow(options), 2000)
+      );
+      pendingToasts.length = 0;
+    } else {
+      // Wait for DOMContentLoaded
+      document.addEventListener(
+        "DOMContentLoaded",
+        () => {
+          domReady = true;
+          pendingToasts.forEach((options) =>
+            setTimeout(() => createToastNow(options), 2000)
+          );
+          pendingToasts.length = 0;
+        },
+        { once: true }
+      );
+    }
+  }
+}
+
+// Core toast creation logic
+async function createToastNow(options = {}) {
   try {
-    // Input sanitization and validation
     const sanitizedOptions = await sanitizeToastOptions(options);
     await createFirstToastContainer(sanitizedOptions.position);
-    // Call main toast system
     await showToast(sanitizedOptions);
   } catch (error) {
     console.error("CreateToast failed:", error);
 
-    // ULTIMATE FALLBACK: Browser alert with sanitized message
     const safeMessage =
       typeof options?.message === "string"
         ? `${options.message.substring(0, 200)} toast creation failed!`
         : "Toast creation failed!";
 
     alert(safeMessage);
+  }
+}
+
+let initialDelayDone = false; // flag to ensure single execution
+
+// Public API
+async function createToast(options = {}) {
+  // Check browser environment
+  const isBrowser =
+    typeof window !== "undefined" && typeof document !== "undefined";
+
+  if (!isBrowser) {
+    console.warn(
+      "ToastNotification: running in non-browser environment, no DOM available."
+    );
+    return;
+  }
+
+  // Check if DOM ready
+  await checkDOMReady();
+
+  if (!domReady) {
+    // Queue for later execution
+    pendingToasts.push(options);
+    return;
+  }
+
+  // If DOM ready → execute after 2s delay
+  if (!initialDelayDone) {
+    // First call → wait 2 seconds
+    initialDelayDone = true;
+    setTimeout(await createToastNow(options), 2000);
+  } else {
+    // Subsequent calls → run immediately
+    await createToastNow(options);
   }
 }
 
@@ -83,61 +154,81 @@ async function createFirstToastContainer(position) {
   }
 }
 
-// Params sanitization and validation for toast creation
+/**
+ * Sanitizes and normalizes toast options.
+ * Fills in defaults, validates input, and ensures colors & messages are set.
+ * @param {Object} options - User-provided toast options
+ * @returns {Promise<Object>} final sanitized toast options
+ */
 async function sanitizeToastOptions(options) {
   const defaults = {
     duration: 1800,
     position: "bottom-right",
     type: "info",
+    borderRadius: "50px",
     backgroundColor: undefined,
-    textColor: "white",
-    showCloseButton: false,
-    animationDuration: "0.5s",
+    textColor: undefined,
+    showCloseButton: true,
+    animationDuration: "0.4s",
+    animationType: "fade",
     animationEasing: "ease",
-    showProgressBar: false,
+    showProgressBar: true,
     progressColor: undefined,
     progressHeight: "4px",
     progressPosition: "bottom",
+    fontPosition: "relative",
+    fontPadding: undefined,
+    fontBorderRadius: undefined,
+    fontBackgroundColor: undefined,
+    fontFamily:
+      '-apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif, "Apple Color Emoji", "Segoe UI Emoji", "Segoe UI Symbol"',
+    fontSize: "14px",
+    fontWeight: "400",
+    fontLineHeight: "1.4",
+    fontDirection: "auto",
+    wrapText: "normal",
   };
 
-  // Start with safe defaults
-  let final = { ...defaults };
+  // Merge defaults with user options
+  const final = {
+    ...defaults,
+    ...(typeof options === "object" && !Array.isArray(options) ? options : {}),
+  };
 
-  // Merge user options safely
-  if (options && typeof options === "object" && !Array.isArray(options)) {
-    Object.keys(defaults).forEach((key) => {
-      if (options.hasOwnProperty(key)) {
-        final[key] = options[key];
-      }
-    });
+  // Ensure message property separately
+  final.message = options?.message ?? final.message;
 
-    // Handle message separately
-    if (options.message !== undefined || options.message !== "undefined") {
-      final.message = options.message;
-    }
-  }
-
-  // Validate and apply defaults
   try {
-    if (!final.backgroundColor && final.type && defaultColors[final.type]) {
-      final.backgroundColor = defaultColors[final.type];
+    // Background color fallback based on type or system preference
+    if (!final.backgroundColor) {
+      final.backgroundColor =
+        defaultColors?.[final.type] ??
+        (window.matchMedia("(prefers-color-scheme: dark)").matches
+          ? "#f5f5f5"
+          : "#111111");
     }
 
-    if (!final.message && final.type && defaultMessages[final.type]) {
-      final.message = defaultMessages[final.type];
+    // Default message if not provided
+    final.message =
+      final.message || defaultMessages?.[final.type] || "No Message Provided!";
+
+    // Ensure textColor is set
+    if (!final.textColor && final.backgroundColor) {
+      final.textColor = await getTextColor(final);
+    }
+
+    // Ensure progressColor is set
+    if (!final.progressColor && final.backgroundColor) {
+      final.progressColor = await getTextColor(final);
     }
   } catch (error) {
     console.warn("Option processing failed:", error);
   }
 
-  // Final safety checks
-  if (!final.message || typeof final.message !== "string") {
+  // Safety check for message type
+  if (typeof final.message !== "string") {
     final.message = "No Message Provided!";
   }
-
-  // should dlt  if (typeof final.duration !== "number" || final.duration < 100) {
-  //   final.duration = defaults.duration;
-  // }
 
   return final;
 }

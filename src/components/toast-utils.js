@@ -8,13 +8,16 @@ import { forceReflow, parseAnimationDuration } from "../utils/dom.js";
  * @param {Object} options - Toast options
  * @param {Function} onClose - Close callback
  */
-export function createCloseButton(toast, options, onClose) {
+export async function createCloseButton(toast, options, onClose) {
   const closeButton = document.createElement("button");
-  closeButton.innerHTML = "&times;";
+  // Accessibility + avoid innerHTML (XSS surface)
+  closeButton.setAttribute("aria-label", "Close notification");
+  closeButton.setAttribute("title", "Close");
+  closeButton.textContent = "×"; // U+00D7 multiplication sign
   Object.assign(closeButton.style, {
     background: "none",
     border: "none",
-    color: options.textColor || "white",
+    color: options.textColor,
     fontSize: "18px",
     marginLeft: "10px",
     cursor: "pointer",
@@ -33,7 +36,7 @@ export function createCloseButton(toast, options, onClose) {
  * @param {HTMLElement} toast - Toast element
  * @param {Object} options - Toast options
  */
-export function createProgressBar(toast, options) {
+export async function createProgressBar(toast, options) {
   const progressBar = document.createElement("div");
   Object.assign(progressBar.style, {
     position: "absolute",
@@ -57,10 +60,12 @@ export function createProgressBar(toast, options) {
  * Run toast fade-in animation
  * @param {HTMLElement} toast - Toast element
  */
-export function runToastAnimation(toast) {
+export async function runToastAnimation(toast) {
   setTimeout(() => {
-    toast.style.opacity = "1";
-    toast.style.transform = "translateY(0)";
+    requestAnimationFrame(() => {
+      toast.style.opacity = "1";
+      toast.style.transform = "translateY(0)";
+    });
   }, 50);
 }
 
@@ -77,11 +82,11 @@ export async function applyRichStyling(toast, options, onClose) {
 
   // Apply full styling
   Object.assign(toast.style, {
-    background: options.backgroundColor || options.color || "#333",
-    color: options.textColor || "white",
+    background: options.backgroundColor,
     padding: "12px 20px",
     marginBottom: "10px",
-    borderRadius: "5px",
+    borderRadius: options.borderRadius,
+    overflow: "hidden",
     display: "flex",
     alignItems: "center",
     justifyContent: "space-between",
@@ -93,28 +98,88 @@ export async function applyRichStyling(toast, options, onClose) {
     transition: `opacity ${options.animationDuration} ${options.animationEasing}, transform ${options.animationDuration} ${options.animationEasing}`,
     transform: "translateY(20px)",
     zIndex: "9999",
+    // willChange: "opacity, transform",
   });
+
+  // TODO! Later
+  // await animateElement(toast, {
+  //   animationType: options.animationType,
+  //   duration: animDurationMs,
+  //   easing: options.animationEasing,
+  // });
 
   toast._animationDuration = animDurationMs;
 
   // Message span
   const messageSpan = document.createElement("span");
-  messageSpan.textContent = options.message || "Notification!";
+
+  // Layout & positioning
+  messageSpan.style.position = options.fontPosition;
+  messageSpan.style.display = "inline-block"; // ensure consistent layout
   messageSpan.style.flex = "1";
+
+  // Spacing & container styling
+  messageSpan.style.padding = options.fontPadding;
+  messageSpan.style.borderRadius = options.fontBorderRadius;
+  messageSpan.style.background = options.fontBackgroundColor;
+
+  // Font stack (system + emoji + fallback)
+  messageSpan.style.fontFamily = options.fontFamily;
+
+  // Font size & readability
+  messageSpan.style.fontSize = options.fontSize; // minimum for readability
+  messageSpan.style.fontWeight = options.fontWeight;
+  messageSpan.style.lineHeight = options.fontLineHeight; // balance readability
+
+  //TODO LATER Icons (auto dark/light fallback)
+  // messageSpan.style.color =
+  //   options.iconColor ||
+  //   (window.matchMedia("(prefers-color-scheme: dark)").matches
+  //     ? "#f5f5f5"
+  //     : "#111111");
+
+  // Colors (auto dark/light fallback)
+  messageSpan.style.color = options.textColor;
+
+  // Accessibility
+  messageSpan.style.userSelect = "text"; // allow copy/paste if needed
+  messageSpan.style.wordBreak = "break-word"; // avoid layout breaking on long strings
+  messageSpan.style.direction = options.fontDirection; // RTL/LTR auto-detect
+  // ✅ Multi-line ellipsis (max 3 lines)
+  messageSpan.style.webkitLineClamp = "3"; // maximum 3 lines
+  messageSpan.style.webkitBoxOrient = "vertical";
+  messageSpan.style.whiteSpace = options.wrapText ? "normal" : "nowrap"; // allow wrapping if wanted
+  messageSpan.style.display = "block";
+  messageSpan.style.overflow = "hidden";
+  messageSpan.style.textOverflow = "ellipsis";
+  messageSpan.style.lineClamp = "3"; // modern property
+  messageSpan.style.boxOrient = "vertical"; // non-prefixed
+  messageSpan.style.display = "-webkit-box";
+  // messageSpan.style.mixBlendMode = "difference";
+  // Assign message
+  messageSpan.textContent = options.message;
+  messageSpan.setAttribute("aria-label", "Toast Notification Center");
+  messageSpan.setAttribute("title", options.message);
+  // Add to toast
   toast.appendChild(messageSpan);
+
+  // TODO Icon Later
+  // if (options.icon) {
+  //   createIcon(toast, options);
+  // }
 
   // Close button
   if (options.showCloseButton) {
-    createCloseButton(toast, options, onClose);
+    await createCloseButton(toast, options, onClose);
   }
 
   // Progress bar
   if (options.showProgressBar) {
-    createProgressBar(toast, options);
+    await createProgressBar(toast, options);
   }
 
   // Animation
-  runToastAnimation(toast);
+  await runToastAnimation(toast);
 }
 
 /**
@@ -123,7 +188,7 @@ export async function applyRichStyling(toast, options, onClose) {
  * @param {Object} options - Toast options
  * @param {Function} onClose - Close callback
  */
-export function createBasicToast(toast, options, onClose) {
+export async function createBasicToast(toast, options, onClose) {
   // Basic styling only
   Object.assign(toast.style, {
     background: "#333",
@@ -139,7 +204,7 @@ export function createBasicToast(toast, options, onClose) {
     wordWrap: "break-word",
   });
 
-  toast.textContent = options.message || "Notification";
+  toast.textContent = options.message;
 
   if (options.showCloseButton) {
     toast.style.cursor = "pointer";
@@ -149,12 +214,65 @@ export function createBasicToast(toast, options, onClose) {
   toast._animationDuration = 500;
 }
 
+// CSS injection function
+async function injectToastStyles() {
+  if (document.getElementById("ctoast-styles")) return; // Already injected
+
+  const style = document.createElement("style");
+  style.id = "ctoast-styles";
+  style.textContent = `
+    .ctoast-toast {
+      padding: 12px 20px;
+      margin-bottom: 10px;
+      border-radius: 5px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+      min-width: 250px;
+      max-width: 400px;
+      opacity: 0;
+      position: relative;
+      transform: translateY(20px);
+      z-index: 9999;
+    }
+
+    .ctoast-message {
+      flex: 1;
+    }
+
+    .ctoast-close {
+      cursor: pointer;
+      margin-left: 10px;
+      font-weight: bold;
+      background: transparent;
+      border: none;
+    }
+
+    .ctoast-progress {
+      position: absolute;
+      bottom: 0;
+      left: 0;
+      height: 4px;
+      background: rgba(255,255,255,0.7);
+      width: 100%;
+      transform-origin: left;
+    }
+
+    .ctoast-show {
+      opacity: 1 !important;
+      transform: translateY(0) !important;
+    }
+  `;
+  document.head.appendChild(style);
+}
+
 /**
  * Emergency toast as last resort
  * @param {Object} options - Toast options
  * @param {Function} onClose - Close callback
  */
-export function createEmergencyToast(options, onClose) {
+export async function createEmergencyToast(options, onClose) {
   try {
     // Create emergency div
     const emergency = document.createElement("div");
