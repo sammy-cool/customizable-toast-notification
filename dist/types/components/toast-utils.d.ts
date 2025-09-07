@@ -36,4 +36,4 @@ export function createBasicToast(toast: HTMLElement, options: any, onClose: Func
  * @param {Function} onClose - Close callback
  */
 export function createEmergencyToast(options: any, onClose: Function): Promise<HTMLDivElement>;
-export function safeSetTimeout(fn: any, delay: any): Promise<NodeJS.Timeout>;
+export function safeSetTimeout(fn: any, delay: any): Promise<number>;
