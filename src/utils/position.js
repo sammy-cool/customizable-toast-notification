@@ -2,7 +2,7 @@
 "use strict";
 
 /**
- * Set position for toast container (keeps prior behavior; adds top-center & bottom-center)
+ * Set position for toast container (keeps prior behavior; adds top-center, bottom/below-center, left-center, right-center)
  * @param {HTMLElement} container - Toast container element
  * @param {string} position - Position string
  */
@@ -14,7 +14,7 @@ export async function setPosition(container, position) {
   container.style.right = "auto";
   container.style.transform = "none";
 
-  const pos = (position || "").toLowerCase().trim();
+  const pos = position.toLowerCase().trim();
 
   const hasTop = pos.includes("top");
   const hasBottom = pos.includes("bottom") || pos.includes("below"); // alias support
@@ -38,6 +38,22 @@ export async function setPosition(container, position) {
     return;
   }
 
+  // NEW: left-center => keep left offset; center vertically
+  if (hasLeft && hasCenter && !hasTop && !hasBottom) {
+    container.style.left = "10px";
+    container.style.top = "50%";
+    container.style.transform = "translateY(-50%)";
+    return;
+  }
+
+  // NEW: right-center => keep right offset; center vertically
+  if (hasRight && hasCenter && !hasTop && !hasBottom) {
+    container.style.right = "10px";
+    container.style.top = "50%";
+    container.style.transform = "translateY(-50%)";
+    return;
+  }
+
   // ORIGINAL vertical logic
   if (hasBottom) {
     container.style.bottom = "10px";
@@ -55,5 +71,9 @@ export async function setPosition(container, position) {
     container.style.top = "50%";
     container.style.left = "50%";
     container.style.transform = "translate(-50%, -50%)";
+  } else {
+    container.style.bottom = "10px";
+    container.style.left = "50%";
+    container.style.transform = "translateX(-50%)";
   }
 }
