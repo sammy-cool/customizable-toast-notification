@@ -5,8 +5,13 @@
  * Set position for toast container (keeps prior behavior; adds top-center, bottom/below-center, left-center, right-center)
  * @param {HTMLElement} container - Toast container element
  * @param {string} position - Position string
+ * @returns {Promise<void>}
  */
 export async function setPosition(container, position) {
+  if (!container || !position) {
+    throw new Error("Invalid container or position!");
+  }
+
   // Reset all position properties first
   container.style.top = "auto";
   container.style.bottom = "auto";
