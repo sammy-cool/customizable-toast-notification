@@ -7,7 +7,7 @@
     <title>Toast Notification Example</title>
   </head>
   <body>
-    <script src="../dist/index.umd.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/customizable-toast-notification"></script>
     <script>
       customizableToast.setDefaultColors({ success: "yellow" });
       customizableToast.setDefaultMessages({ success: "GG" });
@@ -28,15 +28,18 @@
         // progressColor: "red",
         progressHeight: "5px",
         progressPosition: "top",
+        borderRadius: "50px 0px",
       });
       customizableToast.createToast({
-        // message: "Welcome hohoho hoho",
+        message:
+          "Welcome hohoho hoho Full feature test Long emojis lorem ipsum dolor sit amet consectetur adipisicing elit. Quos, officiis. Lorem1 ipsum yo priyanshu hehe :) kkk ;akdo917397&((*!)&^#",
         // type: "success",
         fontBorderRadius: "5px",
         position: "top-right",
-        duration: 30000,
+        duration: 300000,
         fontBackgroundColor: "yellow",
-        fontPadding: "10px",
+        fontPadding: "5px",
+        borderRadius: "50px 0px",
       });
       customizableToast.createToast({
         position: "center",
@@ -108,9 +111,14 @@
           progressColor: "yellow",
           progressHeight: "3px",
           progressPosition: "top",
+          borderRadius: "50px 0px",
         });
         createToast();
-        createToast({ position: "bottom-left" });
+        createToast({
+          message:
+            "Welcome hohoho hoho Full feature test Long emojis lorem ipsum dolor sit",
+          position: "bottom-left",
+        });
       };
 
       // Example usage

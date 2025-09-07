@@ -9,7 +9,7 @@
         font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto,
           sans-serif;
         margin: 0;
-        padding: 20px;
+        /* padding: 20px; */
         background-color: #f5f5f5;
         color: #333;
       }
@@ -18,7 +18,7 @@
         max-width: 800px;
         margin: 0 auto;
         background: white;
-        padding: 30px;
+        /* padding: 30px; */
         border-radius: 8px;
         box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
       }
@@ -31,7 +31,7 @@
 
       .test-section {
         margin-bottom: 30px;
-        padding: 20px;
+        /* padding: 20px; */
         border: 1px solid #e0e0e0;
         border-radius: 6px;
         background: #fafafa;
@@ -48,7 +48,7 @@
         background: #3498db;
         color: white;
         border: none;
-        padding: 10px 20px;
+        /* padding: 10px 20px; */
         border-radius: 4px;
         cursor: pointer;
         margin: 5px;
@@ -83,7 +83,7 @@
 
       .info-box {
         background: #ecf0f1;
-        padding: 15px;
+        /* padding: 15px; */
         border-radius: 4px;
         margin-top: 20px;
         border-left: 4px solid #3498db;
@@ -91,7 +91,7 @@
 
       .status {
         margin-top: 20px;
-        padding: 10px;
+        /* padding: 10px; */
         border-radius: 4px;
         background: #d5f4e6;
         color: #155724;
@@ -100,7 +100,7 @@
 
       code {
         background: #f8f9fa;
-        padding: 2px 6px;
+        /* padding: 2px 6px; */
         border-radius: 3px;
         font-family: "Monaco", "Consolas", monospace;
         color: #e83e8c;
@@ -183,6 +183,7 @@
         createToast,
         setDefaultColors,
         setDefaultMessages,
+        noop,
       } from "../../src/index.js";
       // Make functions globally available for E2E tests
       window.createToast = createToast;
@@ -233,6 +234,8 @@
             type.charAt(0).toUpperCase() + type.slice(1)
           } toast message`,
           type: type,
+          textColor: "white",
+          progressColor: "white",
         });
         updateStatus(`${type} toast created`);
       };
@@ -316,8 +319,68 @@
         createToast({
           message: "Position test message",
           type: "info",
+          textColor: "white",
+          position: "top-left",
+          progressColor: "white",
+        });
+        createToast({
+          message: "Position test message",
+          type: "error",
+          textColor: "white",
+          position: "top-center",
+          progressColor: "white",
+        });
+        createToast({
+          message: "Position test message",
+          type: "warning",
+          textColor: "white",
+          progressColor: "white",
           position: "top-right",
         });
+        createToast({
+          message: "Position test message",
+          type: "success",
+          textColor: "white",
+          progressColor: "white",
+          position: "left-center",
+        });
+        createToast({
+          message: "Position test message",
+          type: "error",
+          progressColor: "white",
+          textColor: "white",
+          position: "center",
+        });
+        createToast({
+          message: "Position test message",
+          type: "warning",
+          progressColor: "white",
+          textColor: "white",
+          position: "right-center",
+        });
+        createToast({
+          message: "Position test message",
+          progressColor: "white",
+          type: "error",
+          textColor: "white",
+          position: "bottom-left",
+        });
+        createToast({
+          message: "Position test message",
+          progressColor: "white",
+          type: "success",
+          textColor: "white",
+          position: "bottom-center",
+        });
+        createToast({
+          message: "Position test message",
+          progressColor: "white",
+          type: "info",
+          textColor: "white",
+          position: "bottom-right",
+        });
+        createToast({});
+        createToast();
         updateStatus("Positioning test toast created");
       };
 
@@ -330,7 +393,7 @@
       };
 
       window.testCleanup = function () {
-        emergencyCleanup();
+        noop();
         updateStatus("Emergency cleanup executed");
       };
 
