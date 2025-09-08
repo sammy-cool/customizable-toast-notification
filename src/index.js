@@ -1,23 +1,23 @@
-// src/index.js
-/**
- * @fileoverview A simple toast notification library for any JavaScript framework.
- * @name Customizable Toast Notifications
- * @author Priyanshu Patel
- * @version __VERSION__
- * @build Production
- * @license Apache-2.0
- * @depends None
- * @description A lightweight and fully customizable toast notification library
- * designed for seamless integration with any JavaScript or framework-based UI.
- * Supports flexible positioning, theming, icons, animations, and timing options
- * out of the box — with zero dependencies.
- * Author: Priyanshu Patel
- * Email: priyanshu.alt191@gmail.com
- * Created: July 31, 2024
- * License: Apache-2.0
- * Dependencies: None
- */
-
+// // src/index.js
+// /**
+//  * @fileoverview A simple toast notification library for any JavaScript framework.
+//  * @name Customizable Toast Notifications
+//  * @author Priyanshu Patel
+//  * @version __VERSION__
+//  * @build Production
+//  * @license Apache-2.0
+//  * @depends None
+//  * @description A lightweight and fully customizable toast notification library
+//  * designed for seamless integration with any JavaScript or framework-based UI.
+//  * Supports flexible positioning, theming, icons, animations, and timing options
+//  * out of the box — with zero dependencies.
+//  * Author: Priyanshu Patel
+//  * Email: priyanshu.alt191@gmail.com
+//  * Created: July 31, 2024
+//  * License: Apache-2.0
+//  * Dependencies: None
+//  */
+//
 "use strict";
 
 import { closeToast, showToast } from "./components/ToastManager.js";
