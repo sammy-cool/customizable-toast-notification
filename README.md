@@ -31,17 +31,11 @@ or
 yarn add customizable-toast-notification
 ```
 
-### CDN (UMD Build)
-
-```bash
-<script src="https://cdn.jsdelivr.net/npm/customizable-toast-notification@latest/dist/index.umd.js"></script>
-```
-
 ## 🚀 Quick Start
 
 ### ES Modules
 
-```json
+```bash
 
 import { createToast, setDefaultColors, setDefaultMessages } from 'customizable-toast-notification';
 
@@ -54,11 +48,13 @@ duration: 3000
 
 ```
 
-### CDN/Browser
+### CDN/Browser (UMD Build)
 
-```json
+```bash
+Global Variable Name: customizableToast
 
 <script src="https://cdn.jsdelivr.net/npm/customizable-toast-notification@latest/dist/index.umd.js"></script>
+
 <script> customizableToast.createToast({ message: "Hello from CDN!", type: "success", position: "top-right" }); </script>
 
 ```
@@ -89,16 +85,17 @@ Creates and displays a toast notification.
 
 #### Position Options
 
-```josn
+```bash
 
-- `"top-left"`, `"top-right"`, `"top-center"`
-- `"bottom-left"`, `"bottom-right"`, `"bottom-center"`
+- `"top-left"`, `"top-right"`, `"top-center"`, `"top-full-width"`
+- `"left-center"`, `"center"`, `"right-center"`
+- `"bottom-left"`, `"bottom-right"`, `"bottom-center"`, `"bottom-full-width"`
 
 ```
 
 ### `setDefaultColors(colors)`
 
-```json
+```bash
 
 Configure default colors for toast types.
 
@@ -113,7 +110,7 @@ info: "#3b82f6"
 
 ### `setDefaultMessages(messages)`
 
-```json
+```bash
 Configure default messages for toast types.
 
 setDefaultMessages({
@@ -129,7 +126,7 @@ info: "Here's some information!"
 
 ### Basic Toast Types
 
-```json
+```bash
 // Success
 createToast({ type: "success", message: "Data saved!" });
 
@@ -146,7 +143,7 @@ createToast({ type: "info", message: "New update available!" });
 
 ### Advanced Customization
 
-```json
+```bash
 createToast({
 message: "File uploading...",
 type: "info",

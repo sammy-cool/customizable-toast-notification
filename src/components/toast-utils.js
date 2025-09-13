@@ -92,7 +92,7 @@ export async function applyRichStyling(toast, options, onClose) {
     justifyContent: "space-between",
     boxShadow: "0 4px 6px rgba(0, 0, 0, 0.1)",
     minWidth: "250px",
-    maxWidth: "400px",
+    maxWidth: options.maxWidth,
     opacity: "0",
     position: "relative",
     transition: `opacity ${options.animationDuration} ${options.animationEasing}, transform ${options.animationDuration} ${options.animationEasing}`,
