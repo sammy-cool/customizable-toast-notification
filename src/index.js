@@ -84,14 +84,14 @@ async function checkDOMReady() {
 async function createToastNow(options = {}) {
   try {
     const sanitizedOptions = await sanitizeToastOptions(options);
-    await createFirstToastContainer(sanitizedOptions.position);
+    await createFirstToastContainer(sanitizedOptions);
     await showToast(sanitizedOptions);
   } catch (error) {
     console.error("CreateToast failed:", error);
 
     const safeMessage =
-      typeof options?.message === "string"
-        ? `${options.message.substring(0, 200)} toast creation failed!`
+      typeof options?.message === "string" && options?.message !== null
+        ? `${options?.message?.substring(0, 200)} toast creation failed!`
         : "Toast creation failed!";
 
     alert(safeMessage);
@@ -133,16 +133,18 @@ async function createToast(options = {}) {
   }
 }
 
-async function createFirstToastContainer(position) {
+async function createFirstToastContainer(options) {
   try {
-    let toastContainer = document.getElementById(`toast-container-${position}`);
+    let toastContainer = document.getElementById(
+      `toast-container-${options.position}`
+    );
 
     if (!toastContainer) {
       toastContainer = document.createElement("div");
-      toastContainer.id = `toast-container-${position}`;
+      toastContainer.id = `toast-container-${options.position}`;
       toastContainer.style.position = "fixed";
       toastContainer.style.zIndex = "9999";
-      await setPosition(toastContainer, position);
+      await setPosition(toastContainer, options);
       await appendChild(document.body, toastContainer);
     }
 
@@ -161,6 +163,13 @@ async function createFirstToastContainer(position) {
  * @returns {Promise<Object>} final sanitized toast options
  */
 async function sanitizeToastOptions(options) {
+  const contPosition = options?.position?.toLowerCase()?.trim();
+  const contMaxWidth =
+    contPosition?.includes("top-full-width") ||
+    contPosition?.includes("bottom-full-width")
+      ? "100vw"
+      : "400px";
+
   const defaults = {
     duration: 1800,
     position: "bottom-right",
@@ -187,6 +196,7 @@ async function sanitizeToastOptions(options) {
     fontLineHeight: "1.4",
     fontDirection: "auto",
     wrapText: "normal",
+    maxWidth: contMaxWidth,
   };
 
   // Merge defaults with user options
@@ -214,12 +224,12 @@ async function sanitizeToastOptions(options) {
 
     // Ensure textColor is set
     if (!final.textColor && final.backgroundColor) {
-      final.textColor = await getTextColor(final);
+      final.textColor = await getTextColor(final.backgroundColor);
     }
 
     // Ensure progressColor is set
     if (!final.progressColor && final.backgroundColor) {
-      final.progressColor = await getTextColor(final);
+      final.progressColor = await getTextColor(final.backgroundColor);
     }
   } catch (error) {
     console.warn("Option processing failed:", error);

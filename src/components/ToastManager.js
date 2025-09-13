@@ -18,7 +18,7 @@ let emergencyTimeouts = [];
 export async function showToast(options) {
   // PRIMARY: Full toast system
   try {
-    const container = await createToastContainer(options.position);
+    const container = await createToastContainer(options);
     const toast = await createToastElement(options, closeToast);
 
     if (!toast) {

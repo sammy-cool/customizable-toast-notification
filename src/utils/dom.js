@@ -158,14 +158,32 @@ export function query(selector, root = document) {
   return root.querySelector(selector);
 }
 
-export async function getTextColor(options) {
-  return options.backgroundColor &&
-    (await contrast(options.backgroundColor)) > 3.5
-    ? "black"
-    : "white";
+/**
+ * Determine text color based on background color.
+ * @param {string} toastBg Toast background color in hex, rgb, or rgba format.
+ * @returns {Promise<string>} Text color, either `"black"` or `"white"`.
+ */
+export async function getTextColor(toastBg) {
+  if (!toastBg) return "black";
+  try {
+    return (await contrast(toastBg)) > 3.5 ? "black" : "white";
+  } catch (error) {
+    console.warn("TextColor calculation failed:", error);
+    return "black";
+  }
 }
 
+/**
+ * Calculates the contrast ratio between the given color and black or white.
+ * @param {string} color A color in hex, rgb, rgba, or color name format.
+ * @returns {Promise<number>} The contrast ratio between the given color and black or white.
+ * @throws {Error} If the given color is not supported.
+ */
 async function contrast(color) {
+  if (!color) {
+    throw new Error("Color is required");
+  }
+
   let r, g, b;
 
   // If color is in hex format
@@ -175,21 +193,25 @@ async function contrast(color) {
       r = parseInt(hex[0] + hex[0], 16);
       g = parseInt(hex[1] + hex[1], 16);
       b = parseInt(hex[2] + hex[2], 16);
-    } else {
+    } else if (hex.length === 6) {
       r = parseInt(hex.substring(0, 2), 16);
       g = parseInt(hex.substring(2, 4), 16);
       b = parseInt(hex.substring(4, 6), 16);
+    } else {
+      throw new Error(`Invalid hex color format: ${color}`);
     }
   }
   // If color is in rgb/rgba format
   else if (color.startsWith("rgb") || color.startsWith("rgba")) {
     const match = color.match(
-      /^rgba?\((\d+),\s*(\d+),\s*(\d+)(?:,\s*(\d+(?:\.\d+)?))?\)$/
+      /^rgba?\((\d{1,3}),\s*(\d{1,3}),\s*(\d{1,3})(?:,\s*(\d+(?:\.\d+)?))?\)$/
     );
     if (match) {
       r = parseInt(match[1]);
       g = parseInt(match[2]);
       b = parseInt(match[3]);
+    } else {
+      throw new Error(`Invalid rgb/rgba color format: ${color}`);
     }
   }
   // If color is a color name
@@ -207,6 +229,10 @@ async function contrast(color) {
     } else {
       throw new Error(`Unsupported color format: ${color}`);
     }
+  }
+
+  if (isNaN(r) || isNaN(g) || isNaN(b)) {
+    throw new Error(`Invalid color value: ${color}`);
   }
 
   const l1 = (r * 0.2126 + g * 0.7152 + b * 0.0722) / 255;
