@@ -1,6 +1,6 @@
 {
   "name": "customizable-toast-notification",
-  "version": "3.7.0",
+  "version": "3.7.1",
   "description": "A lightweight, zero-dependency toast notification library for modern JavaScript applications with production-grade reliability and comprehensive system  mechanisms",
   "main": "dist/index.cjs",
   "module": "dist/index.esm.mjs",
@@ -28,7 +28,6 @@
     "build:types": "npm run build:types:emit && npm run build:types:bundle",
     "zone-build": "npm run dist:clean && npm run build:js && npm run build:types",
     "postinstall": "node postinstall.js",
-    "prepublishOnly": "npm run build",
     "build": "rollup -c"
   },
   "keywords": [
