@@ -25,4 +25,9 @@ export function forceReflow(el: any): any;
  * @returns {Element|null}
  */
 export function query(selector: string, root?: Document | HTMLElement): Element | null;
-export function getTextColor(options: any): Promise<"black" | "white">;
+/**
+ * Determine text color based on background color.
+ * @param {string} toastBg Toast background color in hex, rgb, or rgba format.
+ * @returns {Promise<string>} Text color, either `"black"` or `"white"`.
+ */
+export function getTextColor(toastBg: string): Promise<string>;

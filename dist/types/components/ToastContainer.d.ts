@@ -3,4 +3,4 @@
  * @param {string} position - Toast position
  * @returns {HTMLElement} Toast container element
  */
-export function createToastContainer(position: string): HTMLElement;
+export function createToastContainer(options: any): HTMLElement;
