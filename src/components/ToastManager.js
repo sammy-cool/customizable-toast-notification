@@ -5,369 +5,236 @@ import { createToastContainer } from "./ToastContainer.js";
 import { createToastElement } from "./Toast.js";
 import { removeElement } from "../utils/dom.js";
 import { createEmergencyToast, safeSetTimeout } from "./toast-utils.js";
+import { getOrCreateToastContainer } from "../utils/containerRegistry.js";
+import { setPosition } from "../utils/position.js";
 
-// Deduplication tracker with counters
-const activeToasts = new Map(); // key -> { toast, count }
+// Config
+const MAX_VISIBLE = 3;
 
-// Queue & limits (unchanged)
-const MAX_ACTIVE = 3;
-const waitingQueue = [];
+// State
+const active = new Map(); // key -> { outer, toast, count, timeout }
+const pending = new Map(); // key -> { options, count, rafId }
+const queue = []; // [{ options, key, count }]
+let visibleCount = 0;
 
-// State management (unchanged)
-let isToastShowing = false;
-let emergencyCleanupScheduled = false;
-let currentToast = [];
-let emergencyTimeouts = [];
-
-/**
- * Generate deduplication key from toast options
- */
-function getDeduplicationKey(options) {
-  const type = (options.type || "info").toLowerCase().trim();
-  const message = (options.message || "").trim();
-  const position = (options.position || "bottom-right").toLowerCase().trim();
-  return `${type}:${message}:${position}`;
+// djb2 hash for full-message dedupe
+function hashString(str) {
+  let h = 5381;
+  for (let i = 0; i < str.length; i++) h = (h << 5) + h + str.charCodeAt(i);
+  return h >>> 0;
 }
 
-/**
- * Create or update count badge on toast
- */
-function updateCountBadge(toast, count) {
-  if (count <= 1) {
-    // Remove badge if count is 1 or less
-    const existingBadge = toast.querySelector(".toast-count-badge");
-    if (existingBadge) {
-      existingBadge.remove();
-    }
+function makeKey({ type = "info", message = "", position = "bottom-right" }) {
+  return [
+    String(type).trim().toLowerCase(),
+    hashString(String(message)).toString(16),
+    String(position).trim().toLowerCase(),
+  ].join("|");
+}
+
+export async function showToast(options = {}) {
+  const key = makeKey(options);
+
+  // If already active: group immediately
+  if (active.has(key)) {
+    const data = active.get(key);
+    data.count++;
+    clearTimeout(data.timeout);
+    data.timeout = await safeSetTimeout(
+      () => closeToast(data.toast),
+      (options.duration || 1800) + 10
+    );
+    updateBadge(data);
     return;
   }
 
-  let badge = toast.querySelector(".toast-count-badge");
+  // If coalescing is already scheduled for this key, just increment the pending count
+  if (pending.has(key)) {
+    pending.get(key).count++;
+    return;
+  }
 
+  // Start coalescing identical calls in the same frame
+  const entry = { options, count: 1, rafId: 0 };
+  pending.set(key, entry);
+
+  entry.rafId = requestAnimationFrame(async () => {
+    // finalize batch for this key
+    const current = pending.get(key);
+    if (!current) return;
+    pending.delete(key);
+
+    // If capacity full, enqueue the grouped request
+    if (visibleCount >= MAX_VISIBLE) {
+      queue.push({ options: current.options, key, count: current.count });
+      drainQueue();
+      return;
+    }
+
+    // Otherwise create immediately with the grouped count
+    await createOne(current.options, key, current.count);
+  });
+}
+
+async function createOne(options, key, initialCount) {
+  try {
+    visibleCount++;
+
+    const container = await getOrCreateToastContainer(options, setPosition);
+
+    // Build the toast element
+    const toast = await createToastElement(options, closeToast);
+    if (!toast) throw new Error("Toast element creation failed");
+
+    // Outer wrapper (badge surface; visible overflow)
+    const outer = document.createElement("div");
+    Object.assign(outer.style, {
+      position: "relative",
+      display: "inline-block",
+      overflow: "visible",
+      marginBottom: "10px",
+      zIndex: "0",
+      width: "100%",
+    });
+
+    // Inner wrapper (clip progress bar & rounded corners)
+    const inner = document.createElement("div");
+    Object.assign(inner.style, {
+      position: "relative",
+      overflow: "hidden",
+      borderRadius: options.borderRadius || "8px",
+      zIndex: "1",
+    });
+
+    inner.appendChild(toast);
+    outer.appendChild(inner);
+
+    // Mount
+    if (container.id.includes("toast-container-")) {
+      container.appendChild(outer);
+    }
+
+    // Track
+    const data = {
+      outer,
+      toast,
+      count: Math.max(1, initialCount | 0),
+      timeout: null,
+    };
+    active.set(key, data);
+    toast._key = key;
+
+    if (data.count > 1) updateBadge(data);
+
+    // Auto-dismiss timer
+    data.timeout = await safeSetTimeout(
+      () => closeToast(toast),
+      (options.duration || 1800) + 10
+    );
+  } catch (err) {
+    // Rollback slot and fall back
+    visibleCount = Math.max(0, visibleCount - 1);
+    console.warn("Toast creation failed:", err);
+    const el =
+      document.querySelector('[id^="toast-container-"]') || document.body;
+    el.appendChild(createEmergencyToast(options, closeToast));
+  }
+}
+
+export async function closeToast(toast) {
+  if (!toast || !toast._key) return;
+  const data = active.get(toast._key);
+  if (!data) return;
+
+  clearTimeout(data.timeout);
+  active.delete(toast._key);
+  visibleCount = Math.max(0, visibleCount - 1);
+
+  // Remove badge if present
+  data.outer.querySelector(".toast-count-badge")?.remove();
+
+  // Remove wrapper after transition ends (or fallback)
+  await removeWithTransition(data.outer);
+
+  // Drain queue after a slot frees
+  drainQueue();
+}
+
+function drainQueue() {
+  // Fill available slots; coalesce queued entries against active if they became active meanwhile
+  while (visibleCount < MAX_VISIBLE && queue.length) {
+    const item = queue.shift();
+    if (active.has(item.key)) {
+      const data = active.get(item.key);
+      data.count += item.count;
+      updateBadge(data);
+      continue;
+    }
+    // Create without awaiting to keep loop responsive; visibleCount is incremented inside createOne
+    void createOne(item.options, item.key, item.count);
+  }
+}
+
+function removeWithTransition(el) {
+  return new Promise((resolve) => {
+    let done = false;
+    const finish = () => {
+      if (done) return;
+      done = true;
+      removeElement(el);
+      resolve();
+    };
+
+    // Listen on the immediate child (inner wrapper) if possible
+    const child = el.firstElementChild || el;
+    const onEnd = (e) => {
+      if (e.target !== child) return;
+      child.removeEventListener("transitionend", onEnd, true);
+      finish();
+    };
+
+    child.addEventListener("transitionend", onEnd, true);
+    // Hard fallback if no transition fires
+    setTimeout(() => {
+      child.removeEventListener("transitionend", onEnd, true);
+      finish();
+    }, 700);
+  });
+}
+
+function updateBadge({ outer, count }) {
+  if (count < 2) {
+    outer.querySelector(".toast-count-badge")?.remove();
+    return;
+  }
+  let badge = outer.querySelector(".toast-count-badge");
   if (!badge) {
-    // Create new badge
     badge = document.createElement("span");
     badge.className = "toast-count-badge";
     badge.setAttribute("aria-label", `${count} identical notifications`);
-
-    // Badge styling using absolute positioning
     Object.assign(badge.style, {
       position: "absolute",
       top: "6px",
       right: "6px",
-      backgroundColor: "#f44336", // Red notification color
-      color: "#FFFFFF",
+      backgroundColor: "#f44336",
+      color: "#fff",
       borderRadius: "50%",
       minWidth: "20px",
       height: "20px",
       fontSize: "12px",
-      fontWeight: "bold",
+      fontWeight: "600",
       display: "flex",
       alignItems: "center",
       justifyContent: "center",
-      border: "2px solid white",
+      border: "2px solid #fff",
       boxShadow: "0 2px 6px rgba(0,0,0,0.3)",
-      zIndex: "10",
-      fontFamily: "Arial, sans-serif",
+      zIndex: "2",
+      pointerEvents: "none",
+      transition: "transform 150ms ease",
     });
-
-    toast.appendChild(badge);
-
-    // Ensure toast has relative positioning for absolute badge
-    if (getComputedStyle(toast).position === "static") {
-      toast.style.position = "relative";
-    }
+    outer.appendChild(badge);
   }
-
-  // Update count text
-  badge.textContent = count > 99 ? "99+" : count.toString();
-
-  // Add a subtle animation when count updates
+  badge.textContent = count > 99 ? "99+" : String(count);
   badge.style.transform = "scale(1.2)";
-  setTimeout(() => {
-    badge.style.transform = "scale(1)";
-  }, 150);
-}
-
-/**
- * Show toast with comprehensive fallback system
- */
-export async function showToast(options) {
-  // Check for duplicates first
-  const dedupKey = getDeduplicationKey(options);
-
-  if (activeToasts.has(dedupKey)) {
-    // Increment counter and update badge
-    const toastData = activeToasts.get(dedupKey);
-    toastData.count++;
-    updateCountBadge(toastData.toast, toastData.count);
-
-    // Optionally refresh the auto-dismiss timer
-    if (toastData.dismissTimeout) {
-      clearTimeout(toastData.dismissTimeout);
-    }
-
-    const cleanUpTime =
-      typeof options.duration === "number" && options.duration > 0
-        ? options.duration + 2
-        : 1800;
-
-    toastData.dismissTimeout = await safeSetTimeout(
-      () => closeToast(toastData.toast),
-      cleanUpTime
-    );
-
-    return; // Don't create new toast
-  }
-
-  // Existing queue logic
-  if (currentToast.length >= MAX_ACTIVE) {
-    waitingQueue.push(options);
-    return;
-  }
-
-  // PRIMARY: Full toast system
-  try {
-    const container = await createToastContainer(options);
-    const toast = await createToastElement(options, closeToast);
-
-    if (!toast) {
-      throw new Error("Toast element creation failed!");
-    }
-
-    currentToast.push(toast);
-
-    // Track this toast for deduplication with initial count of 1
-    const toastData = {
-      toast: toast,
-      count: 1,
-      dismissTimeout: null,
-    };
-    activeToasts.set(dedupKey, toastData);
-
-    // Store the dedup key on the toast for cleanup
-    toast._dedupKey = dedupKey;
-
-    // Append to container
-    if (container.id.includes("toast-container-")) {
-      container.appendChild(toast);
-    }
-
-    // Schedule auto-dismiss
-    const cleanUpTime =
-      typeof options.duration === "number" && options.duration > 0
-        ? options.duration + 2
-        : 1800;
-
-    const dismissTimeout = await safeSetTimeout(
-      () => closeToast(toast),
-      cleanUpTime
-    );
-
-    toastData.dismissTimeout = dismissTimeout;
-    emergencyTimeouts.push(dismissTimeout);
-
-    return;
-  } catch (primaryError) {
-    console.warn(
-      "Primary toast system failed showing emergency toast:",
-      primaryError
-    );
-
-    const elContainer = document.querySelector('[id^="toast-container-"]');
-    const emergencyToast = createEmergencyToast(options, closeToast);
-
-    // Track emergency toast too
-    const toastData = {
-      toast: emergencyToast,
-      count: 1,
-      dismissTimeout: null,
-    };
-    activeToasts.set(dedupKey, toastData);
-    emergencyToast._dedupKey = dedupKey;
-
-    elContainer && elContainer?.id?.includes("toast-container-")
-      ? elContainer.appendChild(emergencyToast)
-      : alert(String(primaryError).substring(0, 200));
-    return;
-  }
-}
-
-/**
- * Close toast with multi-strategy cleanup
- */
-export async function closeToast(toast) {
-  if (!toast) return;
-
-  // Remove from deduplication tracker
-  if (toast._dedupKey && activeToasts.has(toast._dedupKey)) {
-    const toastData = activeToasts.get(toast._dedupKey);
-    if (toastData.dismissTimeout) {
-      clearTimeout(toastData.dismissTimeout);
-    }
-    activeToasts.delete(toast._dedupKey);
-  }
-
-  // Remove from active list
-  if (currentToast.length > 0) {
-    const index = currentToast.indexOf(toast);
-    if (index !== -1) {
-      currentToast.splice(index, 1);
-    }
-  }
-
-  // Existing transition-aware removal
-  await removeWithTransition(toast);
-
-  // Advance the queue
-  drainQueue();
-}
-
-// ---------------- NEW: helpers ----------------
-
-/**
- * Try to remove the toast after its CSS transition finishes.
- * Falls back to immediate removal if no transition fires quickly.
- */
-function removeWithTransition(toast) {
-  return new Promise((resolve) => {
-    let settled = false;
-
-    const finish = () => {
-      if (settled) return;
-      settled = true;
-      try {
-        removeElement(toast);
-      } finally {
-        resolve();
-      }
-    };
-
-    // If the toast has an exit transition, it should emit 'transitionend'
-    const onEnd = (e) => {
-      // Only react to the root toast's own transition end
-      if (e.target !== toast) return;
-      toast.removeEventListener("transitionend", onEnd, true);
-      finish();
-    };
-
-    toast.addEventListener("transitionend", onEnd, true);
-
-    // Defensive: in case there is no transition, ensure cleanup happens.
-    setTimeout(() => {
-      toast.removeEventListener("transitionend", onEnd, true);
-      finish();
-    }, 600); // typical short transition safety window
-  });
-}
-
-/**
- * Mount the next toast if capacity allows.
- */
-function drainQueue() {
-  if (currentToast.length >= MAX_ACTIVE) return;
-  const next = waitingQueue.shift();
-  if (!next) return;
-  // Align with next frame for smoother animation and layout stability
-  requestAnimationFrame(() => {
-    // showToast will honor the limit again and append when active < MAX_ACTIVE
-    showToast(next);
-  });
-}
-// -----------------------------------------------
-
-/**
- * Perform comprehensive cleanup
- */
-async function performCleanup(toast) {
-  try {
-    // Cleanup event listeners
-    if (toast._cleanupCloseButton) {
-      toast._cleanupCloseButton();
-    }
-
-    // Remove from DOM
-    removeElement(toast);
-
-    // Reset state
-    resetToastState();
-  } catch (error) {
-    console.error("Cleanup failed:", error);
-    forceEmergencyCleanup();
-  }
-}
-
-/**
- * Reset all toast state
- */
-function resetToastState() {
-  isToastShowing = false;
-  currentToast = [];
-
-  // Clear all timeouts
-  emergencyTimeouts.forEach((id) => {
-    try {
-      clearTimeout(id);
-    } catch (error) {
-      console.warn("Timeout clear failed:", error);
-    }
-  });
-  emergencyTimeouts.pop();
-  emergencyCleanupScheduled = false;
-}
-
-/**
- * Schedule emergency cleanup
- */
-function scheduleEmergencyCleanup(duration) {
-  const cleanUpTime = typeof duration === "number" ? duration + 2 : 1800; // safety margin
-  const emergencyTimeout = setTimeout(() => {
-    console.warn("Emergency cleanup triggered");
-    forceEmergencyCleanup();
-  }, cleanUpTime);
-
-  emergencyTimeouts.push(emergencyTimeout);
-}
-
-/**
- * Force emergency cleanup of everything
- */
-async function forceEmergencyCleanup() {
-  try {
-    // Remove current toast(s)
-    const justRemoveElement = (element) => {
-      removeElement(element);
-    };
-    if (currentToast) {
-      // If a list, remove them individually
-      const list = Array.isArray(currentToast) ? currentToast : [currentToast];
-      list.forEach((t) => {
-        try {
-          justRemoveElement(t);
-        } catch (error) {
-          console.warn("Emergency cleanup failed:", error);
-        }
-      });
-    }
-
-    // Clean up any orphaned toast elements
-    const orphanedToasts = document.querySelectorAll(
-      '[id^="toast-"]:not([id*="container"]), [id*="emergency"]'
-    );
-    orphanedToasts.forEach((element) => {
-      try {
-        removeElement(element);
-      } catch (error) {
-        console.warn("Orphaned element cleanup failed:", error);
-      }
-    });
-
-    // Reset all state
-    resetToastState();
-  } catch (error) {
-    console.error("Force cleanup failed:", error);
-    // Final state reset
-    isToastShowing = false;
-    currentToast = [];
-  }
+  setTimeout(() => (badge.style.transform = "scale(1)"), 150);
 }
