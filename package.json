@@ -22,11 +22,11 @@
   ],
   "scripts": {
     "dist:clean": "rm -rf dist",
-    "build:js": "rollup -c",
+    "build:js": "rollup -c -w",
     "build:types:emit": "tsc -p tsconfig.types.json",
     "build:types:bundle": "rollup -c rollup.dts.config.mjs",
     "build:types": "npm run build:types:emit && npm run build:types:bundle",
-    "zone-build": "npm run dist:clean && npm run build:js && npm run build:types",
+    "zone-build": "npm run dist:clean && npm run build:types && npm run build:js",
     "postinstall": "node postinstall.js",
     "prepublishOnly": "npm run build",
     "test": "jest",
