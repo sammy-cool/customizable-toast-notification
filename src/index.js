@@ -21,6 +21,7 @@
 "use strict";
 
 import { closeToast, showToast } from "./components/ToastManager.js";
+import { getOrCreateToastContainer } from "./utils/containerRegistry.js";
 import { appendChild, getTextColor } from "./utils/dom.js";
 import { setPosition } from "./utils/position.js";
 
@@ -135,19 +136,11 @@ async function createToast(options = {}) {
 
 async function createFirstToastContainer(options) {
   try {
-    let toastContainer = document.getElementById(
-      `toast-container-${options.position}`
+    // Single source of truth for containers; prevents same-id duplicates
+    const toastContainer = await getOrCreateToastContainer(
+      options,
+      setPosition
     );
-
-    if (!toastContainer) {
-      toastContainer = document.createElement("div");
-      toastContainer.id = `toast-container-${options.position}`;
-      toastContainer.style.position = "fixed";
-      toastContainer.style.zIndex = "9999";
-      await setPosition(toastContainer, options);
-      await appendChild(document.body, toastContainer);
-    }
-
     return toastContainer;
   } catch (error) {
     console.error("Failed to create toast container:", error);
