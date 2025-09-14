@@ -6,6 +6,11 @@ import { createToastElement } from "./Toast.js";
 import { removeElement } from "../utils/dom.js";
 import { createEmergencyToast, safeSetTimeout } from "./toast-utils.js";
 
+// ---------------- NEW: queue & limits ----------------
+const MAX_ACTIVE = 3; // cap concurrent toasts
+const waitingQueue = []; // FIFO of options to display next
+// -----------------------------------------------------
+
 // State management with fallback tracking
 let isToastShowing = false;
 let emergencyCleanupScheduled = false;
@@ -16,6 +21,12 @@ let emergencyTimeouts = [];
  * Show toast with comprehensive fallback system
  */
 export async function showToast(options) {
+  // NEW: enforce limit & enqueue overflow
+  if (currentToast.length >= MAX_ACTIVE) {
+    waitingQueue.push(options);
+    return;
+  }
+
   // PRIMARY: Full toast system
   try {
     const container = await createToastContainer(options);
@@ -32,16 +43,20 @@ export async function showToast(options) {
       container.appendChild(toast);
     }
 
-    // Schedule auto-dismiss
+    // Schedule auto-dismiss (unchanged behavior)
     const cleanUpTime =
       typeof options.duration === "number" && options.duration > 0
         ? options.duration + 2
-        : 1800; //safety margin
+        : 1800; // safety margin
+
     const dismissTimeout = await safeSetTimeout(
       () => closeToast(toast),
       cleanUpTime
     );
     emergencyTimeouts.push(dismissTimeout);
+
+    // NEW: if toast has its own exit transition, allow it to signal completion
+    // Consumers can add CSS transitions that run when the toast starts exiting.
     return;
   } catch (primaryError) {
     console.warn(
@@ -52,46 +67,84 @@ export async function showToast(options) {
     const emergencyToast = createEmergencyToast(options, closeToast);
     elContainer && elContainer?.id?.includes("toast-container-")
       ? elContainer.appendChild(emergencyToast)
-      : alert(primaryError.substring(0, 200));
+      : alert(String(primaryError).substring(0, 200));
     return;
   }
-}
-
-/**
- * Create simple toast for fallback
- */
-function createSimpleToast(options) {
-  const simple = document.createElement("div");
-  simple.style.cssText = `
-    position: fixed !important;
-    top: 20px !important;
-    right: 20px !important;
-    background: #333 !important;
-    color: white !important;
-    padding: 12px 20px !important;
-    border-radius: 5px !important;
-    z-index: 99999 !important;
-    max-width: 300px !important;
-    font-family: Arial, sans-serif !important;
-    cursor: pointer !important;
-  `;
-  simple.textContent = options.message || "Created Simple Toast!";
-  simple.onclick = () => closeToast(simple);
-  return simple;
 }
 
 /**
  * Close toast with multi-strategy cleanup
  */
 export async function closeToast(toast) {
+  if (!toast) return;
+
+  // Remove from active list
   if (currentToast.length > 0) {
     const index = currentToast.indexOf(toast);
     if (index !== -1) {
       currentToast.splice(index, 1);
     }
   }
-  await removeElement(toast);
+
+  // NEW: prefer transition-aware removal; fallback to immediate removal
+  await removeWithTransition(toast);
+
+  // NEW: advance the queue on the next frame
+  drainQueue();
 }
+
+// ---------------- NEW: helpers ----------------
+
+/**
+ * Try to remove the toast after its CSS transition finishes.
+ * Falls back to immediate removal if no transition fires quickly.
+ */
+function removeWithTransition(toast) {
+  return new Promise((resolve) => {
+    let settled = false;
+
+    const finish = () => {
+      if (settled) return;
+      settled = true;
+      try {
+        removeElement(toast);
+      } finally {
+        resolve();
+      }
+    };
+
+    // If the toast has an exit transition, it should emit 'transitionend'
+    const onEnd = (e) => {
+      // Only react to the root toast's own transition end
+      if (e.target !== toast) return;
+      toast.removeEventListener("transitionend", onEnd, true);
+      finish();
+    };
+
+    toast.addEventListener("transitionend", onEnd, true);
+
+    // Defensive: in case there is no transition, ensure cleanup happens.
+    setTimeout(() => {
+      toast.removeEventListener("transitionend", onEnd, true);
+      finish();
+    }, 600); // typical short transition safety window
+  });
+}
+
+/**
+ * Mount the next toast if capacity allows.
+ */
+function drainQueue() {
+  if (currentToast.length >= MAX_ACTIVE) return;
+  const next = waitingQueue.shift();
+  if (!next) return;
+  // Align with next frame for smoother animation and layout stability
+  requestAnimationFrame(() => {
+    // showToast will honor the limit again and append when active < MAX_ACTIVE
+    showToast(next);
+  });
+}
+// -----------------------------------------------
 
 /**
  * Perform comprehensive cleanup
@@ -137,7 +190,7 @@ function resetToastState() {
  * Schedule emergency cleanup
  */
 function scheduleEmergencyCleanup(duration) {
-  const cleanUpTime = typeof duration === "number" ? duration + 2 : 1800; //safety margin
+  const cleanUpTime = typeof duration === "number" ? duration + 2 : 1800; // safety margin
   const emergencyTimeout = setTimeout(() => {
     console.warn("Emergency cleanup triggered");
     forceEmergencyCleanup();
@@ -151,9 +204,20 @@ function scheduleEmergencyCleanup(duration) {
  */
 async function forceEmergencyCleanup() {
   try {
-    // Remove current toast
+    // Remove current toast(s)
+    const justRemoveElement = (element) => {
+      removeElement(element);
+    };
     if (currentToast) {
-      removeElement(currentToast);
+      // If a list, remove them individually
+      const list = Array.isArray(currentToast) ? currentToast : [currentToast];
+      list.forEach((t) => {
+        try {
+          justRemoveElement(t);
+        } catch (error) {
+          console.warn("Emergency cleanup failed:", error);
+        }
+      });
     }
 
     // Clean up any orphaned toast elements
