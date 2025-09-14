@@ -7,7 +7,9 @@
     <title>Toast Notification Example</title>
   </head>
   <body>
-    <script src="https://cdn.jsdelivr.net/npm/customizable-toast-notification"></script>
+    <script src="http://localhost:3001/dist/index.umd.js"></script>
+    <!-- <script src="https://cdn.jsdelivr.net/npm/customizable-toast-notification"></script> -->
+
     <script>
       customizableToast.setDefaultColors({ success: "yellow" });
       customizableToast.setDefaultMessages({ success: "GG" });
@@ -17,7 +19,7 @@
         // fontBackgroundColor: "black",
         fontFamily: "Roboto, Helvetica, Arial, sans-serif",
         type: "success",
-        duration: 500000,
+        // duration: 500000,
         position: "bottom-full-width",
         backgroundColor: "white",
         // textColor: "#111",
@@ -36,7 +38,7 @@
         // type: "success",
         fontBorderRadius: "5px",
         position: "top-right",
-        duration: 300000,
+        // duration: 300000,
         fontBackgroundColor: "yellow",
         fontPadding: "5px",
         borderRadius: "50px 0px",
@@ -44,36 +46,36 @@
       customizableToast.createToast({
         position: "center",
         type: "error",
-        duration: 30000,
+        // duration: 30000,
         showProgressBar: true,
       });
       customizableToast.createToast({
         position: "center",
         type: "info",
         showProgressBar: true,
-        duration: 30000,
+        // duration: 30000,
       });
       customizableToast.createToast({
         position: "center",
         showProgressBar: true,
         type: "error",
-        duration: 30000,
+        // duration: 30000,
       });
       customizableToast.createToast({
         position: "top-left",
         showProgressBar: true,
-        type: "error",
-        duration: 30000,
+        type: "success",
+        // duration: 30000,
       });
       customizableToast.createToast({
         position: "bottom-left",
         showProgressBar: true,
         type: "warning",
-        duration: 30000,
+        // duration: 30000,
       });
     </script>
-    <button id="showToast" onclick="createToasty()">Show Toast</button>
 
+    <button id="showToast" onclick="createToasty()">Show Toast</button>
     <script type="module">
       import {
         createToast,
@@ -113,11 +115,87 @@
           progressPosition: "top",
           borderRadius: "50px 0px",
         });
-        createToast();
+        createToast({
+          message:
+            "🚀 This is a very long message with emojis 💬 and unicode characters ✨ that should be displayed properly 🔥 without breaking the layout or functionality 🎉 🚀 This is a very long message with emojis 💬 and unicode characters ✨ that should be displayed properly 🔥 without breaking the layout or functionality 🎉",
+        });
+        createToast({
+          message:
+            "🚀 This is a very long message with emojis 💬 and unicode characters ✨ that should be displayed properly 🔥 without breaking the layout or functionality 🎉 🚀 This is a very long message with emojis 💬 and unicode characters ✨ that should be displayed properly 🔥 without breaking the layout or functionality 🎉",
+        });
+        createToast({
+          message:
+            "🚀 This is a very long message with emojis 💬 and unicode characters ✨ that should be displayed properly 🔥 without breaking the layout or functionality 🎉 🚀 This is a very long message with emojis 💬 and unicode characters ✨ that should be displayed properly 🔥 without breaking the layout or functionality 🎉",
+        });
+        createToast({
+          message:
+            "🚀 This is a very long message with emojis 💬 and unicode characters ✨ that should be displayed properly 🔥 without breaking the layout or functionality 🎉 🚀 This is a very long message with emojis 💬 and unicode characters ✨ that should be displayed properly 🔥 without breaking the layout or functionality 🎉",
+        });
+        createToast({
+          message:
+            "🚀 This is a very long message with emojis 💬 and unicode characters ✨ that should be displayed properly 🔥 without breaking the layout or functionality 🎉 🚀 This is a very long message with emojis 💬 and unicode characters ✨ that should be displayed properly 🔥 without breaking the layout or functionality 🎉",
+        });
+        createToast({
+          message:
+            "🚀 This is a very long message with emojis 💬 and unicode characters ✨ that should be displayed properly 🔥 without breaking the layout or functionality 🎉 🚀 This is a very long message with emojis 💬 and unicode characters ✨ that should be displayed properly 🔥 without breaking the layout or functionality 🎉",
+        });
+        createToast({
+          message:
+            "🚀 This is a very long message with emojis 💬 and unicode characters ✨ that should be displayed properly 🔥 without breaking the layout or functionality 🎉 🚀 This is a very long message with emojis 💬 and unicode characters ✨ that should be displayed properly 🔥 without breaking the layout or functionality 🎉",
+        });
+        createToast({
+          message:
+            "🚀 This is a very long message with emojis 💬 and unicode characters ✨ that should be displayed properly 🔥 without breaking the layout or functionality 🎉 🚀 This is a very long message with emojis 💬 and unicode characters ✨ that should be displayed properly 🔥 without breaking the layout or functionality 🎉",
+        });
+        createToast({
+          message:
+            "🚀 This is a very long message with emojis 💬 and unicode characters ✨ that should be displayed properly 🔥 without breaking the layout or functionality 🎉 🚀 This is a very long message with emojis 💬 and unicode characters ✨ that should be displayed properly 🔥 without breaking the layout or functionality 🎉",
+        });
+        createToast({
+          message:
+            "🚀 This is a very long message with emojis 💬 and unicode characters ✨ that should be displayed properly 🔥 without breaking the layout or functionality 🎉 🚀 This is a very long message with emojis 💬 and unicode characters ✨ that should be displayed properly 🔥 without breaking the layout or functionality 🎉",
+        });
+        createToast({
+          message:
+            "🚀 This is a very long message with emojis 💬 and unicode characters ✨ that should be displayed properly 🔥 without breaking the layout or functionality 🎉 🚀 This is a very long message with emojis 💬 and unicode characters ✨ that should be displayed properly 🔥 without breaking the layout or functionality 🎉",
+        });
+        createToast({
+          message:
+            "🚀 This is a very long message with emojis 💬 and unicode characters ✨ that should be displayed properly 🔥 without breaking the layout or functionality 🎉 🚀 This is a very long message with emojis 💬 and unicode characters ✨ that should be displayed properly 🔥 without breaking the layout or functionality 🎉",
+        });
+        createToast({
+          message:
+            "🚀 This is a very long message with emojis 💬 and unicode characters ✨ that should be displayed properly 🔥 without breaking the layout or functionality 🎉 🚀 This is a very long message with emojis 💬 and unicode characters ✨ that should be displayed properly 🔥 without breaking the layout or functionality 🎉",
+        });
+        createToast({
+          message:
+            "🚀 This is a very long message with emojis 💬 and unicode characters ✨ that should be displayed properly 🔥 without breaking the layout or functionality 🎉 🚀 This is a very long message with emojis 💬 and unicode characters ✨ that should be displayed properly 🔥 without breaking the layout or functionality 🎉",
+        });
+        createToast({
+          message:
+            "🚀 This is a very long message with emojis 💬 and unicode characters ✨ that should be displayed properly 🔥 without breaking the layout or functionality 🎉 🚀 This is a very long message with emojis 💬 and unicode characters ✨ that should be displayed properly 🔥 without breaking the layout or functionality 🎉",
+        });
+        createToast({
+          message:
+            "🚀 This is a very long message with emojis 💬 and unicode characters ✨ that should be displayed properly 🔥 without breaking the layout or functionality 🎉 🚀 This is a very long message with emojis 💬 and unicode characters ✨ that should be displayed properly 🔥 without breaking the layout or functionality 🎉",
+        });
+        createToast({
+          message:
+            "🚀 This is a very long message with emojis 💬 and unicode characters ✨ that should be displayed properly 🔥 without breaking the layout or functionality 🎉 🚀 This is a very long message with emojis 💬 and unicode characters ✨ that should be displayed properly 🔥 without breaking the layout or functionality 🎉",
+        });
+        createToast({
+          message:
+            "🚀 This is a very long message with emojis 💬 and unicode characters ✨ that should be displayed properly 🔥 without breaking the layout or functionality 🎉 🚀 This is a very long message with emojis 💬 and unicode characters ✨ that should be displayed properly 🔥 without breaking the layout or functionality 🎉",
+        });
+        createToast({
+          message:
+            "🚀 This is a very long message with emojis 💬 and unicode characters ✨ that should be displayed properly 🔥 without breaking the layout or functionality 🎉 🚀 This is a very long message with emojis 💬 and unicode characters ✨ that should be displayed properly 🔥 without breaking the layout or functionality 🎉",
+        });
         createToast({
           message:
             "Welcome hohoho hoho Full feature test Long emojis lorem ipsum dolor sit",
           position: "bottom-left",
+          duration: 300000,
         });
       };
 
