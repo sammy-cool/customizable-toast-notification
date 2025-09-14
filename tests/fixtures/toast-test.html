@@ -219,7 +219,13 @@
 
       window.testTemplateMessage = function () {
         const timestamp = Date.now();
-        createToast({ message: `Dynamic message ${timestamp}`, type: "info" });
+
+        createToast({
+          message: `Dynamic message ${timestamp}`,
+          type: "info",
+          position: "bottom-full-width",
+          duration: 30000,
+        });
         updateStatus("Template literal toast created");
       };
 
@@ -236,6 +242,8 @@
           type: type,
           textColor: "white",
           progressColor: "white",
+          duration: 300000,
+          position: "top-full-width",
         });
         updateStatus(`${type} toast created`);
       };
@@ -394,7 +402,7 @@
           position: "top-full-width",
         });
         createToast({});
-        createToast();
+        // createToast();
         updateStatus("Positioning test toast created");
       };
 
