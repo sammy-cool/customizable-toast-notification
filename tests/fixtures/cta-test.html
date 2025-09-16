@@ -1,0 +1,95 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <title>Toast CTA Test</title>
+  </head>
+  <body>
+    <h1>Toast CTA Examples</h1>
+
+    <button onclick="testBasicCTA()">Basic Button CTA</button>
+    <button onclick="testLinkCTA()">Link CTA</button>
+    <button onclick="testNonClosingCTA()">Non-Closing CTA</button>
+    <button onclick="testAsyncCTA()">Async CTA</button>
+    <button onclick="testGroupedCTA()">Test Grouping with CTA</button>
+    <button onclick="testPauseCTA()">Test Grouping with CTA</button>
+
+    <script type="module">
+      import { createToast } from "../../src/index.js";
+
+      window.testBasicCTA = () => {
+        createToast({
+          message: "Task completed successfully!",
+          type: "success",
+          cta: {
+            label: "View Details",
+            onClick: () => alert("Viewing details..."),
+          },
+        });
+      };
+
+      window.testLinkCTA = () => {
+        createToast({
+          message: "Update available",
+          type: "info",
+          cta: {
+            label: "Learn More",
+            href: "https://cdn.jsdelivr.net/npm/customizable-toast-notification",
+            variant: "link",
+            target: "_blank",
+          },
+        });
+      };
+
+      window.testNonClosingCTA = () => {
+        createToast({
+          message: "Confirm this action?",
+          type: "warning",
+          duration: 0,
+          cta: {
+            label: "Confirm",
+            autoClose: false,
+            onClick: () => console.log("Action confirmed!"),
+          },
+        });
+      };
+
+      window.testAsyncCTA = () => {
+        createToast({
+          message: "Ready to backup?",
+          cta: {
+            label: "Start Backup",
+            onClick: async () => {
+              console.log("Backup starting...");
+              await new Promise((r) => setTimeout(r, 1500));
+              console.log("Backup done!");
+            },
+          },
+        });
+      };
+
+      window.testGroupedCTA = () => {
+        // Rapid fire same message - should group with badge
+        for (let i = 0; i < 5; i++) {
+          createToast({
+            message: "File uploaded",
+            cta: {
+              label: "View",
+              onClick: () => console.log(`View file ${i + 1}`),
+            },
+          });
+        }
+      };
+
+      // Automatically pauses on hover because it has a CTA
+      window.testPauseCTA = () =>
+        createToast({
+          message: "File uploaded successfully!",
+          cta: {
+            label: "View File",
+            onClick: () => window.open("/dist/"),
+          },
+          // pauseOnHover: true (automatic)
+        });
+    </script>
+  </body>
+</html>
