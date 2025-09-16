@@ -1,12 +1,13 @@
 // src/components/ToastManager.js
 "use strict";
 
-import { createToastContainer } from "./ToastContainer.js";
+// import { createToastContainer } from "./ToastContainer.js";
 import { createToastElement } from "./Toast.js";
 import { removeElement } from "../utils/dom.js";
 import { createEmergencyToast, safeSetTimeout } from "./toast-utils.js";
 import { getOrCreateToastContainer } from "../utils/containerRegistry.js";
 import { setPosition } from "../utils/position.js";
+import { PausableTimer } from "../utils/PausableTimer.js";
 
 // Config
 const MAX_VISIBLE = 3;
@@ -24,6 +25,12 @@ function hashString(str) {
   return h >>> 0;
 }
 
+/**
+ * Creates a unique key for a toast notification based on its type, message, and position.
+ * This key is used to identify and deduplicate identical toast notifications.
+ * @param {Object} options - Toast options with type, message, and position.
+ * @returns {string} A unique key for the toast notification.
+ */
 function makeKey({ type = "info", message = "", position = "bottom-right" }) {
   return [
     String(type).trim().toLowerCase(),
@@ -32,6 +39,17 @@ function makeKey({ type = "info", message = "", position = "bottom-right" }) {
   ].join("|");
 }
 
+/**
+ * Shows a toast notification with the given options.
+ * If there is already an active toast with the same type, message, and position,
+ * it will be grouped immediately and the count will be incremented.
+ * If there is already a pending toast with the same type, message, and position,
+ * it will be coalesced and the count will be incremented.
+ * If there is no capacity left (i.e. the number of visible toasts is at the maximum),
+ * the grouped request will be enqueued and processed later.
+ * @param {Object} options - Toast options with type, message, and position.
+ * @returns {Promise<void>} A promise that resolves when the toast is fully created and displayed.
+ */
 export async function showToast(options = {}) {
   const key = makeKey(options);
 
@@ -39,11 +57,16 @@ export async function showToast(options = {}) {
   if (active.has(key)) {
     const data = active.get(key);
     data.count++;
-    clearTimeout(data.timeout);
-    data.timeout = await safeSetTimeout(
-      () => closeToast(data.toast),
-      (options.duration || 1800) + 10
-    );
+    // clearTimeout(data.timeout);
+    // data.timeout = await safeSetTimeout(
+    //   () => closeToast(data.toast),
+    //   (options.duration || 1800) + 10
+    // );
+
+    // Reset timer with new duration
+    data.timer.clear();
+    data.timer = createDismissTimer(data.toast, options);
+    setupPauseOnHover(data);
     updateBadge(data);
     return;
   }
@@ -76,6 +99,15 @@ export async function showToast(options = {}) {
   });
 }
 
+/**
+ * Creates a single toast notification with the given options and initial count.
+ * Will create and mount the toast element, and setup a timer to auto-dismiss.
+ * If the toast creation fails, it will fallback to an emergency toast.
+ * @param {Object} options - Toast options with type, message, and position.
+ * @param {string} key - Unique key for the toast.
+ * @param {number} initialCount - Initial count for the toast.
+ * @returns {Promise<void>} A promise that resolves when the toast is fully created and displayed.
+ */
 async function createOne(options, key, initialCount) {
   try {
     visibleCount++;
@@ -114,23 +146,32 @@ async function createOne(options, key, initialCount) {
       container.appendChild(outer);
     }
 
+    // Determine if should pause on hover (default: true if has CTA)
+    const shouldPauseOnHover =
+      options.pauseOnHover !== false &&
+      (options.pauseOnHover === true || !!options.cta);
+
     // Track
     const data = {
       outer,
       toast,
       count: Math.max(1, initialCount | 0),
       timeout: null,
+      pauseOnHover: shouldPauseOnHover,
     };
     active.set(key, data);
     toast._key = key;
 
     if (data.count > 1) updateBadge(data);
+    // Create and start timer
+    data.timer = createDismissTimer(toast, options);
+    setupPauseOnHover(data);
 
     // Auto-dismiss timer
-    data.timeout = await safeSetTimeout(
-      () => closeToast(toast),
-      (options.duration || 1800) + 10
-    );
+    // data.timeout = await safeSetTimeout(
+    //   () => closeToast(toast),
+    //   (options.duration || 1800) + 10
+    // );
   } catch (err) {
     // Rollback slot and fall back
     visibleCount = Math.max(0, visibleCount - 1);
@@ -141,12 +182,78 @@ async function createOne(options, key, initialCount) {
   }
 }
 
+/**
+ * Creates a PausableTimer that auto-closes a toast after a delay.
+ * @param {HTMLElement} toast - The toast element to auto-close.
+ * @param {Object} options - Toast options with duration.
+ * @returns {PausableTimer} A timer that can be paused, resumed, or cleared.
+ */
+function createDismissTimer(toast, options) {
+  const delay = (options.duration || 1800) + 10;
+  const timer = new PausableTimer(() => closeToast(toast), delay);
+  timer.start();
+  return timer;
+}
+
+function setupPauseOnHover(data) {
+  if (!data.pauseOnHover || !data.outer || !data.timer) return;
+
+  const { outer, timer } = data;
+
+  // Mouse events
+  const onMouseEnter = () => {
+    timer.pause();
+  };
+
+  const onMouseLeave = () => {
+    timer.resume();
+  };
+
+  // Focus events (for keyboard users)
+  const onFocusIn = (e) => {
+    // Only pause if focus is on interactive elements (CTA, close button)
+    if (e.target.matches("button, a, [tabindex]")) {
+      timer.pause();
+    }
+  };
+
+  const onFocusOut = (e) => {
+    // Only resume if focus is leaving the toast entirely
+    if (!outer.contains(e.relatedTarget)) {
+      timer.resume();
+    }
+  };
+
+  // Add event listeners
+  outer.addEventListener("mouseenter", onMouseEnter);
+  outer.addEventListener("mouseleave", onMouseLeave);
+  outer.addEventListener("focusin", onFocusIn);
+  outer.addEventListener("focusout", onFocusOut);
+
+  // Store cleanup function
+  outer._pauseCleanup = () => {
+    outer.removeEventListener("mouseenter", onMouseEnter);
+    outer.removeEventListener("mouseleave", onMouseLeave);
+    outer.removeEventListener("focusin", onFocusIn);
+    outer.removeEventListener("focusout", onFocusOut);
+  };
+}
+
+/**
+ * Closes a toast notification immediately.
+ * If the toast is not found in the active toasts map, this function does nothing.
+ * @param {HTMLElement} toast - The toast element to close.
+ * @returns {Promise<void>} A promise that resolves when the toast is fully removed from the DOM.
+ */
 export async function closeToast(toast) {
   if (!toast || !toast._key) return;
   const data = active.get(toast._key);
   if (!data) return;
 
-  clearTimeout(data.timeout);
+  // Clear timer and cleanup pause events
+  data.timer?.clear();
+  data.outer?._pauseCleanup?.();
+  // clearTimeout(data.timeout);
   active.delete(toast._key);
   visibleCount = Math.max(0, visibleCount - 1);
 

@@ -52,6 +52,8 @@ export async function getOrCreateToastContainer(options = {}, setPosition) {
     if (!el) {
       el = document.createElement("div");
       el.id = id;
+      el.setAttribute("role", "status"); // polite + atomic by default
+      el.setAttribute("aria-atomic", "true"); // explicit for consistency
       el.style.position = "fixed";
       el.style.zIndex = "9999";
       el.style.inset = "auto 10px 10px auto";

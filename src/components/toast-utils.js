@@ -168,6 +168,9 @@ export async function applyRichStyling(toast, options, onClose) {
   //   createIcon(toast, options);
   // }
 
+  // CTA factory that appends a safe, keyboard‑accessible button/link at the end of the row
+  await createCTA(toast, options, onClose);
+
   // Close button
   if (options.showCloseButton) {
     await createCloseButton(toast, options, onClose);
@@ -341,4 +344,65 @@ export async function safeSetTimeout(fn, delay) {
 
   console.warn("Timer scheduled with id:", id, "delay:", delay);
   return id;
+}
+
+/**
+ * Append a Call-To-Action (CTA) element to the toast container.
+ * @param {HTMLElement} toast - Toast element
+ * @param {Object} options - Toast options
+ * @param {Function} onClose - Close callback
+ * @returns {HTMLElement} CTA element
+ * @example
+ * const toast = createToast({ ... });
+ * const cta = createCTA(toast, { cta: { label: "Visit our website", href: "https://www.example.com/", variant: "link" } });
+ */
+export async function createCTA(toast, options, onClose) {
+  const cfg = options?.cta;
+  if (!cfg || !cfg.label) return;
+
+  const isLink = !!cfg.href && cfg.variant === "link";
+  const el = document.createElement(isLink ? "a" : "button");
+
+  // Base a11y and semantics
+  if (isLink) {
+    el.href = cfg.href;
+    if (cfg.target) el.target = cfg.target;
+    el.rel = cfg.rel || (cfg.target === "_blank" ? "noopener noreferrer" : "");
+  } else {
+    el.type = "button";
+  }
+  el.setAttribute("aria-label", cfg.ariaLabel || cfg.label);
+
+  // Visuals that fit any theme; minimal, non-intrusive
+  Object.assign(el.style, {
+    marginLeft: "10px",
+    padding: "6px 10px",
+    borderRadius: "6px",
+    fontSize: "12px",
+    fontWeight: "600",
+    lineHeight: "1",
+    border: "1px solid rgba(255,255,255,0.35)",
+    color: options.textColor || "#fff",
+    background: "rgba(255,255,255,0.15)",
+    cursor: "pointer",
+    whiteSpace: "nowrap",
+    flexShrink: "0",
+  });
+
+  el.textContent = cfg.label;
+
+  // Click behavior
+  el.addEventListener("click", async (e) => {
+    try {
+      if (typeof cfg.onClick === "function") {
+        const ret = cfg.onClick(e);
+        if (ret?.then) await ret; // allow async actions
+      }
+    } finally {
+      if (cfg.autoClose !== false) onClose(toast);
+    }
+  });
+
+  // Append after message span, before close/progress doesn’t matter (flex)
+  toast.appendChild(el);
 }
