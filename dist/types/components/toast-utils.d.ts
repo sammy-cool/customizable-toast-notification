@@ -37,3 +37,14 @@ export function createBasicToast(toast: HTMLElement, options: any, onClose: Func
  */
 export function createEmergencyToast(options: any, onClose: Function): Promise<HTMLDivElement>;
 export function safeSetTimeout(fn: any, delay: any): Promise<number>;
+/**
+ * Append a Call-To-Action (CTA) element to the toast container.
+ * @param {HTMLElement} toast - Toast element
+ * @param {Object} options - Toast options
+ * @param {Function} onClose - Close callback
+ * @returns {HTMLElement} CTA element
+ * @example
+ * const toast = createToast({ ... });
+ * const cta = createCTA(toast, { cta: { label: "Visit our website", href: "https://www.example.com/", variant: "link" } });
+ */
+export function createCTA(toast: HTMLElement, options: any, onClose: Function): HTMLElement;
