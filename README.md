@@ -9,13 +9,20 @@ A **lightweight**, **zero-dependency** toast notification library for modern Jav
 
 ## ✨ Key Features
 
-- 🚫 **Zero Dependencies** - Lightweight and fast
+- 🚫 **Zero Dependencies** - Pure JavaScript with no external requirements Lightweight and fast
 - 🛡️ **Production Ready** - Reliable and scalable for production environments
 - 🎨 **Highly Customizable** - Colors, positions, animations, progress bars
 - 🌐 **Framework Agnostic** - Works with React, Vue, Angular, or vanilla JS
 - 📱 **Responsive** - Works on all screen sizes and devices
 - ⚡ **CDN Ready** - Easy integration via CDN or npm
-- 🔧 **TypeScript Ready** - Full type support (coming soon)
+- 🎨 **Fully Customizable** - Colors, positions, animations, and styling
+- ♿ **Accessible** - ARIA live regions and keyboard navigation support
+- 🔄 **Smart Grouping** - Duplicate notifications are automatically grouped with badges
+- ⏸️ **Pause on Hover** - CTA toasts pause when user hovers or focuses
+- 🎯 **Call-to-Action** - Built-in support for interactive buttons and links
+- 📊 **Queue Management** - Maximum 3 visible toasts with intelligent queueing
+- 🌈 **Multiple Themes** - Success, error, warning, and info styles
+- 🔧 **TypeScript Ready** - TypeScript definitions included Full type support (coming soon)
 
 ## 📦 Installation
 
@@ -67,31 +74,102 @@ Creates and displays a toast notification.
 
 #### Options
 
-| Parameter           | Type      | Default                 | Description                                   |
-| ------------------- | --------- | ----------------------- | --------------------------------------------- |
-| `message`           | `string`  | Based on `type`         | Toast message content                         |
-| `type`              | `string`  | `"info"`                | `"info"`, `"success"`, `"error"`, `"warning"` |
-| `duration`          | `number`  | `3000`                  | Auto-dismiss time in milliseconds             |
-| `position`          | `string`  | `"bottom-right"`        | Toast position on screen                      |
-| `backgroundColor`   | `string`  | Based on `type`         | Custom background color                       |
-| `textColor`         | `string`  | `"white"`               | Custom text color                             |
-| `showCloseButton`   | `boolean` | `false`                 | Show close (×) button                         |
-| `showProgressBar`   | `boolean` | `false`                 | Show countdown progress bar                   |
-| `animationDuration` | `string`  | `"0.5s"`                | CSS animation duration                        |
-| `animationEasing`   | `string`  | `"ease"`                | CSS animation easing function                 |
-| `progressColor`     | `string`  | `rgba(255,255,255,0.3)` | Progress bar color                            |
-| `progressHeight`    | `string`  | `"4px"`                 | Progress bar height                           |
-| `progressPosition`  | `string`  | `"bottom"`              | Progress bar position: `"top"` or `"bottom"`  |
+| Parameter           | Type      | Default                 | Description                                               |
+| ------------------- | --------- | ----------------------- | --------------------------------------------------------- |
+| `message`           | `string`  | Based on `type`         | Toast message content                                     |
+| `type`              | `string`  | `"info"`                | `"info"`, `"success"`, `"error"`, `"warning"`             |
+| `duration`          | `number`  | `3000`                  | Auto-dismiss time in milliseconds                         |
+| `position`          | `string`  | `"bottom-right"`        | Toast position on screen                                  |
+| `backgroundColor`   | `string`  | Based on `type`         | Custom background color                                   |
+| `textColor`         | `string`  | `"white"`               | Custom text color                                         |
+| `showCloseButton`   | `boolean` | `false`                 | Show close (×) button                                     |
+| `showProgressBar`   | `boolean` | `false`                 | Show countdown progress bar                               |
+| `animationDuration` | `string`  | `"0.5s"`                | CSS animation duration                                    |
+| `animationEasing`   | `string`  | `"ease"`                | CSS animation easing function                             |
+| `progressColor`     | `string`  | `rgba(255,255,255,0.3)` | Progress bar color                                        |
+| `progressHeight`    | `string`  | `"4px"`                 | Progress bar height                                       |
+| `progressPosition`  | `string`  | `"bottom"`              | Progress bar position: `"top"` or `"bottom"`              |
+| `pauseOnHover`      | `boolean` | `auto`                  | Pause timer on hover (auto: true for CTA toasts)          |
+| `cta`               | `object`  | `null`                  | Call-to-action configuration (see [CTA](#call-to-action)) |
 
 #### Position Options
 
 ```bash
+// Corner positions
+- "top-left", "top-right", "bottom-left", "bottom-right"
 
-- `"top-left"`, `"top-right"`, `"top-center"`, `"top-full-width"`
-- `"left-center"`, `"center"`, `"right-center"`
-- `"bottom-left"`, `"bottom-right"`, `"bottom-center"`, `"bottom-full-width"`
+// Edge positions
+- "top-center", "bottom-center", "left-center", "right-center"
+
+// Full width
+- "top-full-width", "bottom-full-width"
+
+// Center
+- "center"
 
 ```
+
+## 🎯 Call-to-Action (CTA)
+
+Add interactive buttons or links to your toasts:
+
+```bash
+// Button CTA
+createToast({
+message: "File uploaded successfully!",
+type: "success",
+cta: {
+label: "View File",
+onClick: () => {
+window.open('/files/latest');
+},
+autoClose: true // Close toast after click (default: true)
+}
+});
+
+// Link CTA
+createToast({
+message: "New version available!",
+cta: {
+label: "Download",
+href: "https://example.com/download",
+variant: "link",
+target: "_blank"
+}
+});
+
+// Advanced CTA with async action
+createToast({
+message: "Ready to sync your data?",
+cta: {
+label: "Sync Now",
+ariaLabel: "Start data synchronization",
+autoClose: false,
+onClick: async () => {
+await performDataSync();
+// Manually close if needed
+}
+}
+});
+
+```
+
+### CTA Options
+
+| Parameter   | Type       | Default    | Description                    |
+| ----------- | ---------- | ---------- | ------------------------------ |
+| `label`     | `string`   | `required` | Button/link text               |
+| `onClick`   | `function` | `null`     | Click handler (for buttons)    |
+| `href`      | `string`   | `null`     | URL (for links)                |
+| `variant`   | `string`   | `"button"` | `"button"` or `"link"`         |
+| `target`    | `string`   | `null`     | Link target (`"_blank"`, etc.) |
+| `rel`       | `string`   | `auto`     | Link relationship              |
+| `autoClose` | `boolean`  | `true`     | Close toast after CTA click    |
+| `ariaLabel` | `string`   | `label`    | Accessibility label            |
+
+## 🎨 Examples
+
+### All Toast Types
 
 ### `setDefaultColors(colors)`
 
@@ -182,6 +260,29 @@ createToast({ type: "success" }); // Uses your custom colors & messages
 
 ```
 
+## 🔄 Advanced Features
+
+### Smart Grouping
+
+Identical toasts (same type, message, and position) are automatically grouped:
+
+- Shows a single toast with a badge counter
+- Resets the dismiss timer when new duplicates arrive
+- Maximum of 3 toasts visible at once
+
+### Queue Management
+
+- Only 3 toasts are shown simultaneously
+- Additional toasts are queued automatically
+- Queue is processed as toasts are dismissed
+
+### Accessibility
+
+- ARIA live regions announce new toasts to screen readers
+- Keyboard navigation support (Tab, Enter, Escape)
+- High contrast badge design
+- Semantic HTML structure
+
 ## 🛡️ Reliability Features
 
 ### Production-Grade System
@@ -201,10 +302,10 @@ createToast({ type: "success" }); // Uses your custom colors & messages
 
 ## 📁 Bundle Information
 
-- **Size**: ~13KB minified, ~4KB gzipped
+- **Size**: ~8KB minified, ~4KB gzipped
 - **Dependencies**: Zero
 - **Formats**: UMD, ES Modules
-- **TypeScript**: Definitions included (coming soon)
+- **TypeScript**: Definitions included (full coming soon)
 
 ## 🤝 Contributing
 
