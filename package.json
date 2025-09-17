@@ -1,7 +1,7 @@
 {
   "name": "customizable-toast-notification",
   "version": "3.9.0",
-  "description": "A lightweight, zero-dependency toast notification library for modern JavaScript applications with production-grade reliability and comprehensive system  mechanisms",
+  "description": "A lightweight, zero-dependency toast notification library with CTA support for modern JavaScript applications with production-grade reliability and comprehensive system  mechanisms",
   "main": "dist/index.cjs",
   "module": "dist/index.esm.mjs",
   "unpkg": "dist/index.umd.js",
@@ -12,10 +12,25 @@
       "types": "./dist/index.d.ts",
       "import": "./dist/index.esm.mjs",
       "require": "./dist/index.cjs",
+      "script": "./dist/index.umd.js",
       "default": "./dist/index.umd.js"
     },
     "./package.json": "./package.json"
   },
+  "engines": {
+    "node": ">=14.0.0",
+    "npm": ">=6.0.0"
+  },
+  "browserslist": [
+    "> 0.25%",
+    "not dead",
+    "not ie 11",
+    "chrome >= 60",
+    "firefox >= 55",
+    "safari >= 10.1",
+    "edge >= 79",
+    "node >= 14"
+  ],
   "sideEffects": [
     false,
     "*.css"
@@ -52,7 +67,8 @@
     "test:e2e:ssupdate": "playwright test --update-snapshots",
     "test:e2e:debug": "playwright test --debug",
     "test:e2e:report": "playwright show-report",
-    "serve": "npx http-server . -p 3001 -c-1"
+    "serve": "npx http-server . -p 3001 -c-1",
+    "test:builds": "node scripts/test-builds.js"
   },
   "keywords": [
     "javascript",
@@ -121,8 +137,10 @@
     "CHANGELOG.md"
   ],
   "devDependencies": {
-    "@babel/preset-env": "^7.28.0",
+    "@babel/core": "^7.28.4",
+    "@babel/preset-env": "^7.28.3",
     "@playwright/test": "^1.54.1",
+    "@rollup/plugin-babel": "^6.0.4",
     "@rollup/plugin-commonjs": "^28.0.6",
     "@rollup/plugin-node-resolve": "^15.2.3",
     "@rollup/plugin-replace": "^6.0.2",
