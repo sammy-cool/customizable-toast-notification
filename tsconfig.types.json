@@ -1,10 +1,19 @@
 {
   "compilerOptions": {
+    "target": "ES2018",
+    "module": "ESNext",
+    "lib": ["ES2018", "DOM"],
     "allowJs": true,
     "declaration": true,
     "emitDeclarationOnly": true,
     "outDir": "dist/types",
-    "skipLibCheck": true
+    "skipLibCheck": true,
+    "strict": false,
+    "esModuleInterop": true,
+    "allowSyntheticDefaultImports": true,
+    "forceConsistentCasingInFileNames": true,
+    "moduleResolution": "node"
   },
-  "include": ["src/**/*"]
+  "include": ["src/**/*"],
+  "exclude": ["node_modules", "dist", "**/*.test.*"]
 }
