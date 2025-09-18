@@ -217,8 +217,8 @@ async function contrast(color) {
   // If color is a color name
   else {
     const colorMap = {
-      black: [0, 0, 0],
-      white: [255, 255, 255],
+      black: [255, 255, 255],
+      white: [0, 0, 0],
       // Add more color names as needed
     };
     const colorArray = colorMap[color.toLowerCase()];
