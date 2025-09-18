@@ -11,7 +11,7 @@
     <button onclick="testNonClosingCTA()">Non-Closing CTA</button>
     <button onclick="testAsyncCTA()">Async CTA</button>
     <button onclick="testGroupedCTA()">Test Grouping with CTA</button>
-    <button onclick="testPauseCTA()">Test Grouping with CTA</button>
+    <button onclick="testPauseCTA()">Test Pause with CTA</button>
 
     <script type="module">
       import { createToast } from "../../src/index.js";
@@ -60,7 +60,7 @@
             label: "Start Backup",
             onClick: async () => {
               console.log("Backup starting...");
-              await new Promise((r) => setTimeout(r, 1500));
+              await new Promise((r) => setTimeout(r, 3000));
               console.log("Backup done!");
             },
           },
@@ -81,15 +81,30 @@
       };
 
       // Automatically pauses on hover because it has a CTA
-      window.testPauseCTA = () =>
+      window.testPauseCTA = () => {
         createToast({
           message: "File uploaded successfully!",
           cta: {
             label: "View File",
             onClick: () => window.open("/dist/"),
           },
-          // pauseOnHover: true (automatic)
+          pauseOnHover: false,
         });
+
+        createToast({
+          message: "Ready to sync your data?",
+          duration: 500000,
+          cta: {
+            label: "Sync Now",
+            ariaLabel: "Start data synchronization",
+            autoClose: false,
+            onClick: async () => {
+              noop();
+              // Manually close if needed
+            },
+          },
+        });
+      };
     </script>
   </body>
 </html>
