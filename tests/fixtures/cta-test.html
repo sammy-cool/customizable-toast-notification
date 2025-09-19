@@ -12,17 +12,46 @@
     <button onclick="testAsyncCTA()">Async CTA</button>
     <button onclick="testGroupedCTA()">Test Grouping with CTA</button>
     <button onclick="testPauseCTA()">Test Pause with CTA</button>
+    <button onclick="closeNoop()">Test Pause with CTA</button>
 
     <script type="module">
-      import { createToast } from "../../src/index.js";
+      import {
+        createToast,
+        setDefaultColors,
+        setDefaultMessages,
+        noop,
+      } from "../../src/index.js";
 
       window.testBasicCTA = () => {
+        setDefaultColors({
+          info: "teal",
+          success: "orange",
+          error: "red",
+          warning: "rebeccapurple ",
+        });
+        setDefaultMessages({
+          info: "This is an informational message!",
+          success: "Your action was successful!",
+          error: "An error has occurred!",
+          warning: "This is a warning message!",
+        });
+        createToast();
         createToast({
-          message: "Task completed successfully!",
-          type: "success",
+          message: "This is a success toast notification!",
+          duration: 500000,
+          animationDuration: "1.5s",
+          animationEasing: "ease-in-out",
+          position: "top-full-width",
+          // type: "warning", // info, success, error, or warning
+          // backgroundColor: 'green', // Custom background color
+          // textColor: "orange", // Custom text color
+          showCloseButton: true,
           cta: {
-            label: "View Details",
-            onClick: () => alert("Viewing details..."),
+            autoClose: false, //toast close nhi hota by default close hoga instant nhi true case instant all toast closes
+            label: "Download",
+            href: "https://cdn.jsdelivr.net/npm/customizable-toast-notification",
+            variant: "link",
+            target: "_blank",
           },
         });
       };
@@ -99,11 +128,13 @@
             ariaLabel: "Start data synchronization",
             autoClose: false,
             onClick: async () => {
-              noop();
               // Manually close if needed
             },
           },
         });
+      };
+      window.closeNoop = () => {
+        noop();
       };
     </script>
   </body>

@@ -1,0 +1,111 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <title>Toast Accessibility Demo</title>
+    <style>
+      body {
+        font-family: sans-serif;
+        background: #f0f0f0;
+        padding: 2rem;
+      }
+      #toast {
+        display: inline-block;
+        padding: 1rem 2rem;
+        border-radius: 6px;
+        margin-top: 1rem;
+        font-weight: bold;
+        transition: all 0.3s ease;
+      }
+      button {
+        padding: 0.6rem 1.2rem;
+        border: none;
+        border-radius: 4px;
+        cursor: pointer;
+        background: #333;
+        color: #fff;
+        font-size: 1rem;
+        margin-right: 0.5rem;
+      }
+    </style>
+  </head>
+  <body>
+    <h1>Accessible Toast Demo</h1>
+    <button id="btnNormal">Random Normal Color</button>
+    <button id="btnTransparent">Random Transparent Color</button>
+    <div id="toast">Toast Message</div>
+
+    <script type="module">
+      import { getTextColor } from "../src/utils/dom.js";
+
+      const toast = document.getElementById("toast");
+      const btnNormal = document.getElementById("btnNormal");
+      const btnTransparent = document.getElementById("btnTransparent");
+
+      const normalColors = [
+        "black",
+        "white",
+        "#222",
+        "#ffcc00",
+        "rgb(200,50,50)",
+        "hsl(120 60% 30%)",
+        "rebeccapurple",
+      ];
+
+      const transparentColors = [
+        "rgba(0,0,0,0.5)",
+        "rgba(255,255,255,0.6)",
+        "#ff000080",
+        "hsla(200,100%,50%,0.3)",
+        "transparent",
+      ];
+
+      async function showToast(bg) {
+        const result = await getTextColor(bg);
+        console.log(result);
+        toast.style.background = bg;
+        toast.style.color = result.color;
+        toast.textContent = `BG: ${bg} | Text: ${
+          result.color
+        } | Contrast: ${result.contrast.toFixed(2)} | Used: ${result.used}`;
+
+        //Testing
+        async function processColors() {
+          const colors = [
+            // "black",
+            // "#000",
+            // "#000000",
+            // "#fff",
+            // "white",
+            // "rgb(200,50,50)",
+            "rgba(0,0,0,0.5)",
+            //     "rgba(255,255,255,0.6)",
+            //     "hsl(120 60% 30%)",
+            //     "transparent",
+            //     "rebeccapurple",
+          ];
+
+          for (const c of colors) {
+            const r = await getTextColor(c);
+            console.log(c, "->", r);
+          }
+        }
+        processColors();
+      }
+
+      btnNormal.addEventListener("click", () => {
+        const bg =
+          normalColors[Math.floor(Math.random() * normalColors.length)];
+        showToast(bg);
+      });
+
+      btnTransparent.addEventListener("click", () => {
+        const bg =
+          transparentColors[
+            Math.floor(Math.random() * transparentColors.length)
+          ];
+        showToast(bg);
+      });
+    </script>
+  </body>
+</html>
