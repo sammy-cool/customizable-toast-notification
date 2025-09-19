@@ -1,9 +1,9 @@
 // src/index.js
 "use strict";
 
-import { closeToast, showToast } from "./components/ToastManager.js";
+import { showToast } from "./components/ToastManager.js";
 import { getOrCreateToastContainer } from "./utils/containerRegistry.js";
-import { appendChild, getTextColor } from "./utils/dom.js";
+import { getTextColor } from "./utils/dom.js";
 import { setPosition } from "./utils/position.js";
 
 // Protected state with fallbacks
@@ -199,12 +199,18 @@ async function sanitizeToastOptions(options) {
 
     // Ensure textColor is set
     if (!final.textColor && final.backgroundColor) {
-      final.textColor = await getTextColor(final.backgroundColor);
+      const textColorResult = await getTextColor(final.backgroundColor);
+      final.textColor = textColorResult?.color;
     }
 
     // Ensure progressColor is set
     if (!final.progressColor && final.backgroundColor) {
-      final.progressColor = await getTextColor(final.backgroundColor);
+      if (final.textColor) {
+        final.progressColor = final.textColor;
+      } else {
+        const barColorResult = await getTextColor(final.backgroundColor);
+        final.progressColor = barColorResult?.color;
+      }
     }
   } catch (error) {
     console.warn("Option processing failed:", error);
@@ -244,10 +250,38 @@ function setDefaultMessages(messages) {
   }
 }
 
-function noop() {
-  const toast = document.querySelector('[id^="toast-"]:not([id*="container"])');
-  closeToast(toast);
-}
+/**
+ * Remove toast notifications from the DOM.
+ *
+ * @async
+ * @function noop
+ * @param {"all"} [mode] - If `"all"`, removes all matching toast elements.
+ *                         Otherwise, removes only the first matching toast.
+ * @returns {Promise<void>} Resolves when removal is attempted.
+ */
+const noop = async function (mode) {
+  try {
+    const selector =
+      mode === "all"
+        ? '[id^="toast-container-"][role="status"]'
+        : '[id^="toast-"]:not([id*="container"])';
+
+    const elements =
+      mode === "all"
+        ? document.querySelectorAll(selector)
+        : [document.querySelector(selector)].filter(Boolean);
+
+    elements.forEach((el) => {
+      if (typeof el?.remove === "function") {
+        el.remove();
+      } else if (el) {
+        throw new TypeError("Element exists but remove() is not a function");
+      }
+    });
+  } catch (error) {
+    console.error("noop failed @ignore:", error);
+  }
+};
 
 // Module exports
 export { createToast, setDefaultColors, setDefaultMessages, noop };
@@ -260,6 +294,7 @@ try {
       createToast,
       setDefaultColors,
       setDefaultMessages,
+      noop,
     };
   }
 } catch (error) {

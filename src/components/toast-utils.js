@@ -134,9 +134,7 @@ export async function applyRichStyling(toast, options, onClose) {
   //TODO LATER Icons (auto dark/light fallback)
   // messageSpan.style.color =
   //   options.iconColor ||
-  //   (window.matchMedia("(prefers-color-scheme: dark)").matches
-  //     ? "#f5f5f5"
-  //     : "#111111");
+  // (window.matchMedia("(prefers-color-scheme: dark)").matches ? "#f5f5f5" : "#111111");
 
   // Colors (auto dark/light fallback)
   messageSpan.style.color = options.textColor;
