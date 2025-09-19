@@ -13,7 +13,7 @@ export function showToast(options?: any): Promise<void>;
 /**
  * Closes a toast notification immediately.
  * If the toast is not found in the active toasts map, this function does nothing.
- * @param {HTMLElement} toast - The toast element to close.
+ * @param {HTMLElement|null} toast - The toast element to close.
  * @returns {Promise<void>} A promise that resolves when the toast is fully removed from the DOM.
  */
-export function closeToast(toast: HTMLElement): Promise<void>;
+export function closeToast(toast: HTMLElement | null): Promise<void>;
