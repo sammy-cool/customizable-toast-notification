@@ -127,23 +127,23 @@ export default [
   },
 
   // 🔵 CJS build (Node.js, older bundlers)
-  {
-    input: "src/index.js",
-    output: {
-      file: "dist/index.cjs",
-      format: "cjs",
-      exports: "named", // 🎯 Ensure named exports work
-      sourcemap: true,
-      banner,
-      interop: "auto",
-    },
-    external: [
-      ...Object.keys(pkg.dependencies || {}),
-      ...Object.keys(pkg.peerDependencies || {}),
-    ],
-    plugins: [
-      ...getCommonPlugins("cjs"),
-      filesize({ showMinifiedSize: false, showGzippedSize: true }),
-    ],
-  },
+  // {
+  //   input: "src/index.js",
+  //   output: {
+  //     file: "dist/index.cjs",
+  //     format: "cjs",
+  //     exports: "named", // 🎯 Ensure named exports work
+  //     sourcemap: true,
+  //     banner,
+  //     interop: "auto",
+  //   },
+  //   external: [
+  //     ...Object.keys(pkg.dependencies || {}),
+  //     ...Object.keys(pkg.peerDependencies || {}),
+  //   ],
+  //   plugins: [
+  //     ...getCommonPlugins("cjs"),
+  //     filesize({ showMinifiedSize: false, showGzippedSize: true }),
+  //   ],
+  // },
 ];
