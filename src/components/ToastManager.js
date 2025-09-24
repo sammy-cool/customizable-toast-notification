@@ -30,16 +30,16 @@ function hashString(str) {
  * @param {Object} options - Toast options with type, message, and position.
  * @returns {string} A unique key for the toast notification.
  */
-function makeKey({
-  type = options.type,
-  message = options.message || "",
-  position = options.position,
-}) {
-  return [
-    String(type).trim().toLowerCase(),
-    hashString(String(message)).toString(16),
-    String(position).trim().toLowerCase(),
-  ].join("|");
+function makeKey(options = {}) {
+  const type = String(options.type || "info")
+    .trim()
+    .toLowerCase();
+  const message = options.message || "";
+  const position = String(options.position || "bottom-right")
+    .trim()
+    .toLowerCase();
+
+  return [type, hashString(String(message)).toString(16), position].join("|");
 }
 
 /**

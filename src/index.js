@@ -62,11 +62,32 @@ async function checkDOMReady() {
   }
 }
 
-// Core toast creation logic
+/**
+ * Core toast creation logic
+ * @param {Object} options - Toast options
+ * @returns {Promise<void>} Toast creation promise
+ */
 async function createToastNow(options = {}) {
   try {
+    /**
+     * Sanitize toast options and fill in defaults
+     * @param {Object} options - Toast options
+     * @returns {Promise<Object>} Sanitized toast options promise
+     */
     const sanitizedOptions = await sanitizeToastOptions(options);
+
+    /**
+     * Create the first toast container for a given position
+     * @param {Object} options - Sanitized toast options
+     * @returns {Promise<HTMLElement>} Toast container promise
+     */
     await createFirstToastContainer(sanitizedOptions);
+
+    /**
+     * Show the toast notification with given options
+     * @param {Object} options - Sanitized toast options
+     * @returns {Promise<void>} Show toast promise
+     */
     await showToast(sanitizedOptions);
   } catch (error) {
     console.error("CreateToast failed:", error);
@@ -108,7 +129,12 @@ async function createToast(options = {}) {
   if (!initialDelayDone) {
     // First call → wait 2 seconds
     initialDelayDone = true;
-    setTimeout(await createToastNow(options), 2000);
+    setTimeout(() => {
+      // run and catch errors so they don't bubble to global
+      createToastNow(options).catch((err) =>
+        console.error("createToastNow (delayed) failed:", err)
+      );
+    }, 2000);
   } else {
     // Subsequent calls → run immediately
     await createToastNow(options);
