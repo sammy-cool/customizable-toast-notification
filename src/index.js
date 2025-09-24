@@ -260,10 +260,8 @@ function setDefaultMessages(messages) {
  * @returns {Promise<void>} Resolves when removal is attempted.
  */
 const noop = async function () {
-  let toastContainer = document.querySelector(
-    '[id^="toast-"]:not([id*="container"])'
-  );
-  closeToast(toastContainer);
+  let toast = document.querySelector('[id^="toast-"]:not([id*="container"])');
+  await closeToast(toast);
 };
 
 // Module exports
