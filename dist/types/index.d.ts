@@ -16,4 +16,4 @@ export function setDefaultMessages(messages: any): void;
  *                         Otherwise, removes only the first matching toast.
  * @returns {Promise<void>} Resolves when removal is attempted.
  */
-export function noop(mode?: "all"): Promise<void>;
+export function noop(): Promise<void>;

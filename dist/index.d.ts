@@ -16,6 +16,6 @@ declare function setDefaultMessages(messages: any): void;
  *                         Otherwise, removes only the first matching toast.
  * @returns {Promise<void>} Resolves when removal is attempted.
  */
-declare function noop(mode?: "all"): Promise<void>;
+declare function noop(): Promise<void>;
 
 export { createToast, noop, setDefaultColors, setDefaultMessages };
