@@ -1,8 +1,8 @@
 # 🍞 Customizable Toast Notifications
 
-[![npm version](https://badge.fury.io/js/customizable-toast-notification.svg)](https://www.npmjs.com/package/customizable-toast-notification)
+![npm](https://img.shields.io/npm/v/customizable-toast-notification)
+![npm downloads](https://img.shields.io/npm/dm/customizable-toast-notification)
 [![License: Apache-2.0](https://img.shields.io/badge/License-Apache%202.0-blue.svg)](https://opensource.org/licenses/Apache-2.0)
-[![Downloads](https://img.shields.io/npm/dm/customizable-toast-notification.svg)](https://www.npmjs.com/package/customizable-toast-notification)
 [![Bundle Size](https://img.shields.io/bundlephobia/minzip/customizable-toast-notification)](https://bundlephobia.com/package/customizable-toast-notification)
 
 A **lightweight**, **zero-dependency** toast notification library for modern JavaScript applications. Built with production-grade reliability and comprehensive secret mechanisms.
@@ -55,14 +55,36 @@ duration: 3000
 
 ```
 
-### CDN/Browser (UMD Build)
+### CDN/Browser (UMD Build) / Quick Try with jsDelivr
 
 ```bash
 Global Variable Name: customizableToast
 
-<script src="https://cdn.jsdelivr.net/npm/customizable-toast-notification@latest/dist/index.umd.js"></script>
+<!-- Always latest version -->
+<script src="https://cdn.jsdelivr.net/npm/customizable-toast-notification/dist/index.umd.js"></script>
 
-<script> customizableToast.createToast({ message: "Hello from CDN!", type: "success", position: "top-right" }); </script>
+<!-- OR pin to a specific version (recommended for stability) -->
+<script src="https://cdn.jsdelivr.net/npm/customizable-toast-notification@3.9.5/dist/index.umd.js"></script>
+
+<script>
+  // Access the global UMD export
+  customizableToast.createToast({
+    message: "Hello from jsDelivr! 🚀",
+    backgroundColor: "black",
+    textColor: "snow",
+    position: "top-center",
+    animationDuration: "3s",
+    animationEasing: "ease",
+    progressPosition: "top",
+    cta: {
+        autoClose: false,
+        label: "Check Pkg!",
+        href: "https://www.npmjs.com/package/customizable-toast-notification",
+        variant: "link",
+        target: "_blank"
+    }
+  });
+</script>
 
 ```
 
@@ -321,6 +343,10 @@ npm install
 npm run build
 
 ```
+
+[![npm version](https://badge.fury.io/js/customizable-toast-notification.svg)](https://www.npmjs.com/package/customizable-toast-notification)
+[![License: Apache-2.0](https://img.shields.io/badge/License-Apache%202.0-blue.svg)](https://opensource.org/licenses/Apache-2.0)
+[![Downloads](https://img.shields.io/npm/dm/customizable-toast-notification.svg)](https://www.npmjs.com/package/customizable-toast-notification)
 
 ## 📄 License
 

@@ -2,7 +2,7 @@
   "name": "customizable-toast-notification",
   "version": "3.9.4",
   "description": "A lightweight, zero-dependency toast notification library with CTA support for modern JavaScript applications with production-grade reliability and comprehensive system  mechanisms",
-  "main": "dist/index.cjs",
+  "main": "dist/index.esm.mjs",
   "module": "dist/index.esm.mjs",
   "unpkg": "dist/index.umd.js",
   "jsdelivr": "dist/index.umd.js",
@@ -11,7 +11,6 @@
     ".": {
       "types": "./dist/index.d.ts",
       "import": "./dist/index.esm.mjs",
-      "require": "./dist/index.cjs",
       "script": "./dist/index.umd.js",
       "default": "./dist/index.umd.js"
     },
@@ -44,7 +43,7 @@
     "zone-build": "npm run dist:clean && npm run build:js && npm run build:types",
     "postinstall": "node postinstall.js",
     "build": "rollup -c",
-    "test:builds": "node scripts/test-builds.js"
+    "test:builds": "node scripts/test-build.js"
   },
   "keywords": [
     "javascript",
@@ -101,8 +100,6 @@
   "license": "Apache-2.0",
   "files": [
     "postinstall.js",
-    "dist/index.cjs",
-    "dist/index.cjs.map",
     "dist/index.esm.mjs",
     "dist/index.esm.mjs.map",
     "dist/index.umd.js",
@@ -138,5 +135,11 @@
   "bugs": {
     "url": "https://github.com/sammy-cool/customizable-toast-notification/issues"
   },
-  "homepage": "https://github.com/sammy-cool/customizable-toast-notification#readme"
+  "homepage": "https://github.com/sammy-cool/customizable-toast-notification#readme",
+  "funding": [
+    {
+      "type": "individual",
+      "url": "https://paypal.me/priyanshupatel1"
+    }
+  ]
 }
