@@ -1,7 +1,7 @@
 // src/index.js
 "use strict";
 
-import { showToast } from "./components/ToastManager.js";
+import { closeToast, showToast } from "./components/ToastManager.js";
 import { getOrCreateToastContainer } from "./utils/containerRegistry.js";
 import { getTextColor } from "./utils/dom.js";
 import { setPosition } from "./utils/position.js";
@@ -259,28 +259,11 @@ function setDefaultMessages(messages) {
  *                         Otherwise, removes only the first matching toast.
  * @returns {Promise<void>} Resolves when removal is attempted.
  */
-const noop = async function (mode) {
-  try {
-    const selector =
-      mode === "all"
-        ? '[id^="toast-container-"][role="status"]'
-        : '[id^="toast-"]:not([id*="container"])';
-
-    const elements =
-      mode === "all"
-        ? document.querySelectorAll(selector)
-        : [document.querySelector(selector)].filter(Boolean);
-
-    elements.forEach((el) => {
-      if (typeof el?.remove === "function") {
-        el.remove();
-      } else if (el) {
-        throw new TypeError("Element exists but remove() is not a function");
-      }
-    });
-  } catch (error) {
-    console.error("noop failed @ignore:", error);
-  }
+const noop = async function () {
+  let toastContainer = document.querySelector(
+    '[id^="toast-"]:not([id*="container"])'
+  );
+  closeToast(toastContainer);
 };
 
 // Module exports
