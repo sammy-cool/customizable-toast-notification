@@ -344,10 +344,6 @@ npm run build
 
 ```
 
-[![npm version](https://badge.fury.io/js/customizable-toast-notification.svg)](https://www.npmjs.com/package/customizable-toast-notification)
-[![License: Apache-2.0](https://img.shields.io/badge/License-Apache%202.0-blue.svg)](https://opensource.org/licenses/Apache-2.0)
-[![Downloads](https://img.shields.io/npm/dm/customizable-toast-notification.svg)](https://www.npmjs.com/package/customizable-toast-notification)
-
 ## 📄 License
 
 This project is licensed under the [Apache-2.0 License](LICENSE).
