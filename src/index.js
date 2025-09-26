@@ -101,9 +101,20 @@ async function createToastNow(options = {}) {
   }
 }
 
-let initialDelayDone = false; // flag to ensure single execution
-
 // Public API
+/**
+ * @typedef {Object} ToastOptions
+ * @property {string} [message] - Toast message
+ * @property {'success'|'error'|'warning'|'info'} [type] - Toast type
+ * @property {number} [duration] - Duration in ms
+ * @property {string} [position] - Toast position
+ */
+
+/**
+ * Create toast notification
+ * @param {ToastOptions} options - Toast configuration
+ * @returns {Promise<void>}
+ */
 async function createToast(options = {}) {
   // Check browser environment
   const isBrowser =
@@ -125,20 +136,7 @@ async function createToast(options = {}) {
     return;
   }
 
-  // If DOM ready → execute after 2s delay
-  if (!initialDelayDone) {
-    // First call → wait 2 seconds
-    initialDelayDone = true;
-    setTimeout(() => {
-      // run and catch errors so they don't bubble to global
-      createToastNow(options).catch((err) =>
-        console.error("createToastNow (delayed) failed:", err)
-      );
-    }, 2000);
-  } else {
-    // Subsequent calls → run immediately
-    await createToastNow(options);
-  }
+  await createToastNow(options);
 }
 
 async function createFirstToastContainer(options) {
