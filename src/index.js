@@ -102,19 +102,6 @@ async function createToastNow(options = {}) {
 }
 
 // Public API
-/**
- * @typedef {Object} ToastOptions
- * @property {string} [message] - Toast message
- * @property {'success'|'error'|'warning'|'info'} [type] - Toast type
- * @property {number} [duration] - Duration in ms
- * @property {string} [position] - Toast position
- */
-
-/**
- * Create toast notification
- * @param {ToastOptions} options - Toast configuration
- * @returns {Promise<void>}
- */
 async function createToast(options = {}) {
   // Check browser environment
   const isBrowser =
