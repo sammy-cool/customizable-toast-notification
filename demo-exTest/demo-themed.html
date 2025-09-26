@@ -1,0 +1,137 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Customizable Toast Notification - Themed Demo</title>
+
+    <!-- Load your library from jsDelivr -->
+    <script src="https://cdn.jsdelivr.net/npm/customizable-toast-notification/dist/index.umd.js"></script>
+
+    <style>
+      :root {
+        /* Base toast tokens */
+        --toast-bg: #333;
+        --toast-color: #fff;
+        --toast-border-radius: 8px;
+        --toast-padding: 14px 22px;
+        --toast-shadow: 0 6px 14px rgba(0, 0, 0, 0.25);
+
+        /* Motion tokens */
+        --toast-animation-duration: 600ms;
+        --toast-animation-easing: cubic-bezier(
+          0.68,
+          -0.55,
+          0.27,
+          1.55
+        ); /* bouncey */
+        --toast-enter-offset: 40px;
+        --toast-exit-offset: -40px;
+
+        /* Brand-specific overrides */
+        --toast-success-bg: linear-gradient(135deg, #4facfe, #00f2fe);
+        --toast-error-bg: linear-gradient(135deg, #f85032, #e73827);
+        --toast-warning-bg: linear-gradient(135deg, #f7971e, #ffd200);
+        --toast-info-bg: linear-gradient(135deg, #43cea2, #185a9d);
+      }
+
+      body {
+        font-family: "Segoe UI", system-ui, sans-serif;
+        background: var(--page-bg, #f0f4f9);
+        color: var(--page-text, #222);
+        padding: 2rem;
+        transition: background 0.3s, color 0.3s;
+      }
+
+      h1 {
+        margin-bottom: 1rem;
+      }
+
+      .controls {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 1rem;
+      }
+
+      button {
+        padding: 12px 18px;
+        border: none;
+        border-radius: 6px;
+        cursor: pointer;
+        font-size: 14px;
+        font-weight: 600;
+        transition: transform 0.2s;
+      }
+      button:hover {
+        transform: scale(1.07);
+      }
+
+      .success {
+        background: #4facfe;
+        color: #fff;
+      }
+      .error {
+        background: #f85032;
+        color: #fff;
+      }
+      .warning {
+        background: #f7971e;
+        color: #000;
+      }
+      .info {
+        background: #43cea2;
+        color: #fff;
+      }
+      .theme-toggle {
+        background: #333;
+        color: #fff;
+      }
+
+      /* Dark mode */
+      .dark {
+        --page-bg: #111;
+        --page-text: #eee;
+        --toast-bg: #1c1c1c;
+        --toast-color: #eee;
+        --toast-shadow: 0 6px 16px rgba(0, 0, 0, 0.5);
+      }
+    </style>
+  </head>
+  <body>
+    <h1>🎨 Themed Toasts Demo</h1>
+    <p>
+      Click below to see branded toasts with gradients, custom animations, and
+      dark mode support:
+    </p>
+
+    <div class="controls">
+      <button class="success" onclick="showToast('success')">
+        Success Toast
+      </button>
+      <button class="error" onclick="showToast('error')">Error Toast</button>
+      <button class="warning" onclick="showToast('warning')">
+        Warning Toast
+      </button>
+      <button class="info" onclick="showToast('info')">Info Toast</button>
+      <button class="theme-toggle" onclick="toggleTheme()">
+        Toggle Dark Mode
+      </button>
+    </div>
+
+    <script>
+      function showToast(type) {
+        customizableToast.createToast({
+          message: `🔥 This is a ${type} toast with custom theming!`,
+          type,
+          position: "top-right",
+          duration: 4000,
+          className: type + "-themed",
+        });
+      }
+
+      function toggleTheme() {
+        document.body.classList.toggle("dark");
+      }
+    </script>
+  </body>
+</html>
