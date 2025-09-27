@@ -202,7 +202,11 @@
 
       // Test utility functions for manual testing
       window.testBasicToast = function () {
-        createToast({ message: "E2E Test Message", type: "info" });
+        createToast({
+          message: "E2E Test Message",
+          type: "info",
+          borderRadius: "0px",
+        });
         updateStatus("Basic toast created");
       };
 
@@ -213,6 +217,7 @@
           message: message,
           type: "warning",
           showCloseButton: true,
+          borderRadius: "0px",
         });
         updateStatus("Long message toast created");
       };
