@@ -152,7 +152,7 @@ async function createOne(options, key, initialCount) {
     Object.assign(inner.style, {
       position: "relative",
       overflow: "hidden",
-      borderRadius: options.borderRadius || "8px",
+      // borderRadius: options.borderRadius || "8px",
       zIndex: "1",
     });
 

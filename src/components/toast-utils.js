@@ -38,12 +38,18 @@ export async function createCloseButton(toast, options, onClose) {
  */
 export async function createProgressBar(toast, options) {
   const progressBar = document.createElement("div");
+  const borderRadiusStr = options.borderRadius || 0;
+  const borderRadiusNum = parseInt(borderRadiusStr, 10);
+  const newRadiusSub = borderRadiusNum - 10 + "px";
+  const finalWidth = borderRadiusNum ? `calc(100% - ${newRadiusSub})` : "100%";
+  const leftVal = borderRadiusNum ? "12px" : "0";
+
   Object.assign(progressBar.style, {
     position: "absolute",
-    left: "0",
+    left: `${leftVal}`,
     height: options.progressHeight || "4px",
     background: options.progressColor || "rgba(255, 255, 255, 0.3)",
-    width: "100%",
+    width: `${finalWidth}`,
     transition: `width ${options.duration || 1800}ms linear`,
     [options.progressPosition === "top" ? "top" : "bottom"]: "0",
   });
