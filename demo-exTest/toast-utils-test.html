@@ -1,0 +1,36 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta http-equiv="X-UA-Compatible" content="ie=edge" />
+    <title>Toast Notification Example</title>
+  </head>
+  <body>
+    <script type="module">
+      import { createEmergencyToast } from "../src/components/toast-utils.js";
+
+      // Trigger an emergency toast
+      createEmergencyToast(
+        {
+          message: "Test emergency 1",
+          duration: 3000,
+          borderRadius: "20px",
+        },
+        (el) => {
+          console.log("Emergency toast closed:", el);
+        }
+      );
+
+      // Trigger an emergency toast
+      setTimeout(() => {
+        createEmergencyToast(
+          { message: "Test emergency 2", duration: 2500 },
+          (el) => {
+            console.log("Emergency toast closed:", el);
+          }
+        );
+      }, 5000);
+    </script>
+  </body>
+</html>
