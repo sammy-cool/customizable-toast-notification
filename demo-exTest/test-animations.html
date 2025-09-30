@@ -1,0 +1,171 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <title>Toast Library Full Test</title>
+    <style>
+      body {
+        font-family: sans-serif;
+        padding: 20px;
+      }
+      button {
+        margin: 5px;
+        padding: 8px 12px;
+      }
+      #container {
+        position: fixed;
+        top: 20px;
+        right: 20px;
+        width: 350px;
+      }
+    </style>
+  </head>
+  <body>
+    <h1>Toast Library Full Test</h1>
+    <div>
+      <button onclick="testDefault()">Default (slideUp)</button>
+      <button onclick="testFadeIn()">fadeIn</button>
+      <button onclick="testSlideDown()">slideDown</button>
+      <button onclick="testSlideLeft()">slideLeft</button>
+      <button onclick="testSlideRight()">slideRight</button>
+      <button onclick="testZoomIn()">zoomIn</button>
+      <button onclick="testPopIn()">popIn</button>
+      <button onclick="testSmartTop()">smart (top)</button>
+      <button onclick="testSmartBottom()">smart (bottom)</button>
+      <button onclick="testCustomDuration()">Custom Duration</button>
+      <button onclick="testCustomEasing()">Custom Easing</button>
+      <button onclick="testDisable()">No Animation</button>
+      <button onclick="testReducedMotion()">Reduced Motion</button>
+      <button onclick="testWithProgress()">With Progress Bar</button>
+      <button onclick="testWithClose()">With Close Button</button>
+      <button onclick="testWithCTA()">With CTA</button>
+      <button onclick="testQueue()">Queue Overflow (6 toasts)</button>
+    </div>
+
+    <div id="container"></div>
+
+    <script src="../dist/index.umd.js"></script>
+    <script>
+      //   const { customizableToast.createToast, clearAllToasts } = customizableToast;
+      // Utility to clear container before queue test
+      function testQueue() {
+        customizableToast.noop();
+        for (let i = 1; i <= 6; i++) {
+          customizableToast.createToast({
+            message: "Toast #" + i,
+            duration: 3000,
+            showCloseButton: true,
+          });
+        }
+      }
+
+      function testDefault() {
+        customizableToast.createToast({ message: "Default slideUp (300ms)" });
+      }
+      function testFadeIn() {
+        customizableToast.createToast({
+          message: "fadeIn animation",
+          animationType: "fadeIn",
+        });
+      }
+      function testSlideDown() {
+        customizableToast.createToast({
+          message: "slideDown animation",
+          animationType: "slideDown",
+          position: "bottom-center",
+        });
+      }
+      function testSlideLeft() {
+        customizableToast.createToast({
+          message: "slideLeft animation",
+          animationType: "slideLeft",
+          position: "top-right",
+        });
+      }
+      function testSlideRight() {
+        customizableToast.createToast({
+          message: "slideRight animation",
+          animationType: "slideRight",
+          position: "bottom-left",
+        });
+      }
+      function testZoomIn() {
+        customizableToast.createToast({
+          message: "zoomIn animation",
+          animationType: "zoomIn",
+          animationDuration: "0.5s",
+        });
+      }
+      function testPopIn() {
+        customizableToast.createToast({
+          message: "popIn animation",
+          animationType: "popIn",
+          animationEasing: "cubic-bezier(0.68, -0.55, 0.265, 1.55)",
+        });
+      }
+      function testSmartTop() {
+        customizableToast.createToast({
+          message: "smart animation (top-center)",
+          animationType: "smart",
+          position: "top-center",
+        });
+      }
+      function testSmartBottom() {
+        customizableToast.createToast({
+          message: "smart animation (bottom-center)",
+          animationType: "smart",
+          position: "bottom-center",
+        });
+      }
+      function testCustomDuration() {
+        customizableToast.createToast({
+          message: "Custom duration 1s",
+          animationDuration: "1s",
+        });
+      }
+      function testCustomEasing() {
+        customizableToast.createToast({
+          message: "Custom easing ease-in-out",
+          animationEasing: "ease-in-out",
+        });
+      }
+      function testDisable() {
+        customizableToast.createToast({
+          message: "No animation",
+          animation: false,
+        });
+      }
+      function testReducedMotion() {
+        customizableToast.createToast({
+          message: "Ignore reduced motion",
+          ignoreReducedMotion: true,
+          animationType: "zoomIn",
+        });
+      }
+      function testWithProgress() {
+        customizableToast.createToast({
+          message: "Progress bar example",
+          showProgressBar: true,
+          duration: 5000,
+        });
+      }
+      function testWithClose() {
+        customizableToast.createToast({
+          message: "Close button example",
+          showCloseButton: true,
+        });
+      }
+      function testWithCTA() {
+        customizableToast.createToast({
+          message: "CTA example",
+          cta: {
+            label: "Click Me",
+            onClick: () => alert("CTA clicked"),
+            href: null,
+            autoClose: true,
+          },
+        });
+      }
+    </script>
+  </body>
+</html>
