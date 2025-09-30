@@ -86,7 +86,7 @@ export async function applyRichStyling(toast, options, onClose) {
     options.animationDuration
   );
 
-  // Apply full styling
+  // Core toast container styling
   Object.assign(toast.style, {
     background: options.backgroundColor,
     padding: "12px 20px",
@@ -104,88 +104,40 @@ export async function applyRichStyling(toast, options, onClose) {
     transition: `opacity ${options.animationDuration} ${options.animationEasing}, transform ${options.animationDuration} ${options.animationEasing}`,
     transform: "translateY(20px)",
     zIndex: "9999",
-    // willChange: "opacity, transform",
   });
-
-  // TODO! Later
-  // await animateElement(toast, {
-  //   animationType: options.animationType,
-  //   duration: animDurationMs,
-  //   easing: options.animationEasing,
-  // });
 
   toast._animationDuration = animDurationMs;
 
-  // Message span
+  // Create message span
   const messageSpan = document.createElement("span");
-
-  // Layout & positioning
-  messageSpan.style.position = options.fontPosition;
-  messageSpan.style.display = "inline-block"; // ensure consistent layout
-  messageSpan.style.flex = "1";
-
-  // Spacing & container styling
-  messageSpan.style.padding = options.fontPadding;
-  messageSpan.style.borderRadius = options.fontBorderRadius;
-  messageSpan.style.background = options.fontBackgroundColor;
-
-  // Font stack (system + emoji + fallback)
-  messageSpan.style.fontFamily = options.fontFamily;
-
-  // Font size & readability
-  messageSpan.style.fontSize = options.fontSize; // minimum for readability
-  messageSpan.style.fontWeight = options.fontWeight;
-  messageSpan.style.lineHeight = options.fontLineHeight; // balance readability
-
-  //TODO LATER Icons (auto dark/light fallback)
-  // messageSpan.style.color =
-  //   options.iconColor ||
-  // (window.matchMedia("(prefers-color-scheme: dark)").matches ? "#f5f5f5" : "#111111");
-
-  // Colors (auto dark/light fallback)
-  messageSpan.style.color = options.textColor;
-
-  // Accessibility
-  messageSpan.style.userSelect = "text"; // allow copy/paste if needed
-  messageSpan.style.wordBreak = "break-word"; // avoid layout breaking on long strings
-  messageSpan.style.direction = options.fontDirection; // RTL/LTR auto-detect
-  // ✅ Multi-line ellipsis (max 3 lines)
-  messageSpan.style.webkitLineClamp = "3"; // maximum 3 lines
-  messageSpan.style.webkitBoxOrient = "vertical";
-  messageSpan.style.whiteSpace = options.wrapText ? "normal" : "nowrap"; // allow wrapping if wanted
-  messageSpan.style.display = "block";
-  messageSpan.style.overflow = "hidden";
-  messageSpan.style.textOverflow = "ellipsis";
-  messageSpan.style.lineClamp = "3"; // modern property
-  messageSpan.style.boxOrient = "vertical"; // non-prefixed
-  messageSpan.style.display = "-webkit-box";
-  // messageSpan.style.mixBlendMode = "difference";
-  // Assign message
+  Object.assign(messageSpan.style, {
+    flex: "1",
+    padding: options.fontPadding,
+    fontFamily: options.fontFamily,
+    fontSize: options.fontSize,
+    fontWeight: options.fontWeight,
+    lineHeight: options.fontLineHeight,
+    color: options.textColor,
+    userSelect: "text",
+    wordBreak: "break-word",
+    direction: options.fontDirection,
+    display: "-webkit-box",
+    WebkitLineClamp: "3",
+    WebkitBoxOrient: "vertical",
+    overflow: "hidden",
+    textOverflow: "ellipsis",
+  });
   messageSpan.textContent = options.message;
-  messageSpan.setAttribute("aria-label", "Toast Notification Center");
-  messageSpan.setAttribute("title", options.message);
-  // Add to toast
+  messageSpan.setAttribute("title", options.message); // Native tooltip
+  messageSpan.setAttribute("aria-label", options.message);
   toast.appendChild(messageSpan);
 
-  // TODO Icon Later
-  // if (options.icon) {
-  //   createIcon(toast, options);
-  // }
-
-  // CTA factory that appends a safe, keyboard‑accessible button/link at the end of the row
+  // CTA, close button, and progress bar remain unchanged
   await createCTA(toast, options, onClose);
+  if (options.showCloseButton) await createCloseButton(toast, options, onClose);
+  if (options.showProgressBar) await createProgressBar(toast, options);
 
-  // Close button
-  if (options.showCloseButton) {
-    await createCloseButton(toast, options, onClose);
-  }
-
-  // Progress bar
-  if (options.showProgressBar) {
-    await createProgressBar(toast, options);
-  }
-
-  // Animation
+  // Start animation
   await runToastAnimation(toast);
 }
 
