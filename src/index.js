@@ -157,7 +157,7 @@ async function sanitizeToastOptions(options) {
 
   const defaults = {
     pauseOnHover: undefined,
-    duration: 1800,
+    duration: 2500,
     position: "bottom-right",
     type: "info",
     borderRadius: "50px",
