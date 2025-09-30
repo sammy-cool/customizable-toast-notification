@@ -281,61 +281,55 @@ async function injectToastStyles() {
  */
 export async function createEmergencyToast(options, onClose) {
   try {
-    // Create emergency div
     const emergency = document.createElement("div");
-    emergency.id = `emergency-${Date.now()}`;
-    emergency.innerHTML = `
-      <div style="
-        background: #333 !important;
-        color: white !important;
-        padding: 10px 15px !important;
-        position: fixed !important;
-        top: 20px !important;
-        right: 20px !important;
-        z-index: 99999 !important;
-        border-radius: 3px !important;
-        max-width: 250px !important;
-        word-wrap: break-word !important;
-        font-family: Arial, sans-serif !important;
-        font-size: 14px !important;
-        box-shadow: 0 2px 10px rgba(0,0,0,0.3) !important;
-        cursor: pointer !important;
-      " onclick="this.parentNode.removeChild(this)">
-        ${options.message || "Emergency Toast Creation Showing!"}
-        <span style="float: right; margin-left: 10px; font-weight: bold;">&times;</span>
-      </div>
-    `;
+    Object.assign(emergency.style, {
+      background: "#333",
+      color: "snow",
+      padding: "10px 15px",
+      position: "fixed",
+      top: "20px",
+      right: "20px",
+      zIndex: "99999",
+      borderRadius: "3px",
+      maxWidth: "250px",
+      wordWrap: "break-word",
+      boxShadow: "0 2px 10px rgba(0,0,0,0.3)",
+      cursor: "pointer",
+    });
 
-    emergency._animationDuration = 500;
-    emergency._isEmergencyToast = true;
+    const messageSpan = document.createElement("span");
+    messageSpan.textContent =
+      options.message || "Emergency Toast Creation Showing!";
+    emergency.appendChild(messageSpan);
 
-    // Auto remove
+    const closeSpan = document.createElement("span");
+    closeSpan.textContent = "×";
+    Object.assign(closeSpan.style, {
+      float: "right",
+      marginLeft: "10px",
+      fontWeight: "bold",
+    });
+    closeSpan.onclick = () => {
+      emergency.remove();
+      onClose(emergency);
+    };
+    emergency.appendChild(closeSpan);
+
+    //Append to body and schedule auto‐dismiss
+    document.body.appendChild(emergency);
     setTimeout(() => {
-      try {
-        if (emergency.parentNode) {
-          emergency.parentNode.removeChild(emergency);
-        }
-        onClose(emergency);
-      } catch (error) {
-        console.warn("Emergency cleanup failed:", error);
-      }
-    }, options.duration || 1800);
+      emergency.remove();
+      onClose(emergency);
+    }, options.duration);
 
     return emergency;
-  } catch (emergencyError) {
-    console.error("Emergency toast creation failed:", emergencyError);
-
-    // ULTIMATE FALLBACK: Alert
+  } catch (error) {
+    console.error("Emergency toast creation failed:", error);
+    // Fallback to window.alert if even this fails
     setTimeout(() => {
-      try {
-        alert(options.message || "Toast Creation Failed!");
-        onClose(null);
-      } catch (alertError) {
-        console.error("Ultimate fallback failed:", alertError);
-        onClose(null);
-      }
+      alert(options.message || "Emergency Toast Creation Showing!");
+      onClose(null);
     }, 100);
-
     return null;
   }
 }
