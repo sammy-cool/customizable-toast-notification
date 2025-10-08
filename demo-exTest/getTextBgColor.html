@@ -36,7 +36,7 @@
     <div id="toast">Toast Message</div>
 
     <script type="module">
-      import { getTextColor } from "../src/utils/dom.js";
+      import { getDynamicAccessibleTextColorHex } from "../src/utils/dom.js";
 
       const toast = document.getElementById("toast");
       const btnNormal = document.getElementById("btnNormal");
@@ -61,32 +61,29 @@
       ];
 
       async function showToast(bg) {
-        const result = await getTextColor(bg);
-        console.log(result);
+        const result = getDynamicAccessibleTextColorHex(bg);
         toast.style.background = bg;
-        toast.style.color = result.color;
-        toast.textContent = `BG: ${bg} | Text: ${
-          result.color
-        } | Contrast: ${result.contrast.toFixed(2)} | Used: ${result.used}`;
+        toast.style.color = result;
+        toast.textContent = `BG: ${bg} | Text: ${result}`;
 
         //Testing
         async function processColors() {
           const colors = [
-            // "black",
-            // "#000",
-            // "#000000",
-            // "#fff",
-            // "white",
-            // "rgb(200,50,50)",
+            "black",
+            "#000",
+            "#000000",
+            "#fff",
+            "white",
+            "rgb(200,50,50)",
             "rgba(0,0,0,0.5)",
-            //     "rgba(255,255,255,0.6)",
-            //     "hsl(120 60% 30%)",
-            //     "transparent",
-            //     "rebeccapurple",
+            "rgba(255,255,255,0.6)",
+            "hsl(120 60% 30%)",
+            "transparent",
+            "rebeccapurple",
           ];
 
           for (const c of colors) {
-            const r = await getTextColor(c);
+            const r = getDynamicAccessibleTextColorHex(c);
             console.log(c, "->", r);
           }
         }

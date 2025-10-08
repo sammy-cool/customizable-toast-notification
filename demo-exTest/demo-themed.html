@@ -6,7 +6,7 @@
     <title>Customizable Toast Notification - Themed Demo</title>
 
     <!-- Load your library from jsDelivr -->
-    <script src="https://cdn.jsdelivr.net/npm/customizable-toast-notification/dist/index.umd.js"></script>
+    <!-- <script src="https://cdn.jsdelivr.net/npm/customizable-toast-notification/dist/index.umd.js"></script> -->
 
     <style>
       :root {
@@ -118,16 +118,17 @@
       </button>
     </div>
 
-    <script>
-      function showToast(type) {
-        customizableToast.createToast({
+    <script type="module">
+      import { createToast } from "../src/index.js";
+      window.showToast = function (type) {
+        createToast({
           message: `🔥 This is a ${type} toast with custom theming!`,
           type,
           position: "top-right",
           duration: 4000,
           className: type + "-themed",
         });
-      }
+      };
 
       function toggleTheme() {
         document.body.classList.toggle("dark");
