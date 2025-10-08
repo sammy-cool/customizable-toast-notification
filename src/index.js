@@ -3,10 +3,10 @@
 
 import { closeToast, showToast } from "./components/ToastManager.js";
 import { getOrCreateToastContainer } from "./utils/containerRegistry.js";
-import { getTextColor } from "./utils/dom.js";
+import { getDynamicAccessibleTextColorHex } from "./utils/dom.js";
 import { setPosition } from "./utils/position.js";
 
-// Protected state with fallbacks
+// Protected default colors with fallbacks
 let defaultColors = {
   success: "#28a745",
   error: "#dc3545",
@@ -30,7 +30,9 @@ const pendingToasts = [];
 // Flag to indicate DOM ready for toast execution
 let domReady = false;
 
-// DOM ready check
+/**
+ * Checks if DOM is ready and flushes pending toasts after a delay
+ */
 async function checkDOMReady() {
   if (domReady) return;
 
@@ -40,9 +42,9 @@ async function checkDOMReady() {
       document.readyState === "interactive"
     ) {
       domReady = true;
-      // Flush queued toasts after 2s delay
+      // Flush queued toasts after 2.5s delay
       pendingToasts.forEach((options) =>
-        setTimeout(() => createToastNow(options), 2000)
+        setTimeout(() => createToastNow(options), 2500)
       );
       pendingToasts.length = 0;
     } else {
@@ -52,7 +54,7 @@ async function checkDOMReady() {
         () => {
           domReady = true;
           pendingToasts.forEach((options) =>
-            setTimeout(() => createToastNow(options), 2000)
+            setTimeout(() => createToastNow(options), 2500)
           );
           pendingToasts.length = 0;
         },
@@ -77,7 +79,7 @@ async function createToastNow(options = {}) {
     const sanitizedOptions = await sanitizeToastOptions(options);
 
     /**
-     * Create the first toast container for a given position
+     * Create the first toast container for pre-validate to a given position for same position toast stacking
      * @param {Object} options - Sanitized toast options
      * @returns {Promise<HTMLElement>} Toast container promise
      */
@@ -94,14 +96,17 @@ async function createToastNow(options = {}) {
 
     const safeMessage =
       typeof options?.message === "string" && options?.message !== null
-        ? `${options?.message?.substring(0, 200)} toast creation failed!`
+        ? `${options.message.substring(0, 200)} toast creation failed!`
         : "Toast creation failed!";
 
     alert(safeMessage);
   }
 }
 
-// Public API
+/**
+ * Public API for creating a toast
+ * @param {Object} options Toast options
+ */
 async function createToast(options = {}) {
   // Check browser environment
   const isBrowser =
@@ -126,17 +131,17 @@ async function createToast(options = {}) {
   await createToastNow(options);
 }
 
+/**
+ * Creates or retrieves the toast container for a given position
+ * Single source of truth for containers; prevents same-id duplicates
+ * @param {Object} options
+ * @returns {Promise<HTMLElement>}
+ */
 async function createFirstToastContainer(options) {
   try {
-    // Single source of truth for containers; prevents same-id duplicates
-    const toastContainer = await getOrCreateToastContainer(
-      options,
-      setPosition
-    );
-    return toastContainer;
+    return await getOrCreateToastContainer(options, setPosition);
   } catch (error) {
     console.error("Failed to create toast container:", error);
-    // Fallback: return body element
     return document.body;
   }
 }
@@ -210,8 +215,10 @@ async function sanitizeToastOptions(options) {
 
     // Ensure textColor is set
     if (!final.textColor && final.backgroundColor) {
-      const textColorResult = await getTextColor(final.backgroundColor);
-      final.textColor = textColorResult?.color;
+      const textColorResult = getDynamicAccessibleTextColorHex(
+        final.backgroundColor
+      );
+      final.textColor = textColorResult;
     }
 
     // Ensure progressColor is set
@@ -219,8 +226,10 @@ async function sanitizeToastOptions(options) {
       if (final.textColor) {
         final.progressColor = final.textColor;
       } else {
-        const barColorResult = await getTextColor(final.backgroundColor);
-        final.progressColor = barColorResult?.color;
+        const barColorResult = getDynamicAccessibleTextColorHex(
+          final.backgroundColor
+        );
+        final.progressColor = barColorResult;
       }
     }
   } catch (error) {
@@ -236,7 +245,8 @@ async function sanitizeToastOptions(options) {
 }
 
 /**
- * Set default colors with validation
+ * Sets default colors
+ * @param {Object} colors
  */
 function setDefaultColors(colors) {
   try {
@@ -249,7 +259,8 @@ function setDefaultColors(colors) {
 }
 
 /**
- * Set default messages with validation
+ * Sets default messages
+ * @param {Object} messages
  */
 function setDefaultMessages(messages) {
   try {
@@ -262,6 +273,7 @@ function setDefaultMessages(messages) {
 }
 
 /**
+ * Removes the first visible toast from the DOM.
  * Remove toast notifications from the DOM.
  *
  * @async
@@ -271,7 +283,7 @@ function setDefaultMessages(messages) {
  * @returns {Promise<void>} Resolves when removal is attempted.
  */
 const noop = async function () {
-  let toast = document.querySelector('[id^="toast-"]:not([id*="container"])');
+  const toast = document.querySelector('[id^="toast-"]:not([id*="container"])');
   await closeToast(toast);
 };
 

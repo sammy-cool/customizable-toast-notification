@@ -1,62 +1,40 @@
 // src/utils/dom.js
 "use strict";
 
-import { generateUniqueId } from "./id.js";
+import { generateToastId } from "./id.js";
 
 /**
- * Multi-layer fallback DOM element creation
+ * Creates an element with a unique ID using the given prefix.
+ * @param {string} tagName - Tag name of the element.
+ * @param {string} prefix - Prefix for the element ID.
+ * @returns {Promise<Element>}
  */
 export async function createElementWithId(tagName, prefix) {
-  // PRIMARY: Standard createElement
-  try {
-    if (!tagName || !prefix) throw new Error(`tagName and prefix is required`);
-
-    const el = document.createElement(tagName);
-    el.id = await generateUniqueId(prefix);
-    return el;
-  } catch (error) {
-    console.warn(`Primary createElement failed for`, error);
-
-    // FALLBACK-A: Try div as alternative
-    try {
-      const fallbackTag = "div";
-      const fallbackPrefix = "fallback";
-      const fallbackEl = document.createElement(fallbackTag);
-      fallbackEl.id = await generateUniqueId(fallbackPrefix);
-      fallbackEl.setAttribute("data-original-tag", fallbackTag);
-      return fallbackEl;
-    } catch (fallbackError) {
-      console.error("All DOM creation methods failed:", fallbackError);
-    }
-  }
+  if (!tagName || !prefix) throw new Error("tagName and prefix are required");
+  const el = document.createElement(tagName);
+  el.id = generateToastId(prefix);
+  return el;
 }
 
 /**
- * Multi-strategy appendChild with graceful degradation
+ * Appends a child element to a parent element with multiple fallbacks.
+ * @param {Element} parent - The parent element.
+ * @param {Element} child - The child element.
+ * @returns {Promise<boolean>}
  */
 export async function appendChild(parent, child) {
   if (!parent || !child) return false;
 
-  // PRIMARY: Standard appendChild
   try {
-    if (!parent.contains(child)) {
-      parent.appendChild(child);
-      return true;
-    }
+    if (!parent.contains(child)) parent.appendChild(child);
     return true;
-  } catch (error) {
-    console.warn("Primary appendChild failed:", error);
-
-    // FALLBACK-A: insertAdjacentElement
+  } catch (primaryError) {
+    console.warn("appendChild primary failed:", primaryError);
     try {
       parent.insertAdjacentElement("beforeend", child);
       return true;
     } catch (fallbackError) {
-      console.warn("Fallback appendChild failed:", fallbackError);
-
-      // FALLBACK-B: Manual positioning
-      // Emergency fallback removed: avoid using outerHTML (drops listeners & risks XSS).
-      // Final attempt: clone and append using standard APIs.
+      console.warn("appendChild fallback failed:", fallbackError);
       try {
         if (parent === document.body) {
           const clone = child.cloneNode(true);
@@ -64,7 +42,7 @@ export async function appendChild(parent, child) {
           return true;
         }
       } catch (emergencyError) {
-        console.error("All append strategies failed:", emergencyError);
+        console.error("appendChild emergency failed:", emergencyError);
         return false;
       }
     }
@@ -73,71 +51,63 @@ export async function appendChild(parent, child) {
 }
 
 /**
- * Safe element removal with multiple strategies
+ * Removes an element from the DOM with multiple methods.
+ * @param {Element} el - The element to be removed.
+ * @returns {Promise<boolean>}
  */
 export async function removeElement(el) {
   if (!el) return true;
 
-  // PRIMARY: parentNode.removeChild
   try {
     if (el?.parentNode?.id.includes("toast-container-")) {
       el.parentNode.removeChild(el);
       return true;
     }
-  } catch (error) {
-    console.warn("Primary removal failed:", error);
+  } catch {}
 
-    // FALLBACK-A: element.remove()
-    try {
-      if (el.remove) {
-        el.remove();
-        return true;
-      }
-    } catch (fallbackError) {
-      console.warn("Fallback removal failed:", fallbackError);
-
-      // FALLBACK-B: Hide instead of remove
-      try {
-        el.style.display = "none";
-        el.style.opacity = "0";
-        el.style.pointerEvents = "none";
-        el.style.position = "absolute";
-        el.style.left = "-9999px";
-        return true;
-      } catch (hideError) {
-        console.error("All removal strategies failed:", hideError);
-        return false;
-      }
+  try {
+    if (el.remove) {
+      el.remove();
+      return true;
     }
-  }
-  return true;
+  } catch {}
+
+  try {
+    Object.assign(el.style, {
+      display: "none",
+      opacity: "0",
+      pointerEvents: "none",
+      position: "absolute",
+      left: "-9999px",
+    });
+    return true;
+  } catch {}
+
+  return false;
 }
 
 /**
- * Animation duration parser with fallbacks
+ * Parses animation duration from a string or number.
+ * @param {string|number} duration - Duration value.
+ * @returns {Promise<number>} - Milliseconds.
  */
 export async function parseAnimationDuration(duration) {
-  // PRIMARY: Parse provided duration
-  try {
-    if (typeof duration === "number" && duration > 0) return duration;
-    if (typeof duration === "string") {
-      if (duration.endsWith("s") && !duration.endsWith("ms")) {
-        const parsed = parseFloat(duration) * 1000;
-        return parsed > 0 ? parsed : 500;
-      }
-      const parsed = parseFloat(duration);
+  if (typeof duration === "number" && duration > 0) return duration;
+  if (typeof duration === "string") {
+    if (duration.endsWith("s") && !duration.endsWith("ms")) {
+      const parsed = parseFloat(duration) * 1000;
       return parsed > 0 ? parsed : 500;
     }
-  } catch (error) {
-    console.warn("Duration parsing failed:", error);
+    const parsed = parseFloat(duration);
+    return parsed > 0 ? parsed : 500;
   }
-
-  // FALLBACK: Safe default
   return 500;
 }
 
 /**
- * Force reflow with error protection
+ * Forces a reflow on an element.
+ * @param {Element} el - The element.
+ * @returns {number}
  */
 export function forceReflow(el) {
   try {
@@ -149,9 +119,9 @@ export function forceReflow(el) {
 }
 
 /**
- * Query selector shortcut with optional root.
- * @param {string} selector
- * @param {Document|HTMLElement} [root=document]
+ * Shortcut for query selection with optional root.
+ * @param {string} selector - CSS selector.
+ * @param {Element|Document} [root=document] - Root element.
  * @returns {Element|null}
  */
 export function query(selector, root = document) {
@@ -159,610 +129,334 @@ export function query(selector, root = document) {
 }
 
 /**
- * Determine text color based on background color.
- * @param {string} toastBg Toast background color in hex, rgb, or rgba format.
- * @returns {Promise<string>} Text color, either `"black"` or `"white"`.
+ * Gets accessible text color based on background according to WCAG.
+ * Optimized with caching for repeated background colors.
+ *
+ * @param {string} toastBg - Background color (hex, rgb, hsl, named).
+ * @param {number} [opa=1] - Optional opacity (0–1).
+ * @returns {string} - Text color: "black" or "white".
  */
-export async function getTextColor(toastBg, opa) {
+class LRUCache {
+  constructor(maxSize = 200) {
+    this.maxSize = maxSize;
+    this.map = new Map();
+  }
+
+  get(key) {
+    if (!this.map.has(key)) return undefined;
+    const value = this.map.get(key);
+    this.map.delete(key);
+    this.map.set(key, value);
+    return value;
+  }
+
+  set(key, value) {
+    if (this.map.has(key)) this.map.delete(key);
+    else if (this.map.size >= this.maxSize) {
+      const firstKey = this.map.keys().next().value;
+      this.map.delete(firstKey);
+    }
+    this.map.set(key, value);
+  }
+}
+
+const colorCache = new LRUCache(200);
+
+// Full named CSS color table
+const namedColors = {
+  aliceblue: [240, 248, 255],
+  antiquewhite: [250, 235, 215],
+  aqua: [0, 255, 255],
+  aquamarine: [127, 255, 212],
+  azure: [240, 255, 255],
+  beige: [245, 245, 220],
+  bisque: [255, 228, 196],
+  black: [0, 0, 0],
+  blanchedalmond: [255, 235, 205],
+  blue: [0, 0, 255],
+  blueviolet: [138, 43, 226],
+  brown: [165, 42, 42],
+  burlywood: [222, 184, 135],
+  cadetblue: [95, 158, 160],
+  chartreuse: [127, 255, 0],
+  chocolate: [210, 105, 30],
+  coral: [255, 127, 80],
+  cornflowerblue: [100, 149, 237],
+  cornsilk: [255, 248, 220],
+  crimson: [220, 20, 60],
+  cyan: [0, 255, 255],
+  darkblue: [0, 0, 139],
+  darkcyan: [0, 139, 139],
+  darkgoldenrod: [184, 134, 11],
+  darkgray: [169, 169, 169],
+  darkgreen: [0, 100, 0],
+  darkgrey: [169, 169, 169],
+  darkkhaki: [189, 183, 107],
+  darkmagenta: [139, 0, 139],
+  darkolivegreen: [85, 107, 47],
+  darkorange: [255, 140, 0],
+  darkorchid: [153, 50, 204],
+  darkred: [139, 0, 0],
+  darksalmon: [233, 150, 122],
+  darkseagreen: [143, 188, 143],
+  darkslateblue: [72, 61, 139],
+  darkslategray: [47, 79, 79],
+  darkslategrey: [47, 79, 79],
+  darkturquoise: [0, 206, 209],
+  darkviolet: [148, 0, 211],
+  deeppink: [255, 20, 147],
+  deepskyblue: [0, 191, 255],
+  dimgray: [105, 105, 105],
+  dimgrey: [105, 105, 105],
+  dodgerblue: [30, 144, 255],
+  firebrick: [178, 34, 34],
+  floralwhite: [255, 250, 240],
+  forestgreen: [34, 139, 34],
+  fuchsia: [255, 0, 255],
+  gainsboro: [220, 220, 220],
+  ghostwhite: [248, 248, 255],
+  gold: [255, 215, 0],
+  goldenrod: [218, 165, 32],
+  gray: [128, 128, 128],
+  green: [0, 128, 0],
+  greenyellow: [173, 255, 47],
+  grey: [128, 128, 128],
+  honeydew: [240, 255, 240],
+  hotpink: [255, 105, 180],
+  indianred: [205, 92, 92],
+  indigo: [75, 0, 130],
+  ivory: [255, 255, 240],
+  khaki: [240, 230, 140],
+  lavender: [230, 230, 250],
+  lavenderblush: [255, 240, 245],
+  lawngreen: [124, 252, 0],
+  lemonchiffon: [255, 250, 205],
+  lightblue: [173, 216, 230],
+  lightcoral: [240, 128, 128],
+  lightcyan: [224, 255, 255],
+  lightgoldenrodyellow: [250, 250, 210],
+  lightgray: [211, 211, 211],
+  lightgreen: [144, 238, 144],
+  lightgrey: [211, 211, 211],
+  lightpink: [255, 182, 193],
+  lightsalmon: [255, 160, 122],
+  lightseagreen: [32, 178, 170],
+  lightskyblue: [135, 206, 250],
+  lightslategray: [119, 136, 153],
+  lightslategrey: [119, 136, 153],
+  lightsteelblue: [176, 196, 222],
+  lightyellow: [255, 255, 224],
+  lime: [0, 255, 0],
+  limegreen: [50, 205, 50],
+  linen: [250, 240, 230],
+  magenta: [255, 0, 255],
+  maroon: [128, 0, 0],
+  mediumaquamarine: [102, 205, 170],
+  mediumblue: [0, 0, 205],
+  mediumorchid: [186, 85, 211],
+  mediumpurple: [147, 112, 219],
+  mediumseagreen: [60, 179, 113],
+  mediumslateblue: [123, 104, 238],
+  mediumspringgreen: [0, 250, 154],
+  mediumturquoise: [72, 209, 204],
+  mediumvioletred: [199, 21, 133],
+  midnightblue: [25, 25, 112],
+  mintcream: [245, 255, 250],
+  mistyrose: [255, 228, 225],
+  moccasin: [255, 228, 181],
+  navajowhite: [255, 222, 173],
+  navy: [0, 0, 128],
+  oldlace: [253, 245, 230],
+  olive: [128, 128, 0],
+  olivedrab: [107, 142, 35],
+  orange: [255, 165, 0],
+  orangered: [255, 69, 0],
+  orchid: [218, 112, 214],
+  palegoldenrod: [238, 232, 170],
+  palegreen: [152, 251, 152],
+  paleturquoise: [175, 238, 238],
+  palevioletred: [219, 112, 147],
+  papayawhip: [255, 239, 213],
+  peachpuff: [255, 218, 185],
+  peru: [205, 133, 63],
+  pink: [255, 192, 203],
+  plum: [221, 160, 221],
+  powderblue: [176, 224, 230],
+  purple: [128, 0, 128],
+  rebeccapurple: [102, 51, 153],
+  red: [255, 0, 0],
+  rosybrown: [188, 143, 143],
+  royalblue: [65, 105, 225],
+  saddlebrown: [139, 69, 19],
+  salmon: [250, 128, 114],
+  sandybrown: [244, 164, 96],
+  seagreen: [46, 139, 87],
+  seashell: [255, 245, 238],
+  sienna: [160, 82, 45],
+  silver: [192, 192, 192],
+  skyblue: [135, 206, 235],
+  slateblue: [106, 90, 205],
+  slategray: [112, 128, 144],
+  slategrey: [112, 128, 144],
+  snow: [255, 250, 250],
+  springgreen: [0, 255, 127],
+  steelblue: [70, 130, 180],
+  tan: [210, 180, 140],
+  teal: [0, 128, 128],
+  thistle: [216, 191, 216],
+  tomato: [255, 99, 71],
+  turquoise: [64, 224, 208],
+  violet: [238, 130, 238],
+  wheat: [245, 222, 179],
+  white: [255, 255, 255],
+  whitesmoke: [245, 245, 245],
+  yellow: [255, 255, 0],
+  yellowgreen: [154, 205, 50],
+};
+
+// Precompute accessible text for all named colors (O(1) lookup) (case-insensitive)
+const precomputedNamedTextColors = {};
+Object.entries(namedColors).forEach(([name, [r, g, b]]) => {
+  // Calculate relative luminance
+  const lum = (c) => {
+    const v = c / 255;
+    return v <= 0.03928 ? v / 12.92 : Math.pow((v + 0.055) / 1.055, 2.4);
+  };
+  const L = 0.2126 * lum(r) + 0.7152 * lum(g) + 0.0722 * lum(b);
+  // WCAG contrast: choose black or white based on which has higher contrast
+  const contrastBlack = (L + 0.05) / 0.05;
+  const contrastWhite = 1.05 / (L + 0.05);
+  precomputedNamedTextColors[name.toLowerCase()] =
+    contrastBlack >= contrastWhite ? "#000000" : "#ffffff";
+});
+
+export function getDynamicAccessibleTextColorHex(toastBg, opa = 1) {
   if (!toastBg) return "snow";
+
+  const key = `${toastBg}|${opa}`;
+  const cached = colorCache.get(key);
+  if (cached) return cached;
+
+  // Named color precomputed lookup
+  if (precomputedNamedTextColors[toastBg?.toLowerCase()]) {
+    const textColor = precomputedNamedTextColors[toastBg.toLowerCase()];
+    colorCache.set(key, textColor);
+    return textColor;
+  }
+
+  let r, g, b;
+
   try {
-    if (toastBg === "transparent") return "snow";
-    let result = await getAccessibleTextColor(toastBg, {
-      underlyingColor: toastBg || "#ffffff", // agar toast background semi-transparent hai to specify karo
-      threshold: opa || 4.5,
-    });
-    return result;
-  } catch (error) {
-    console.warn("TextColor calculation failed:", error);
-    return "snow";
-  }
-}
-
-/**
- * getAccessibleTextColor(bgColor, options)
- * - bgColor: any CSS color string (hex, rgb(), rgba(), hsl(), named color, "transparent", "var(--x)", ...)
- * - options: {
- *     threshold: number (default 4.5)   // WCAG AA for normal text
- *     underlyingColor: cssColorString | {r,g,b}  // used if bgColor is semi-transparent
- *     resolveVarElement: HTMLElement (optional) // element used to resolve CSS vars like var(--x)
- *   }
- *
- * Returns:
- * {
- *   color: '#rrggbb',            // recommended text color string (hex)
- *   contrast: number,            // computed contrast ratio against background
- *   meetsAA: boolean,
- *   blackContrast: number,
- *   whiteContrast: number,
- *   used: 'black'|'white'|'generated'
- * }
- */
-
-// (function (global) {
-//   function _toHex(n) {
-//     return ("0" + n.toString(16)).slice(-2);
-//   }
-//   function rgbToHex(r, g, b) {
-//     return "#" + _toHex(r) + _toHex(g) + _toHex(b);
-//   }
-
-//   function parseCssColor(input, resolveVarElement) {
-//     if (!input || typeof input !== "string") return null;
-//     let s = input.trim();
-
-//     // try to resolve CSS var(...) if passed
-//     if (s.startsWith("var(") && typeof window !== "undefined") {
-//       try {
-//         const varName = s.slice(4, -1).trim();
-//         const el = resolveVarElement || document.documentElement;
-//         const val = getComputedStyle(el).getPropertyValue(varName).trim();
-//         if (val) return parseCssColor(val, resolveVarElement);
-//       } catch (e) {}
-//     }
-
-//     // use canvas 2D parser if available (works in browsers)
-//     try {
-//       if (typeof document !== "undefined") {
-//         const ctx = document.createElement("canvas").getContext("2d");
-//         ctx.fillStyle = "#000";
-//         ctx.fillStyle = s; // may throw for invalid color
-//         const computed = ctx.fillStyle; // normalized string like "rgb(...)" or "#rrggbb" or "rgba(...)"
-//         // rgba / rgb
-//         const rgbaMatch = computed.match(
-//           /^rgba?\((\d+)\s*,\s*(\d+)\s*,\s*(\d+)(?:\s*,\s*([0-9.]+))?\)$/i
-//         );
-//         if (rgbaMatch) {
-//           return {
-//             r: +rgbaMatch[1],
-//             g: +rgbaMatch[2],
-//             b: +rgbaMatch[3],
-//             a: rgbaMatch[4] === undefined ? 1 : +rgbaMatch[4],
-//           };
-//         }
-//         // hex
-//         if (computed[0] === "#") {
-//           let hex = computed.slice(1);
-//           if (hex.length === 3)
-//             hex = hex
-//               .split("")
-//               .map((ch) => ch + ch)
-//               .join("");
-//           if (hex.length === 6) {
-//             return {
-//               r: parseInt(hex.slice(0, 2), 16),
-//               g: parseInt(hex.slice(2, 4), 16),
-//               b: parseInt(hex.slice(4, 6), 16),
-//               a: 1,
-//             };
-//           }
-//           if (hex.length === 8) {
-//             return {
-//               r: parseInt(hex.slice(0, 2), 16),
-//               g: parseInt(hex.slice(2, 4), 16),
-//               b: parseInt(hex.slice(4, 6), 16),
-//               a: parseInt(hex.slice(6, 8), 16) / 255,
-//             };
-//           }
-//         }
-//       }
-//     } catch (e) {
-//       // continue to manual parsing
-//     }
-
-//     // manual parse fallbacks (rgb()/rgba()/hex short/long)
-//     const hexMatch = s.match(/^#([0-9a-fA-F]{3,8})$/);
-//     if (hexMatch) {
-//       let h = hexMatch[1];
-//       if (h.length === 3)
-//         h = h
-//           .split("")
-//           .map((c) => c + c)
-//           .join("");
-//       if (h.length === 4) {
-//         // rgba short
-//         const r = parseInt(h[0] + h[0], 16),
-//           g = parseInt(h[1] + h[1], 16),
-//           b = parseInt(h[2] + h[2], 16),
-//           a = parseInt(h[3] + h[3], 16) / 255;
-//         return { r, g, b, a };
-//       }
-//       if (h.length === 6) {
-//         return {
-//           r: parseInt(h.slice(0, 2), 16),
-//           g: parseInt(h.slice(2, 4), 16),
-//           b: parseInt(h.slice(4, 6), 16),
-//           a: 1,
-//         };
-//       }
-//       if (h.length === 8) {
-//         return {
-//           r: parseInt(h.slice(0, 2), 16),
-//           g: parseInt(h.slice(2, 4), 16),
-//           b: parseInt(h.slice(4, 6), 16),
-//           a: parseInt(h.slice(6, 8), 16) / 255,
-//         };
-//       }
-//     }
-
-//     const rgbMatch = s.match(/^rgba?\(([^)]+)\)$/i);
-//     if (rgbMatch) {
-//       const parts = rgbMatch[1].split(",").map((p) => p.trim());
-//       let r = parseFloat(parts[0]),
-//         g = parseFloat(parts[1]),
-//         b = parseFloat(parts[2]);
-//       let a = parts[3] === undefined ? 1 : parseFloat(parts[3]);
-//       // handle percent values e.g. rgb(50% 50% 50%)
-//       if (parts[0].endsWith("%")) {
-//         r = Math.round((r / 100) * 255);
-//         g = Math.round((parseFloat(parts[1]) / 100) * 255);
-//         b = Math.round((parseFloat(parts[2]) / 100) * 255);
-//       }
-//       return { r: Math.round(r), g: Math.round(g), b: Math.round(b), a: a };
-//     }
-
-//     // last resort: named css color map for few common names (expand as needed)
-//     const named = {
-//       black: { r: 0, g: 0, b: 0, a: 1 },
-//       white: { r: 255, g: 255, b: 255, a: 1 },
-//       transparent: { r: 0, g: 0, b: 0, a: 0 },
-//       // add more if you want...
-//     };
-//     const lower = s.toLowerCase();
-//     if (named[lower]) return named[lower];
-
-//     return null;
-//   }
-
-//   function blendOver(fg, bg) {
-//     // fg: {r,g,b,a}, bg: {r,g,b}
-//     if (fg.a === undefined || fg.a >= 1) return { r: fg.r, g: fg.g, b: fg.b };
-//     if (!bg) bg = { r: 255, g: 255, b: 255 };
-//     const a = fg.a;
-//     return {
-//       r: Math.round(fg.r * a + bg.r * (1 - a)),
-//       g: Math.round(fg.g * a + bg.g * (1 - a)),
-//       b: Math.round(fg.b * a + bg.b * (1 - a)),
-//     };
-//   }
-
-//   function srgbToLinear(c) {
-//     c = c / 255;
-//     return c <= 0.03928 ? c / 12.92 : Math.pow((c + 0.055) / 1.055, 2.4);
-//   }
-//   function linearToSrgbComp(lin) {
-//     if (lin <= 0.0031308) return Math.round(lin * 12.92 * 255);
-//     return Math.round((1.055 * Math.pow(lin, 1 / 2.4) - 0.055) * 255);
-//   }
-//   function relativeLuminance(rgb) {
-//     const R = srgbToLinear(rgb.r);
-//     const G = srgbToLinear(rgb.g);
-//     const B = srgbToLinear(rgb.b);
-//     return 0.2126 * R + 0.7152 * G + 0.0722 * B;
-//   }
-//   function contrastRatioFromL(l1, l2) {
-//     const L1 = Math.max(l1, l2),
-//       L2 = Math.min(l1, l2);
-//     return (L1 + 0.05) / (L2 + 0.05);
-//   }
-
-//   function genGrayHexFromLinearLum(lin) {
-//     lin = Math.min(1, Math.max(0, lin));
-//     const c = linearToSrgbComp(lin);
-//     return rgbToHex(c, c, c);
-//   }
-
-//   async function getAccessibleTextColor(bgColor, options) {
-//     options = options || {};
-//     const threshold = options.threshold || 4.5;
-
-//     // parse background color
-//     const parsed = parseCssColor(bgColor, options.resolveVarElement);
-//     if (!parsed) {
-//       // fallback: treat as white background
-//       console.warn("getAccessibleTextColor: unable to parse color:", bgColor);
-//       return {
-//         color: "#000000",
-//         contrast: 21,
-//         meetsAA: true,
-//         blackContrast: 21,
-//         whiteContrast: 1,
-//         used: "black",
-//       };
-//     }
-
-//     // handle transparency by blending over supplied underlyingColor or document body background or white
-//     let bgRgb;
-//     if (parsed.a !== undefined && parsed.a < 1) {
-//       let under = options.underlyingColor;
-//       if (under) {
-//         const p =
-//           typeof under === "string"
-//             ? parseCssColor(under, options.resolveVarElement)
-//             : under;
-//         if (p) under = { r: p.r, g: p.g, b: p.b };
-//         else under = { r: 255, g: 255, b: 255 };
-//       } else {
-//         // try to get document.body computed background
-//         if (typeof document !== "undefined") {
-//           try {
-//             const bodyBg = getComputedStyle(document.body).backgroundColor;
-//             const pb = parseCssColor(bodyBg, options.resolveVarElement);
-//             under = pb
-//               ? { r: pb.r, g: pb.g, b: pb.b }
-//               : { r: 255, g: 255, b: 255 };
-//           } catch (e) {
-//             under = { r: 255, g: 255, b: 255 };
-//           }
-//         } else {
-//           under = { r: 255, g: 255, b: 255 };
-//         }
-//       }
-//       bgRgb = blendOver(parsed, under);
-//     } else {
-//       bgRgb = { r: parsed.r, g: parsed.g, b: parsed.b };
-//     }
-
-//     const bgLum = relativeLuminance(bgRgb);
-//     const whiteLum = 1;
-//     const blackLum = 0;
-//     const whiteContrast = contrastRatioFromL(bgLum, whiteLum);
-//     const blackContrast = contrastRatioFromL(bgLum, blackLum);
-
-//     // Prefer color that meets threshold; if both pass, pick the stronger contrast
-//     if (whiteContrast >= threshold || blackContrast >= threshold) {
-//       if (whiteContrast >= threshold && blackContrast >= threshold) {
-//         // both ok -> choose the higher contrast
-//         return {
-//           color: whiteContrast > blackContrast ? "#ffffff" : "#000000",
-//           contrast: Math.max(whiteContrast, blackContrast),
-//           meetsAA: true,
-//           blackContrast,
-//           whiteContrast,
-//           used: whiteContrast > blackContrast ? "white" : "black",
-//         };
-//       }
-//       if (whiteContrast >= threshold) {
-//         return {
-//           color: "#ffffff",
-//           contrast: whiteContrast,
-//           meetsAA: true,
-//           blackContrast,
-//           whiteContrast,
-//           used: "white",
-//         };
-//       }
-//       return {
-//         color: "#000000",
-//         contrast: blackContrast,
-//         meetsAA: true,
-//         blackContrast,
-//         whiteContrast,
-//         used: "black",
-//       };
-//     }
-
-//     // Neither black nor white meets threshold -> generate a grayscale text color with required luminance
-//     // Decide whether a lighter or darker text is needed: choose the side with higher contrast (closer)
-//     const wantLighterText = whiteContrast > blackContrast; // if true, we need a lighter text (closer to white)
-//     let targetL;
-//     if (wantLighterText) {
-//       // Solve (Ltext + 0.05)/(bgLum + 0.05) >= threshold => Ltext >= threshold*(bgLum+0.05) - 0.05
-//       targetL = threshold * (bgLum + 0.05) - 0.05;
-//     } else {
-//       // Solve (bgLum + 0.05)/(Ltext + 0.05) >= threshold => Ltext <= (bgLum + 0.05)/threshold - 0.05
-//       targetL = (bgLum + 0.05) / threshold - 0.05;
-//     }
-//     targetL = Math.min(1, Math.max(0, targetL));
-
-//     const generatedHex = genGrayHexFromLinearLum(targetL);
-//     const genRgb = {
-//       r: parseInt(generatedHex.slice(1, 3), 16),
-//       g: parseInt(generatedHex.slice(3, 5), 16),
-//       b: parseInt(generatedHex.slice(5, 7), 16),
-//     };
-//     const genLum = relativeLuminance(genRgb);
-//     const genContrast = contrastRatioFromL(bgLum, genLum);
-
-//     return {
-//       color: generatedHex,
-//       contrast: genContrast,
-//       meetsAA: genContrast >= threshold,
-//       blackContrast,
-//       whiteContrast,
-//       used: "generated",
-//     };
-//   }
-
-//   // Expose
-//   global.getAccessibleTextColor = getAccessibleTextColor;
-//   if (typeof module !== "undefined") module.exports = getAccessibleTextColor;
-// })(
-//   typeof window !== "undefined"
-//     ? window
-//     : typeof global !== "undefined"
-//     ? global
-//     : this
-// );
-
-//FINAL
-// Utility to compute accessible text color based on background color
-// Follows WCAG 2.1 contrast guidelines
-
-function _toHex(n) {
-  return ("0" + n.toString(16)).slice(-2);
-}
-function rgbToHex(r, g, b) {
-  return "#" + _toHex(r) + _toHex(g) + _toHex(b);
-}
-
-/**
- * Parse a CSS color string into an RGBA object.
- *
- * Supports:
- * - CSS variables (var(--color))
- * - Named colors (black, white, transparent)
- * - Hex (#RGB, #RGBA, #RRGGBB, #RRGGBBAA)
- * - rgb()/rgba() functional notation
- *
- * @param {string} input - CSS color string to parse.
- * @param {HTMLElement} [resolveVarElement=document.documentElement]
- *        Element from which to resolve CSS variables.
- * @returns {{r:number, g:number, b:number, a:number} | null}
- *          RGBA components (0–255, alpha 0–1) or null if invalid.
- */
-function parseCssColor(input, resolveVarElement = document?.documentElement) {
-  if (typeof input !== "string" || !input.trim()) return null;
-
-  const s = input.trim();
-
-  // --- Handle CSS variables ---
-  if (
-    s.startsWith("var(") &&
-    typeof window !== "undefined" &&
-    resolveVarElement
-  ) {
-    const varName = s.slice(4, -1).trim();
-    const val = getComputedStyle(resolveVarElement)
-      .getPropertyValue(varName)
-      .trim();
-    return val ? parseCssColor(val, resolveVarElement) : null;
-  }
-
-  // --- Try browser-native parsing (canvas trick) ---
-  if (typeof document !== "undefined") {
-    try {
-      const ctx = document.createElement("canvas").getContext("2d");
-      ctx.fillStyle = "#000"; // reset
-      ctx.fillStyle = s;
-      const computed = ctx.fillStyle;
-
-      // rgba() or rgb()
-      const rgbaMatch = computed.match(
-        /^rgba?\((\d+),\s*(\d+),\s*(\d+)(?:,\s*([0-9.]+))?\)$/i
-      );
-      if (rgbaMatch) {
-        return {
-          r: +rgbaMatch[1],
-          g: +rgbaMatch[2],
-          b: +rgbaMatch[3],
-          a: rgbaMatch[4] !== undefined ? +rgbaMatch[4] : 1,
-        };
-      }
-
-      // hex (#RRGGBB or #RRGGBBAA)
-      if (computed.startsWith("#")) {
-        return parseHexColor(computed);
-      }
-    } catch {
-      // ignore parsing errors, will fall back below
-    }
-  }
-
-  // --- Hex fallback ---
-  if (/^#[0-9a-fA-F]{3,8}$/.test(s)) {
-    return parseHexColor(s);
-  }
-
-  // --- Named colors fallback ---
-  const named = {
-    black: { r: 0, g: 0, b: 0, a: 1 },
-    white: { r: 255, g: 255, b: 255, a: 1 },
-    transparent: { r: 0, g: 0, b: 0, a: 0 },
-  };
-  return named[s.toLowerCase()] || null;
-}
-
-/**
- * Parse hex color string (#RGB, #RGBA, #RRGGBB, #RRGGBBAA).
- *
- * @param {string} hexString - A valid hex color string.
- * @returns {{r:number, g:number, b:number, a:number}}
- */
-function parseHexColor(hexString) {
-  let hex = hexString.replace(/^#/, "");
-  if (hex.length === 3 || hex.length === 4) {
-    hex = hex
-      .split("")
-      .map((c) => c + c)
-      .join("");
-  }
-
-  if (hex.length === 6) {
-    return {
-      r: parseInt(hex.slice(0, 2), 16),
-      g: parseInt(hex.slice(2, 4), 16),
-      b: parseInt(hex.slice(4, 6), 16),
-      a: 1,
-    };
-  }
-
-  if (hex.length === 8) {
-    return {
-      r: parseInt(hex.slice(0, 2), 16),
-      g: parseInt(hex.slice(2, 4), 16),
-      b: parseInt(hex.slice(4, 6), 16),
-      a: parseInt(hex.slice(6, 8), 16) / 255,
-    };
-  }
-
-  return null;
-}
-
-function blendOver(fg, bg) {
-  if (fg.a === undefined || fg.a >= 1) return { r: fg.r, g: fg.g, b: fg.b };
-  if (!bg) bg = { r: 255, g: 255, b: 255 };
-  const a = fg.a;
-  return {
-    r: Math.round(fg.r * a + bg.r * (1 - a)),
-    g: Math.round(fg.g * a + bg.g * (1 - a)),
-    b: Math.round(fg.b * a + bg.b * (1 - a)),
-  };
-}
-
-function srgbToLinear(c) {
-  c = c / 255;
-  return c <= 0.03928 ? c / 12.92 : Math.pow((c + 0.055) / 1.055, 2.4);
-}
-function linearToSrgbComp(lin) {
-  if (lin <= 0.0031308) return Math.round(lin * 12.92 * 255);
-  return Math.round((1.055 * Math.pow(lin, 1 / 2.4) - 0.055) * 255);
-}
-function relativeLuminance(rgb) {
-  const R = srgbToLinear(rgb.r);
-  const G = srgbToLinear(rgb.g);
-  const B = srgbToLinear(rgb.b);
-  return 0.2126 * R + 0.7152 * G + 0.0722 * B;
-}
-function contrastRatio(l1, l2) {
-  const L1 = Math.max(l1, l2),
-    L2 = Math.min(l1, l2);
-  return (L1 + 0.05) / (L2 + 0.05);
-}
-function genGrayHexFromLinearLum(lin) {
-  lin = Math.min(1, Math.max(0, lin));
-  const c = linearToSrgbComp(lin);
-  return rgbToHex(c, c, c);
-}
-
-/**
- * @param {string} bgColor - The background color to evaluate.
- * @param {Object} [options] - Optional parameters.
- * @param {number} [options.threshold=4.5] - The minimum contrast ratio to pass the accessibility test.
- * @param {string|Object} [options.underlyingColor] - Optional color to use when the original color has transparency.
- * @param {Function} [options.resolveVarElement] - A function to resolve CSS variables.
- * @returns {Promise<Object>} - A promise resolving to an object with the following properties:
- *   color: The color to use for the text.
- *   contrast: The contrast ratio between the selected color and the background color.
- *   meetsAA: A boolean indicating whether the contrast ratio passes the accessibility test.
- *   blackContrast: The contrast ratio between the background color and black.
- *   whiteContrast: The contrast ratio between the background color and white.
- *   used: A string indicating which color was used (black, white or generated).
- */
-async function getAccessibleTextColor(bgColor, options = {}) {
-  const threshold = options.threshold || 4.5;
-
-  const parsed = parseCssColor(bgColor, options.resolveVarElement);
-  if (!parsed) {
-    console.warn("getAccessibleTextColor: unable to parse color:", bgColor);
-    return {
-      color: "#000000",
-      contrast: 21,
-      meetsAA: true,
-      blackContrast: 21,
-      whiteContrast: 1,
-      used: "black",
-    };
-  }
-
-  // Transparency handling
-  let bgRgb;
-  if (parsed.a !== undefined && parsed.a < 1) {
-    let under = options.underlyingColor;
-    if (under) {
-      const p =
-        typeof under === "string"
-          ? parseCssColor(under, options.resolveVarElement)
-          : under;
-      under = p ? { r: p.r, g: p.g, b: p.b } : { r: 255, g: 255, b: 255 };
+    const hexMatch = toastBg?.match(/^#([0-9a-f]{3,8})$/i);
+    if (hexMatch) {
+      let hex = hexMatch[1];
+      if (hex.length === 3)
+        hex = hex
+          .split("")
+          .map((c) => c + c)
+          .join("");
+      r = parseInt(hex.slice(0, 2), 16);
+      g = parseInt(hex.slice(2, 4), 16);
+      b = parseInt(hex.slice(4, 6), 16);
     } else {
-      under = { r: 255, g: 255, b: 255 };
+      const rgbMatch = toastBg?.match(
+        /rgba?\((\d+),\s*(\d+),\s*(\d+)(?:,\s*[\d.]+)?\)/i
+      );
+      if (rgbMatch) {
+        r = Number(rgbMatch[1]);
+        g = Number(rgbMatch[2]);
+        b = Number(rgbMatch[3]);
+      } else throw new Error("Unknown color");
     }
-    bgRgb = blendOver(parsed, under);
-  } else {
-    bgRgb = { r: parsed.r, g: parsed.g, b: parsed.b };
+  } catch {
+    r = 50 + Math.floor(Math.random() * 206);
+    g = 50 + Math.floor(Math.random() * 206);
+    b = 50 + Math.floor(Math.random() * 206);
   }
 
-  const bgLum = relativeLuminance(bgRgb);
-  const whiteContrast = contrastRatio(bgLum, 1);
-  const blackContrast = contrastRatio(bgLum, 0);
+  // Apply opacity blending
+  r = Math.round(r * opa + 255 * (1 - opa));
+  g = Math.round(g * opa + 255 * (1 - opa));
+  b = Math.round(b * opa + 255 * (1 - opa));
 
-  // Pick best between black/white
-  if (whiteContrast >= threshold || blackContrast >= threshold) {
-    if (whiteContrast >= blackContrast) {
-      return {
-        color: "#ffffff",
-        contrast: whiteContrast,
-        meetsAA: whiteContrast >= threshold,
-        blackContrast,
-        whiteContrast,
-        used: "white",
+  // Convert HSL and adjust lightness dynamically
+  const rgbToHsl = (r, g, b) => {
+    r /= 255;
+    g /= 255;
+    b /= 255;
+    const max = Math.max(r, g, b),
+      min = Math.min(r, g, b);
+    let h,
+      s,
+      l = (max + min) / 2;
+    if (max === min) h = s = 0;
+    else {
+      const d = max - min;
+      s = l > 0.5 ? d / (2 - max - min) : d / (max + min);
+      switch (max) {
+        case r:
+          h = (g - b) / d + (g < b ? 6 : 0);
+          break;
+        case g:
+          h = (b - r) / d + 2;
+          break;
+        case b:
+          h = (r - g) / d + 4;
+      }
+      h /= 6;
+    }
+    return [h * 360, s, l];
+  };
+  const hslToRgb = (h, s, l) => {
+    h /= 360;
+    let r, g, b;
+    if (s === 0) r = g = b = l;
+    else {
+      const hue2rgb = (p, q, t) => {
+        if (t < 0) t += 1;
+        if (t > 1) t -= 1;
+        if (t < 1 / 6) return p + (q - p) * 6 * t;
+        if (t < 1 / 2) return q;
+        if (t < 2 / 3) return p + (q - p) * (2 / 3 - t) * 6;
+        return p;
       };
+      const q = l < 0.5 ? l * (1 + s) : l + s - l * s;
+      const p = 2 * l - q;
+      r = hue2rgb(p, q, h + 1 / 3);
+      g = hue2rgb(p, q, h);
+      b = hue2rgb(p, q, h - 1 / 3);
     }
-    return {
-      color: "#000000",
-      contrast: blackContrast,
-      meetsAA: blackContrast >= threshold,
-      blackContrast,
-      whiteContrast,
-      used: "black",
-    };
+    return [Math.round(r * 255), Math.round(g * 255), Math.round(b * 255)];
+  };
+  const luminance = (r, g, b) => {
+    const a = [r, g, b].map((v) => {
+      v /= 255;
+      return v <= 0.03928 ? v / 12.92 : Math.pow((v + 0.055) / 1.055, 2.4);
+    });
+    return 0.2126 * a[0] + 0.7152 * a[1] + 0.0722 * a[2];
+  };
+  const contrastRatio = (rgb1, rgb2) => {
+    const L1 = luminance(...rgb1);
+    const L2 = luminance(...rgb2);
+    return (Math.max(L1, L2) + 0.05) / (Math.min(L1, L2) + 0.05);
+  };
+  const rgbToHex = (r, g, b) =>
+    `#${r.toString(16).padStart(2, "0")}${g.toString(16).padStart(2, "0")}${b
+      .toString(16)
+      .padStart(2, "0")}`;
+
+  let [h, s, l] = rgbToHsl(r, g, b);
+  const minContrast = 4.5;
+  let textL = l < 0.5 ? Math.min(l + 0.5, 1) : Math.max(l - 0.5, 0);
+  let [tr, tg, tb] = hslToRgb(h, s, textL);
+
+  if (contrastRatio([r, g, b], [tr, tg, tb]) < minContrast) {
+    const contrastBlack = contrastRatio([r, g, b], [0, 0, 0]);
+    const contrastWhite = contrastRatio([r, g, b], [255, 255, 255]);
+    [tr, tg, tb] = contrastBlack >= contrastWhite ? [0, 0, 0] : [255, 255, 255];
   }
 
-  // Fallback: generate gray
-  const wantLighter = whiteContrast > blackContrast;
-  let targetL;
-  if (wantLighter) {
-    targetL = threshold * (bgLum + 0.05) - 0.05;
-  } else {
-    targetL = (bgLum + 0.05) / threshold - 0.05;
-  }
-  targetL = Math.min(1, Math.max(0, targetL));
-
-  const generatedHex = genGrayHexFromLinearLum(targetL);
-  const genRgb = {
-    r: parseInt(generatedHex.slice(1, 3), 16),
-    g: parseInt(generatedHex.slice(3, 5), 16),
-    b: parseInt(generatedHex.slice(5, 7), 16),
-  };
-  const genLum = relativeLuminance(genRgb);
-  const genContrast = contrastRatio(bgLum, genLum);
-
-  return {
-    color: generatedHex,
-    contrast: genContrast,
-    meetsAA: genContrast >= threshold,
-    blackContrast,
-    whiteContrast,
-    used: "generated",
-  };
+  const result = rgbToHex(tr, tg, tb);
+  colorCache.set(key, result);
+  return result;
 }

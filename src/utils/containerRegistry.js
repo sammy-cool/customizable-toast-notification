@@ -7,27 +7,27 @@ const containerLocks = new Map(); // id -> Promise<HTMLElement>
 /**
  * Normalize a position string to a canonical key (id-safe, stable).
  */
-export function normalizePositionKey(position = "bottom-right") {
+export function normalizePositionKey(position) {
   // lower-case, trim, unify separators, alias "below" -> "bottom"
   const raw = String(position).toLowerCase().trim();
   const aliased = raw.replace(/\bbelow\b/g, "bottom");
   return aliased
     .replace(/\s+/g, "-")
-    .replace(/[^a-z0-9\-]/g, "-")
-    .replace(/\-+/g, "-");
+    .replace(/[^a-z0-9-]/g, "-")
+    .replace(/-{2,}/g, "-");
 }
 
 /**
  * Canonical container id
  */
-export function getContainerId(position = "bottom-right") {
+export function getContainerId(position) {
   return `toast-container-${normalizePositionKey(position)}`;
 }
 
 /**
  * Atomically get or create a single container per canonical id.
  */
-export async function getOrCreateToastContainer(options = {}, setPosition) {
+export async function getOrCreateToastContainer(options, setPosition) {
   const id = getContainerId(options.position);
   // If a creation is in-flight, await it
   if (containerLocks.has(id)) {
@@ -37,7 +37,7 @@ export async function getOrCreateToastContainer(options = {}, setPosition) {
   const p = (async () => {
     // 1) Prefer registry cache if still connected
     const cached = containerRegistry.get(id);
-    if (cached && cached.isConnected) {
+    if (cached?.isConnected) {
       return cached;
     }
 

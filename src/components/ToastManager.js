@@ -17,7 +17,7 @@ const pending = new Map(); // key -> { options, count, rafId }
 const queue = []; // [{ options, key, count }]
 let visibleCount = 0;
 
-// djb2 hash for full-message dedupe
+// djb2 hash function for message deduplication
 function hashString(str) {
   let h = 5381;
   for (let i = 0; i < str.length; i++) h = (h << 5) + h + str.charCodeAt(i);
@@ -31,15 +31,11 @@ function hashString(str) {
  * @returns {string} A unique key for the toast notification.
  */
 function makeKey(options = {}) {
-  const type = String(options.type || "info")
-    .trim()
-    .toLowerCase();
-  const message = options.message || "";
-  const position = String(options.position || "bottom-right")
-    .trim()
-    .toLowerCase();
+  const type = String(options.type).trim().toLowerCase();
+  const messageHash = hashString(String(options.message || "")).toString(16);
+  const position = String(options.position).trim().toLowerCase();
 
-  return [type, hashString(String(message)).toString(16), position].join("|");
+  return `${type}|${messageHash}|${position}`;
 }
 
 /**
@@ -173,7 +169,7 @@ async function createOne(options, key, initialCount) {
     const data = {
       outer,
       toast,
-      count: Math.max(1, initialCount | 0),
+      count: Math.max(1, Math.floor(initialCount ?? 0)),
       timeout: null,
       pauseOnHover: shouldPauseOnHover,
     };
@@ -186,7 +182,7 @@ async function createOne(options, key, initialCount) {
     data.timer = createDismissTimer(toast, options);
     await setupPauseOnHover(data);
   } catch (err) {
-    console.error("Toast creation failed:", err);
+    console.error("Something went wrong: ", err);
     visibleCount = Math.max(0, visibleCount - 1);
     const el =
       document.querySelector('[id^="toast-container-"]') || document.body;
@@ -201,7 +197,7 @@ async function createOne(options, key, initialCount) {
  * @returns {PausableTimer} A timer that can be paused, resumed, or cleared.
  */
 function createDismissTimer(toast, options) {
-  const delay = (options.duration || 1800) + 10;
+  const delay = Number(options.duration ?? 1800) + 5;
   const timer = new PausableTimer(async () => await closeToast(toast), delay);
   timer.start();
   return timer;
@@ -213,27 +209,18 @@ async function setupPauseOnHover(data) {
   const { outer, timer } = data;
 
   // Mouse events
-  const onMouseEnter = () => {
-    timer.pause();
-  };
-
-  const onMouseLeave = () => {
-    timer.resume();
-  };
+  const onMouseEnter = () => timer.pause();
+  const onMouseLeave = () => timer.resume();
 
   // Focus events (for keyboard users)
+  // Only pause if focus is on interactive elements (CTA, close button)
   const onFocusIn = (e) => {
-    // Only pause if focus is on interactive elements (CTA, close button)
-    if (e.target.matches("button, a, [tabindex]")) {
-      timer.pause();
-    }
+    if (e.target.matches("[tabindex], div, span, button, a")) timer.pause();
   };
 
+  // Only resume if focus is leaving the toast entirely
   const onFocusOut = (e) => {
-    // Only resume if focus is leaving the toast entirely
-    if (!outer.contains(e.relatedTarget)) {
-      timer.resume();
-    }
+    if (!outer.contains(e.relatedTarget)) timer.resume();
   };
 
   // Add event listeners
@@ -258,6 +245,7 @@ async function setupPauseOnHover(data) {
  * @returns {Promise<void>} A promise that resolves when the toast is fully removed from the DOM.
  */
 export async function closeToast(toast) {
+  debugger;
   try {
     if (!toast?._key) return;
     const data = active.get(toast._key);
@@ -272,9 +260,7 @@ export async function closeToast(toast) {
 
     // Remove badge if present
     const badge = data.outer.querySelector(".toast-count-badge");
-    if (badge) {
-      badge.remove();
-    }
+    if (badge) badge.remove();
 
     // Remove wrapper after transition ends (or fallback)
     await removeWithTransition(data.outer);
@@ -282,7 +268,7 @@ export async function closeToast(toast) {
     // Drain queue after a slot frees
     await drainQueue();
   } catch (error) {
-    console.error("closeToast failed:", error);
+    console.error("Closing Toast failed!: ", error);
   }
 }
 
@@ -320,7 +306,7 @@ async function removeWithTransition(el) {
 
     // Listen on the immediate child (inner wrapper) if possible
     const child = el.firstElementChild || el;
-    if (!child) return Promise.resolve();
+    if (!child) return resolve();
 
     const onEnd = (e) => {
       try {
@@ -361,16 +347,14 @@ async function removeWithTransition(el) {
  * @param {number} options.count The count of identical notifications.
  */
 async function updateBadge({ outer, count }) {
-  if (!outer || !outer instanceof HTMLElement) {
+  if (!outer || !(outer instanceof HTMLElement)) {
     throw new Error("updateBadge: outer must be a valid HTMLElement");
   }
 
   if (count < 2) {
     // Remove the badge if the count is less than 2
     const badge = outer.querySelector(".toast-count-badge");
-    if (badge) {
-      badge.remove();
-    }
+    if (badge) badge.remove();
     return;
   }
 
