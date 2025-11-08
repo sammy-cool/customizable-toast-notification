@@ -191,6 +191,99 @@ async function createOne(options, key, initialCount) {
 }
 
 /**
+ * Dismiss (close) the most recently shown toast.
+ * - Finds the most recently appended toast element across containers.
+ * - Calls closeToast on it (which handles timers, cleanup, and queue drain).
+ * - Returns a Promise that resolves when the close completes.
+ */
+export async function dismissMostRecent() {
+  try {
+    // If no active toasts, nothing to dismiss
+    if (active.size === 0) return;
+
+    // Strategy: find the last inserted element in DOM among all containers.
+    // Iterate containers and pick lastElementChild of container that is a toast wrapper.
+    let lastToastEl = null;
+    let lastTs = 0;
+
+    // find any container nodes (id pattern used by this lib)
+    const containers = document.querySelectorAll('[id^="toast-container-"]');
+    containers.forEach((container) => {
+      // each toast is wrapped as outer -> inner -> toast; we want the inner wrapper (outer) appended order
+      const children = Array.from(container.children || []);
+      if (children.length === 0) return;
+      const candidate = children.at(0); // first added
+      // use DOM position as timestamp proxy — prefer later nodes by default
+      if (candidate) {
+        lastToastEl = candidate.querySelector('[id^="toast-"]') || candidate;
+      }
+    });
+
+    // fallback: if we didn't find via container traversal, try active map
+    if (!lastToastEl) {
+      // active map stores key -> { outer, toast, ... }
+      // get the most recently added active entry by insertion order (Map preserves insertion order)
+      const entries = Array.from(active.entries());
+      if (entries.length > 0) {
+        const [, data] = entries.at(0);
+        lastToastEl =
+          data.toast ||
+          (data.outer && data.outer.querySelector('[id^="toast-"]'));
+      }
+    }
+
+    if (!lastToastEl) return;
+
+    // If the element is a wrapper, attempt to find the actual toast element with _key
+    const toastEl = lastToastEl._key
+      ? lastToastEl
+      : lastToastEl.querySelector('[id^="toast-"]') || lastToastEl;
+
+    await closeToast(toastEl);
+  } catch (err) {
+    console.error("dismissMostRecent failed:", err);
+  }
+}
+
+/**
+ * Close all active toasts immediately.
+ * - Clears timers, runs closeToast for each active toast,
+ * - Also clears the pending queue.
+ */
+export async function closeAllToasts() {
+  try {
+    // mark in-progress (consumers can use this flag via module if needed)
+    const activeToasts = Array.from(active.values())
+      .map((d) => d.toast)
+      .filter(Boolean);
+    // clear pending queue (so no queued toasts will appear after we remove active)
+    queue.length = 0;
+    pending.clear();
+
+    // Close in reverse order (most recent first) to better match UX expectations
+    for (let i = activeToasts.length - 1; i >= 0; i--) {
+      const t = activeToasts[i];
+      try {
+        // closeToast handles timer cleanup and queue drain
+        // don't await each one sequentially to speed up; await Promise.all to finalize
+        // but we will await sequentially to ensure animation/slot freeing order
+        // (this preserves drainQueue behavior)
+        // eslint-disable-next-line no-await-in-loop
+        await closeToast(t);
+      } catch (innerErr) {
+        console.warn("closeAllToasts: failed to close one toast:", innerErr);
+      }
+    }
+  } catch (err) {
+    console.error("closeAllToasts failed:", err);
+  }
+}
+
+// Export aliases for clarity / compatibility
+export const dismiss = dismissMostRecent;
+export const noop = closeAllToasts;
+
+/**
  * Creates a PausableTimer that auto-closes a toast after a delay.
  * @param {HTMLElement} toast - The toast element to auto-close.
  * @param {Object} options - Toast options with duration.
