@@ -272,19 +272,101 @@ function setDefaultMessages(messages) {
   }
 }
 
-/**
- * Removes the first visible toast from the DOM.
- * @async
- * @function noop
- * @returns {Promise<void>} Resolves when removal is attempted.
- */
+// import the manager functions
+import { dismiss, noop as managerNoop } from "./components/ToastManager.js";
+
+// Replace any existing noop export with the manager one
+// (If file previously defined a noop here, remove/replace it.)
+
+// Close-priority lock: when true, createToast should wait until close finishes.
+let closeInProgress = false;
+let closePromise = null;
+
+async function runWithClosePriority(fn) {
+  // If a close is in progress, await it first
+  if (closeInProgress && closePromise) {
+    try {
+      await closePromise;
+    } catch (e) {
+      // ignore errors from close
+    }
+  }
+  return fn();
+}
+
+// Wrap createToast to respect close priority
+const originalCreateToast = createToast;
+async function createToastWithPriority(options = {}) {
+  return runWithClosePriority(() => originalCreateToast(options));
+}
+
+// Re-export the wrapped createToast
+export { createToastWithPriority as createToast };
+
+// Re-export the manager APIs with expected names:
+export { setDefaultColors, setDefaultMessages };
+export const dismissToast = async () => {
+  // mark close in progress for dismiss
+  closeInProgress = true;
+  closePromise = (async () => {
+    try {
+      await dismiss();
+    } finally {
+      closeInProgress = false;
+      closePromise = null;
+    }
+  })();
+  await closePromise;
+};
+export const noopAll = async () => {
+  closeInProgress = true;
+  closePromise = (async () => {
+    try {
+      await managerNoop();
+    } finally {
+      closeInProgress = false;
+      closePromise = null;
+    }
+  })();
+  await closePromise;
+};
+// For backward-compat, export names the user expects:
+export { dismissToast as dismiss, noopAll as noop };
+
+// Add Esc key listener (register once)
+if (typeof window !== "undefined" && typeof document !== "undefined") {
+  let escRegistered = false;
+  if (!escRegistered) {
+    const onKeyDown = (e) => {
+      if (e.key === "Escape" || e.key === "Esc") {
+        // Prevent default behavior and dismiss the most recent toast.
+        // e.preventDefault();
+        // Fire-and-forget, but ensure close priority is set
+        (async () => {
+          closeInProgress = true;
+          closePromise = (async () => {
+            try {
+              await dismiss();
+            } finally {
+              closeInProgress = false;
+              closePromise = null;
+            }
+          })();
+          await closePromise;
+        })();
+      }
+    };
+    window.addEventListener("keydown", onKeyDown, { passive: true });
+    escRegistered = true;
+  }
+}
+
 const noop = async function () {
-  const toast = document.querySelector('[id^="toast-"]:not([id*="container"])');
-  await closeToast(toast);
+  await managerNoop();
 };
 
 // Module exports
-export { createToast, setDefaultColors, setDefaultMessages, noop };
+// export { createToast, setDefaultColors, setDefaultMessages, noop };
 
 // Global assignment with protection
 try {
@@ -295,6 +377,7 @@ try {
       setDefaultColors,
       setDefaultMessages,
       noop,
+      dismiss,
     };
   }
 } catch (error) {
