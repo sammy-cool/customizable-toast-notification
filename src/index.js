@@ -1,30 +1,12 @@
 // src/index.js
-/**
- * @fileoverview A simple toast notification library for any JavaScript framework.
- * @name Customizable Toast Notifications
- * @author Priyanshu Patel
- * @version __VERSION__
- * @build Production
- * @license Apache-2.0
- * @depends None
- * @description A lightweight and fully customizable toast notification library
- * designed for seamless integration with any JavaScript or framework-based UI.
- * Supports flexible positioning, theming, icons, animations, and timing options
- * out of the box — with zero dependencies.
- * Author: Priyanshu Patel
- * Email: priyanshu.alt191@gmail.com
- * Created: July 31, 2024
- * License: Apache-2.0
- * Dependencies: None
- */
-
 "use strict";
 
 import { closeToast, showToast } from "./components/ToastManager.js";
-import { appendChild, getTextColor } from "./utils/dom.js";
+import { getOrCreateToastContainer } from "./utils/containerRegistry.js";
+import { getDynamicAccessibleTextColorHex } from "./utils/dom.js";
 import { setPosition } from "./utils/position.js";
 
-// Protected state with fallbacks
+// Protected default colors with fallbacks
 let defaultColors = {
   success: "#28a745",
   error: "#dc3545",
@@ -48,7 +30,9 @@ const pendingToasts = [];
 // Flag to indicate DOM ready for toast execution
 let domReady = false;
 
-// DOM ready check
+/**
+ * Checks if DOM is ready and flushes pending toasts after a delay
+ */
 async function checkDOMReady() {
   if (domReady) return;
 
@@ -58,9 +42,9 @@ async function checkDOMReady() {
       document.readyState === "interactive"
     ) {
       domReady = true;
-      // Flush queued toasts after 2s delay
+      // Flush queued toasts after 2.5s delay
       pendingToasts.forEach((options) =>
-        setTimeout(() => createToastNow(options), 2000)
+        setTimeout(() => createToastNow(options), 2500)
       );
       pendingToasts.length = 0;
     } else {
@@ -70,7 +54,7 @@ async function checkDOMReady() {
         () => {
           domReady = true;
           pendingToasts.forEach((options) =>
-            setTimeout(() => createToastNow(options), 2000)
+            setTimeout(() => createToastNow(options), 2500)
           );
           pendingToasts.length = 0;
         },
@@ -80,17 +64,38 @@ async function checkDOMReady() {
   }
 }
 
-// Core toast creation logic
+/**
+ * Core toast creation logic
+ * @param {Object} options - Toast options
+ * @returns {Promise<void>} Toast creation promise
+ */
 async function createToastNow(options = {}) {
   try {
+    /**
+     * Sanitize toast options and fill in defaults
+     * @param {Object} options - Toast options
+     * @returns {Promise<Object>} Sanitized toast options promise
+     */
     const sanitizedOptions = await sanitizeToastOptions(options);
-    await createFirstToastContainer(sanitizedOptions.position);
+
+    /**
+     * Create the first toast container for pre-validate to a given position for same position toast stacking
+     * @param {Object} options - Sanitized toast options
+     * @returns {Promise<HTMLElement>} Toast container promise
+     */
+    await createFirstToastContainer(sanitizedOptions);
+
+    /**
+     * Show the toast notification with given options
+     * @param {Object} options - Sanitized toast options
+     * @returns {Promise<void>} Show toast promise
+     */
     await showToast(sanitizedOptions);
   } catch (error) {
     console.error("CreateToast failed:", error);
 
     const safeMessage =
-      typeof options?.message === "string"
+      typeof options?.message === "string" && options?.message !== null
         ? `${options.message.substring(0, 200)} toast creation failed!`
         : "Toast creation failed!";
 
@@ -98,9 +103,10 @@ async function createToastNow(options = {}) {
   }
 }
 
-let initialDelayDone = false; // flag to ensure single execution
-
-// Public API
+/**
+ * Public API for creating a toast
+ * @param {Object} options Toast options
+ */
 async function createToast(options = {}) {
   // Check browser environment
   const isBrowser =
@@ -122,34 +128,20 @@ async function createToast(options = {}) {
     return;
   }
 
-  // If DOM ready → execute after 2s delay
-  if (!initialDelayDone) {
-    // First call → wait 2 seconds
-    initialDelayDone = true;
-    setTimeout(await createToastNow(options), 2000);
-  } else {
-    // Subsequent calls → run immediately
-    await createToastNow(options);
-  }
+  await createToastNow(options);
 }
 
-async function createFirstToastContainer(position) {
+/**
+ * Creates or retrieves the toast container for a given position
+ * Single source of truth for containers; prevents same-id duplicates
+ * @param {Object} options
+ * @returns {Promise<HTMLElement>}
+ */
+async function createFirstToastContainer(options) {
   try {
-    let toastContainer = document.getElementById(`toast-container-${position}`);
-
-    if (!toastContainer) {
-      toastContainer = document.createElement("div");
-      toastContainer.id = `toast-container-${position}`;
-      toastContainer.style.position = "fixed";
-      toastContainer.style.zIndex = "9999";
-      await setPosition(toastContainer, position);
-      await appendChild(document.body, toastContainer);
-    }
-
-    return toastContainer;
+    return await getOrCreateToastContainer(options, setPosition);
   } catch (error) {
     console.error("Failed to create toast container:", error);
-    // Fallback: return body element
     return document.body;
   }
 }
@@ -161,8 +153,16 @@ async function createFirstToastContainer(position) {
  * @returns {Promise<Object>} final sanitized toast options
  */
 async function sanitizeToastOptions(options) {
+  const contPosition = options?.position?.toLowerCase()?.trim();
+  const contMaxWidth =
+    contPosition?.includes("top-full-width") ||
+    contPosition?.includes("bottom-full-width")
+      ? "100vw"
+      : "400px";
+
   const defaults = {
-    duration: 1800,
+    pauseOnHover: undefined,
+    duration: 2500,
     position: "bottom-right",
     type: "info",
     borderRadius: "50px",
@@ -187,6 +187,7 @@ async function sanitizeToastOptions(options) {
     fontLineHeight: "1.4",
     fontDirection: "auto",
     wrapText: "normal",
+    maxWidth: contMaxWidth,
   };
 
   // Merge defaults with user options
@@ -214,12 +215,22 @@ async function sanitizeToastOptions(options) {
 
     // Ensure textColor is set
     if (!final.textColor && final.backgroundColor) {
-      final.textColor = await getTextColor(final);
+      const textColorResult = getDynamicAccessibleTextColorHex(
+        final.backgroundColor
+      );
+      final.textColor = textColorResult;
     }
 
     // Ensure progressColor is set
     if (!final.progressColor && final.backgroundColor) {
-      final.progressColor = await getTextColor(final);
+      if (final.textColor) {
+        final.progressColor = final.textColor;
+      } else {
+        const barColorResult = getDynamicAccessibleTextColorHex(
+          final.backgroundColor
+        );
+        final.progressColor = barColorResult;
+      }
     }
   } catch (error) {
     console.warn("Option processing failed:", error);
@@ -234,7 +245,8 @@ async function sanitizeToastOptions(options) {
 }
 
 /**
- * Set default colors with validation
+ * Sets default colors
+ * @param {Object} colors
  */
 function setDefaultColors(colors) {
   try {
@@ -247,7 +259,8 @@ function setDefaultColors(colors) {
 }
 
 /**
- * Set default messages with validation
+ * Sets default messages
+ * @param {Object} messages
  */
 function setDefaultMessages(messages) {
   try {
@@ -259,10 +272,20 @@ function setDefaultMessages(messages) {
   }
 }
 
-function noop() {
+/**
+ * Removes the first visible toast from the DOM.
+ * Remove toast notifications from the DOM.
+ *
+ * @async
+ * @function noop
+ * @param {"all"} [mode] - If `"all"`, removes all matching toast elements.
+ *                         Otherwise, removes only the first matching toast.
+ * @returns {Promise<void>} Resolves when removal is attempted.
+ */
+const noop = async function () {
   const toast = document.querySelector('[id^="toast-"]:not([id*="container"])');
-  closeToast(toast);
-}
+  await closeToast(toast);
+};
 
 // Module exports
 export { createToast, setDefaultColors, setDefaultMessages, noop };
@@ -275,6 +298,7 @@ try {
       createToast,
       setDefaultColors,
       setDefaultMessages,
+      noop,
     };
   }
 } catch (error) {

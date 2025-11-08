@@ -3,4 +3,4 @@
  * @param {string} prefix - Optional prefix for ID
  * @returns {string} Unique ID
  */
-export function generateUniqueId(prefix: string): string;
+export function generateToastId(prefix: string): string;

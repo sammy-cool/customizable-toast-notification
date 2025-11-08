@@ -1,8 +1,8 @@
 {
   "name": "customizable-toast-notification",
-  "version": "3.6.0",
-  "description": "A lightweight, zero-dependency toast notification library for modern JavaScript applications with production-grade reliability and comprehensive system  mechanisms",
-  "main": "dist/index.cjs",
+  "version": "3.9.7",
+  "description": "A lightweight, zero-dependency toast notification library with CTA support for modern JavaScript applications with production-grade reliability and comprehensive system  mechanisms",
+  "main": "dist/index.esm.mjs",
   "module": "dist/index.esm.mjs",
   "unpkg": "dist/index.umd.js",
   "jsdelivr": "dist/index.umd.js",
@@ -11,11 +11,25 @@
     ".": {
       "types": "./dist/index.d.ts",
       "import": "./dist/index.esm.mjs",
-      "require": "./dist/index.cjs",
+      "script": "./dist/index.umd.js",
       "default": "./dist/index.umd.js"
     },
     "./package.json": "./package.json"
   },
+  "engines": {
+    "node": ">=14.0.0",
+    "npm": ">=6.0.0"
+  },
+  "browserslist": [
+    "> 0.25%",
+    "not dead",
+    "not ie 11",
+    "chrome >= 60",
+    "firefox >= 55",
+    "safari >= 10.1",
+    "edge >= 79",
+    "node >= 14"
+  ],
   "sideEffects": [
     false,
     "*.css"
@@ -28,8 +42,8 @@
     "build:types": "npm run build:types:emit && npm run build:types:bundle",
     "zone-build": "npm run dist:clean && npm run build:js && npm run build:types",
     "postinstall": "node postinstall.js",
-    "prepublishOnly": "npm run build",
-    "build": "rollup -c"
+    "build": "rollup -c",
+    "test:builds": "node scripts/test-build.js"
   },
   "keywords": [
     "javascript",
@@ -86,8 +100,6 @@
   "license": "Apache-2.0",
   "files": [
     "postinstall.js",
-    "dist/index.cjs",
-    "dist/index.cjs.map",
     "dist/index.esm.mjs",
     "dist/index.esm.mjs.map",
     "dist/index.umd.js",
@@ -98,7 +110,10 @@
     "CHANGELOG.md"
   ],
   "devDependencies": {
-    "@babel/preset-env": "^7.28.0",
+    "@babel/core": "^7.28.4",
+    "@babel/preset-env": "^7.28.3",
+    "@playwright/test": "^1.54.1",
+    "@rollup/plugin-babel": "^6.0.4",
     "@rollup/plugin-commonjs": "^28.0.6",
     "@rollup/plugin-node-resolve": "^15.2.3",
     "@rollup/plugin-replace": "^6.0.2",
@@ -120,5 +135,11 @@
   "bugs": {
     "url": "https://github.com/sammy-cool/customizable-toast-notification/issues"
   },
-  "homepage": "https://github.com/sammy-cool/customizable-toast-notification#readme"
+  "homepage": "https://github.com/sammy-cool/customizable-toast-notification#readme",
+  "funding": [
+    {
+      "type": "individual",
+      "url": "https://paypal.me/priyanshupatel1"
+    }
+  ]
 }

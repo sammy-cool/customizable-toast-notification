@@ -5,13 +5,14 @@ import { createElementWithId } from "../utils/dom.js";
 import { applyRichStyling, createEmergencyToast } from "./toast-utils.js";
 
 /**
- * Multi-layer toast creation with satellite-grade fallbacks
+ * Creates a multi-layer toast element with satellite-grade fallbacks
  * @param {Object} options - Toast configuration options
  * @param {Function} onClose - Callback when toast closes
  * @returns {HTMLElement} Toast element
  */
 export async function createToastElement(options, onClose) {
-  let toastContainer = document.querySelector('[id^="toast-container-"]');
+  const toastContainerSelector = '[id^="toast-container-"]';
+  const toastContainer = document.querySelector(toastContainerSelector);
   if (!toastContainer) return null;
 
   let toast;
@@ -24,8 +25,12 @@ export async function createToastElement(options, onClose) {
     await applyRichStyling(toast, options, onClose);
     return toast;
   } catch (error) {
-    console.warn("error:", error);
-    await createEmergencyToast(options, onClose);
+    console.warn(
+      "toast creation failed with error showing fallback one: ",
+      error
+    );
+    // Fallback: create emergency toast
+    toast = await createEmergencyToast(options, onClose);
     return toast;
   }
 }

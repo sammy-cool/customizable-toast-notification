@@ -1,21 +1,28 @@
 # 🍞 Customizable Toast Notifications
 
-[![npm version](https://badge.fury.io/js/customizable-toast-notification.svg)](https://www.npmjs.com/package/customizable-toast-notification)
+![npm](https://img.shields.io/npm/v/customizable-toast-notification)
+![npm downloads](https://img.shields.io/npm/dm/customizable-toast-notification)
 [![License: Apache-2.0](https://img.shields.io/badge/License-Apache%202.0-blue.svg)](https://opensource.org/licenses/Apache-2.0)
-[![Downloads](https://img.shields.io/npm/dm/customizable-toast-notification.svg)](https://www.npmjs.com/package/customizable-toast-notification)
 [![Bundle Size](https://img.shields.io/bundlephobia/minzip/customizable-toast-notification)](https://bundlephobia.com/package/customizable-toast-notification)
 
 A **lightweight**, **zero-dependency** toast notification library for modern JavaScript applications. Built with production-grade reliability and comprehensive secret mechanisms.
 
 ## ✨ Key Features
 
-- 🚫 **Zero Dependencies** - Lightweight and fast
+- 🚫 **Zero Dependencies** - Pure JavaScript with no external requirements Lightweight and fast
 - 🛡️ **Production Ready** - Reliable and scalable for production environments
 - 🎨 **Highly Customizable** - Colors, positions, animations, progress bars
 - 🌐 **Framework Agnostic** - Works with React, Vue, Angular, or vanilla JS
 - 📱 **Responsive** - Works on all screen sizes and devices
 - ⚡ **CDN Ready** - Easy integration via CDN or npm
-- 🔧 **TypeScript Ready** - Full type support (coming soon)
+- 🎨 **Fully Customizable** - Colors, positions, animations, and styling
+- ♿ **Accessible** - ARIA live regions and keyboard navigation support
+- 🔄 **Smart Grouping** - Duplicate notifications are automatically grouped with badges
+- ⏸️ **Pause on Hover** - CTA toasts pause when user hovers or focuses
+- 🎯 **Call-to-Action** - Built-in support for interactive buttons and links
+- 📊 **Queue Management** - Maximum 3 visible toasts with intelligent queueing
+- 🌈 **Multiple Themes** - Success, error, warning, and info styles
+- 🔧 **TypeScript Ready** - TypeScript definitions included Full type support (coming soon)
 
 ## 📦 Installation
 
@@ -31,17 +38,11 @@ or
 yarn add customizable-toast-notification
 ```
 
-### CDN (UMD Build)
-
-```bash
-<script src="https://cdn.jsdelivr.net/npm/customizable-toast-notification@latest/dist/index.umd.js"></script>
-```
-
 ## 🚀 Quick Start
 
 ### ES Modules
 
-```json
+```bash
 
 import { createToast, setDefaultColors, setDefaultMessages } from 'customizable-toast-notification';
 
@@ -54,12 +55,36 @@ duration: 3000
 
 ```
 
-### CDN/Browser
+### CDN/Browser (UMD Build) / Quick Try with jsDelivr
 
-```json
+```bash
+Global Variable Name: customizableToast
 
-<script src="https://cdn.jsdelivr.net/npm/customizable-toast-notification@latest/dist/index.umd.js"></script>
-<script> customizableToast.createToast({ message: "Hello from CDN!", type: "success", position: "top-right" }); </script>
+<!-- Always latest version -->
+<script src="https://cdn.jsdelivr.net/npm/customizable-toast-notification/dist/index.umd.js"></script>
+
+<!-- OR pin to a specific version (recommended for stability) -->
+<script src="https://cdn.jsdelivr.net/npm/customizable-toast-notification@3.9.5/dist/index.umd.js"></script>
+
+<script>
+  // Access the global UMD export
+  customizableToast.createToast({
+    message: "Hello from jsDelivr! 🚀",
+    backgroundColor: "black",
+    textColor: "snow",
+    position: "top-center",
+    animationDuration: "3s",
+    animationEasing: "ease",
+    progressPosition: "top",
+    cta: {
+        autoClose: false,
+        label: "Check Pkg!",
+        href: "https://www.npmjs.com/package/customizable-toast-notification",
+        variant: "link",
+        target: "_blank"
+    }
+  });
+</script>
 
 ```
 
@@ -71,34 +96,106 @@ Creates and displays a toast notification.
 
 #### Options
 
-| Parameter           | Type      | Default                 | Description                                   |
-| ------------------- | --------- | ----------------------- | --------------------------------------------- |
-| `message`           | `string`  | Based on `type`         | Toast message content                         |
-| `type`              | `string`  | `"info"`                | `"info"`, `"success"`, `"error"`, `"warning"` |
-| `duration`          | `number`  | `3000`                  | Auto-dismiss time in milliseconds             |
-| `position`          | `string`  | `"bottom-right"`        | Toast position on screen                      |
-| `backgroundColor`   | `string`  | Based on `type`         | Custom background color                       |
-| `textColor`         | `string`  | `"white"`               | Custom text color                             |
-| `showCloseButton`   | `boolean` | `false`                 | Show close (×) button                         |
-| `showProgressBar`   | `boolean` | `false`                 | Show countdown progress bar                   |
-| `animationDuration` | `string`  | `"0.5s"`                | CSS animation duration                        |
-| `animationEasing`   | `string`  | `"ease"`                | CSS animation easing function                 |
-| `progressColor`     | `string`  | `rgba(255,255,255,0.3)` | Progress bar color                            |
-| `progressHeight`    | `string`  | `"4px"`                 | Progress bar height                           |
-| `progressPosition`  | `string`  | `"bottom"`              | Progress bar position: `"top"` or `"bottom"`  |
+| Parameter           | Type      | Default                 | Description                                               |
+| ------------------- | --------- | ----------------------- | --------------------------------------------------------- |
+| `message`           | `string`  | Based on `type`         | Toast message content                                     |
+| `type`              | `string`  | `"info"`                | `"info"`, `"success"`, `"error"`, `"warning"`             |
+| `duration`          | `number`  | `3000`                  | Auto-dismiss time in milliseconds                         |
+| `position`          | `string`  | `"bottom-right"`        | Toast position on screen                                  |
+| `backgroundColor`   | `string`  | Based on `type`         | Custom background color                                   |
+| `textColor`         | `string`  | `"white"`               | Custom text color                                         |
+| `showCloseButton`   | `boolean` | `false`                 | Show close (×) button                                     |
+| `showProgressBar`   | `boolean` | `false`                 | Show countdown progress bar                               |
+| `animationDuration` | `string`  | `"0.5s"`                | CSS animation duration                                    |
+| `animationEasing`   | `string`  | `"ease"`                | CSS animation easing function                             |
+| `progressColor`     | `string`  | `rgba(255,255,255,0.3)` | Progress bar color                                        |
+| `progressHeight`    | `string`  | `"4px"`                 | Progress bar height                                       |
+| `progressPosition`  | `string`  | `"bottom"`              | Progress bar position: `"top"` or `"bottom"`              |
+| `pauseOnHover`      | `boolean` | `auto`                  | Pause timer on hover (auto: true for CTA toasts)          |
+| `cta`               | `object`  | `null`                  | Call-to-action configuration (see [CTA](#call-to-action)) |
 
 #### Position Options
 
-```josn
+```bash
+// Corner positions
+- "top-left", "top-right", "bottom-left", "bottom-right"
 
-- `"top-left"`, `"top-right"`, `"top-center"`
-- `"bottom-left"`, `"bottom-right"`, `"bottom-center"`
+// Edge positions
+- "top-center", "bottom-center", "left-center", "right-center"
+
+// Full width
+- "top-full-width", "bottom-full-width"
+
+// Center
+- "center"
 
 ```
 
+## 🎯 Call-to-Action (CTA)
+
+Add interactive buttons or links to your toasts:
+
+```bash
+// Button CTA
+createToast({
+message: "File uploaded successfully!",
+type: "success",
+cta: {
+label: "View File",
+onClick: () => {
+window.open('/files/latest');
+},
+autoClose: true // Close toast after click (default: true)
+}
+});
+
+// Link CTA
+createToast({
+message: "New version available!",
+cta: {
+label: "Download",
+href: "https://example.com/download",
+variant: "link",
+target: "_blank"
+}
+});
+
+// Advanced CTA with async action
+createToast({
+message: "Ready to sync your data?",
+cta: {
+label: "Sync Now",
+ariaLabel: "Start data synchronization",
+autoClose: false,
+onClick: async () => {
+await performDataSync();
+// Manually close if needed
+}
+}
+});
+
+```
+
+### CTA Options
+
+| Parameter   | Type       | Default    | Description                    |
+| ----------- | ---------- | ---------- | ------------------------------ |
+| `label`     | `string`   | `required` | Button/link text               |
+| `onClick`   | `function` | `null`     | Click handler (for buttons)    |
+| `href`      | `string`   | `null`     | URL (for links)                |
+| `variant`   | `string`   | `"button"` | `"button"` or `"link"`         |
+| `target`    | `string`   | `null`     | Link target (`"_blank"`, etc.) |
+| `rel`       | `string`   | `auto`     | Link relationship              |
+| `autoClose` | `boolean`  | `true`     | Close toast after CTA click    |
+| `ariaLabel` | `string`   | `label`    | Accessibility label            |
+
+## 🎨 Examples
+
+### All Toast Types
+
 ### `setDefaultColors(colors)`
 
-```json
+```bash
 
 Configure default colors for toast types.
 
@@ -113,7 +210,7 @@ info: "#3b82f6"
 
 ### `setDefaultMessages(messages)`
 
-```json
+```bash
 Configure default messages for toast types.
 
 setDefaultMessages({
@@ -129,7 +226,7 @@ info: "Here's some information!"
 
 ### Basic Toast Types
 
-```json
+```bash
 // Success
 createToast({ type: "success", message: "Data saved!" });
 
@@ -146,7 +243,7 @@ createToast({ type: "info", message: "New update available!" });
 
 ### Advanced Customization
 
-```json
+```bash
 createToast({
 message: "File uploading...",
 type: "info",
@@ -185,6 +282,29 @@ createToast({ type: "success" }); // Uses your custom colors & messages
 
 ```
 
+## 🔄 Advanced Features
+
+### Smart Grouping
+
+Identical toasts (same type, message, and position) are automatically grouped:
+
+- Shows a single toast with a badge counter
+- Resets the dismiss timer when new duplicates arrive
+- Maximum of 3 toasts visible at once
+
+### Queue Management
+
+- Only 3 toasts are shown simultaneously
+- Additional toasts are queued automatically
+- Queue is processed as toasts are dismissed
+
+### Accessibility
+
+- ARIA live regions announce new toasts to screen readers
+- Keyboard navigation support (Tab, Enter, Escape)
+- High contrast badge design
+- Semantic HTML structure
+
 ## 🛡️ Reliability Features
 
 ### Production-Grade System
@@ -204,10 +324,10 @@ createToast({ type: "success" }); // Uses your custom colors & messages
 
 ## 📁 Bundle Information
 
-- **Size**: ~13KB minified, ~4KB gzipped
+- **Size**: ~8KB minified, ~4KB gzipped
 - **Dependencies**: Zero
 - **Formats**: UMD, ES Modules
-- **TypeScript**: Definitions included (coming soon)
+- **TypeScript**: Definitions included (full coming soon)
 
 ## 🤝 Contributing
 

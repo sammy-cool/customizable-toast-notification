@@ -1,6 +1,7 @@
 /**
- * Set position for toast container (EXACT same logic as original)
+ * Set position for toast container
  * @param {HTMLElement} container - Toast container element
- * @param {string} position - Position string
+ * @param {Object} options - Options object containing position
+ * @returns {Promise<void>}
  */
-export function setPosition(container: HTMLElement, position: string): Promise<void>;
+export function setPosition(container: HTMLElement, options: any): Promise<void>;
