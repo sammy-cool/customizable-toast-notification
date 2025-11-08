@@ -152,6 +152,7 @@
         <button onclick="testPositioning()">Positioning Test</button>
         <button onclick="testAccessibility()">Accessibility Test</button>
         <button onclick="testCleanup()">Cleanup Test</button>
+        <button onclick="dismissToast()">Dismiss Toast Test</button>
       </div>
 
       <div class="info-box">
@@ -184,6 +185,7 @@
         setDefaultColors,
         setDefaultMessages,
         noop,
+        dismiss,
       } from "../../src/index.js";
       // Make functions globally available for E2E tests
       window.createToast = createToast;
@@ -422,6 +424,11 @@
       window.testCleanup = function () {
         noop();
         updateStatus("Emergency cleanup executed");
+      };
+
+      window.dismissToast = function () {
+        dismiss();
+        updateStatus("Dismiss Toast Succesfully!");
       };
 
       // Initialize
