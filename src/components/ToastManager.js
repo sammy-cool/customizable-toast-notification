@@ -245,7 +245,6 @@ async function setupPauseOnHover(data) {
  * @returns {Promise<void>} A promise that resolves when the toast is fully removed from the DOM.
  */
 export async function closeToast(toast) {
-  debugger;
   try {
     if (!toast?._key) return;
     const data = active.get(toast._key);
