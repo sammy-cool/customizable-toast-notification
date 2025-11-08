@@ -1,13 +1,20 @@
-export function createToast(options?: {}): Promise<void>;
 /**
- * Set default colors with validation
+ * Public API for creating a toast
+ * @param {Object} options Toast options
+ */
+export function createToast(options?: any): Promise<void>;
+/**
+ * Sets default colors
+ * @param {Object} colors
  */
 export function setDefaultColors(colors: any): void;
 /**
- * Set default messages with validation
+ * Sets default messages
+ * @param {Object} messages
  */
 export function setDefaultMessages(messages: any): void;
 /**
+ * Removes the first visible toast from the DOM.
  * Remove toast notifications from the DOM.
  *
  * @async
