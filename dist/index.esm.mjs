@@ -1,7 +1,7 @@
 /*!
- * Customizable Toast Notifications 3.9.7
- * Build: 2025-11-08 17:42:33
- * Cache-Buster: 1762623753576 
+ * Customizable Toast Notifications 3.10.0
+ * Build: 2025-11-08 18:28:44
+ * Cache-Buster: 1762626524069 
  * Author: Priyanshu Patel
  * Email: [priyanshu.alt191@gmail.com](mailto:priyanshu.alt191@gmail.com)
  * License: Apache-2.0
