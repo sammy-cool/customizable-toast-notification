@@ -1,6 +1,6 @@
 {
   "name": "customizable-toast-notification",
-  "version": "3.10.0",
+  "version": "3.11.0",
   "description": "A lightweight, zero-dependency toast notification library with CTA support for modern JavaScript applications with production-grade reliability and comprehensive system  mechanisms",
   "main": "dist/index.esm.mjs",
   "module": "dist/index.esm.mjs",
