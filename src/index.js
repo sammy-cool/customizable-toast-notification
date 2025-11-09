@@ -161,6 +161,8 @@ async function sanitizeToastOptions(options) {
       : "400px";
 
   const defaults = {
+    allowHtml: false, // default: false for safety
+    sanitizeHtml: true, // whether to sanitize (if DOMPurify present it's used)
     pauseOnHover: undefined,
     duration: 2500,
     position: "bottom-right",
