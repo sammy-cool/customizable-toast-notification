@@ -2,6 +2,8 @@
 "use strict";
 
 import { parseAnimationDuration } from "../utils/dom.js";
+import { sanitizeHtml } from "../utils/html-sanitizer.js";
+import { createLoader } from "./loader.js";
 import {
   createCTA,
   createCloseButton,
@@ -82,9 +84,57 @@ export async function applyRichStyling(toast, options, onClose) {
     WebkitBoxOrient: "vertical",
   });
 
-  messageSpan.textContent = options?.message;
-  messageSpan.setAttribute("message", options?.message);
-  messageSpan.setAttribute("aria-label", options?.message);
+  const allowHtml = !!options.allowHtml; // opt-in flag
+  const rawMessage = options.message ?? "";
+
+  // If a loader is requested as part of the message, create it safely
+  if (options.loader || options.showLoader) {
+    // createLoader returns an element (see new function below)
+    const loaderEl = createLoader(options.loader || {});
+    // Put loader before message content
+    messageSpan.appendChild(loaderEl);
+    // Small spacer
+    const spacer = document.createElement("span");
+    spacer.style.display = "inline-block";
+    spacer.style.width = "8px";
+    messageSpan.appendChild(spacer);
+  }
+
+  // If allowHtml is explicitly true, sanitize and set innerHTML, otherwise use textContent
+  if (
+    allowHtml &&
+    typeof rawMessage === "string" &&
+    rawMessage.trim().length > 0
+  ) {
+    try {
+      const sanitized = sanitizeHtml(rawMessage);
+      // Use DOM APIs to set sanitized HTML safely
+      const tmp = document.createElement("div");
+      tmp.innerHTML = sanitized;
+      // Move children to messageSpan to avoid re-parsing at outer scope
+      while (tmp.firstChild) {
+        messageSpan.appendChild(tmp.firstChild);
+      }
+    } catch (err) {
+      console.warn(
+        "HTML message sanitization failed, falling back to text:",
+        err
+      );
+      messageSpan.textContent = rawMessage;
+    }
+  } else {
+    // default safe text mode
+    messageSpan.textContent = String(rawMessage);
+  }
+
+  // set aria + title
+  messageSpan.setAttribute("aria-label", "Toast Notification Center");
+  messageSpan.setAttribute(
+    "title",
+    typeof rawMessage === "string"
+      ? rawMessage.replace(/<[^>]+>/g, "")
+      : String(rawMessage)
+  );
   toast.appendChild(messageSpan);
 
   if (options?.cta && Object.keys(options.cta).length !== 0) {
@@ -126,23 +176,33 @@ export async function createEmergencyToast(options, onClose) {
       cursor: "pointer",
     });
 
-    const messageSpan = document.createElement("span");
-    messageSpan.textContent =
-      options?.message || "Emergency Toast Creation Showing!";
-    emergency.appendChild(messageSpan);
+    const innerWrapper = document.createElement("div");
+    const msgEl = document.createElement("span");
+    msgEl.style.display = "inline-block";
+    if (options.allowHtml) {
+      msgEl.innerHTML = sanitizeHtml(
+        String(options.message || "Emergency Toast Showing!")
+      );
+    } else {
+      msgEl.textContent = String(
+        options.message || "Emergency Toast Creation Showing!"
+      );
+    }
+    innerWrapper.appendChild(msgEl);
 
+    // add close X via textContent to avoid innerHTML
     const closeSpan = document.createElement("span");
+    closeSpan.style.cssText =
+      "float: right; margin-left: 10px; font-weight: bold;";
     closeSpan.textContent = "×";
-    Object.assign(closeSpan.style, {
-      float: "right",
-      marginLeft: "10px",
-      fontWeight: "bold",
-    });
+    innerWrapper.appendChild(closeSpan);
+
+    while (emergency.firstChild) emergency.removeChild(emergency.firstChild);
+    emergency.appendChild(innerWrapper);
     closeSpan.onclick = () => {
       emergency.remove();
       onClose(emergency);
     };
-    emergency.appendChild(closeSpan);
 
     document.body.appendChild(emergency);
     setTimeout(() => {

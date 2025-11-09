@@ -92,7 +92,7 @@ export default [
       file: "dist/index.umd.js",
       format: "umd",
       name: "customizableToast",
-      sourcemap: true,
+      // sourcemap: true,
       banner,
     },
     plugins: [
@@ -113,7 +113,7 @@ export default [
     output: {
       file: "dist/index.esm.mjs",
       format: "esm",
-      sourcemap: true,
+      // sourcemap: true,
       banner,
     },
     external: [
