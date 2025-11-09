@@ -260,18 +260,13 @@ export async function closeAllToasts() {
     queue.length = 0;
     pending.clear();
 
-    // Close in reverse order (most recent first) to better match UX expectations
-    for (let i = activeToasts.length - 1; i >= 0; i--) {
-      const t = activeToasts[i];
+    // Close in clockwise order (oldest first)
+    for (const t of activeToasts) {
       try {
-        // closeToast handles timer cleanup and queue drain
-        // don't await each one sequentially to speed up; await Promise.all to finalize
-        // but we will await sequentially to ensure animation/slot freeing order
-        // (this preserves drainQueue behavior)
-        // eslint-disable-next-line no-await-in-loop
+        // Sequentially close to preserve animation and queue order
         await closeToast(t);
-      } catch (innerErr) {
-        console.warn("closeAllToasts: failed to close one toast:", innerErr);
+      } catch (error_inner) {
+        console.warn("closeAllToasts: failed to close one toast:", error_inner);
       }
     }
   } catch (err) {
