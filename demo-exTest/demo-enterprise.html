@@ -1,0 +1,528 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width,initial-scale=1" />
+    <title>Customizable Toast Notification — Enterprise Demo</title>
+
+    <style>
+      :root {
+        --page-bg: #f7fafc;
+        --page-text: #0f172a;
+        --card-bg: #fff;
+        --accent: #2563eb;
+        --muted: #64748b;
+        --toast-bg: #1f2937;
+        --toast-color: #fff;
+        --toast-radius: 10px;
+        --toast-padding: 12px 18px;
+        --toast-shadow: 0 8px 24px rgba(2, 6, 23, 0.12);
+        --toast-animation-duration: 400ms;
+        --toast-animation-easing: cubic-bezier(0.2, 0.9, 0.3, 1);
+        --toast-enter-offset: 24px;
+        --toast-exit-offset: -24px;
+      }
+      html,
+      body {
+        height: 100%;
+      }
+      body {
+        font-family: Inter, ui-sans-serif, system-ui, -apple-system, "Segoe UI",
+          Roboto, "Helvetica Neue", Arial;
+        background: var(--page-bg);
+        color: var(--page-text);
+        padding: 28px;
+        line-height: 1.4;
+      }
+      .wrap {
+        max-width: 1100px;
+        margin: 0 auto;
+        display: grid;
+        grid-template-columns: 1fr 420px;
+        gap: 20px;
+        align-items: start;
+      }
+      .card {
+        background: var(--card-bg);
+        border-radius: 12px;
+        padding: 18px;
+        box-shadow: 0 8px 20px rgba(2, 6, 23, 0.04);
+      }
+      h1 {
+        font-size: 20px;
+        margin: 0 0 8px;
+      }
+      p.lead {
+        color: var(--muted);
+        margin: 0 0 14px;
+      }
+      .controls {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 10px;
+        padding-top: 8px;
+      }
+      button {
+        padding: 10px 14px;
+        border-radius: 8px;
+        border: 0;
+        cursor: pointer;
+        font-weight: 600;
+      }
+      .primary {
+        background: var(--accent);
+        color: #fff;
+      }
+      .muted {
+        background: #eef2ff;
+        color: var(--accent);
+      }
+      .danger {
+        background: #ef4444;
+        color: #fff;
+      }
+      .success {
+        background: #10b981;
+        color: #fff;
+      }
+      .info {
+        background: #06b6d4;
+        color: #fff;
+      }
+      .small {
+        font-size: 13px;
+        padding: 8px 10px;
+      }
+      .right-col {
+        position: relative;
+      }
+      .log {
+        height: 420px;
+        overflow: auto;
+        border-radius: 8px;
+        background: #0b1220;
+        color: #d1d5db;
+        padding: 12px;
+        font-family: monospace;
+        font-size: 13px;
+      }
+      label {
+        display: block;
+        font-size: 13px;
+        color: var(--muted);
+        margin-top: 12px;
+      }
+      .theme-swatch {
+        display: flex;
+        gap: 8px;
+        padding-top: 8px;
+      }
+      .theme-swatch button {
+        min-width: 100px;
+      }
+      footer {
+        margin-top: 18px;
+        color: var(--muted);
+        font-size: 13px;
+      }
+      .kpi {
+        display: flex;
+        gap: 8px;
+        margin-top: 12px;
+        flex-wrap: wrap;
+      }
+      .kpi div {
+        background: #f8fafc;
+        padding: 8px 10px;
+        border-radius: 8px;
+        border: 1px solid #eef2ff;
+        color: var(--muted);
+      }
+    </style>
+  </head>
+  <body>
+    <div class="wrap">
+      <div class="card">
+        <h1>Customizable Toast Notification — Enterprise Demo</h1>
+        <p class="lead">
+          This page demonstrates the new <strong>dismiss()</strong> and
+          <strong>noop()</strong> APIs, Esc-to-dismiss support, and the
+          close-priority behavior required by your JIRA story.
+        </p>
+
+        <div>
+          <label>Message</label>
+          <input
+            id="msg"
+            value="Hello world!"
+            style="
+              width: 100%;
+              padding: 10px;
+              border-radius: 8px;
+              border: 1px solid #e6eef8;
+            "
+          />
+        </div>
+
+        <div
+          style="display: flex; gap: 8px; margin-top: 12px; align-items: center"
+        >
+          <select
+            id="type"
+            style="padding: 10px; border-radius: 8px; border: 1px solid #e6eef8"
+          >
+            <option value="info">info</option>
+            <option value="success">success</option>
+            <option value="warning">warning</option>
+            <option value="error">error</option>
+          </select>
+          <select
+            id="position"
+            style="padding: 10px; border-radius: 8px; border: 1px solid #e6eef8"
+          >
+            <option value="top-right">top-right</option>
+            <option value="top-left">top-left</option>
+            <option value="bottom-right" selected>bottom-right</option>
+            <option value="bottom-left">bottom-left</option>
+          </select>
+          <input
+            id="duration"
+            type="number"
+            value="3500"
+            style="
+              width: 100px;
+              padding: 10px;
+              border-radius: 8px;
+              border: 1px solid #e6eef8;
+            "
+          />
+          <label style="font-size: 13px; color: var(--muted)">ms</label>
+        </div>
+
+        <div class="controls">
+          <button id="show" class="primary">Show Toast</button>
+          <button id="dismiss" class="muted">Dismiss Most Recent</button>
+          <button id="noop" class="danger">Close All (noop)</button>
+          <button id="priority1" class="small info">
+            Test Priority: Close then Create
+          </button>
+          <button id="priority2" class="small success">
+            Test Priority: Create then Close
+          </button>
+          <button id="show-multi" class="small">Show 5 Rapid</button>
+        </div>
+
+        <label>Theming tokens (live override)</label>
+        <div class="theme-swatch">
+          <button id="brand1" class="small">Brand - Clean</button>
+          <button id="brand2" class="small">Brand - Gradient</button>
+          <button id="reset-theme" class="small muted">Reset Theme</button>
+        </div>
+
+        <div class="kpi">
+          <div id="active-count">Active: 0</div>
+          <div id="queued-count">Queued: 0</div>
+        </div>
+
+        <footer>
+          Press <kbd>Esc</kbd> to dismiss the most recent toast. The demo
+          registers Esc by default; production can opt-out.
+        </footer>
+      </div>
+
+      <div class="card right-col">
+        <h2 style="margin: 0 0 12px 0">Console / Debug</h2>
+        <div id="log" class="log" aria-live="polite" role="log"></div>
+        <div style="margin-top: 12px; font-size: 13px; color: var(--muted)">
+          This demo uses the library from local
+          <code>../dist/index.umd.js</code> if present; otherwise it falls back
+          to jsDelivr.
+        </div>
+      </div>
+    </div>
+
+    <!-- Library loader: try local dist (dev), else fallback to jsDelivr UMD latest -->
+    <script>
+      (function loadLib() {
+        const local = "../dist/index.umd.js";
+        function tryLocal() {
+          return new Promise((resolve, reject) => {
+            const s = document.createElement("script");
+            s.src = local;
+            s.onload = () =>
+              resolve(
+                window.customizableToast ||
+                  window.CustomizableToastNotification ||
+                  null
+              );
+            s.onerror = () => reject();
+            document.head.appendChild(s);
+          });
+        }
+        function tryCdn() {
+          // Use "latest" for demo; you can pin a version for production
+          const cdn =
+            "https://cdn.jsdelivr.net/npm/customizable-toast-notification@latest/dist/index.umd.js";
+          return new Promise((resolve) => {
+            const s = document.createElement("script");
+            s.src = cdn;
+            s.onload = () =>
+              resolve(
+                window.customizableToast ||
+                  window.CustomizableToastNotification ||
+                  null
+              );
+            s.onerror = () => resolve(null);
+            document.head.appendChild(s);
+          });
+        }
+
+        // Try local first, then CDN
+        tryLocal()
+          .catch(() => tryCdn())
+          .then(initDemo)
+          .catch((e) => {
+            // Fallback: try ESM import from jsDelivr (useful for ESM only builds)
+            (async () => {
+              try {
+                const mod = await import(
+                  "https://cdn.jsdelivr.net/npm/customizable-toast-notification@latest/dist/index.esm.mjs"
+                );
+                initDemo(mod);
+              } catch (err) {
+                console.error(
+                  "Failed to load customizable-toast library:",
+                  err
+                );
+                log("Failed to load library. Build it locally or check CDN.");
+              }
+            })();
+          });
+      })();
+
+      // helper log
+      function log(...args) {
+        const el = document.getElementById("log");
+        const now = new Date().toISOString().split("T")[1].slice(0, 8);
+        el.innerText = [now, ...args].join(" ") + "\n" + el.innerText;
+      }
+
+      // init when library available (either global or ESM module)
+      async function initDemo(lib) {
+        let api = null;
+
+        // lib might be the ESM module object or the global object
+        if (!lib) {
+          log(
+            "Library not found (global / esm). Please build it locally or check CDN."
+          );
+          return;
+        }
+
+        // If ESM module imported, mod.createToast exists; if global, window.customizableToast.createToast or similar
+        if (typeof lib.createToast === "function") {
+          api = lib;
+        } else {
+          // global fallbacks
+          api =
+            window.customizableToast ||
+            window.CustomizableToastNotification ||
+            lib;
+        }
+
+        if (!api) {
+          log("Could not resolve API from loaded module.");
+          return;
+        }
+
+        // expose to window for console testing
+        window.toastAPI = api;
+        log("Library loaded:", !!api.createToast ? "createToast()" : "unknown");
+
+        // UI bindings
+        const $show = document.getElementById("show");
+        const $dismiss = document.getElementById("dismiss");
+        const $noop = document.getElementById("noop");
+        const $priority1 = document.getElementById("priority1");
+        const $priority2 = document.getElementById("priority2");
+        const $showMulti = document.getElementById("show-multi");
+        const $msg = document.getElementById("msg");
+        const $type = document.getElementById("type");
+        const $pos = document.getElementById("position");
+        const $dur = document.getElementById("duration");
+
+        async function refreshCounts() {
+          // best-effort: if library exposes internals, use them; else just show unknown
+          try {
+            // window.toastAPI._stats is optional internal; use API if available
+            const active = api._getActiveCount
+              ? api._getActiveCount()
+              : undefined;
+            const queued = api._getQueueLength
+              ? api._getQueueLength()
+              : undefined;
+            document.getElementById("active-count").innerText =
+              "Active: " + (active ?? "n/a");
+            document.getElementById("queued-count").innerText =
+              "Queued: " + (queued ?? "n/a");
+          } catch (e) {}
+        }
+
+        function buildOpts() {
+          return {
+            message: $msg.value,
+            type: $type.value,
+            position: $pos.value,
+            duration: Number($dur.value) || undefined,
+          };
+        }
+
+        $show.addEventListener("click", async () => {
+          const opts = buildOpts();
+          log("createToast →", JSON.stringify(opts));
+          // ensure we can await if API returns a promise
+          try {
+            (await api.createToast) ? api.createToast(opts) : api(opts);
+            log("toast created");
+          } catch (e) {
+            log("createToast failed", e && e.message ? e.message : e);
+          }
+          refreshCounts();
+        });
+
+        $showMulti.addEventListener("click", async () => {
+          for (let i = 1; i <= 5; i++) {
+            api.createToast({
+              message: `Burst toast ${i}`,
+              type: ["info", "success", "warning", "error"][i % 4],
+              duration: 2500,
+            });
+          }
+          refreshCounts();
+        });
+
+        $dismiss.addEventListener("click", async () => {
+          log("dismiss() called (most recent)");
+          if (typeof api.dismiss === "function") {
+            await api.dismiss();
+          } else if (typeof api.dismissToast === "function") {
+            await api.dismissToast();
+          } else {
+            log("dismiss API not found on loaded library");
+          }
+          refreshCounts();
+        });
+
+        $noop.addEventListener("click", async () => {
+          log("noop() called (close all)");
+          if (typeof api.noop === "function") {
+            await api.noop();
+          } else if (typeof api.noopAll === "function") {
+            await api.noopAll();
+          } else if (typeof api.closeAllToasts === "function") {
+            await api.closeAllToasts();
+          } else {
+            log("noop API not found on loaded library");
+          }
+          refreshCounts();
+        });
+
+        // Priority test: call noop then immediately createToast
+        $priority1.addEventListener("click", async () => {
+          log("PRIORITY1: close() then create() (close must have priority)");
+          // fire close (don't await) then immediately create — create should wait due to close-priority
+          const want = buildOpts();
+          if (api.noop) {
+            api.noop(); // start close
+          } else if (api.noopAll) {
+            api.noopAll();
+          }
+          // immediate create
+          (await api.createToast)
+            ? api.createToast({ message: want.message + " (after close)" })
+            : api({ message: want.message + " (after close)" });
+          log(
+            "Priority1 done — if close had priority, new toast appears after close completes."
+          );
+          refreshCounts();
+        });
+
+        // Priority test 2: create then immediately close
+        $priority2.addEventListener("click", async () => {
+          log(
+            "PRIORITY2: create() then close() immediately — close should remove most recent."
+          );
+          await api.createToast({
+            message: "Temporary toast (will be closed)",
+            duration: 5000,
+          });
+          // close the most recent
+          if (api.dismiss) {
+            await api.dismiss();
+          } else if (api.dismissToast) {
+            await api.dismissToast();
+          }
+          log("Priority2 done");
+          refreshCounts();
+        });
+
+        // Theming buttons
+        document.getElementById("brand1").addEventListener("click", () => {
+          document.documentElement.style.setProperty("--toast-bg", "#0b1220");
+          document.documentElement.style.setProperty("--toast-color", "#fff");
+          document.documentElement.style.setProperty("--toast-radius", "10px");
+          document.documentElement.style.setProperty(
+            "--toast-shadow",
+            "0 10px 30px rgba(2,6,23,0.3)"
+          );
+          document.documentElement.style.setProperty(
+            "--toast-enter-offset",
+            "18px"
+          );
+          log("Applied Brand - Clean theme");
+        });
+        document.getElementById("brand2").addEventListener("click", () => {
+          document.documentElement.style.setProperty(
+            "--toast-bg",
+            "linear-gradient(135deg,#6a11cb,#2575fc)"
+          );
+          document.documentElement.style.setProperty("--toast-color", "#fff");
+          document.documentElement.style.setProperty("--toast-radius", "12px");
+          document.documentElement.style.setProperty(
+            "--toast-shadow",
+            "0 12px 32px rgba(2,6,23,0.35)"
+          );
+          document.documentElement.style.setProperty(
+            "--toast-enter-offset",
+            "40px"
+          );
+          log("Applied Brand - Gradient theme");
+        });
+        document.getElementById("reset-theme").addEventListener("click", () => {
+          document.documentElement.style.removeProperty("--toast-bg");
+          document.documentElement.style.removeProperty("--toast-color");
+          document.documentElement.style.removeProperty("--toast-radius");
+          document.documentElement.style.removeProperty("--toast-shadow");
+          document.documentElement.style.removeProperty("--toast-enter-offset");
+          log("Reset theme tokens to defaults");
+        });
+
+        log(
+          "Demo initialized. window.toastAPI is available for console tests."
+        );
+        refreshCounts();
+      }
+
+      // small helper to append to log if load fails
+      function log(a, b) {
+        const el = document.getElementById("log");
+        el.innerText =
+          new Date().toLocaleTimeString() +
+          " " +
+          Array.from(arguments).join(" ") +
+          "\n" +
+          el.innerText;
+      }
+    </script>
+  </body>
+</html>
