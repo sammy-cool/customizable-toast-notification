@@ -125,9 +125,7 @@
   "files": [
     "postinstall.js",
     "dist/index.esm.mjs",
-    "dist/index.esm.mjs.map",
     "dist/index.umd.js",
-    "dist/index.umd.js.map",
     "dist/index.d.ts",
     "README.md",
     "LICENSE",
