@@ -61,13 +61,22 @@ export function fallbackSanitize(dirty) {
     "CODE",
     "MARK",
   ]);
+
+  // AUDIT FIX (C1 — security): 'style' was previously allowed through with
+  // zero validation, letting an attacker-controlled message (allowHtml:true)
+  // inject `position:fixed;inset:0;z-index:999999` and render a full-page
+  // clickjacking overlay through a toast that already renders at
+  // z-index:9999. Inline style is a well-known sanitizer bypass class (see
+  // OWASP's XSS Filter Evasion Cheat Sheet). Removed from the allowlist
+  // entirely rather than attempting partial validation — toasts don't need
+  // arbitrary inline styling to be useful, and "no unchecked style" is the
+  // safe default most reputable sanitizers ship with.
   const ALLOWED_ATTRS = new Set([
     "href",
     "src",
     "alt",
     "title",
     "class",
-    "style",
     "target",
     "rel",
   ]);

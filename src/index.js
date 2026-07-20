@@ -363,10 +363,6 @@ if (typeof window !== "undefined" && typeof document !== "undefined") {
   }
 }
 
-const noop = async function () {
-  await managerNoop();
-};
-
 // Module exports
 // export { createToast, setDefaultColors, setDefaultMessages, noop };
 
@@ -374,12 +370,18 @@ const noop = async function () {
 try {
   // UMD/Global support
   if (typeof window !== "undefined") {
+    // AUDIT FIX (H5): this object previously used the RAW, unwrapped
+    // `createToast`/`dismiss`/`noop` locals — meaning window.customizableToast
+    // (the exact global your README's CDN usage example is built around)
+    // lacked the closeInProgress/closePromise race-condition serialization
+    // that ESM consumers get for free via the named exports. Now both
+    // consumption paths behave identically.
     window.customizableToast = {
-      createToast,
+      createToast: createToastWithPriority,
       setDefaultColors,
       setDefaultMessages,
-      noop,
-      dismiss,
+      noop: noopAll,
+      dismiss: dismissToast,
     };
   }
 } catch (error) {

@@ -104,8 +104,14 @@ export function createProgressBar(toast, options) {
   const progressBar = document.createElement("div");
   const borderRadiusStr = options.borderRadius || 0;
   const borderRadiusNum = parseInt(borderRadiusStr, 10);
-  const newRadiusSub = borderRadiusNum - 10 + "px";
-  const finalWidth = borderRadiusNum ? `calc(100% - ${newRadiusSub})` : "100%";
+  // AUDIT FIX (H4): previously `borderRadiusNum - 10` went NEGATIVE for any
+  // borderRadius under 10px (a very normal value — 4px/8px are common UI
+  // defaults), which flipped `calc(100% - Npx)` into `calc(100% + Npx)` and
+  // made the progress bar visibly overflow the toast's right edge. Clamping
+  // the subtracted offset to a minimum of 0 keeps the bar at most 100% wide
+  // regardless of how small borderRadius is.
+  const radiusOffset = Math.max(borderRadiusNum - 10, 0);
+  const finalWidth = borderRadiusNum ? `calc(100% - ${radiusOffset}px)` : "100%";
   const leftVal = borderRadiusNum ? "12px" : "0";
 
   Object.assign(progressBar.style, {
