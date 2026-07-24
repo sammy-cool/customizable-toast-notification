@@ -47,7 +47,7 @@ test.describe("CTA — button variant", () => {
       window.customizableToast.createToast({
         message: "stay open",
         duration: 30000,
-        cta: { label: "Sync", onClick: () => {}, autoClose: false },
+        cta: { label: "Sync", onClick: () => { }, autoClose: false },
       });
     });
     const toast = page.locator('[id^="toast-"]').first();
@@ -86,7 +86,7 @@ test.describe("CTA — button variant", () => {
       window.customizableToast.createToast({
         message: "no label given",
         duration: 30000,
-        cta: { onClick: () => {} },
+        cta: { onClick: () => { } },
       });
     });
     await expect(
@@ -161,26 +161,36 @@ test.describe("HTML sanitization (security boundary)", () => {
     expect(await page.evaluate(() => window.__xssRan)).toBe(false);
   });
 
-  test("AUDIT C1 (regression guard — SECURITY): allowHtml + style attribute allows a full-page overlay payload through", async ({
+  test("AUDIT C1 (FIXED — SECURITY): allowHtml + style attribute no longer allows a full-page overlay payload through", async ({
     page,
   }) => {
     await page.evaluate(() => {
       window.customizableToast.createToast({
         message:
-          '<div id="__audit_overlay" style="position:fixed;inset:0;z-index:999999;background:red;">overlay</div>',
+          '<div style="position:fixed;inset:0;z-index:999999;background:red;">overlay</div>',
         allowHtml: true,
         duration: 30000,
       });
     });
 
-    const overlay = page.locator("#__audit_overlay");
-    // Currently expected to FAIL this assertion (overlay DOES exist and IS
-    // fixed-position, covering the viewport) — see AUDIT-REPORT.md C1. This
-    // is the most important red test in the whole suite: it should turn
-    // green only once the `style` attribute is removed (or strictly
-    // allowlisted) in html-sanitizer.js. Do not silence or delete this test
-    // to make CI pass — fix the sanitizer instead.
-    await expect(overlay).toHaveCount(0);
+    // TEST FIX: originally located this element by #id, which can never
+    // work regardless of whether C1 is fixed — html-sanitizer.js's
+    // ALLOWED_ATTRS has never included "id" (confirmed by running the
+    // real fallbackSanitize() against this exact payload: id is stripped
+    // unconditionally). So the old test would have reported "pass" (0
+    // matches) even in the pre-fix, vulnerable state — it wasn't actually
+    // testing the vulnerability. Checking for a style attribute containing
+    // "position:fixed" anywhere in the whole page is what the real
+    // exploit depends on, so that's what needs to be provably absent.
+    const dangerousOverlay = page.locator('[style*="position:fixed"], [style*="position: fixed"]');
+    await expect(dangerousOverlay).toHaveCount(0);
+
+    // Sanity check the payload's TEXT content still rendered — proves the
+    // sanitizer stripped the dangerous attribute rather than dropping the
+    // whole element (which would trivially also make the count 0 above,
+    // for the wrong reason).
+    const toast = page.locator('[id^="toast-"]').first();
+    await expect(toast).toContainText("overlay");
   });
 
   test("javascript: URIs in an allowHtml link are neutralized", async ({
@@ -188,12 +198,17 @@ test.describe("HTML sanitization (security boundary)", () => {
   }) => {
     await page.evaluate(() => {
       window.customizableToast.createToast({
-        message: '<a id="__audit_link" href="javascript:alert(1)">click</a>',
+        message: '<a href="javascript:alert(1)">click me</a>',
         allowHtml: true,
         duration: 30000,
       });
     });
-    const link = page.locator("#__audit_link");
+    // TEST FIX: same #id issue as the C1 test above — locate by content
+    // instead. Scoped to the toast so this doesn't accidentally match an
+    // unrelated link elsewhere on the harness page.
+    const toast = page.locator('[id^="toast-"]').first();
+    const link = toast.getByRole("link", { name: "click me" });
+    await expect(link).toBeVisible();
     const href = await link.getAttribute("href");
     expect(href || "").not.toMatch(/^javascript:/i);
   });
