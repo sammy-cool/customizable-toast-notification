@@ -127,12 +127,47 @@ export function createProgressBar(toast, options) {
 
   toast.appendChild(progressBar);
 
-  // Trigger width animation after insertion
-  setTimeout(() => {
-    // Force reflow to apply transition properly
-    progressBar.offsetWidth;
-    progressBar.style.width = "0%";
-  }, 50);
+  // AUDIT FIX (H3): this used to be a plain CSS `transition`, kicked off by
+  // flipping `style.width` to "0%" after a setTimeout. That works visually,
+  // but a CSS transition has no idea PausableTimer exists — it runs on its
+  // own clock. When ToastManager.js calls timer.pause() on hover, the real
+  // dismiss genuinely freezes, but the transition kept animating to 0% (or
+  // had already finished), so the bar visually lied about how much time was
+  // actually left.
+  //
+  // The Web Animations API (Element.animate()) solves this properly: it
+  // returns an Animation object with real .pause()/.play() methods that we
+  // can call from the exact same mouseenter/mouseleave/focus handlers that
+  // already call timer.pause()/timer.resume() in ToastManager.js — so the
+  // bar and the real timer are now driven by the same pause signal instead
+  // of two independent clocks. Stored on the toast element (matching the
+  // existing _cleanup/_pauseCleanup convention) so ToastManager.js can
+  // reach it without createProgressBar needing to know about PausableTimer.
+  //
+  // Compatibility fallback: Element.animate() isn't available in every
+  // environment this package claims to support (browserslist floor is
+  // safari>=10.1; Web Animations API landed in Safari 13.1) or in test
+  // environments like jsdom. Rather than throw and break toast creation
+  // entirely, fall back to the original CSS-transition approach — it won't
+  // get the pause-sync fix, but it degrades to the previous (already
+  // shipped) behavior instead of crashing.
+  if (typeof progressBar.animate === "function") {
+    toast._progressAnimation = progressBar.animate(
+      [{ width: finalWidth }, { width: "0%" }],
+      {
+        duration: Number(options.duration) || 1800,
+        easing: "linear",
+        fill: "forwards",
+        delay: 50,
+      }
+    );
+  } else {
+    progressBar.style.transition = `width ${options.duration || 1800}ms linear`;
+    setTimeout(() => {
+      progressBar.offsetWidth;
+      progressBar.style.width = "0%";
+    }, 50);
+  }
 }
 
 /**

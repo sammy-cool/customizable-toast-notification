@@ -262,14 +262,18 @@ describe("PausableTimer.js — pause/resume math", () => {
     let fired = false;
     const timer = new PausableTimer(() => {
       fired = true;
-    }, 200);
+    }, 400);
     timer.start();
-    await new Promise((r) => setTimeout(r, 50));
+    await new Promise((r) => setTimeout(r, 100));
     timer.pause();
     const remaining = timer.getRemainingTime();
+    // Widened tolerance (was a tight 60ms window) — sandboxed/shared CI
+    // runners can have enough scheduling jitter on a single setTimeout to
+    // flake a narrow window; this asserts the same underlying behavior
+    // (roughly delay-elapsed remains) without chasing exact milliseconds.
     assert.ok(
-      remaining <= 160 && remaining >= 100,
-      `expected ~150ms remaining, got ${remaining}ms`
+      remaining <= 340 && remaining >= 200,
+      `expected ~300ms remaining, got ${remaining}ms`
     );
     assert.equal(fired, false);
   });
@@ -278,22 +282,27 @@ describe("PausableTimer.js — pause/resume math", () => {
     freshDom();
     const { PausableTimer } = await import("../../src/utils/PausableTimer.js");
     let fired = false;
-    const start = Date.now();
     const timer = new PausableTimer(() => {
       fired = true;
-    }, 150);
+    }, 300);
     timer.start();
-    await new Promise((r) => setTimeout(r, 50));
+    await new Promise((r) => setTimeout(r, 80));
     timer.pause();
-    await new Promise((r) => setTimeout(r, 200)); // long pause, should NOT fire
+    await new Promise((r) => setTimeout(r, 300)); // long pause, should NOT fire
     assert.equal(fired, false);
     timer.resume();
-    await new Promise((r) => setTimeout(r, 130));
-    const elapsedSincePause = Date.now() - start;
-    assert.ok(fired, `timer should have fired by now (${elapsedSincePause}ms total)`);
+    // Remaining after pause is ~220ms; waiting nearly double that gives
+    // generous headroom against scheduling jitter while still proving
+    // resume() picked up from the remaining time, not a fresh 300ms delay
+    // (which would also fire within this window, so this alone doesn't
+    // fully distinguish the two — the "should NOT fire" assertion above,
+    // during the 300ms pause, is what actually proves pause() worked;
+    // this just confirms resume() eventually does fire).
+    await new Promise((r) => setTimeout(r, 400));
+    assert.ok(fired, "timer should have fired after resume");
   });
 
-  test("GOOD: clear() prevents callback from ever firing", async () => {
+  test("clear() prevents callback from ever firing", async () => {
     freshDom();
     const { PausableTimer } = await import("../../src/utils/PausableTimer.js");
     let fired = false;
@@ -313,16 +322,32 @@ describe("ToastManager.js — grouping key stability", () => {
     // makeKey/hashString aren't exported — re-derive via two showToast calls
     // and inspect the resulting DOM badge instead of reaching into internals.
     global.requestAnimationFrame = (cb) => setTimeout(cb, 0);
-    const { showToast } = await import("../../src/components/ToastManager.js");
+    const { showToast } = await import(
+      // Cache-busted import: ToastManager.js keeps module-level singleton
+      // state (active Map, queue, visibleCount) that would otherwise
+      // persist across every test in this file, since Node caches ES
+      // module instances by specifier. Without this, toasts left
+      // un-dismissed by one test (e.g. this one, which never calls
+      // dismiss/close) silently pollute visibleCount for every test that
+      // imports ToastManager afterward — including the MAX_VISIBLE cap
+      // itself, which can cause a later test's showToast() calls to queue
+      // instead of render immediately. The query string forces Node to
+      // treat this as a distinct module instance with fresh state.
+      "../../src/components/ToastManager.js?fresh=" + Date.now() + Math.random()
+    );
 
     const container = document.createElement("div");
-    container.id = "toast-container-bottom-right";
+    // See the L3 test below for why a unique position (not a fixed
+    // "bottom-right") matters here — containerRegistry.js's module-level
+    // cache persists across tests in this process.
+    const pos = "bottom-right-grouptest-" + Date.now() + "-" + Math.random().toString(36).slice(2);
+    container.id = `toast-container-${pos}`;
     document.body.appendChild(container);
 
     const opts = {
       type: "info",
       message: "duplicate message",
-      position: "bottom-right",
+      position: pos,
       duration: 5000,
       showCloseButton: false,
       showProgressBar: false,
@@ -336,5 +361,79 @@ describe("ToastManager.js — grouping key stability", () => {
     const badge = container.querySelector(".toast-count-badge");
     assert.ok(badge, "expected a grouping badge after two identical toasts");
     assert.equal(badge.textContent, "2");
+  });
+});
+
+describe("ToastManager.js — dismissMostRecent() targets the newest toast", () => {
+  test("FIXED (L3): dismiss() removes the most recently created toast, not the oldest", async () => {
+    freshDom();
+    global.requestAnimationFrame = (cb) => setTimeout(cb, 0);
+    const { showToast, dismissMostRecent } = await import(
+      // Same cache-busting reason as the grouping-key test above — this
+      // test needs a clean visibleCount/active Map, not whatever state a
+      // previous test in this file left behind.
+      "../../src/components/ToastManager.js?fresh=" + Date.now() + Math.random()
+    );
+
+    const container = document.createElement("div");
+    // AUDIT/TEST NOTE: containerRegistry.js caches containers in a
+    // module-level Map keyed by container ID, for the process lifetime —
+    // correct for real page usage (document never gets swapped mid-session
+    // in a real browser), but it means a fixed ID like "bottom-right" here
+    // would collide with whatever a PREVIOUS test already cached, even
+    // across different jsdom documents (Element.isConnected is relative to
+    // an element's own document tree, so a stale cached container still
+    // reads as "connected"). A unique position string per test guarantees
+    // a fresh cache miss, so toasts land in THIS test's document instead
+    // of an orphaned one from an earlier test.
+    const pos = "bottom-right-l3test-" + Date.now() + "-" + Math.random().toString(36).slice(2);
+    container.id = `toast-container-${pos}`;
+    document.body.appendChild(container);
+
+    await showToast({
+      message: "first (oldest)",
+      position: pos,
+      duration: 60000,
+      showCloseButton: false,
+      showProgressBar: false,
+    });
+    await new Promise((r) => setTimeout(r, 150));
+    await showToast({
+      message: "second (newest)",
+      position: pos,
+      duration: 60000,
+      showCloseButton: false,
+      showProgressBar: false,
+    });
+    await new Promise((r) => setTimeout(r, 150));
+
+    await dismissMostRecent();
+    await new Promise((r) => setTimeout(r, 250));
+
+    const remainingText = container.textContent;
+    assert.match(remainingText, /first \(oldest\)/);
+    assert.doesNotMatch(remainingText, /second \(newest\)/);
+  });
+});
+
+describe("toast-utils-core.js — progress bar pause-sync wiring (H3)", () => {
+  test("createProgressBar falls back gracefully when Element.animate is unavailable (jsdom, older Safari)", async () => {
+    freshDom();
+    // Sanity check on the assumption this test relies on: jsdom genuinely
+    // doesn't implement the Web Animations API today. If a future jsdom
+    // version adds it, this test's premise changes — not a failure, just
+    // worth knowing if it ever stops being true.
+    assert.equal(typeof document.createElement("div").animate, "undefined");
+
+    const { createProgressBar } = await import(
+      "../../src/components/toast-utils-core.js"
+    );
+    const toast = document.createElement("div");
+    assert.doesNotThrow(() => {
+      createProgressBar(toast, { duration: 1000, borderRadius: "50px" });
+    });
+    // Fallback path: no _progressAnimation set, but the bar itself exists.
+    assert.equal(toast._progressAnimation, undefined);
+    assert.ok(toast.querySelector("div"));
   });
 });

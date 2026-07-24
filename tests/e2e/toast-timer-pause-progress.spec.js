@@ -39,7 +39,7 @@ test.describe("pause-on-hover timer behavior", () => {
     await expect(toast).toHaveCount(0, { timeout: 2000 });
   });
 
-  test("AUDIT H3 (regression guard): progress bar keeps animating to 0% during a hover-pause, even though the real timer is frozen", async ({
+  test("AUDIT H3 (FIXED): progress bar now stays paused in sync with the real frozen timer", async ({
     page,
   }) => {
     await page.evaluate(() => {
@@ -53,12 +53,12 @@ test.describe("pause-on-hover timer behavior", () => {
     const toast = page.locator('[id^="toast-"]').first();
     await expect(toast).toBeVisible();
 
-    // Let the progress bar run partway, then hover BEFORE it would
-    // naturally finish, and hold well past when the CSS transition alone
-    // would reach 0%.
+    // Let the animation run partway (~250ms into a 1000ms animation once
+    // the 50ms initial delay is accounted for), then hover and hold well
+    // past where the OLD buggy behavior would have reached 0%.
     await page.waitForTimeout(300);
     await toast.hover();
-    await page.waitForTimeout(1500); // CSS transition (1000ms) has long finished
+    await page.waitForTimeout(1500);
 
     const bar = toast.locator("div").last(); // progress bar is an appended div
     const width = await bar.evaluate((el) => getComputedStyle(el).width);
@@ -66,16 +66,15 @@ test.describe("pause-on-hover timer behavior", () => {
       (el) => getComputedStyle(el).width
     );
 
-    // EXPECTED once H3 is fixed: the bar's width should still reflect a
-    // PAUSED, non-zero state, roughly matching where it was when hovered.
-    // CURRENT BUGGY BEHAVIOR: the bar's CSS transition doesn't know about
-    // PausableTimer.pause() at all, so it finishes on its own schedule and
-    // sits at ~0 width while the toast is still very much alive (frozen by
-    // the real timer). This assertion documents that mismatch — if it
-    // fails, H3 has been fixed (bar and timer are now in sync); update this
-    // test to assert the bar stays proportionally non-zero instead.
-    expect(parseFloat(width)).toBeLessThan(5); // bar visually at ~0 already…
-    await expect(toast).toBeVisible(); // …while the toast is still shown (paused)
+    // FIXED: toast._progressAnimation.pause() (Web Animations API) is now
+    // called from the exact same mouseenter handler that pauses the real
+    // PausableTimer (see ToastManager.js's setupPauseOnHover). The bar was
+    // roughly 65-80% through collapsing when hovered (~250ms of a 1000ms
+    // linear animation), so it should have frozen well above zero and
+    // stayed there through the full 1500ms hold — not collapsed to ~0
+    // width the way the old CSS-transition version did.
+    expect(parseFloat(width)).toBeGreaterThan(parseFloat(toastWidth) * 0.3);
+    await expect(toast).toBeVisible(); // still shown — real timer genuinely paused
   });
 
   test("AUDIT H4 (regression guard): small borderRadius makes the progress bar overflow the toast", async ({

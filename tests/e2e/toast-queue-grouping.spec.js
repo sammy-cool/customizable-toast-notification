@@ -46,7 +46,7 @@ test.describe("queue management (MAX_VISIBLE = 3)", () => {
     expect(allMessages.join(" ")).toContain("distinct toast 3");
   });
 
-  test("AUDIT L3 (regression guard): dismiss() removes the MOST RECENT toast, not the oldest", async ({
+  test("AUDIT L3 (FIXED): dismiss() removes the MOST RECENT toast, not the oldest", async ({
     page,
   }) => {
     await page.evaluate(() => {
@@ -69,9 +69,8 @@ test.describe("queue management (MAX_VISIBLE = 3)", () => {
 
     const remaining = page.locator('[id^="toast-container-"] [id^="toast-"]');
     await expect(remaining).toHaveCount(1);
-    // Currently expected to FAIL: dismissMostRecent() actually removes the
-    // FIRST/oldest DOM child (container.children.at(0)), so "first (oldest)"
-    // is the one left behind instead of being the one removed. See
+    // FIXED: dismissMostRecent() now correctly targets children.at(-1),
+    // the actual newest toast, instead of the oldest. Should PASS now —
     // AUDIT-REPORT.md L3. If this passes, the fix landed — great, no
     // further action needed on this test.
     await expect(remaining).toContainText("second (newest)");

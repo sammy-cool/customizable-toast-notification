@@ -204,28 +204,28 @@ export async function dismissMostRecent() {
     // Strategy: find the last inserted element in DOM among all containers.
     // Iterate containers and pick lastElementChild of container that is a toast wrapper.
     let lastToastEl = null;
-    let lastTs = 0;
 
-    // find any container nodes (id pattern used by this lib)
     const containers = document.querySelectorAll('[id^="toast-container-"]');
     containers.forEach((container) => {
-      // each toast is wrapped as outer -> inner -> toast; we want the inner wrapper (outer) appended order
       const children = Array.from(container.children || []);
       if (children.length === 0) return;
-      const candidate = children.at(0); // first added
-      // use DOM position as timestamp proxy — prefer later nodes by default
+      // AUDIT FIX (L3): toasts are always appended (never prepended), so
+      // the LAST child in DOM order is the most recently created one.
+      // children.at(0) — the previous behavior — was actually the OLDEST
+      // visible toast, the opposite of what "dismissMostRecent" promises.
+      const candidate = children.at(-1);
       if (candidate) {
         lastToastEl = candidate.querySelector('[id^="toast-"]') || candidate;
       }
     });
 
-    // fallback: if we didn't find via container traversal, try active map
     if (!lastToastEl) {
-      // active map stores key -> { outer, toast, ... }
-      // get the most recently added active entry by insertion order (Map preserves insertion order)
+      // Same fix applied to the Map-based fallback: Map preserves
+      // insertion order, so the LAST entry is the most recently created
+      // toast, not the first.
       const entries = Array.from(active.entries());
       if (entries.length > 0) {
-        const [, data] = entries.at(0);
+        const [, data] = entries.at(-1);
         lastToastEl =
           data.toast ||
           (data.outer && data.outer.querySelector('[id^="toast-"]'));
@@ -294,21 +294,38 @@ function createDismissTimer(toast, options) {
 async function setupPauseOnHover(data) {
   if (!data.pauseOnHover || !data.outer || !data.timer) return;
 
-  const { outer, timer } = data;
+  const { outer, timer, toast } = data;
 
-  // Mouse events
-  const onMouseEnter = () => timer.pause();
-  const onMouseLeave = () => timer.resume();
-
-  // Focus events (for keyboard users)
-  // Only pause if focus is on interactive elements (CTA, close button)
-  const onFocusIn = (e) => {
-    if (e.target.matches("[tabindex], div, span, button, a")) timer.pause();
+  const onMouseEnter = () => {
+    timer.pause();
+    // AUDIT FIX (H3): the progress bar's Web Animations API animation
+    // (toast._progressAnimation, set on the INNER toast element by
+    // toast-utils-core.js's createProgressBar — not on `outer`, which is
+    // just ToastManager's positioning wrapper div around it) previously
+    // had no connection to pause-on-hover at all — it ran on its own
+    // clock and kept animating to 0% even while the real PausableTimer
+    // was genuinely frozen, so the bar visually lied about how much time
+    // was actually left. Pausing it here, from the exact same event that
+    // pauses the real timer, keeps both in sync.
+    toast?._progressAnimation?.pause();
+  };
+  const onMouseLeave = () => {
+    timer.resume();
+    toast?._progressAnimation?.play();
   };
 
-  // Only resume if focus is leaving the toast entirely
+  const onFocusIn = (e) => {
+    if (e.target.matches("[tabindex], div, span, button, a")) {
+      timer.pause();
+      toast?._progressAnimation?.pause();
+    }
+  };
+
   const onFocusOut = (e) => {
-    if (!outer.contains(e.relatedTarget)) timer.resume();
+    if (!outer.contains(e.relatedTarget)) {
+      timer.resume();
+      toast?._progressAnimation?.play();
+    }
   };
 
   // Add event listeners
