@@ -33,7 +33,7 @@ test.describe("CTA — button variant", () => {
       });
     });
 
-    const toast = page.locator('[id^="toast-"]').first();
+    const toast = page.locator('[id^="toast-container-"] [id^="toast-"]').first();
     await page.getByRole("button", { name: "Do it" }).click();
 
     expect(await page.evaluate(() => window.__ctaClicked)).toBe(true);
@@ -47,10 +47,10 @@ test.describe("CTA — button variant", () => {
       window.customizableToast.createToast({
         message: "stay open",
         duration: 30000,
-        cta: { label: "Sync", onClick: () => { }, autoClose: false },
+        cta: { label: "Sync", onClick: () => {}, autoClose: false },
       });
     });
-    const toast = page.locator('[id^="toast-"]').first();
+    const toast = page.locator('[id^="toast-container-"] [id^="toast-"]').first();
     await page.getByRole("button", { name: "Sync" }).click();
     await page.waitForTimeout(500);
     await expect(toast).toBeVisible();
@@ -68,7 +68,7 @@ test.describe("CTA — button variant", () => {
         },
       });
     });
-    const toast = page.locator('[id^="toast-"]').first();
+    const toast = page.locator('[id^="toast-container-"] [id^="toast-"]').first();
     await page.getByRole("button", { name: "Sync Now" }).click();
 
     // Should NOT have closed immediately — onClick's promise hasn't resolved yet
@@ -86,7 +86,7 @@ test.describe("CTA — button variant", () => {
       window.customizableToast.createToast({
         message: "no label given",
         duration: 30000,
-        cta: { onClick: () => { } },
+        cta: { onClick: () => {} },
       });
     });
     await expect(
@@ -139,7 +139,7 @@ test.describe("HTML sanitization (security boundary)", () => {
         duration: 30000,
       });
     });
-    const toast = page.locator('[id^="toast-"]').first();
+    const toast = page.locator('[id^="toast-container-"] [id^="toast-"]').first();
     await expect(toast.locator("b")).toHaveCount(0);
     await expect(toast).toContainText("<b>should not be bold</b>");
   });
@@ -156,7 +156,7 @@ test.describe("HTML sanitization (security boundary)", () => {
         duration: 30000,
       });
     });
-    const toast = page.locator('[id^="toast-"]').first();
+    const toast = page.locator('[id^="toast-container-"] [id^="toast-"]').first();
     await expect(toast.locator("b")).toContainText("bold text");
     expect(await page.evaluate(() => window.__xssRan)).toBe(false);
   });
@@ -189,7 +189,7 @@ test.describe("HTML sanitization (security boundary)", () => {
     // sanitizer stripped the dangerous attribute rather than dropping the
     // whole element (which would trivially also make the count 0 above,
     // for the wrong reason).
-    const toast = page.locator('[id^="toast-"]').first();
+    const toast = page.locator('[id^="toast-container-"] [id^="toast-"]').first();
     await expect(toast).toContainText("overlay");
   });
 
@@ -206,7 +206,7 @@ test.describe("HTML sanitization (security boundary)", () => {
     // TEST FIX: same #id issue as the C1 test above — locate by content
     // instead. Scoped to the toast so this doesn't accidentally match an
     // unrelated link elsewhere on the harness page.
-    const toast = page.locator('[id^="toast-"]').first();
+    const toast = page.locator('[id^="toast-container-"] [id^="toast-"]').first();
     const link = toast.getByRole("link", { name: "click me" });
     await expect(link).toBeVisible();
     const href = await link.getAttribute("href");

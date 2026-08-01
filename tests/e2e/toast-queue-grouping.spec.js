@@ -152,7 +152,7 @@ test.describe("smart grouping (duplicate type+message+position)", () => {
     // 500ms after the SECOND call (which would be past the FIRST call's
     // original deadline of ~800ms from t=0, i.e. ~300ms from the 2nd call).
     await page.waitForTimeout(500);
-    const toast = page.locator('[id^="toast-"]').first();
+    const toast = page.locator('[id^="toast-container-"] [id^="toast-"]').first();
     await expect(toast).toBeVisible();
   });
 });

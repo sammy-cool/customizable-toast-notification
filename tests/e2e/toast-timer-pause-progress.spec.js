@@ -25,7 +25,7 @@ test.describe("pause-on-hover timer behavior", () => {
         cta: { label: "Action", onClick: () => {} },
       });
     });
-    const toast = page.locator('[id^="toast-"]').first();
+    const toast = page.locator('[id^="toast-container-"] [id^="toast-"]').first();
     await expect(toast).toBeVisible();
 
     await toast.hover();
@@ -50,7 +50,7 @@ test.describe("pause-on-hover timer behavior", () => {
         cta: { label: "Action", onClick: () => {} }, // forces pauseOnHover
       });
     });
-    const toast = page.locator('[id^="toast-"]').first();
+    const toast = page.locator('[id^="toast-container-"] [id^="toast-"]').first();
     await expect(toast).toBeVisible();
 
     // Let the animation run partway (~250ms into a 1000ms animation once
@@ -88,7 +88,7 @@ test.describe("pause-on-hover timer behavior", () => {
         borderRadius: "4px", // smaller than the internal 10px offset — see H4
       });
     });
-    const toast = page.locator('[id^="toast-"]').first();
+    const toast = page.locator('[id^="toast-container-"] [id^="toast-"]').first();
     const bar = toast.locator("div").last();
     await expect(bar).toBeVisible();
 

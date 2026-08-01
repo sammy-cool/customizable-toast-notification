@@ -39,7 +39,7 @@ test.describe("accessibility semantics", () => {
         duration: 5000,
       });
     });
-    const toast = page.locator('[id^="toast-"]').first();
+    const toast = page.locator('[id^="toast-container-"] [id^="toast-"]').first();
     await expect(toast).toHaveAttribute("role", "alert");
     await expect(toast).toHaveAttribute("aria-live", "polite");
   });
@@ -69,7 +69,7 @@ test.describe("accessibility semantics", () => {
         duration: 10000,
       });
     });
-    const toast = page.locator('[id^="toast-"]').first();
+    const toast = page.locator('[id^="toast-container-"] [id^="toast-"]').first();
     await expect(toast).toHaveAttribute("tabindex", "0");
 
     // Tab from a known starting point until we land on the toast or its
@@ -108,7 +108,7 @@ test.describe("Escape key global dismiss", () => {
         duration: 30000,
       });
     });
-    const toast = page.locator('[id^="toast-"]').first();
+    const toast = page.locator('[id^="toast-container-"] [id^="toast-"]').first();
     await expect(toast).toBeVisible();
 
     await page.keyboard.press("Escape");

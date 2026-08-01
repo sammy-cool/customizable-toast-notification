@@ -34,7 +34,7 @@ test.describe("core toast creation", () => {
         duration: 5000,
       });
     });
-    const toast = page.locator('[id^="toast-"]').first();
+    const toast = page.locator('[id^="toast-container-"] [id^="toast-"]').first();
     await expect(toast).toBeVisible();
     await expect(toast).toContainText("Hello from Playwright");
   });
@@ -57,7 +57,7 @@ test.describe("core toast creation", () => {
     await page.evaluate(() => {
       window.customizableToast.createToast({ type: "error", duration: 5000 });
     });
-    const toast = page.locator('[id^="toast-"]').first();
+    const toast = page.locator('[id^="toast-container-"] [id^="toast-"]').first();
     await expect(toast).toContainText("Something went wrong");
   });
 
@@ -133,7 +133,7 @@ test.describe("core toast creation", () => {
         duration: 30000, // long duration so we know close happened via click, not timeout
       });
     });
-    const toast = page.locator('[id^="toast-"]').first();
+    const toast = page.locator('[id^="toast-container-"] [id^="toast-"]').first();
     await expect(toast).toBeVisible();
     await page.getByRole("button", { name: "Close notification" }).click();
     await expect(toast).toHaveCount(0, { timeout: 2000 });
@@ -146,7 +146,7 @@ test.describe("core toast creation", () => {
         duration: 300,
       });
     });
-    const toast = page.locator('[id^="toast-"]').first();
+    const toast = page.locator('[id^="toast-container-"] [id^="toast-"]').first();
     await expect(toast).toBeVisible();
     await expect(toast).toHaveCount(0, { timeout: 2000 });
   });
