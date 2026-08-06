@@ -104,15 +104,23 @@ export function createProgressBar(toast, options) {
   const progressBar = document.createElement("div");
   const borderRadiusStr = options.borderRadius || 0;
   const borderRadiusNum = parseInt(borderRadiusStr, 10);
-  // AUDIT FIX (H4): previously `borderRadiusNum - 10` went NEGATIVE for any
-  // borderRadius under 10px (a very normal value — 4px/8px are common UI
-  // defaults), which flipped `calc(100% - Npx)` into `calc(100% + Npx)` and
-  // made the progress bar visibly overflow the toast's right edge. Clamping
-  // the subtracted offset to a minimum of 0 keeps the bar at most 100% wide
-  // regardless of how small borderRadius is.
-  const radiusOffset = Math.max(borderRadiusNum - 10, 0);
-  const finalWidth = borderRadiusNum ? `calc(100% - ${radiusOffset}px)` : "100%";
+  // AUDIT FIX (H4, corrected): the first pass at this fix only stopped
+  // `borderRadiusNum - 10` from going negative (which had flipped the
+  // calc() into an addition). But the bar is also shifted right by
+  // `left: 12px` below — and clamping the subtracted amount to a floor of
+  // 0 doesn't account for that offset, so the bar's right edge still sat
+  // at `12px + 100%`, ~12px past the container, for any small
+  // borderRadius. The real constraint is: leftOffset + width must not
+  // exceed 100%, i.e. the subtracted amount must be at least as large as
+  // the left offset (12px) whenever that offset is applied. For large
+  // borderRadius (the library's own default is 50px) this clamp never
+  // kicks in — behavior there is unchanged from before.
   const leftVal = borderRadiusNum ? "12px" : "0";
+  const minSafeOffset = borderRadiusNum ? 12 : 0;
+  const radiusOffset = Math.max(borderRadiusNum - 10, minSafeOffset);
+  const finalWidth = borderRadiusNum
+    ? `calc(100% - ${radiusOffset}px)`
+    : "100%";
 
   Object.assign(progressBar.style, {
     position: "absolute",
@@ -159,7 +167,7 @@ export function createProgressBar(toast, options) {
         easing: "linear",
         fill: "forwards",
         delay: 50,
-      }
+      },
     );
   } else {
     progressBar.style.transition = `width ${options.duration || 1800}ms linear`;

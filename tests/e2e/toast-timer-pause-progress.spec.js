@@ -94,7 +94,7 @@ test.describe("pause-on-hover timer behavior", () => {
     await expect(toast).toBeVisible(); // still shown — real timer genuinely paused
   });
 
-  test("AUDIT H4 (regression guard): small borderRadius makes the progress bar overflow the toast", async ({
+  test("AUDIT H4 (FIXED): small borderRadius no longer makes the progress bar overflow the toast", async ({
     page,
   }) => {
     await page.evaluate(() => {
@@ -113,9 +113,12 @@ test.describe("pause-on-hover timer behavior", () => {
 
     const toastBox = await toast.boundingBox();
     const barBox = await bar.boundingBox();
-    // Currently expected to FAIL: bar's right edge extends past the
-    // toast's right edge because calc(100% - (borderRadius - 10)px) flips
-    // to a POSITIVE offset when borderRadius < 10. See AUDIT-REPORT.md H4.
+    // FIXED: the first pass at H4 only stopped the calc() from going
+    // negative (flipping to a "+" offset), but didn't account for the
+    // bar's separate `left: 12px` inset — so it could still overflow by
+    // ~12px for any small borderRadius. The corrected fix clamps the
+    // subtracted width offset to at least the left inset itself, so
+    // left + width can never exceed 100%. See AUDIT-REPORT.md H4.
     expect(barBox.x + barBox.width).toBeLessThanOrEqual(
       toastBox.x + toastBox.width + 0.5, // +0.5 for sub-pixel rounding only
     );
