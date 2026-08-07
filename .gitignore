@@ -5,3 +5,5 @@
 /tests/e2e/screenshots
 /tests/e2e/toast-basic.spec.js-snapshots
 .vscode
+/dist/
+/bundle-analysis.html

@@ -33,7 +33,9 @@ test.describe("CTA — button variant", () => {
       });
     });
 
-    const toast = page.locator('[id^="toast-container-"] [id^="toast-"]').first();
+    const toast = page
+      .locator('[id^="toast-container-"] [id^="toast-"]')
+      .first();
     await page.getByRole("button", { name: "Do it" }).click();
 
     expect(await page.evaluate(() => window.__ctaClicked)).toBe(true);
@@ -50,7 +52,9 @@ test.describe("CTA — button variant", () => {
         cta: { label: "Sync", onClick: () => {}, autoClose: false },
       });
     });
-    const toast = page.locator('[id^="toast-container-"] [id^="toast-"]').first();
+    const toast = page
+      .locator('[id^="toast-container-"] [id^="toast-"]')
+      .first();
     await page.getByRole("button", { name: "Sync" }).click();
     await page.waitForTimeout(500);
     await expect(toast).toBeVisible();
@@ -63,12 +67,13 @@ test.describe("CTA — button variant", () => {
         duration: 30000,
         cta: {
           label: "Sync Now",
-          onClick: () =>
-            new Promise((resolve) => setTimeout(resolve, 600)),
+          onClick: () => new Promise((resolve) => setTimeout(resolve, 600)),
         },
       });
     });
-    const toast = page.locator('[id^="toast-container-"] [id^="toast-"]').first();
+    const toast = page
+      .locator('[id^="toast-container-"] [id^="toast-"]')
+      .first();
     await page.getByRole("button", { name: "Sync Now" }).click();
 
     // Should NOT have closed immediately — onClick's promise hasn't resolved yet
@@ -90,7 +95,7 @@ test.describe("CTA — button variant", () => {
       });
     });
     await expect(
-      page.getByRole("button", { name: /CTA Label Missing/i })
+      page.getByRole("button", { name: /CTA Label Missing/i }),
     ).toBeVisible();
   });
 });
@@ -139,7 +144,9 @@ test.describe("HTML sanitization (security boundary)", () => {
         duration: 30000,
       });
     });
-    const toast = page.locator('[id^="toast-container-"] [id^="toast-"]').first();
+    const toast = page
+      .locator('[id^="toast-container-"] [id^="toast-"]')
+      .first();
     await expect(toast.locator("b")).toHaveCount(0);
     await expect(toast).toContainText("<b>should not be bold</b>");
   });
@@ -150,13 +157,14 @@ test.describe("HTML sanitization (security boundary)", () => {
     await page.evaluate(() => {
       window.__xssRan = false;
       window.customizableToast.createToast({
-        message:
-          '<b>bold text</b><script>window.__xssRan = true</script>',
+        message: "<b>bold text</b><script>window.__xssRan = true</script>",
         allowHtml: true,
         duration: 30000,
       });
     });
-    const toast = page.locator('[id^="toast-container-"] [id^="toast-"]').first();
+    const toast = page
+      .locator('[id^="toast-container-"] [id^="toast-"]')
+      .first();
     await expect(toast.locator("b")).toContainText("bold text");
     expect(await page.evaluate(() => window.__xssRan)).toBe(false);
   });
@@ -173,23 +181,30 @@ test.describe("HTML sanitization (security boundary)", () => {
       });
     });
 
-    // TEST FIX: originally located this element by #id, which can never
-    // work regardless of whether C1 is fixed — html-sanitizer.js's
-    // ALLOWED_ATTRS has never included "id" (confirmed by running the
-    // real fallbackSanitize() against this exact payload: id is stripped
-    // unconditionally). So the old test would have reported "pass" (0
-    // matches) even in the pre-fix, vulnerable state — it wasn't actually
-    // testing the vulnerability. Checking for a style attribute containing
-    // "position:fixed" anywhere in the whole page is what the real
-    // exploit depends on, so that's what needs to be provably absent.
-    const dangerousOverlay = page.locator('[style*="position:fixed"], [style*="position: fixed"]');
+    // TEST FIX (round 2): originally searched the whole page with
+    // page.locator(...), which also matches the toast library's OWN
+    // legitimate container element — containerRegistry.js and
+    // ToastContainer.js both correctly set `style.position = "fixed"` on
+    // the container so toasts stay visible during scroll. That's normal,
+    // necessary, and has nothing to do with the injected payload — it was
+    // a false positive in this test, not a real vulnerability (confirmed
+    // by inspecting the actual rendered toast: the toast element itself is
+    // `position: relative`, only its ANCESTOR container is fixed).
+    // Scoping the search to inside the toast element only (not the whole
+    // page) excludes that ancestor entirely, since Playwright locators
+    // only search descendants of the scope they're called on.
+    const toast = page
+      .locator('[id^="toast-container-"] [id^="toast-"]')
+      .first();
+    const dangerousOverlay = toast.locator(
+      '[style*="position:fixed" i], [style*="position: fixed" i]',
+    );
     await expect(dangerousOverlay).toHaveCount(0);
 
     // Sanity check the payload's TEXT content still rendered — proves the
     // sanitizer stripped the dangerous attribute rather than dropping the
     // whole element (which would trivially also make the count 0 above,
     // for the wrong reason).
-    const toast = page.locator('[id^="toast-container-"] [id^="toast-"]').first();
     await expect(toast).toContainText("overlay");
   });
 
@@ -206,7 +221,9 @@ test.describe("HTML sanitization (security boundary)", () => {
     // TEST FIX: same #id issue as the C1 test above — locate by content
     // instead. Scoped to the toast so this doesn't accidentally match an
     // unrelated link elsewhere on the harness page.
-    const toast = page.locator('[id^="toast-container-"] [id^="toast-"]').first();
+    const toast = page
+      .locator('[id^="toast-container-"] [id^="toast-"]')
+      .first();
     const link = toast.getByRole("link", { name: "click me" });
     await expect(link).toBeVisible();
     const href = await link.getAttribute("href");

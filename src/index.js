@@ -1,7 +1,7 @@
 // src/index.js
 "use strict";
 
-import { closeToast, showToast } from "./components/ToastManager.js";
+import { showToast } from "./components/ToastManager.js";
 import { getOrCreateToastContainer } from "./utils/containerRegistry.js";
 import { getDynamicAccessibleTextColorHex } from "./utils/dom.js";
 import { setPosition } from "./utils/position.js";

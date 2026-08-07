@@ -360,7 +360,7 @@ export function getDynamicAccessibleTextColorHex(toastBg, opa = 1) {
       b = parseInt(hex.slice(4, 6), 16);
     } else {
       const rgbMatch = toastBg?.match(
-        /rgba?\((\d+),\s*(\d+),\s*(\d+)(?:,\s*[\d.]+)?\)/i
+        /rgba?\((\d+),\s*(\d+),\s*(\d+)(?:,\s*[\d.]+)?\)/i,
       );
       if (rgbMatch) {
         r = Number(rgbMatch[1]);
