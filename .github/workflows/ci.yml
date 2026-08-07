@@ -34,7 +34,7 @@ jobs:
         run: npm run zone-build
 
       - name: Run Unit Tests
-        run: npm ci:test
+        run: npm run ci:test
 
       - name: Upload Coverage
         if: always()
