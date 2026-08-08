@@ -32,7 +32,9 @@ test.describe("queue management (MAX_VISIBLE = 3)", () => {
     // Give the same-frame coalescing (requestAnimationFrame) a tick to settle.
     await page.waitForTimeout(100);
 
-    const visibleToasts = page.locator('[id^="toast-container-"] [id^="toast-"]');
+    const visibleToasts = page.locator(
+      '[id^="toast-container-"] [id^="toast-"]',
+    );
     await expect(visibleToasts).toHaveCount(3);
 
     // Close one — the 4th (queued) toast should now appear. No close button
@@ -69,11 +71,14 @@ test.describe("queue management (MAX_VISIBLE = 3)", () => {
 
     const remaining = page.locator('[id^="toast-container-"] [id^="toast-"]');
     await expect(remaining).toHaveCount(1);
-    // FIXED: dismissMostRecent() now correctly targets children.at(-1),
-    // the actual newest toast, instead of the oldest. Should PASS now —
-    // AUDIT-REPORT.md L3. If this passes, the fix landed — great, no
-    // further action needed on this test.
-    await expect(remaining).toContainText("second (newest)");
+    // TEST FIX (round 4): this assertion had the polarity backwards.
+    // dismissMostRecent() removes the MOST RECENT toast ("second
+    // (newest)") — so the toast left BEHIND should be the OLDEST one
+    // ("first (oldest)"), not the newest. Verified against the actual
+    // built dist/index.umd.js bundle directly (not just raw source): after
+    // dismiss(), exactly "first (oldest)" remains — the fix is working
+    // correctly, this test was just asserting the wrong survivor.
+    await expect(remaining).toContainText("first (oldest)");
   });
 });
 
@@ -152,7 +157,9 @@ test.describe("smart grouping (duplicate type+message+position)", () => {
     // 500ms after the SECOND call (which would be past the FIRST call's
     // original deadline of ~800ms from t=0, i.e. ~300ms from the 2nd call).
     await page.waitForTimeout(500);
-    const toast = page.locator('[id^="toast-container-"] [id^="toast-"]').first();
+    const toast = page
+      .locator('[id^="toast-container-"] [id^="toast-"]')
+      .first();
     await expect(toast).toBeVisible();
   });
 });
