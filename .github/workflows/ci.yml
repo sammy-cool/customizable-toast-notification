@@ -12,10 +12,6 @@ on:
 jobs:
   verify:
     runs-on: ubuntu-latest
-
-    env:
-    HOME: /root
-    
     # AUDIT/CI FIX: pinning the exact official Playwright Docker image
     # instead of installing browsers onto whatever base ubuntu-latest
     # happens to be this week. This is the single biggest lever for the
@@ -27,7 +23,7 @@ jobs:
     # docker step) means every later step — build, tests, everything —
     # runs in that same known-good environment.
     #
-    # IMPORTANT: the version tag (v1.54.1) MUST match the @playwright/test
+    # IMPORTANT: the version tag (v1.57.0) MUST match the @playwright/test
     # version actually resolved in your package-lock.json. Microsoft's own
     # docs are explicit about this: a mismatched image/package version
     # means Playwright can't find the browser executables it expects.
@@ -77,6 +73,8 @@ jobs:
       #   run: npx playwright install --with-deps
 
       - name: Run Playwright Tests
+        env:
+          HOME: /root
         run: npm run test:e2e
 
       - name: Upload Playwright Report
