@@ -140,23 +140,28 @@ test.describe("smart grouping (duplicate type+message+position)", () => {
     await page.evaluate(() => {
       window.customizableToast.createToast({
         message: "reset my timer",
-        duration: 800,
+        // TEST FIX: was 800ms with a 500ms/500ms split, leaving only
+        // ~300ms slack after the reset — too tight for webkit's extra
+        // page.evaluate()/scheduling overhead observed in CI. Scaled up
+        // proportionally for real headroom.
+        duration: 3000,
       });
     });
-    await page.waitForTimeout(500); // toast is ~63% through its 800ms life
+    await page.waitForTimeout(1800); // toast is 60% through its 3000ms life
 
     await page.evaluate(() => {
       // duplicate arrives — should reset the countdown, not just add to it
       window.customizableToast.createToast({
         message: "reset my timer",
-        duration: 800,
+        duration: 3000,
       });
     });
 
-    // If the timer reset correctly, the toast should still be visible
-    // 500ms after the SECOND call (which would be past the FIRST call's
-    // original deadline of ~800ms from t=0, i.e. ~300ms from the 2nd call).
-    await page.waitForTimeout(500);
+    // If the timer reset correctly, the toast should still be visible well
+    // after the FIRST call's original deadline (~3000ms from t=0, i.e.
+    // ~1200ms from the 2nd call) — 1800ms after the reset leaves ~1200ms
+    // of slack instead of the original ~300ms.
+    await page.waitForTimeout(1800);
     const toast = page
       .locator('[id^="toast-container-"] [id^="toast-"]')
       .first();

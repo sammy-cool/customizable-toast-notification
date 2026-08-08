@@ -21,16 +21,14 @@ test.describe("pause-on-hover timer behavior", () => {
     await page.evaluate(() => {
       window.customizableToast.createToast({
         message: "hover to pause",
-        // TEST FIX: this was 700ms, and a real Playwright .hover() action
-        // measured ~598ms of actionability-check overhead (waiting for the
-        // element to be stable/scrolled into view) before the browser even
-        // fires mouseenter. With a 700ms dismiss timer, that leaves almost
-        // no margin — the toast can legitimately auto-dismiss before
-        // pause-on-hover ever gets a chance to engage, which is exactly
-        // what was happening (confirmed by reproducing the same race in
-        // jsdom). A much longer duration gives real headroom regardless of
-        // how long the hover action takes on a given run/machine.
-        duration: 4000,
+        // TEST FIX (round 2): still failing on webkit specifically even at
+        // 4000ms — WebKit has known Playwright-reported quirks around
+        // synthetic hover reliability/timing that go beyond a simple
+        // actionability-overhead margin. Widening further as the most
+        // likely fix; if webkit still fails after this, it's worth
+        // sending me the actual webkit error detail (not just pass/fail)
+        // since that would point to something more specific than margin.
+        duration: 6000,
         cta: { label: "Action", onClick: () => {} },
       });
     });
@@ -40,14 +38,23 @@ test.describe("pause-on-hover timer behavior", () => {
     await expect(toast).toBeVisible();
 
     await toast.hover();
+    // Explicit small nudge after .hover(): WebKit has had inconsistent
+    // synthetic mouseenter/mouseleave firing in some Playwright versions
+    // when relying solely on .hover()'s implicit move. A follow-up
+    // mouse.move to the same element's center is a common cross-browser
+    // robustness pattern for exactly this class of flake.
+    const box = await toast.boundingBox();
+    if (box) {
+      await page.mouse.move(box.x + box.width / 2, box.y + box.height / 2);
+    }
     // Held under hover well past the nominal duration — if pause-on-hover
     // works, it should still be here.
-    await page.waitForTimeout(4500);
+    await page.waitForTimeout(6500);
     await expect(toast).toBeVisible();
 
     // Move away — should now dismiss within roughly the remaining time.
     await page.mouse.move(0, 0);
-    await expect(toast).toHaveCount(0, { timeout: 5000 });
+    await expect(toast).toHaveCount(0, { timeout: 7000 });
   });
 
   test("AUDIT H3 (FIXED): progress bar now stays paused in sync with the real frozen timer", async ({
@@ -56,13 +63,9 @@ test.describe("pause-on-hover timer behavior", () => {
     await page.evaluate(() => {
       window.customizableToast.createToast({
         message: "progress desync check",
-        // TEST FIX: same margin issue as the test above — was 1000ms with
-        // hover starting at 300ms, leaving too little room for Playwright's
-        // real hover() overhead (~600ms observed) before the dismiss timer
-        // could fire. Scaled up proportionally so the ~600ms of real
-        // browser action overhead is a small fraction of the total instead
-        // of nearly the whole budget.
-        duration: 4000,
+        // TEST FIX (round 2): same widening as the test above — still
+        // failing on webkit at 4000ms.
+        duration: 6000,
         showProgressBar: true,
         cta: { label: "Action", onClick: () => {} }, // forces pauseOnHover
       });
@@ -72,12 +75,15 @@ test.describe("pause-on-hover timer behavior", () => {
       .first();
     await expect(toast).toBeVisible();
 
-    // Let the animation run partway (~1000ms of a 4000ms animation, well
-    // past the 50ms initial delay), then hover and hold well past where
+    // Let the animation run partway, then hover and hold well past where
     // the OLD buggy behavior would have reached 0%.
-    await page.waitForTimeout(1000);
+    await page.waitForTimeout(1500);
     await toast.hover();
-    await page.waitForTimeout(4000);
+    const box = await toast.boundingBox();
+    if (box) {
+      await page.mouse.move(box.x + box.width / 2, box.y + box.height / 2);
+    }
+    await page.waitForTimeout(6000);
 
     const bar = toast.locator("div").last(); // progress bar is an appended div
     const width = await bar.evaluate((el) => getComputedStyle(el).width);
