@@ -12,6 +12,10 @@ on:
 jobs:
   verify:
     runs-on: ubuntu-latest
+
+    env:
+    HOME: /root
+    
     # AUDIT/CI FIX: pinning the exact official Playwright Docker image
     # instead of installing browsers onto whatever base ubuntu-latest
     # happens to be this week. This is the single biggest lever for the
