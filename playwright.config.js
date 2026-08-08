@@ -2,17 +2,9 @@
 //
 // WHY: your .gitignore already references playwright-report/, test-results/,
 // and tests/e2e/screenshots/ — meaning a Playwright config almost certainly
-// already exists in your real repo (it wasn't part of the file export I was
-// given, only 27 source/config files were). DO NOT blindly overwrite your
-// existing config with this one. Instead:
-//   - If you don't have one yet: drop this in as-is.
-//   - If you do: merge the `webServer` and `testDir` settings below into
-//     your existing file, keeping whatever reporters/projects you already
-//     had configured.
-//
-// This config serves the repo root as a static file server so the harness
-// page's relative "../../../dist/index.umd.js" path resolves correctly,
-// and it builds the library first so dist/ is always fresh before tests run.
+// already exists in your real repo. Merge these changes into your existing
+// file rather than overwriting it wholesale — only `webServer.command` and
+// `workers` changed from the version you already have.
 
 import { defineConfig, devices } from "@playwright/test";
 
@@ -21,6 +13,16 @@ export default defineConfig({
   fullyParallel: true,
   forbidOnly: !!process.env.CI,
   retries: process.env.CI ? 2 : 0,
+  // CI FIX: GitHub Actions' free ubuntu-latest runners have 2 vCPUs.
+  // Playwright's default worker count is based on detected CPU cores, and
+  // with fullyParallel:true across 3 browser projects (chromium, firefox,
+  // webkit), that's real resource contention on a 2-core box — tests
+  // competing for the same CPU, which directly produces exactly the kind
+  // of timing-margin flakiness we spent the last several rounds chasing.
+  // Capping workers in CI trades a bit of wall-clock time for much more
+  // consistent, trustworthy results. Locally (more cores, less
+  // contention) the default (undefined = auto-detect) is fine.
+  workers: process.env.CI ? 2 : undefined,
   reporter: [["html", { outputFolder: "playwright-report" }], ["list"]],
 
   use: {
@@ -29,10 +31,17 @@ export default defineConfig({
     screenshot: "only-on-failure",
   },
 
-  // Serves the repo root statically (so /tests/e2e/fixtures/harness.html
-  // and /dist/index.umd.js are both reachable) after building fresh.
+  // CI FIX: your ci.yml already has an explicit "Build Package" step
+  // (`npm run zone-build`) before Playwright runs. The old command here
+  // ran `zone-build` a SECOND time on every test run, on top of that —
+  // wasted CI minutes for no benefit, since dist/ was already fresh.
+  // In CI, just serve what's already built. Locally (no separate build
+  // step run before `npx playwright test`), still auto-build for
+  // convenience.
   webServer: {
-    command: "npm run zone-build && npx http-server . -p 4173 -s",
+    command: process.env.CI
+      ? "npx http-server . -p 4173 -s"
+      : "npm run zone-build && npx http-server . -p 4173 -s",
     port: 4173,
     reuseExistingServer: !process.env.CI,
     timeout: 30_000,

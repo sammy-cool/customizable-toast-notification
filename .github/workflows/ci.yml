@@ -12,6 +12,26 @@ on:
 jobs:
   verify:
     runs-on: ubuntu-latest
+    # AUDIT/CI FIX: pinning the exact official Playwright Docker image
+    # instead of installing browsers onto whatever base ubuntu-latest
+    # happens to be this week. This is the single biggest lever for the
+    # cross-environment flakiness we've been chasing (webkit passing
+    # locally, failing in CI, etc.) — the image ships the EXACT browser
+    # builds + system libraries Playwright's own team tested against,
+    # instead of "ubuntu-latest + apt install whatever --with-deps grabs
+    # today". Running the whole job inside the container (not just a
+    # docker step) means every later step — build, tests, everything —
+    # runs in that same known-good environment.
+    #
+    # IMPORTANT: the version tag (v1.54.1) MUST match the @playwright/test
+    # version actually resolved in your package-lock.json. Microsoft's own
+    # docs are explicit about this: a mismatched image/package version
+    # means Playwright can't find the browser executables it expects.
+    # Check with `npm ls @playwright/test` and update this tag any time
+    # you bump the package. The "-noble" suffix targets Ubuntu 24.04 —
+    # match this to whatever your package.json currently specifies.
+    container:
+      image: mcr.microsoft.com/playwright:v1.54.1-noble
 
     steps:
       - name: Checkout Code
@@ -43,8 +63,14 @@ jobs:
           name: coverage
           path: coverage/
 
-      - name: Install Playwright Browsers
-        run: npx playwright install --with-deps
+      # AUDIT/CI FIX: removed entirely. The Docker image above already
+      # ships chromium, firefox, and webkit pre-installed with all system
+      # dependencies — this step was re-downloading ~300-500MB of browser
+      # binaries and re-running apt-get on every single push/PR, purely
+      # wasted time once the container image is in place. If you ever
+      # move off the container image, this step needs to come back.
+      # - name: Install Playwright Browsers
+      #   run: npx playwright install --with-deps
 
       - name: Run Playwright Tests
         run: npm run test:e2e
