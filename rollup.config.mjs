@@ -6,7 +6,6 @@ import resolve from "@rollup/plugin-node-resolve";
 import commonjs from "@rollup/plugin-commonjs";
 import terser from "@rollup/plugin-terser";
 import babel from "@rollup/plugin-babel";
-import filesize from "rollup-plugin-filesize";
 import { visualizer } from "rollup-plugin-visualizer";
 import replace from "@rollup/plugin-replace";
 import postcss from "rollup-plugin-postcss";
@@ -61,9 +60,9 @@ const getCommonPlugins = (target) => [
               ? { node: "14.0.0" } // CJS: Conservative Node support
               : target === "umd"
                 ? {
-                  browsers:
-                    "> 0.25%, not dead, chrome >= 49, firefox >= 45, safari >= 10, edge >= 14",
-                } // UMD: Wide browser support
+                    browsers:
+                      "> 0.25%, not dead, chrome >= 49, firefox >= 45, safari >= 10, edge >= 14",
+                  } // UMD: Wide browser support
                 : { browsers: "> 0.25%, not dead, chrome >= 60", node: "14" }, // ESM: Modern but compatible
           useBuiltIns: false, // 🛡️ NEVER inject polyfills
           modules: false, // 🌲 Preserve ESM for tree-shaking
@@ -104,7 +103,6 @@ export default [
     },
     plugins: [
       ...getCommonPlugins("umd"),
-      filesize({ showMinifiedSize: true, showGzippedSize: true }),
       visualizer({
         filename: "./bundle-analysis.html",
         open: false,
@@ -127,10 +125,7 @@ export default [
       ...Object.keys(pkg.dependencies || {}),
       ...Object.keys(pkg.peerDependencies || {}),
     ],
-    plugins: [
-      ...getCommonPlugins("esm"),
-      filesize({ showMinifiedSize: false, showGzippedSize: true }),
-    ],
+    plugins: [...getCommonPlugins("esm")],
   },
 
   {
@@ -152,9 +147,6 @@ export default [
       ...Object.keys(pkg.dependencies || {}),
       ...Object.keys(pkg.peerDependencies || {}),
     ],
-    plugins: [
-      ...getCommonPlugins("cjs"),
-      filesize({ showMinifiedSize: false, showGzippedSize: true }),
-    ],
+    plugins: [...getCommonPlugins("cjs")],
   },
 ];
