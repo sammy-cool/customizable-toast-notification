@@ -140,21 +140,26 @@ function handleCenterPositions(container, flags) {
  * @param {Object} flags
  */
 function applyStandardPositioning(container, flags) {
-  // Set vertical position
   if (flags.hasBottom) {
     container.style.bottom = "10px";
   } else if (flags.hasTop) {
     container.style.top = "10px";
   }
 
-  // Set horizontal position
   if (flags.hasRight) {
     container.style.right = "10px";
   } else if (flags.hasLeft) {
     container.style.left = "10px";
   } else {
-    // Default: bottom-center
-    container.style.bottom = "10px";
+    // AUDIT FIX (M1): this branch previously set `bottom: 10px`
+    // unconditionally, even when `hasTop` had already set `top: 10px`
+    // above (e.g. an undocumented/malformed position string like "top"
+    // alone). A position:fixed element with BOTH top and bottom set and no
+    // explicit height gets stretched to fill the gap between them. Only
+    // fall back to "bottom" here if no vertical anchor was chosen at all.
+    if (!flags.hasBottom && !flags.hasTop) {
+      container.style.bottom = "10px";
+    }
     container.style.left = "50%";
     container.style.transform = "translateX(-50%)";
   }

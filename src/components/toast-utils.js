@@ -79,9 +79,13 @@ export async function applyRichStyling(toast, options, onClose) {
     wordBreak: "break-word",
     overflow: "hidden",
     textOverflow: "ellipsis",
-    display: "-webkit-box",
-    WebkitLineClamp: "3",
-    WebkitBoxOrient: "vertical",
+    // AUDIT FIX (C4): display/WebkitLineClamp/WebkitBoxOrient used to be
+    // re-applied here unconditionally, silently overwriting whatever the
+    // wrapText conditional above had just set — meaning wrapText:"normal"
+    // never actually worked; every toast truncated to 3 lines regardless.
+    // Those three properties are already correctly set by the if/else block
+    // above based on options.wrapText, so they're intentionally NOT
+    // repeated here anymore.
   });
 
   const allowHtml = !!options.allowHtml; // opt-in flag

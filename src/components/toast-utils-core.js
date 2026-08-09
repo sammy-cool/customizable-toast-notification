@@ -104,9 +104,23 @@ export function createProgressBar(toast, options) {
   const progressBar = document.createElement("div");
   const borderRadiusStr = options.borderRadius || 0;
   const borderRadiusNum = parseInt(borderRadiusStr, 10);
-  const newRadiusSub = borderRadiusNum - 10 + "px";
-  const finalWidth = borderRadiusNum ? `calc(100% - ${newRadiusSub})` : "100%";
+  // AUDIT FIX (H4, corrected): the first pass at this fix only stopped
+  // `borderRadiusNum - 10` from going negative (which had flipped the
+  // calc() into an addition). But the bar is also shifted right by
+  // `left: 12px` below — and clamping the subtracted amount to a floor of
+  // 0 doesn't account for that offset, so the bar's right edge still sat
+  // at `12px + 100%`, ~12px past the container, for any small
+  // borderRadius. The real constraint is: leftOffset + width must not
+  // exceed 100%, i.e. the subtracted amount must be at least as large as
+  // the left offset (12px) whenever that offset is applied. For large
+  // borderRadius (the library's own default is 50px) this clamp never
+  // kicks in — behavior there is unchanged from before.
   const leftVal = borderRadiusNum ? "12px" : "0";
+  const minSafeOffset = borderRadiusNum ? 12 : 0;
+  const radiusOffset = Math.max(borderRadiusNum - 10, minSafeOffset);
+  const finalWidth = borderRadiusNum
+    ? `calc(100% - ${radiusOffset}px)`
+    : "100%";
 
   Object.assign(progressBar.style, {
     position: "absolute",
@@ -121,12 +135,47 @@ export function createProgressBar(toast, options) {
 
   toast.appendChild(progressBar);
 
-  // Trigger width animation after insertion
-  setTimeout(() => {
-    // Force reflow to apply transition properly
-    progressBar.offsetWidth;
-    progressBar.style.width = "0%";
-  }, 50);
+  // AUDIT FIX (H3): this used to be a plain CSS `transition`, kicked off by
+  // flipping `style.width` to "0%" after a setTimeout. That works visually,
+  // but a CSS transition has no idea PausableTimer exists — it runs on its
+  // own clock. When ToastManager.js calls timer.pause() on hover, the real
+  // dismiss genuinely freezes, but the transition kept animating to 0% (or
+  // had already finished), so the bar visually lied about how much time was
+  // actually left.
+  //
+  // The Web Animations API (Element.animate()) solves this properly: it
+  // returns an Animation object with real .pause()/.play() methods that we
+  // can call from the exact same mouseenter/mouseleave/focus handlers that
+  // already call timer.pause()/timer.resume() in ToastManager.js — so the
+  // bar and the real timer are now driven by the same pause signal instead
+  // of two independent clocks. Stored on the toast element (matching the
+  // existing _cleanup/_pauseCleanup convention) so ToastManager.js can
+  // reach it without createProgressBar needing to know about PausableTimer.
+  //
+  // Compatibility fallback: Element.animate() isn't available in every
+  // environment this package claims to support (browserslist floor is
+  // safari>=10.1; Web Animations API landed in Safari 13.1) or in test
+  // environments like jsdom. Rather than throw and break toast creation
+  // entirely, fall back to the original CSS-transition approach — it won't
+  // get the pause-sync fix, but it degrades to the previous (already
+  // shipped) behavior instead of crashing.
+  if (typeof progressBar.animate === "function") {
+    toast._progressAnimation = progressBar.animate(
+      [{ width: finalWidth }, { width: "0%" }],
+      {
+        duration: Number(options.duration) || 1800,
+        easing: "linear",
+        fill: "forwards",
+        delay: 50,
+      },
+    );
+  } else {
+    progressBar.style.transition = `width ${options.duration || 1800}ms linear`;
+    setTimeout(() => {
+      progressBar.offsetWidth;
+      progressBar.style.width = "0%";
+    }, 50);
+  }
 }
 
 /**

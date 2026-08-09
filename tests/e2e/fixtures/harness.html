@@ -1,0 +1,23 @@
+<!doctype html>
+<!--
+  WHY THIS FILE EXISTS:
+  Playwright drives a real browser page — it needs an actual HTML document to
+  load your actual built bundle into, the same way a real consumer's page
+  would. We load dist/index.umd.js (not the ESM build) because that's what
+  gets the `window.customizableToast` global your README's CDN example uses,
+  and it's also the build most likely to be different from the ESM path
+  (see AUDIT-REPORT.md finding H5 — dismiss/noop differ between the two).
+
+  Path assumes this file lives at tests/e2e/fixtures/harness.html and dist/
+  lives at the repo root — adjust the <script src> if your layout differs.
+-->
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <title>Toast Test Harness</title>
+  </head>
+  <body>
+    <h1>Toast E2E Harness</h1>
+    <script src="../../../dist/index.umd.js"></script>
+  </body>
+</html>
