@@ -1,0 +1,93 @@
+name: Release
+
+on:
+  push:
+    branches:
+      - master
+
+# WHY THESE PERMISSIONS, EXACTLY THESE:
+#   contents: write     - semantic-release needs to create git tags, push
+#                          the version-bump commit, and create GitHub Releases
+#   issues: write        - semantic-release comments on issues referenced
+#                          in commits when they're released (optional
+#                          feature, harmless to leave enabled)
+#   pull-requests: write - same, for PRs referenced in commits
+#   id-token: write      - THE important one for us: this is what lets
+#                          GitHub mint a short-lived OIDC token that npm's
+#                          Trusted Publisher configuration will accept.
+#                          Without this, OIDC publish is not possible and
+#                          semantic-release will fail with ENONPMTOKEN.
+permissions:
+  contents: write
+  issues: write
+  pull-requests: write
+
+jobs:
+  release:
+    runs-on: ubuntu-latest
+    # Same official Playwright image as ci.yml, for the same reason: exact
+    # browser builds Playwright's own team tested against, not whatever
+    # ubuntu-latest happens to ship with this week. Keep this tag in sync
+    # with whatever ci.yml uses and whatever @playwright/test resolves to.
+    container:
+      image: mcr.microsoft.com/playwright:v1.57.0-noble
+
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v4
+        with:
+          # semantic-release needs full commit history (not a shallow
+          # clone) to correctly determine the version bump from ALL
+          # commits since the last release, not just the most recent one.
+          fetch-depth: 0
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: lts/*
+          cache: npm
+          registry-url: https://registry.npmjs.org
+
+      - name: Install Dependencies
+        run: npm ci
+
+      - name: Run ESLint
+        run: npm run lint
+        continue-on-error: true
+
+      - name: Build Package
+        run: npm run zone-build
+
+      - name: Run Unit Tests
+        run: npm run ci:test
+
+      - name: Run Playwright Tests
+        env:
+          HOME: /root
+        run: npm run test:e2e
+
+      # DELIBERATE REDUNDANCY: yes, ci.yml already ran this exact
+      # verification on the pull request before it was allowed to merge.
+      # This job re-runs it independently, one more time, on the actual
+      # post-merge state of master — before anything gets published to
+      # npm. This is the last checkpoint before a real, public, hard-to-
+      # take-back release goes out. Never skip this to "save time."
+      - name: Upload Playwright Report
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: release-playwright-report
+          path: playwright-report/
+          retention-days: 3
+
+      - name: Release
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          NPM_TOKEN: ${{ secrets.NPM_TOKEN }}
+          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
+          # Deliberately NOT setting NPM_TOKEN here. npm's CLI checks for
+          # that variable and, if it's set to ANYTHING (even an empty
+          # string), uses it instead of OIDC. Leaving it completely unset
+          # is what makes npm actually use the OIDC token from the
+          # id-token: write permission above.
+        run: npx semantic-release
