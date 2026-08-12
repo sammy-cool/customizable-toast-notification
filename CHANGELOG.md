@@ -1,3 +1,10 @@
+## [3.11.3](https://github.com/sammy-cool/customizable-toast-notification/compare/v3.11.2...v3.11.3) (2026-08-12)
+
+
+### Bug Fixes
+
+* parse hsl()/var() and deterministic color fallback ([3b5978d](https://github.com/sammy-cool/customizable-toast-notification/commit/3b5978d2373aa85b3007eeee46399b964e6d1b45))
+
 ## [3.11.2](https://github.com/sammy-cool/customizable-toast-notification/compare/v3.11.1...v3.11.2) (2026-08-12)
 
 
