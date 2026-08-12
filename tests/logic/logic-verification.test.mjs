@@ -30,6 +30,14 @@ function freshDom() {
   global.document = dom.window.document;
   global.Node = dom.window.Node;
   global.HTMLElement = dom.window.HTMLElement;
+  // Needed for dom.js's getDynamicAccessibleTextColorHex() to resolve CSS
+  // custom properties (var(--x)) via getComputedStyle — without this,
+  // `typeof getComputedStyle === "function"` correctly evaluates to false
+  // in a bare Node global scope, and the function safely falls through to
+  // its no-resolved-value path. That's the right defensive behavior for a
+  // genuinely getComputedStyle-less environment, but it means tests
+  // couldn't exercise the real resolution path without this.
+  global.getComputedStyle = dom.window.getComputedStyle;
   // jsdom deliberately doesn't implement requestAnimationFrame (it has no
   // real render loop). toast-utils-core.js's runToastAnimation() and
   // ToastManager.js's grouping coalescing both call it as fire-and-forget,
@@ -46,9 +54,8 @@ function freshDom() {
 describe("toast-utils.js — applyRichStyling / wrapText", () => {
   test("FIXED (C4): wrapText:'normal' now correctly applies block/normal display", async () => {
     freshDom();
-    const { applyRichStyling } = await import(
-      "../../src/components/toast-utils.js"
-    );
+    const { applyRichStyling } =
+      await import("../../src/components/toast-utils.js");
     const toast = document.createElement("div");
     await applyRichStyling(
       toast,
@@ -61,7 +68,7 @@ describe("toast-utils.js — applyRichStyling / wrapText", () => {
         animationDuration: "0.4s",
         animationEasing: "ease",
       },
-      () => {}
+      () => {},
     );
     const span = toast.querySelector("span");
     assert.equal(span.style.display, "block");
@@ -70,9 +77,8 @@ describe("toast-utils.js — applyRichStyling / wrapText", () => {
 
   test("GOOD: wrapText falsy still truncates to 3 lines (unchanged default behavior)", async () => {
     freshDom();
-    const { applyRichStyling } = await import(
-      "../../src/components/toast-utils.js"
-    );
+    const { applyRichStyling } =
+      await import("../../src/components/toast-utils.js");
     const toast = document.createElement("div");
     await applyRichStyling(
       toast,
@@ -84,7 +90,7 @@ describe("toast-utils.js — applyRichStyling / wrapText", () => {
         animationDuration: "0.4s",
         animationEasing: "ease",
       },
-      () => {}
+      () => {},
     );
     const span = toast.querySelector("span");
     assert.equal(span.style.display, "-webkit-box");
@@ -95,9 +101,8 @@ describe("toast-utils.js — applyRichStyling / wrapText", () => {
 describe("toast-utils-core.js — createProgressBar width math", () => {
   test("FIXED (H4): small borderRadius no longer overflows past 100%", async () => {
     freshDom();
-    const { createProgressBar } = await import(
-      "../../src/components/toast-utils-core.js"
-    );
+    const { createProgressBar } =
+      await import("../../src/components/toast-utils-core.js");
     const toast = document.createElement("div");
     createProgressBar(toast, {
       borderRadius: "4px",
@@ -111,9 +116,8 @@ describe("toast-utils-core.js — createProgressBar width math", () => {
 
   test("EXPECTED-GOOD: borderRadius >= 10 does not overflow", async () => {
     freshDom();
-    const { createProgressBar } = await import(
-      "../../src/components/toast-utils-core.js"
-    );
+    const { createProgressBar } =
+      await import("../../src/components/toast-utils-core.js");
     const toast = document.createElement("div");
     createProgressBar(toast, {
       borderRadius: "50px", // the library's own default
@@ -128,9 +132,8 @@ describe("toast-utils-core.js — createProgressBar width math", () => {
 describe("html-sanitizer.js — security boundary", () => {
   test("FIXED (C1 — SECURITY): style attribute is now stripped entirely", async () => {
     freshDom();
-    const { fallbackSanitize } = await import(
-      "../../src/utils/html-sanitizer.js"
-    );
+    const { fallbackSanitize } =
+      await import("../../src/utils/html-sanitizer.js");
     const payload =
       '<div style="position:fixed;inset:0;z-index:999999;background:#fff">overlay</div>';
     const clean = fallbackSanitize(payload);
@@ -140,11 +143,10 @@ describe("html-sanitizer.js — security boundary", () => {
 
   test("GOOD: <script> tags are stripped", async () => {
     freshDom();
-    const { fallbackSanitize } = await import(
-      "../../src/utils/html-sanitizer.js"
-    );
+    const { fallbackSanitize } =
+      await import("../../src/utils/html-sanitizer.js");
     const clean = fallbackSanitize(
-      '<script>alert(document.cookie)</script><b>safe</b>'
+      "<script>alert(document.cookie)</script><b>safe</b>",
     );
     assert.doesNotMatch(clean, /<script/i);
     assert.match(clean, /<b>safe<\/b>/);
@@ -152,31 +154,26 @@ describe("html-sanitizer.js — security boundary", () => {
 
   test("GOOD: onerror/on* handlers are stripped even on allowed tags", async () => {
     freshDom();
-    const { fallbackSanitize } = await import(
-      "../../src/utils/html-sanitizer.js"
-    );
+    const { fallbackSanitize } =
+      await import("../../src/utils/html-sanitizer.js");
     const clean = fallbackSanitize(
-      '<img src="https://example.test/x.png" onerror="alert(1)">'
+      '<img src="https://example.test/x.png" onerror="alert(1)">',
     );
     assert.doesNotMatch(clean, /onerror/i);
   });
 
   test("GOOD: javascript: URIs are neutralized in href", async () => {
     freshDom();
-    const { fallbackSanitize } = await import(
-      "../../src/utils/html-sanitizer.js"
-    );
-    const clean = fallbackSanitize(
-      '<a href="javascript:alert(1)">click</a>'
-    );
+    const { fallbackSanitize } =
+      await import("../../src/utils/html-sanitizer.js");
+    const clean = fallbackSanitize('<a href="javascript:alert(1)">click</a>');
     assert.doesNotMatch(clean, /javascript:/i);
   });
 
   test("GOOD: non-http(s)/data:image src is dropped", async () => {
     freshDom();
-    const { fallbackSanitize } = await import(
-      "../../src/utils/html-sanitizer.js"
-    );
+    const { fallbackSanitize } =
+      await import("../../src/utils/html-sanitizer.js");
     const clean = fallbackSanitize('<img src="file:///etc/passwd">');
     assert.doesNotMatch(clean, /src="file:/i);
   });
@@ -217,7 +214,7 @@ describe("position.js — container positioning", () => {
         container.style.bottom && container.style.bottom !== "auto";
       assert.ok(
         !(hasTop && hasBottom),
-        `position "${pos}" set both top and bottom simultaneously`
+        `position "${pos}" set both top and bottom simultaneously`,
       );
     });
   }
@@ -226,32 +223,69 @@ describe("position.js — container positioning", () => {
 describe("dom.js — getDynamicAccessibleTextColorHex", () => {
   test("GOOD: WCAG contrast ratio for known hex background is >= 4.5", async () => {
     freshDom();
-    const { getDynamicAccessibleTextColorHex } = await import(
-      "../../src/utils/dom.js"
-    );
+    const { getDynamicAccessibleTextColorHex } =
+      await import("../../src/utils/dom.js");
     const result = getDynamicAccessibleTextColorHex("#111111");
     assert.match(result, /^#[0-9a-f]{6}$/i);
   });
 
-  test("BUG H2: unrecognized color syntax (hsl/oklch/CSS var) produces non-deterministic output", async () => {
+  test("FIXED (H2): hsl()/hsla() now genuinely parses instead of falling through", async () => {
     freshDom();
-    const { getDynamicAccessibleTextColorHex } = await import(
-      "../../src/utils/dom.js"
+    const { getDynamicAccessibleTextColorHex } =
+      await import("../../src/utils/dom.js");
+    // hsl(0,100%,50%) is pure red — same RGB as #ff0000. If hsl() parsing
+    // is genuinely wired up (not just falling into the fallback path),
+    // this should match calling with the equivalent hex directly.
+    const viaHsl = getDynamicAccessibleTextColorHex("hsl(0, 100%, 50%)");
+    const viaHex = getDynamicAccessibleTextColorHex("#ff0000");
+    assert.equal(viaHsl, viaHex);
+  });
+
+  test("FIXED (H2): CSS custom properties (var()) resolve via the document root", async () => {
+    freshDom();
+    document.documentElement.style.setProperty("--test-brand", "#050505");
+    const { getDynamicAccessibleTextColorHex } =
+      await import("../../src/utils/dom.js");
+    const viaVar = getDynamicAccessibleTextColorHex("var(--test-brand)");
+    const viaHex = getDynamicAccessibleTextColorHex("#050505");
+    assert.equal(viaVar, viaHex);
+  });
+
+  test("FIXED (H2): var()'s own fallback value is used when the custom property is undefined", async () => {
+    freshDom();
+    const { getDynamicAccessibleTextColorHex } =
+      await import("../../src/utils/dom.js");
+    const viaVarFallback = getDynamicAccessibleTextColorHex(
+      "var(--never-defined-anywhere, #ffffff)",
     );
-    // Different unparseable strings should NOT need randomness to resolve —
-    // but today, each unparseable input hits Math.random() internally.
-    // We can't assert a specific "wrong" color deterministically (it's
-    // random by definition), so instead we assert the CURRENT contract is
-    // fragile: two DIFFERENT unrecognized strings a real theming setup would
-    // reasonably use both fall through to the same non-deterministic path.
-    const a = getDynamicAccessibleTextColorHex("hsl(220, 80%, 50%)");
-    const b = getDynamicAccessibleTextColorHex("oklch(0.6 0.15 250)");
-    assert.match(a, /^#[0-9a-f]{6}$/i, "still returns *a* hex, just not a reliable one");
-    assert.match(b, /^#[0-9a-f]{6}$/i);
-    // This test intentionally does NOT assert a === b or any specific value
-    // — that's the point. Once H2 is fixed (real hsl()/oklch() parsing),
-    // replace this with a deterministic assertion, e.g. that a light hsl()
-    // background reliably gets dark text.
+    const viaHex = getDynamicAccessibleTextColorHex("#ffffff");
+    assert.equal(viaVarFallback, viaHex);
+  });
+
+  test("FIXED (H2): genuinely unparseable input (e.g. oklch(), not yet supported) is now deterministic, not random", async () => {
+    freshDom();
+    const { getDynamicAccessibleTextColorHex } =
+      await import("../../src/utils/dom.js");
+    // oklch() is intentionally NOT parsed by this fix (kept scoped to
+    // hsl()/hsla()/var() — the formats named in the original audit
+    // finding). It still falls through to the fallback path, same as
+    // before H2 — the difference is that path is now a fixed neutral
+    // gray instead of Math.random(), so the SAME unparseable input (and
+    // even a DIFFERENT unparseable input) gives the SAME result every
+    // time, deterministically, instead of a coin flip.
+    const a1 = getDynamicAccessibleTextColorHex("oklch(0.6 0.15 250)");
+    const a2 = getDynamicAccessibleTextColorHex("oklch(0.6 0.15 250)");
+    const b1 = getDynamicAccessibleTextColorHex("totally-not-a-color");
+    assert.equal(
+      a1,
+      a2,
+      "same unparseable input must give the same result every call",
+    );
+    assert.equal(
+      a1,
+      b1,
+      "different unparseable input still resolves via the same deterministic fallback",
+    );
   });
 });
 
@@ -273,7 +307,7 @@ describe("PausableTimer.js — pause/resume math", () => {
     // (roughly delay-elapsed remains) without chasing exact milliseconds.
     assert.ok(
       remaining <= 340 && remaining >= 200,
-      `expected ~300ms remaining, got ${remaining}ms`
+      `expected ~300ms remaining, got ${remaining}ms`,
     );
     assert.equal(fired, false);
   });
@@ -340,7 +374,11 @@ describe("ToastManager.js — grouping key stability", () => {
     // See the L3 test below for why a unique position (not a fixed
     // "bottom-right") matters here — containerRegistry.js's module-level
     // cache persists across tests in this process.
-    const pos = "bottom-right-grouptest-" + Date.now() + "-" + Math.random().toString(36).slice(2);
+    const pos =
+      "bottom-right-grouptest-" +
+      Date.now() +
+      "-" +
+      Math.random().toString(36).slice(2);
     container.id = `toast-container-${pos}`;
     document.body.appendChild(container);
 
@@ -386,7 +424,11 @@ describe("ToastManager.js — dismissMostRecent() targets the newest toast", () 
     // reads as "connected"). A unique position string per test guarantees
     // a fresh cache miss, so toasts land in THIS test's document instead
     // of an orphaned one from an earlier test.
-    const pos = "bottom-right-l3test-" + Date.now() + "-" + Math.random().toString(36).slice(2);
+    const pos =
+      "bottom-right-l3test-" +
+      Date.now() +
+      "-" +
+      Math.random().toString(36).slice(2);
     container.id = `toast-container-${pos}`;
     document.body.appendChild(container);
 
@@ -425,9 +467,8 @@ describe("toast-utils-core.js — progress bar pause-sync wiring (H3)", () => {
     // worth knowing if it ever stops being true.
     assert.equal(typeof document.createElement("div").animate, "undefined");
 
-    const { createProgressBar } = await import(
-      "../../src/components/toast-utils-core.js"
-    );
+    const { createProgressBar } =
+      await import("../../src/components/toast-utils-core.js");
     const toast = document.createElement("div");
     assert.doesNotThrow(() => {
       createProgressBar(toast, { duration: 1000, borderRadius: "50px" });
