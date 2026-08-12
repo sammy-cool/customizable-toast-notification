@@ -1,14 +1,7 @@
-// src/utils/dom.js
 "use strict";
 
 import { generateToastId } from "./id.js";
 
-/**
- * Creates an element with a unique ID using the given prefix.
- * @param {string} tagName - Tag name of the element.
- * @param {string} prefix - Prefix for the element ID.
- * @returns {Promise<Element>}
- */
 export async function createElementWithId(tagName, prefix) {
   if (!tagName || !prefix) throw new Error("tagName and prefix are required");
   const el = document.createElement(tagName);
@@ -16,12 +9,6 @@ export async function createElementWithId(tagName, prefix) {
   return el;
 }
 
-/**
- * Appends a child element to a parent element with multiple fallbacks.
- * @param {Element} parent - The parent element.
- * @param {Element} child - The child element.
- * @returns {Promise<boolean>}
- */
 export async function appendChild(parent, child) {
   if (!parent || !child) return false;
 
@@ -50,11 +37,6 @@ export async function appendChild(parent, child) {
   return false;
 }
 
-/**
- * Removes an element from the DOM with multiple methods.
- * @param {Element} el - The element to be removed.
- * @returns {Promise<boolean>}
- */
 export async function removeElement(el) {
   if (!el) return true;
 
@@ -86,11 +68,6 @@ export async function removeElement(el) {
   return false;
 }
 
-/**
- * Parses animation duration from a string or number.
- * @param {string|number} duration - Duration value.
- * @returns {Promise<number>} - Milliseconds.
- */
 export async function parseAnimationDuration(duration) {
   if (typeof duration === "number" && duration > 0) return duration;
   if (typeof duration === "string") {
@@ -104,11 +81,6 @@ export async function parseAnimationDuration(duration) {
   return 500;
 }
 
-/**
- * Forces a reflow on an element.
- * @param {Element} el - The element.
- * @returns {number}
- */
 export function forceReflow(el) {
   try {
     return el?.offsetWidth || 0;
@@ -118,24 +90,10 @@ export function forceReflow(el) {
   }
 }
 
-/**
- * Shortcut for query selection with optional root.
- * @param {string} selector - CSS selector.
- * @param {Element|Document} [root=document] - Root element.
- * @returns {Element|null}
- */
 export function query(selector, root = document) {
   return root.querySelector(selector);
 }
 
-/**
- * Gets accessible text color based on background according to WCAG.
- * Optimized with caching for repeated background colors.
- *
- * @param {string} toastBg - Background color (hex, rgb, hsl, named).
- * @param {number} [opa=1] - Optional opacity (0–1).
- * @returns {string} - Text color: "black" or "white".
- */
 class LRUCache {
   constructor(maxSize = 200) {
     this.maxSize = maxSize;
@@ -162,7 +120,6 @@ class LRUCache {
 
 const colorCache = new LRUCache(200);
 
-// Full named CSS color table
 const namedColors = {
   aliceblue: [240, 248, 255],
   antiquewhite: [250, 235, 215],
@@ -314,16 +271,13 @@ const namedColors = {
   yellowgreen: [154, 205, 50],
 };
 
-// Precompute accessible text for all named colors (O(1) lookup) (case-insensitive)
 const precomputedNamedTextColors = {};
 Object.entries(namedColors).forEach(([name, [r, g, b]]) => {
-  // Calculate relative luminance
   const lum = (c) => {
     const v = c / 255;
     return v <= 0.03928 ? v / 12.92 : Math.pow((v + 0.055) / 1.055, 2.4);
   };
   const L = 0.2126 * lum(r) + 0.7152 * lum(g) + 0.0722 * lum(b);
-  // WCAG contrast: choose black or white based on which has higher contrast
   const contrastBlack = (L + 0.05) / 0.05;
   const contrastWhite = 1.05 / (L + 0.05);
   precomputedNamedTextColors[name.toLowerCase()] =
@@ -337,7 +291,6 @@ export function getDynamicAccessibleTextColorHex(toastBg, opa = 1) {
   const cached = colorCache.get(key);
   if (cached) return cached;
 
-  // Named color precomputed lookup
   if (precomputedNamedTextColors[toastBg?.toLowerCase()]) {
     const textColor = precomputedNamedTextColors[toastBg.toLowerCase()];
     colorCache.set(key, textColor);
@@ -346,8 +299,40 @@ export function getDynamicAccessibleTextColorHex(toastBg, opa = 1) {
 
   let r, g, b;
 
-  try {
-    const hexMatch = toastBg?.match(/^#([0-9a-f]{3,8})$/i);
+  // AUDIT FIX (H2): this function previously only understood hex and
+  // rgb()/rgba() strings. Anything else — hsl(), a CSS custom property
+  // like var(--brand), any modern color syntax — fell straight into the
+  // catch block below, which used to assign a RANDOM RGB triplet as the
+  // "background" driving the black-vs-white text decision. For a function
+  // whose entire purpose is accessibility, that meant it could pick white
+  // text on a light background (or the reverse) for any color format it
+  // didn't recognize, and the choice wasn't even stable between calls for
+  // the same input. Two changes: (1) genuinely parse hsl()/hsla() and CSS
+  // custom properties instead of giving up on them, (2) for the cases
+  // that are still truly unparseable, fall back to a fixed neutral
+  // midpoint gray instead of Math.random() — deterministic and
+  // reasonable, never actively wrong in a random direction.
+  function resolveCssCustomProperty(value) {
+    const varMatch = value?.match(/^var\((--[\w-]+)(?:\s*,\s*(.+))?\)$/i);
+    if (!varMatch) return value;
+    try {
+      if (
+        typeof document !== "undefined" &&
+        typeof getComputedStyle === "function"
+      ) {
+        const resolved = getComputedStyle(document.documentElement)
+          .getPropertyValue(varMatch[1])
+          .trim();
+        if (resolved) return resolved;
+      }
+    } catch (e) {}
+    // Fall back to the var()'s own declared fallback value, if it had one
+    // (e.g. var(--brand, #336699)), before giving up entirely.
+    return varMatch[2]?.trim() || value;
+  }
+
+  function parseToRgb(value) {
+    const hexMatch = value?.match(/^#([0-9a-f]{3,8})$/i);
     if (hexMatch) {
       let hex = hexMatch[1];
       if (hex.length === 3)
@@ -355,31 +340,71 @@ export function getDynamicAccessibleTextColorHex(toastBg, opa = 1) {
           .split("")
           .map((c) => c + c)
           .join("");
-      r = parseInt(hex.slice(0, 2), 16);
-      g = parseInt(hex.slice(2, 4), 16);
-      b = parseInt(hex.slice(4, 6), 16);
-    } else {
-      const rgbMatch = toastBg?.match(
-        /rgba?\((\d+),\s*(\d+),\s*(\d+)(?:,\s*[\d.]+)?\)/i,
-      );
-      if (rgbMatch) {
-        r = Number(rgbMatch[1]);
-        g = Number(rgbMatch[2]);
-        b = Number(rgbMatch[3]);
-      } else throw new Error("Unknown color");
+      return {
+        r: parseInt(hex.slice(0, 2), 16),
+        g: parseInt(hex.slice(2, 4), 16),
+        b: parseInt(hex.slice(4, 6), 16),
+      };
     }
-  } catch {
-    r = 50 + Math.floor(Math.random() * 206);
-    g = 50 + Math.floor(Math.random() * 206);
-    b = 50 + Math.floor(Math.random() * 206);
+
+    const rgbMatch = value?.match(
+      /rgba?\((\d+),\s*(\d+),\s*(\d+)(?:,\s*[\d.]+)?\)/i,
+    );
+    if (rgbMatch) {
+      return {
+        r: Number(rgbMatch[1]),
+        g: Number(rgbMatch[2]),
+        b: Number(rgbMatch[3]),
+      };
+    }
+
+    const hslMatch = value?.match(
+      /hsla?\(\s*([\d.]+)(?:deg)?\s*,\s*([\d.]+)%\s*,\s*([\d.]+)%(?:\s*,\s*[\d.]+)?\)/i,
+    );
+    if (hslMatch) {
+      const h = Number(hslMatch[1]) / 360;
+      const s = Number(hslMatch[2]) / 100;
+      const l = Number(hslMatch[3]) / 100;
+      if (s === 0) {
+        const gray = Math.round(l * 255);
+        return { r: gray, g: gray, b: gray };
+      }
+      const hue2rgb = (p, q, t) => {
+        if (t < 0) t += 1;
+        if (t > 1) t -= 1;
+        if (t < 1 / 6) return p + (q - p) * 6 * t;
+        if (t < 1 / 2) return q;
+        if (t < 2 / 3) return p + (q - p) * (2 / 3 - t) * 6;
+        return p;
+      };
+      const q = l < 0.5 ? l * (1 + s) : l + s - l * s;
+      const p = 2 * l - q;
+      return {
+        r: Math.round(hue2rgb(p, q, h + 1 / 3) * 255),
+        g: Math.round(hue2rgb(p, q, h) * 255),
+        b: Math.round(hue2rgb(p, q, h - 1 / 3) * 255),
+      };
+    }
+
+    return null;
   }
 
-  // Apply opacity blending
+  try {
+    const resolvedBg = resolveCssCustomProperty(toastBg);
+    const parsed = parseToRgb(resolvedBg);
+    if (!parsed) throw new Error("Unknown color");
+    ({ r, g, b } = parsed);
+  } catch {
+    // Deterministic neutral fallback — a mid-gray reads reasonably against
+    // either black or white text, and critically, gives the SAME answer
+    // every time for the same unparseable input instead of a coin flip.
+    r = g = b = 128;
+  }
+
   r = Math.round(r * opa + 255 * (1 - opa));
   g = Math.round(g * opa + 255 * (1 - opa));
   b = Math.round(b * opa + 255 * (1 - opa));
 
-  // Convert HSL and adjust lightness dynamically
   const rgbToHsl = (r, g, b) => {
     r /= 255;
     g /= 255;
