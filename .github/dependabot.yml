@@ -1,0 +1,31 @@
+version: 2
+updates:
+  # Keeps npm dependencies current automatically, opening one PR per
+  # update (grouped weekly, not one PR per package — that would be noisy
+  # for a solo maintainer). Every PR still has to pass ci.yml (129
+  # Playwright tests + logic suite + build) before you'd ever merge it, so
+  # this can't silently introduce a broken dependency the way the
+  # accumulated 27 vulnerabilities did — it surfaces them early, one small
+  # PR at a time, instead of one big scary `npm audit` output months later.
+  - package-ecosystem: "npm"
+    directory: "/"
+    schedule:
+      interval: "weekly"
+    open-pull-requests-limit: 5
+    groups:
+      # Groups routine patch/minor bumps into one PR instead of five —
+      # major version bumps stay ungrouped so each gets its own PR and its
+      # own explicit review, since those are the ones actually worth
+      # reading a changelog for.
+      minor-and-patch:
+        update-types:
+          - "minor"
+          - "patch"
+
+  # Keeps the GitHub Actions themselves current too (actions/checkout,
+  # actions/setup-node, etc.) — these have their own occasional security
+  # advisories, easy to forget about since they're not in package.json.
+  - package-ecosystem: "github-actions"
+    directory: "/"
+    schedule:
+      interval: "weekly"
