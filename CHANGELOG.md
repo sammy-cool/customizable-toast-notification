@@ -1,3 +1,10 @@
+## [3.11.1](https://github.com/sammy-cool/customizable-toast-notification/compare/v3.11.0...v3.11.1) (2026-08-12)
+
+
+### Bug Fixes
+
+* upgrade Node.js to v24 and add git verification ([7668b45](https://github.com/sammy-cool/customizable-toast-notification/commit/7668b4520b1b88bfff08fdd8baf6ae8715cbc51f))
+
 # Changelog
 
 ## [3.9.0] - 2025-09-16
