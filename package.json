@@ -2,7 +2,7 @@
   "name": "customizable-toast-notification",
   "version": "3.11.1",
   "description": "A lightweight, zero-dependency toast notification library with CTA support for modern JavaScript applications with production-grade reliability and comprehensive system  mechanisms",
-  "main": "dist/index.esm.mjs",
+  "main": "dist/index.cjs",
   "module": "dist/index.esm.mjs",
   "unpkg": "dist/index.umd.js",
   "jsdelivr": "dist/index.umd.js",
@@ -11,6 +11,7 @@
     ".": {
       "types": "./dist/index.d.ts",
       "import": "./dist/index.esm.mjs",
+      "require": "./dist/index.cjs",
       "script": "./dist/index.umd.js",
       "default": "./dist/index.umd.js"
     },
@@ -110,6 +111,8 @@
     "dist/index.esm.mjs.map",
     "dist/index.umd.js",
     "dist/index.umd.js.map",
+    "dist/index.cjs",
+    "dist/index.cjs.map",
     "dist/index.d.ts",
     "README.md",
     "LICENSE",

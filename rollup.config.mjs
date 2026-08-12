@@ -18,7 +18,7 @@ const banner = `/*!
  * Build: ${buildTime}
  * Cache-Buster: ${Date.now()} 
  * Author: Priyanshu Patel
- * Email: [priyanshu.alt191@gmail.com](mailto:priyanshu.alt191@gmail.com)
+ * Email: priyanshu.alt191@gmail.com
  * License: Apache-2.0
  * Dependencies: None
  * Created: July 31, 2024
@@ -31,7 +31,6 @@ const banner = `/*!
 // 🎯 Common plugins for all builds
 const getCommonPlugins = (target) => [
   replace({
-    "process.env.NODE_ENV": JSON.stringify("production"),
     preventAssignment: true,
     values: {
       __VERSION__: JSON.stringify(pkg.version),
@@ -78,7 +77,7 @@ const getCommonPlugins = (target) => [
       // instead of throw). Passing an array instead of `true` tells terser
       // to only drop the noisy dev-only methods and leave error/warn
       // intact — see https://terser.org/docs/options/#compress-options
-      drop_console: ["log", "info", "debug"],
+      drop_console: ["log", "info", "debug", "warn", "error"],
       drop_debugger: true,
       // pure_funcs removed: it's redundant now that drop_console already
       // targets exactly these three methods explicitly.
@@ -98,7 +97,7 @@ export default [
       file: "dist/index.umd.js",
       format: "umd",
       name: "customizableToast",
-      // sourcemap: true,
+      sourcemap: true,
       banner,
     },
     plugins: [
@@ -118,7 +117,7 @@ export default [
     output: {
       file: "dist/index.esm.mjs",
       format: "esm",
-      // sourcemap: true,
+      sourcemap: true,
       banner,
     },
     external: [
@@ -141,6 +140,7 @@ export default [
       file: "dist/index.cjs",
       format: "cjs",
       exports: "named",
+      sourcemap: true,
       banner,
     },
     external: [
