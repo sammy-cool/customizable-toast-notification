@@ -1,85 +1,75 @@
-// src/utils/html-sanitizer.js
-// Lightweight HTML sanitizer wrapper — prefers DOMPurify if available, else conservative fallback.
+// AUDIT FIX (H1): these used to live inside fallbackSanitize() only, which
+// meant sanitizeHtml()'s DOMPurify branch had no way to reference them —
+// it just used DOMPurify's own (much broader) default allowlist instead.
+// Same allowHtml:true input could sanitize completely differently
+// depending on whether some UNRELATED script on the host page happened to
+// load DOMPurify onto window — a security boundary that was an
+// environmental accident rather than a deliberate, consistent policy.
+// Hoisting these to module scope makes them the single source of truth
+// for BOTH paths, so the same input gets the same treatment regardless of
+// which sanitizer implementation actually runs.
+const ALLOWED_TAGS = new Set([
+  "DIV",
+  "SPAN",
+  "P",
+  "BR",
+  "STRONG",
+  "B",
+  "EM",
+  "I",
+  "U",
+  "SMALL",
+  "UL",
+  "OL",
+  "LI",
+  "A",
+  "IMG",
+  "PRE",
+  "CODE",
+  "MARK",
+]);
+// AUDIT FIX (C1 — security): 'style' was previously allowed through with
+// zero validation, letting an attacker-controlled message (allowHtml:true)
+// inject `position:fixed;inset:0;z-index:999999` and render a full-page
+// clickjacking overlay through a toast that already renders at
+// z-index:9999. Inline style is a well-known sanitizer bypass class (see
+// OWASP's XSS Filter Evasion Cheat Sheet). Removed from the allowlist
+// entirely rather than attempting partial validation — toasts don't need
+// arbitrary inline styling to be useful, and "no unchecked style" is the
+// safe default most reputable sanitizers ship with.
+const ALLOWED_ATTRS = new Set([
+  "href",
+  "src",
+  "alt",
+  "title",
+  "class",
+  "target",
+  "rel",
+]);
 
 export function hasDOMPurify() {
   try {
     if (typeof window !== "undefined" && window.DOMPurify) return true;
-  } catch (e) {
-    /* ignore */
-  }
+  } catch (e) {}
   return false;
 }
 
-/**
- * Basic conservative fallback sanitizer.
- * - Removes <script>, <iframe>, <object>, <embed>, <link>, <meta>, <style> tags entirely.
- * - Strips on* attributes (onclick, onerror, etc) and javascript: URIs in href/src.
- * - Keeps allowed tags list (span, div, p, a, strong, em, b, i, small, u, ul, ol, li, img)
- * - For img, allows only src that starts with http(s) or data:image/.
- *
- * NOTE: fallback is intentionally conservative. Prefer DOMPurify for robust security.
- */
 export function fallbackSanitize(dirty) {
   if (!dirty || typeof dirty !== "string") return "";
 
-  // Remove dangerous tags
   const blockedTags =
     /<\/?(script|iframe|object|embed|link|meta|style|form|input|button)[^>]*>/gi;
   let step1 = dirty.replace(blockedTags, "");
 
-  // Remove event handler attributes (on*)
   step1 = step1.replace(/\s(on\w+)\s*=\s*(['"])[\s\S]*?\2/gi, "");
 
-  // Remove javascript: URIs in href/src
   step1 = step1.replace(
     /(href|src)\s*=\s*(['"])\s*javascript:[^'"]*\2/gi,
-    "$1=$2#$2"
+    "$1=$2#$2",
   );
 
-  // Allowlist simple tags & attributes; strip others
-  // Create a DOM tree and rebuild with allowed tags/attrs
   const container = document.createElement("div");
   container.innerHTML = step1;
-
-  const ALLOWED_TAGS = new Set([
-    "DIV",
-    "SPAN",
-    "P",
-    "BR",
-    "STRONG",
-    "B",
-    "EM",
-    "I",
-    "U",
-    "SMALL",
-    "UL",
-    "OL",
-    "LI",
-    "A",
-    "IMG",
-    "PRE",
-    "CODE",
-    "MARK",
-  ]);
-
-  // AUDIT FIX (C1 — security): 'style' was previously allowed through with
-  // zero validation, letting an attacker-controlled message (allowHtml:true)
-  // inject `position:fixed;inset:0;z-index:999999` and render a full-page
-  // clickjacking overlay through a toast that already renders at
-  // z-index:9999. Inline style is a well-known sanitizer bypass class (see
-  // OWASP's XSS Filter Evasion Cheat Sheet). Removed from the allowlist
-  // entirely rather than attempting partial validation — toasts don't need
-  // arbitrary inline styling to be useful, and "no unchecked style" is the
-  // safe default most reputable sanitizers ship with.
-  const ALLOWED_ATTRS = new Set([
-    "href",
-    "src",
-    "alt",
-    "title",
-    "class",
-    "target",
-    "rel",
-  ]);
 
   function sanitizeNode(node) {
     if (node.nodeType === Node.TEXT_NODE) {
@@ -90,7 +80,6 @@ export function fallbackSanitize(dirty) {
     }
     const tag = node.tagName.toUpperCase();
     if (!ALLOWED_TAGS.has(tag)) {
-      // preserve children text but drop the tag itself
       const frag = document.createDocumentFragment();
       Array.from(node.childNodes).forEach((child) => {
         const sanitized = sanitizeNode(child);
@@ -99,26 +88,21 @@ export function fallbackSanitize(dirty) {
       return frag;
     }
     const el = document.createElement(node.tagName);
-    // copy allowed attributes w/ safe checks
     Array.from(node.attributes || []).forEach((attr) => {
       const name = attr.name.toLowerCase();
       const val = attr.value;
       if (!ALLOWED_ATTRS.has(name)) return;
-      // Protect href/src from 'javascript:' pseudo-protocol
       if ((name === "href" || name === "src") && /^\s*javascript:/i.test(val))
         return;
-      // For src allow data images or https/http only
       if (name === "src" && !/^\s*(https?:|data:image\/)/i.test(val)) return;
-      // For href target _blank ensure rel noopener
       if (name === "target" && val === "_blank") {
         el.setAttribute(
           "rel",
-          (node.getAttribute("rel") || "") + " noopener noreferrer"
+          (node.getAttribute("rel") || "") + " noopener noreferrer",
         );
       }
       el.setAttribute(name, val);
     });
-    // recurse children
     Array.from(node.childNodes).forEach((child) => {
       const sanitizedChild = sanitizeNode(child);
       if (sanitizedChild) el.appendChild(sanitizedChild);
@@ -137,24 +121,42 @@ export function fallbackSanitize(dirty) {
   return wrapper.innerHTML;
 }
 
-/**
- * sanitizeHtml: main export
- * opts: { forceFallback: boolean }
- */
 export function sanitizeHtml(dirty, opts = {}) {
   if (!dirty) return "";
   try {
     if (!opts.forceFallback && hasDOMPurify()) {
-      // Use global DOMPurify if available (or you can import it)
-      return window.DOMPurify.sanitize(dirty, {
-        ADD_ATTR: ["target"],
+      const DOMPurify = window.DOMPurify;
+      // AUDIT FIX (H1): previously called DOMPurify.sanitize() with only
+      // ADD_ATTR/ALLOWED_URI_REGEXP, meaning tags/attributes were governed
+      // by DOMPurify's own broad DEFAULT allowlist — not the tight,
+      // deliberately-curated one this library actually promises. Now
+      // passing the SAME ALLOWED_TAGS/ALLOWED_ATTRS used by
+      // fallbackSanitize(), so a consumer gets identical sanitization
+      // behavior whether or not some other script on the page happens to
+      // have loaded DOMPurify.
+      const cleaned = DOMPurify.sanitize(dirty, {
+        ALLOWED_TAGS: Array.from(ALLOWED_TAGS),
+        ALLOWED_ATTR: Array.from(ALLOWED_ATTRS),
         ALLOWED_URI_REGEXP:
           /^(?:(?:https?|mailto|ftp|tel|data):|[^a-z]|[a-z+.\-]+(?:[^a-z+.\-:]|$))/i,
       });
+
+      // Replicates fallbackSanitize()'s auto rel="noopener noreferrer" on
+      // target="_blank" links — DOMPurify doesn't do this automatically,
+      // so without this the two paths would still diverge on this one
+      // detail even with matching tag/attribute allowlists. Re-parsing the
+      // already-clean output (not the original dirty string) so this can
+      // only ever tighten, never loosen, what DOMPurify already produced.
+      const wrapper = document.createElement("div");
+      wrapper.innerHTML = cleaned;
+      wrapper.querySelectorAll('a[target="_blank"]').forEach((a) => {
+        const rel = (a.getAttribute("rel") || "").split(/\s+/).filter(Boolean);
+        if (!rel.includes("noopener")) rel.push("noopener");
+        if (!rel.includes("noreferrer")) rel.push("noreferrer");
+        a.setAttribute("rel", rel.join(" "));
+      });
+      return wrapper.innerHTML;
     }
-  } catch (err) {
-    // rely on fallback
-    // console.warn("DOMPurify not available or errored; using fallback sanitizer", err);
-  }
+  } catch (err) {}
   return fallbackSanitize(dirty);
 }
