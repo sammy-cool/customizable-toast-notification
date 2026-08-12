@@ -1,3 +1,10 @@
+## [3.11.2](https://github.com/sammy-cool/customizable-toast-notification/compare/v3.11.1...v3.11.2) (2026-08-12)
+
+
+### Bug Fixes
+
+* improve package builds and release verification ([84d3150](https://github.com/sammy-cool/customizable-toast-notification/commit/84d3150fa258bb77005001c467702ea10dc954cf))
+
 ## [3.11.1](https://github.com/sammy-cool/customizable-toast-notification/compare/v3.11.0...v3.11.1) (2026-08-12)
 
 
