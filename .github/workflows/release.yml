@@ -41,10 +41,24 @@ jobs:
           # commits since the last release, not just the most recent one.
           fetch-depth: 0
 
+      - name: Verify Git Repository
+        run: |
+          echo "GITHUB_WORKSPACE=$GITHUB_WORKSPACE"
+          pwd
+          ls -la
+          echo "--- .git check ---"
+          test -d .git && echo ".git EXISTS" || echo ".git DOES NOT EXIST"
+          echo "--- git status ---"
+          git status
+          echo "--- git rev-parse ---"
+          git rev-parse --show-toplevel
+          echo "--- git log ---"
+          git log -1 --oneline
+
       - name: Setup Node
         uses: actions/setup-node@v4
         with:
-          node-version: lts/*
+          node-version: 24
           cache: npm
           registry-url: https://registry.npmjs.org
 
