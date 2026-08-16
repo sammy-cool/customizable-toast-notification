@@ -35,7 +35,7 @@ jobs:
 
     steps:
       - name: Checkout Code
-        uses: actions/checkout@v4
+        uses: actions/checkout@v7
         with:
           # semantic-release needs full commit history (not a shallow
           # clone) to correctly determine the version bump from ALL
