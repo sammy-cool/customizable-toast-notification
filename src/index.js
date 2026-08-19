@@ -134,7 +134,12 @@ async function sanitizeToastOptions(options) {
     textColor: undefined,
     showCloseButton: true,
     animationDuration: "0.4s",
-    animationType: "fade",
+    // AUDIT FIX (L1): animationType removed. It was never read by the
+    // actual entrance animation (toast-utils-core.js's runToastAnimation
+    // hardcodes a fade+translateY transition) — only src/utils/animateFn.js
+    // read this option, and that file was never imported anywhere (dead
+    // code, confirmed via repo-wide grep). Deleted animateFn.js alongside
+    // this — see the delete instruction in the fix notes.
     animationEasing: "ease",
     showProgressBar: true,
     progressColor: undefined,
@@ -161,6 +166,14 @@ async function sanitizeToastOptions(options) {
 
   final.message = options?.message ?? final.message;
 
+  // AUDIT FIX (M3): backgroundColor, message-default, textColor, and
+  // progressColor used to all live in ONE try block. If computing
+  // backgroundColor threw (e.g. window.matchMedia unavailable in some
+  // non-standard/embedded webview, or mocked incorrectly in a test), the
+  // catch swallowed it — but that also skipped the message-default
+  // fallback further down, even though THAT computation hadn't failed at
+  // all. Splitting into independent try/catch blocks means one field's
+  // failure can't silently take out an unrelated one.
   try {
     if (!final.backgroundColor) {
       final.backgroundColor =
@@ -169,29 +182,33 @@ async function sanitizeToastOptions(options) {
           ? "#f5f5f5"
           : "#111111");
     }
+  } catch (error) {
+    console.warn("Background color resolution failed:", error);
+  }
 
+  try {
     final.message =
       final.message || defaultMessages?.[final.type] || "No Message Provided!";
+  } catch (error) {
+    console.warn("Default message resolution failed:", error);
+  }
 
+  try {
     if (!final.textColor && final.backgroundColor) {
-      const textColorResult = getDynamicAccessibleTextColorHex(
-        final.backgroundColor,
-      );
-      final.textColor = textColorResult;
-    }
-
-    if (!final.progressColor && final.backgroundColor) {
-      if (final.textColor) {
-        final.progressColor = final.textColor;
-      } else {
-        const barColorResult = getDynamicAccessibleTextColorHex(
-          final.backgroundColor,
-        );
-        final.progressColor = barColorResult;
-      }
+      final.textColor = getDynamicAccessibleTextColorHex(final.backgroundColor);
     }
   } catch (error) {
-    console.warn("Option processing failed:", error);
+    console.warn("Text color resolution failed:", error);
+  }
+
+  try {
+    if (!final.progressColor && final.backgroundColor) {
+      final.progressColor =
+        final.textColor ||
+        getDynamicAccessibleTextColorHex(final.backgroundColor);
+    }
+  } catch (error) {
+    console.warn("Progress bar color resolution failed:", error);
   }
 
   if (typeof final.message !== "string") {
