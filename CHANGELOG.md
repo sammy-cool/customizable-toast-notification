@@ -1,3 +1,10 @@
+## [3.11.4](https://github.com/sammy-cool/customizable-toast-notification/compare/v3.11.3...v3.11.4) (2026-08-19)
+
+
+### Bug Fixes
+
+* toast config and positioning regressions ([b35037a](https://github.com/sammy-cool/customizable-toast-notification/commit/b35037a93ef2e72e12e102160d276396dad222a9))
+
 ## [3.11.3](https://github.com/sammy-cool/customizable-toast-notification/compare/v3.11.2...v3.11.3) (2026-08-12)
 
 
