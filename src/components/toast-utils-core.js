@@ -1,14 +1,18 @@
 "use strict";
 
-/**
- * Creates a Call-To-Action (CTA) button or link for the toast.
- * @param {HTMLElement} toast - The toast container element.
- * @param {Object} options - Toast options including cta config.
- * @param {Function} onClose - Callback when toast closes.
- */
 export function createCTA(toast, options, onClose) {
-  const cfg = options?.cta;
-  if (!cfg) return;
+  const rawCfg = options?.cta;
+  if (!rawCfg) return;
+
+  // AUDIT FIX (L2): this used to mutate `options.cta` directly
+  // (`cfg.label = ...` below writes straight onto the caller's own
+  // object). If a consumer reuses the same cta config object across
+  // multiple createToast() calls — a natural pattern, e.g. defining a
+  // button config once and reusing it — the fallback label mutation from
+  // the first toast would leak into every later call, even ones that
+  // originally had no label at all. Working on a shallow copy means the
+  // caller's object is never touched.
+  const cfg = { ...rawCfg };
 
   if (!cfg.label) {
     cfg.label = "CTA Label Missing!";
@@ -57,18 +61,11 @@ export function createCTA(toast, options, onClose) {
 
   el.addEventListener("click", onClick);
 
-  // Store cleanup for event listener removal if needed
   el._cleanup = () => el.removeEventListener("click", onClick);
 
   toast.appendChild(el);
 }
 
-/**
- * Creates the close button for the toast.
- * @param {HTMLElement} toast
- * @param {Object} options
- * @param {Function} onClose
- */
 export function createCloseButton(toast, options, onClose) {
   const closeBtn = document.createElement("button");
   closeBtn.setAttribute("aria-label", "Close notification");
@@ -87,7 +84,6 @@ export function createCloseButton(toast, options, onClose) {
   const onClick = () => onClose(toast);
   closeBtn.addEventListener("click", onClick);
 
-  // Provide cleanup for memory management
   toast._cleanupCloseButton = () => {
     closeBtn.removeEventListener("click", onClick);
   };
@@ -95,26 +91,10 @@ export function createCloseButton(toast, options, onClose) {
   toast.appendChild(closeBtn);
 }
 
-/**
- * Creates and animates the progress bar on the toast.
- * @param {HTMLElement} toast
- * @param {Object} options
- */
 export function createProgressBar(toast, options) {
   const progressBar = document.createElement("div");
   const borderRadiusStr = options.borderRadius || 0;
   const borderRadiusNum = parseInt(borderRadiusStr, 10);
-  // AUDIT FIX (H4, corrected): the first pass at this fix only stopped
-  // `borderRadiusNum - 10` from going negative (which had flipped the
-  // calc() into an addition). But the bar is also shifted right by
-  // `left: 12px` below — and clamping the subtracted amount to a floor of
-  // 0 doesn't account for that offset, so the bar's right edge still sat
-  // at `12px + 100%`, ~12px past the container, for any small
-  // borderRadius. The real constraint is: leftOffset + width must not
-  // exceed 100%, i.e. the subtracted amount must be at least as large as
-  // the left offset (12px) whenever that offset is applied. For large
-  // borderRadius (the library's own default is 50px) this clamp never
-  // kicks in — behavior there is unchanged from before.
   const leftVal = borderRadiusNum ? "12px" : "0";
   const minSafeOffset = borderRadiusNum ? 12 : 0;
   const radiusOffset = Math.max(borderRadiusNum - 10, minSafeOffset);
@@ -135,30 +115,6 @@ export function createProgressBar(toast, options) {
 
   toast.appendChild(progressBar);
 
-  // AUDIT FIX (H3): this used to be a plain CSS `transition`, kicked off by
-  // flipping `style.width` to "0%" after a setTimeout. That works visually,
-  // but a CSS transition has no idea PausableTimer exists — it runs on its
-  // own clock. When ToastManager.js calls timer.pause() on hover, the real
-  // dismiss genuinely freezes, but the transition kept animating to 0% (or
-  // had already finished), so the bar visually lied about how much time was
-  // actually left.
-  //
-  // The Web Animations API (Element.animate()) solves this properly: it
-  // returns an Animation object with real .pause()/.play() methods that we
-  // can call from the exact same mouseenter/mouseleave/focus handlers that
-  // already call timer.pause()/timer.resume() in ToastManager.js — so the
-  // bar and the real timer are now driven by the same pause signal instead
-  // of two independent clocks. Stored on the toast element (matching the
-  // existing _cleanup/_pauseCleanup convention) so ToastManager.js can
-  // reach it without createProgressBar needing to know about PausableTimer.
-  //
-  // Compatibility fallback: Element.animate() isn't available in every
-  // environment this package claims to support (browserslist floor is
-  // safari>=10.1; Web Animations API landed in Safari 13.1) or in test
-  // environments like jsdom. Rather than throw and break toast creation
-  // entirely, fall back to the original CSS-transition approach — it won't
-  // get the pause-sync fix, but it degrades to the previous (already
-  // shipped) behavior instead of crashing.
   if (typeof progressBar.animate === "function") {
     toast._progressAnimation = progressBar.animate(
       [{ width: finalWidth }, { width: "0%" }],
@@ -178,10 +134,6 @@ export function createProgressBar(toast, options) {
   }
 }
 
-/**
- * Runs the toast's fade-in animation.
- * @param {HTMLElement} toast
- */
 export function runToastAnimation(toast) {
   setTimeout(() => {
     requestAnimationFrame(() => {

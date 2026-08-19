@@ -20,8 +20,12 @@ try {
       "🚀 Built different. Stay creative.",
     ];
 
-    console.log(lines);
+    // AUDIT FIX (L4): console.log(lines) on an array prints Node's array-
+    // inspection format (`[ 'line1', 'line2', ... ]`), not clean
+    // multi-line text. join("\n") prints it the way it was obviously
+    // meant to look.
+    console.log(lines.join("\n"));
   }
 } catch (error) {
-  process.exit(0); // Exit silently
+  process.exit(0);
 }

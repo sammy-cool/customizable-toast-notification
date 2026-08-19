@@ -1,12 +1,5 @@
-// src/utils/position.js
 "use strict";
 
-/**
- * Set position for toast container
- * @param {HTMLElement} container - Toast container element
- * @param {Object} options - Options object containing position
- * @returns {Promise<void>}
- */
 export async function setPosition(container, options) {
   if (!container || !options.position) {
     throw new Error("Invalid container or position!");
@@ -21,10 +14,6 @@ export async function setPosition(container, options) {
   applyStandardPositioning(container, positionFlags);
 }
 
-/**
- * Reset all position-related styles
- * @param {HTMLElement} container
- */
 function resetContainerStyles(container) {
   container.style.top = "auto";
   container.style.bottom = "auto";
@@ -33,11 +22,6 @@ function resetContainerStyles(container) {
   container.style.transform = "none";
 }
 
-/**
- * Parse position string into boolean flags
- * @param {string} position
- * @returns {Object} Position flags
- */
 function parsePosition(position) {
   const pos = position.toLowerCase().trim();
   return {
@@ -53,19 +37,21 @@ function parsePosition(position) {
   };
 }
 
-/**
- * Handle full-width positioning cases
- * @param {HTMLElement} container
- * @param {Object} options
- * @param {Object} flags
- * @returns {boolean} True if position was handled
- */
 function handleFullWidthPositions(container, options, flags) {
   if (!flags.hasFullWidth) return false;
 
-  options.maxWidth = "100vw";
-
+  // AUDIT FIX (L5): options.maxWidth was previously set to "100vw"
+  // unconditionally here, before checking whether hasTop/hasBottom
+  // actually matched. For the undocumented bare "fullwidth" value (no
+  // top-/bottom- prefix), neither branch below matches, this function
+  // returns false, and positioning falls through to the normal
+  // small-toast logic further down — but maxWidth had already been
+  // mutated to 100vw, leaving a 100vw-wide toast positioned as if it
+  // were a normal small one. Moving the mutation inside each branch
+  // means it only happens when full-width positioning is actually
+  // being applied.
   if (flags.hasTop) {
+    options.maxWidth = "100vw";
     container.style.top = "10px";
     container.style.left = "10px";
     container.style.right = "10px";
@@ -73,6 +59,7 @@ function handleFullWidthPositions(container, options, flags) {
   }
 
   if (flags.hasBottom) {
+    options.maxWidth = "100vw";
     container.style.bottom = "10px";
     container.style.left = "10px";
     container.style.right = "10px";
@@ -82,16 +69,9 @@ function handleFullWidthPositions(container, options, flags) {
   return false;
 }
 
-/**
- * Handle center positioning cases
- * @param {HTMLElement} container
- * @param {Object} flags
- * @returns {boolean} True if position was handled
- */
 function handleCenterPositions(container, flags) {
   if (!flags.hasCenter) return false;
 
-  // top-center
   if (flags.hasTop && !flags.hasLeft && !flags.hasRight) {
     container.style.top = "10px";
     container.style.left = "50%";
@@ -99,7 +79,6 @@ function handleCenterPositions(container, flags) {
     return true;
   }
 
-  // bottom-center
   if (flags.hasBottom && !flags.hasLeft && !flags.hasRight) {
     container.style.bottom = "10px";
     container.style.left = "50%";
@@ -107,7 +86,6 @@ function handleCenterPositions(container, flags) {
     return true;
   }
 
-  // left-center
   if (flags.hasLeft && !flags.hasTop && !flags.hasBottom) {
     container.style.left = "10px";
     container.style.top = "50%";
@@ -115,7 +93,6 @@ function handleCenterPositions(container, flags) {
     return true;
   }
 
-  // right-center
   if (flags.hasRight && !flags.hasTop && !flags.hasBottom) {
     container.style.right = "10px";
     container.style.top = "50%";
@@ -123,7 +100,6 @@ function handleCenterPositions(container, flags) {
     return true;
   }
 
-  // full center (no sides specified)
   if (!flags.hasLeft && !flags.hasRight && !flags.hasTop && !flags.hasBottom) {
     container.style.top = "50%";
     container.style.left = "50%";
@@ -134,11 +110,6 @@ function handleCenterPositions(container, flags) {
   return false;
 }
 
-/**
- * Apply standard positioning (corners and edges)
- * @param {HTMLElement} container
- * @param {Object} flags
- */
 function applyStandardPositioning(container, flags) {
   if (flags.hasBottom) {
     container.style.bottom = "10px";
@@ -151,12 +122,6 @@ function applyStandardPositioning(container, flags) {
   } else if (flags.hasLeft) {
     container.style.left = "10px";
   } else {
-    // AUDIT FIX (M1): this branch previously set `bottom: 10px`
-    // unconditionally, even when `hasTop` had already set `top: 10px`
-    // above (e.g. an undocumented/malformed position string like "top"
-    // alone). A position:fixed element with BOTH top and bottom set and no
-    // explicit height gets stretched to fill the gap between them. Only
-    // fall back to "bottom" here if no vertical anchor was chosen at all.
     if (!flags.hasBottom && !flags.hasTop) {
       container.style.bottom = "10px";
     }

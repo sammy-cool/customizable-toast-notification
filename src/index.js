@@ -247,7 +247,16 @@ async function runWithClosePriority(fn) {
   if (closeInProgress && closePromise) {
     try {
       await closePromise;
-    } catch (e) {}
+    } catch (closeError) {
+      // Intentionally continuing regardless of how the prior close
+      // settled — this fn() still needs to run either way. Logging
+      // instead of a silent empty catch gives visibility into it instead
+      // of hiding a real failure.
+      console.warn(
+        "Previous close operation failed (continuing anyway):",
+        closeError,
+      );
+    }
   }
   return fn();
 }
@@ -287,27 +296,27 @@ export const noopAll = async () => {
 export { dismissToast as dismiss, noopAll as noop };
 
 if (typeof window !== "undefined" && typeof document !== "undefined") {
-  let escRegistered = false;
-  if (!escRegistered) {
-    const onKeyDown = (e) => {
-      if (e.key === "Escape" || e.key === "Esc") {
-        (async () => {
-          closeInProgress = true;
-          closePromise = (async () => {
-            try {
-              await dismiss();
-            } finally {
-              closeInProgress = false;
-              closePromise = null;
-            }
-          })();
-          await closePromise;
+  // Note: no "already registered" guard needed here — this is top-level
+  // module code, so it runs exactly once when the module is first
+  // evaluated, never again. A guard flag around it was dead weight (it
+  // can never be re-entered to guard against).
+  const onKeyDown = (e) => {
+    if (e.key === "Escape" || e.key === "Esc") {
+      (async () => {
+        closeInProgress = true;
+        closePromise = (async () => {
+          try {
+            await dismiss();
+          } finally {
+            closeInProgress = false;
+            closePromise = null;
+          }
         })();
-      }
-    };
-    window.addEventListener("keydown", onKeyDown, { passive: true });
-    escRegistered = true;
-  }
+        await closePromise;
+      })();
+    }
+  };
+  window.addEventListener("keydown", onKeyDown, { passive: true });
 }
 
 try {

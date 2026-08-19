@@ -77,7 +77,7 @@ const getCommonPlugins = (target) => [
       // instead of throw). Passing an array instead of `true` tells terser
       // to only drop the noisy dev-only methods and leave error/warn
       // intact — see https://terser.org/docs/options/#compress-options
-      drop_console: ["log", "info", "debug", "warn", "error"],
+      drop_console: ["log", "info", "debug"],
       drop_debugger: true,
       // pure_funcs removed: it's redundant now that drop_console already
       // targets exactly these three methods explicitly.

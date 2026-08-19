@@ -478,3 +478,43 @@ describe("toast-utils-core.js — progress bar pause-sync wiring (H3)", () => {
     assert.ok(toast.querySelector("div"));
   });
 });
+
+describe("toast-utils-core.js — createCTA config isolation (L2)", () => {
+  test("FIXED: does not mutate the caller's cta config object", async () => {
+    freshDom();
+    const { createCTA } =
+      await import("../../src/components/toast-utils-core.js");
+    const sharedCtaConfig = { onClick: () => {} };
+    const toast = document.createElement("div");
+    createCTA(toast, { cta: sharedCtaConfig }, () => {});
+    assert.equal(
+      sharedCtaConfig.label,
+      undefined,
+      "caller's cta object should be untouched even though no label was given",
+    );
+  });
+});
+
+describe("position.js — full-width maxWidth consistency (L5)", () => {
+  test("FIXED: undocumented bare 'fullwidth' value does not leave maxWidth set without applying full-width layout", async () => {
+    freshDom();
+    const { setPosition } = await import("../../src/utils/position.js");
+    const container = document.createElement("div");
+    const opts = { position: "fullwidth" };
+    await setPosition(container, opts);
+    assert.equal(
+      opts.maxWidth,
+      undefined,
+      "maxWidth should only be set when full-width positioning actually applies",
+    );
+  });
+
+  test("GOOD: documented 'top-full-width' still sets maxWidth correctly", async () => {
+    freshDom();
+    const { setPosition } = await import("../../src/utils/position.js");
+    const container = document.createElement("div");
+    const opts = { position: "top-full-width" };
+    await setPosition(container, opts);
+    assert.equal(opts.maxWidth, "100vw");
+  });
+});
