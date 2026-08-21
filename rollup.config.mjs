@@ -14,7 +14,7 @@ const buildTime = new Date().toISOString().slice(0, 19).replace("T", " ");
 
 // SINGLE DEFINITION - DRY Principle
 const banner = `/*!
- * Customizable Toast Notifications ${pkg.version}
+ * Customizable Toast Notifications
  * Build: ${buildTime}
  * Cache-Buster: ${Date.now()} 
  * Author: Priyanshu Patel
