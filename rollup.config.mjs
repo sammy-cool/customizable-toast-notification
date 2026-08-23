@@ -8,15 +8,13 @@ import terser from "@rollup/plugin-terser";
 import babel from "@rollup/plugin-babel";
 import { visualizer } from "rollup-plugin-visualizer";
 import replace from "@rollup/plugin-replace";
-import postcss from "rollup-plugin-postcss";
 
 const buildTime = new Date().toISOString().slice(0, 19).replace("T", " ");
 
-// SINGLE DEFINITION - DRY Principle
 const banner = `/*!
  * Customizable Toast Notifications
  * Build: ${buildTime}
- * Cache-Buster: ${Date.now()} 
+ * Cache-Buster: ${Date.now()}
  * Author: Priyanshu Patel
  * Email: priyanshu.alt191@gmail.com
  * License: Apache-2.0
@@ -28,7 +26,6 @@ const banner = `/*!
  * out of the box — with CTA support and zero dependencies.
  */`;
 
-// 🎯 Common plugins for all builds
 const getCommonPlugins = (target) => [
   replace({
     preventAssignment: true,
@@ -37,11 +34,13 @@ const getCommonPlugins = (target) => [
       "process.env.NODE_ENV": JSON.stringify("production"),
     },
   }),
-  postcss({
-    extract: false,
-    minimize: true,
-    modules: false,
-  }),
+  // AUDIT CLEANUP: rollup-plugin-postcss removed — this library has zero
+  // .css files anywhere (all styling is inline via JS Object.assign on
+  // element.style throughout src/), so this step processed nothing on
+  // every single build. Pure overhead (install size, build time) with no
+  // functional benefit. If CSS-based theming is ever added later,
+  // re-adding this is a quick `npm install rollup-plugin-postcss` plus
+  // this block back — no need to carry it speculatively until then.
   resolve({
     browser: target === "umd",
     preferBuiltins: target !== "umd",
@@ -56,41 +55,32 @@ const getCommonPlugins = (target) => [
         {
           targets:
             target === "cjs"
-              ? { node: "14.0.0" } // CJS: Conservative Node support
+              ? { node: "14.0.0" }
               : target === "umd"
                 ? {
                     browsers:
                       "> 0.25%, not dead, chrome >= 49, firefox >= 45, safari >= 10, edge >= 14",
-                  } // UMD: Wide browser support
-                : { browsers: "> 0.25%, not dead, chrome >= 60", node: "14" }, // ESM: Modern but compatible
-          useBuiltIns: false, // 🛡️ NEVER inject polyfills
-          modules: false, // 🌲 Preserve ESM for tree-shaking
+                  }
+                : { browsers: "> 0.25%, not dead, chrome >= 60", node: "14" },
+          useBuiltIns: false,
+          modules: false,
         },
       ],
     ],
   }),
   terser({
     compress: {
-      // AUDIT FIX (C2): drop_console:true previously stripped ALL
-      // console.* calls, including console.error / console.warn calls this
-      // library's "Zero-Crash Guarantee" design depends on (catch-and-log
-      // instead of throw). Passing an array instead of `true` tells terser
-      // to only drop the noisy dev-only methods and leave error/warn
-      // intact — see https://terser.org/docs/options/#compress-options
       drop_console: ["log", "info", "debug"],
       drop_debugger: true,
-      // pure_funcs removed: it's redundant now that drop_console already
-      // targets exactly these three methods explicitly.
     },
     mangle: true,
     format: {
-      comments: /^!/, // Keep banner comments
+      comments: /^!/,
     },
   }),
 ];
 
 export default [
-  // 🟡 UMD build (CDN, script tags, global usage)
   {
     input: "src/index.js",
     output: {
@@ -111,7 +101,6 @@ export default [
     ],
   },
 
-  // 🟢 ESM build (modern bundlers, tree-shakable)
   {
     input: "src/index.js",
     output: {
@@ -128,13 +117,6 @@ export default [
   },
 
   {
-    // AUDIT FIX (C3): this CJS output was entirely missing before, even
-    // though getCommonPlugins() above already had a `target === "cjs"`
-    // branch for babel targets — evidence this was planned but never
-    // finished wiring up. Without it, scripts/test-build.js's
-    // `require("../dist/index.cjs")` check always failed, and any tool
-    // that falls back to package.json's "main" field for require() would
-    // hit ERR_REQUIRE_ESM since "main" points at the .mjs build.
     input: "src/index.js",
     output: {
       file: "dist/index.cjs",

@@ -26,17 +26,6 @@ let domReady = false;
 async function checkDOMReady() {
   if (domReady) return;
 
-  // AUDIT FIX (M2): this was a flat 2500ms delay — confirmed via testing
-  // that it does NOT stagger toasts requested before the DOM was ready
-  // (they all still appear in a single simultaneous jump, just ~2.5s
-  // later); that's not what this delay was doing. What it DOES do is
-  // give the page a moment to visually settle before showing a toast
-  // that was requested very early (e.g. an error toast fired before
-  // layout/paint has happened) — a reasonable goal, but 2500ms is a long,
-  // very noticeable wait for a user to see something they'd expect to
-  // appear promptly, and the exact number wasn't tied to any real
-  // rendering signal. A few hundred ms is plenty of margin for the
-  // browser to finish initial layout after DOMContentLoaded.
   const SETTLE_DELAY_MS = 200;
 
   if (typeof window !== "undefined" && typeof document !== "undefined") {
@@ -134,12 +123,6 @@ async function sanitizeToastOptions(options) {
     textColor: undefined,
     showCloseButton: true,
     animationDuration: "0.4s",
-    // AUDIT FIX (L1): animationType removed. It was never read by the
-    // actual entrance animation (toast-utils-core.js's runToastAnimation
-    // hardcodes a fade+translateY transition) — only src/utils/animateFn.js
-    // read this option, and that file was never imported anywhere (dead
-    // code, confirmed via repo-wide grep). Deleted animateFn.js alongside
-    // this — see the delete instruction in the fix notes.
     animationEasing: "ease",
     showProgressBar: true,
     progressColor: undefined,
@@ -166,14 +149,6 @@ async function sanitizeToastOptions(options) {
 
   final.message = options?.message ?? final.message;
 
-  // AUDIT FIX (M3): backgroundColor, message-default, textColor, and
-  // progressColor used to all live in ONE try block. If computing
-  // backgroundColor threw (e.g. window.matchMedia unavailable in some
-  // non-standard/embedded webview, or mocked incorrectly in a test), the
-  // catch swallowed it — but that also skipped the message-default
-  // fallback further down, even though THAT computation hadn't failed at
-  // all. Splitting into independent try/catch blocks means one field's
-  // failure can't silently take out an unrelated one.
   try {
     if (!final.backgroundColor) {
       final.backgroundColor =
@@ -218,6 +193,11 @@ async function sanitizeToastOptions(options) {
   return final;
 }
 
+/**
+ * Overrides the default background color used per toast type. Merges with
+ * (doesn't replace) the existing defaults, so you can override just one type.
+ * @param {Partial<Record<"success"|"error"|"warning"|"info", string>>} colors
+ */
 function setDefaultColors(colors) {
   try {
     if (colors && typeof colors === "object" && !Array.isArray(colors)) {
@@ -228,6 +208,11 @@ function setDefaultColors(colors) {
   }
 }
 
+/**
+ * Overrides the default message shown per toast type when no `message` is
+ * passed to createToast(). Merges with the existing defaults.
+ * @param {Partial<Record<"success"|"error"|"warning"|"info", string>>} messages
+ */
 function setDefaultMessages(messages) {
   try {
     if (messages && typeof messages === "object" && !Array.isArray(messages)) {
@@ -248,10 +233,6 @@ async function runWithClosePriority(fn) {
     try {
       await closePromise;
     } catch (closeError) {
-      // Intentionally continuing regardless of how the prior close
-      // settled — this fn() still needs to run either way. Logging
-      // instead of a silent empty catch gives visibility into it instead
-      // of hiding a real failure.
       console.warn(
         "Previous close operation failed (continuing anyway):",
         closeError,
@@ -261,7 +242,56 @@ async function runWithClosePriority(fn) {
   return fn();
 }
 
+/**
+ * @typedef {Object} ToastCTAConfig
+ * @property {string} [label] - Button/link text. Defaults to "CTA Label Missing!" if omitted.
+ * @property {() => void | Promise<void>} [onClick] - Called on click. If it returns a Promise, autoClose waits for it to resolve first.
+ * @property {string} [href] - If set together with variant:"link", renders an <a> instead of a <button>.
+ * @property {"button"|"link"} [variant] - "link" only takes effect when href is also set.
+ * @property {string} [target] - Anchor target, e.g. "_blank". Automatically gets rel="noopener noreferrer" unless you set rel yourself.
+ * @property {string} [rel]
+ * @property {string} [ariaLabel] - Falls back to label if omitted.
+ * @property {boolean} [autoClose] - Defaults to true: the toast closes after onClick resolves. Set false to keep it open.
+ */
+
+/**
+ * @typedef {Object} ToastOptions
+ * @property {string} [message] - Toast body text. Falls back to a per-type default (see setDefaultMessages) if omitted.
+ * @property {"success"|"error"|"warning"|"info"} [type="info"]
+ * @property {boolean} [allowHtml=false] - If true, message is sanitized (see sanitizeHtml) and rendered as HTML instead of plain text.
+ * @property {boolean} [sanitizeHtml=true] - Set false only if you've already fully sanitized message yourself.
+ * @property {boolean} [pauseOnHover] - Defaults to true automatically whenever cta is set; otherwise false unless explicitly set true.
+ * @property {number} [duration=2500] - Milliseconds before auto-dismiss.
+ * @property {string} [position="bottom-right"] - e.g. "top-left", "bottom-right", "top-center", "bottom-center", "left-center", "right-center", "top-full-width", "bottom-full-width", "center".
+ * @property {string} [borderRadius="50px"]
+ * @property {string} [backgroundColor] - Auto-computed per type if omitted.
+ * @property {string} [textColor] - Auto-computed for WCAG contrast against backgroundColor if omitted.
+ * @property {boolean} [showCloseButton=true]
+ * @property {string} [animationDuration="0.4s"]
+ * @property {string} [animationEasing="ease"]
+ * @property {boolean} [showProgressBar=true]
+ * @property {string} [progressColor] - Defaults to textColor if omitted.
+ * @property {string} [progressHeight="4px"]
+ * @property {"top"|"bottom"} [progressPosition="bottom"]
+ * @property {string} [fontPadding]
+ * @property {string} [fontBorderRadius]
+ * @property {string} [fontBackgroundColor]
+ * @property {string} [fontFamily]
+ * @property {string} [fontSize="14px"]
+ * @property {string} [fontWeight="400"]
+ * @property {string} [fontLineHeight="1.4"]
+ * @property {string} [fontDirection="auto"]
+ * @property {"normal"|false} [wrapText="normal"] - "normal" wraps naturally; falsy truncates to 3 lines with an ellipsis.
+ * @property {string} [maxWidth] - Auto-set to "100vw" for the two full-width positions, "400px" otherwise, unless overridden.
+ * @property {ToastCTAConfig} [cta] - Adds a button or link. Setting this also defaults pauseOnHover to true.
+ */
+
 const originalCreateToast = createToast;
+/**
+ * Creates and shows a toast notification.
+ * @param {ToastOptions} [options]
+ * @returns {Promise<void>}
+ */
 async function createToastWithPriority(options = {}) {
   return runWithClosePriority(() => originalCreateToast(options));
 }
@@ -269,7 +299,8 @@ async function createToastWithPriority(options = {}) {
 export { createToastWithPriority as createToast };
 
 export { setDefaultColors, setDefaultMessages };
-export const dismissToast = async () => {
+/** @type {() => Promise<void>} */
+const dismissToast = async () => {
   closeInProgress = true;
   closePromise = (async () => {
     try {
@@ -281,7 +312,8 @@ export const dismissToast = async () => {
   })();
   await closePromise;
 };
-export const noopAll = async () => {
+/** @type {() => Promise<void>} */
+const noopAll = async () => {
   closeInProgress = true;
   closePromise = (async () => {
     try {
@@ -296,10 +328,6 @@ export const noopAll = async () => {
 export { dismissToast as dismiss, noopAll as noop };
 
 if (typeof window !== "undefined" && typeof document !== "undefined") {
-  // Note: no "already registered" guard needed here — this is top-level
-  // module code, so it runs exactly once when the module is first
-  // evaluated, never again. A guard flag around it was dead weight (it
-  // can never be re-entered to guard against).
   const onKeyDown = (e) => {
     if (e.key === "Escape" || e.key === "Esc") {
       (async () => {

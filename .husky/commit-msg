@@ -1,0 +1,8 @@
+#!/usr/bin/env sh
+# .husky/commit-msg
+#
+# This is what actually ENFORCES Conventional Commits format — without a
+# working hook here, commitlint.config.js just sits there unused, and a
+# badly-formatted commit message can slip through and confuse
+# semantic-release's version-bump analysis.
+npx --no -- commitlint --edit "$1"
