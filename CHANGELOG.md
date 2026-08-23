@@ -1,3 +1,10 @@
+## [3.11.5](https://github.com/sammy-cool/customizable-toast-notification/compare/v3.11.4...v3.11.5) (2026-08-23)
+
+
+### Bug Fixes
+
+* correct README defaults and add real TypeScript types ([8f262d3](https://github.com/sammy-cool/customizable-toast-notification/commit/8f262d387363cc7931b8431594d9147fd45ef2c1))
+
 ## [3.11.4](https://github.com/sammy-cool/customizable-toast-notification/compare/v3.11.3...v3.11.4) (2026-08-19)
 
 
