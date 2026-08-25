@@ -5,23 +5,25 @@
 [![License: Apache-2.0](https://img.shields.io/badge/License-Apache%202.0-blue.svg)](https://opensource.org/licenses/Apache-2.0)
 [![Bundle Size](https://img.shields.io/bundlephobia/minzip/customizable-toast-notification)](https://bundlephobia.com/package/customizable-toast-notification)
 
-A **lightweight**, **zero-dependency** toast notification library for modern JavaScript applications. Built with production-grade reliability and comprehensive safety mechanisms.
+**[▶ Try the live demo](https://sammy-cool.github.io/customizable-toast-notification/)** — click a button, watch a real toast fire, sanitized HTML included.
+
+Toast notifications that work the same everywhere — plain JavaScript, Vue, Svelte, Angular, or a plain multi-page app — not just React. Built with sanitized-by-default HTML rendering, zero runtime dependencies, and 129 real cross-browser end-to-end tests.
 
 ## ✨ Key Features
 
-- 🚫 **Zero Dependencies** - Pure JavaScript with no external requirements, lightweight and fast
-- 🛡️ **Production Ready** - Reliable and scalable for production environments
+- 🌐 **Actually Framework Agnostic** - Not a React library with "vanilla JS support" bolted on — the same API works identically in React, Vue, Angular, Svelte, htmx, or plain HTML with no build step at all
+- 🛡️ **Sanitized by Default** - `allowHtml` content is sanitized before render (DOMPurify if it's on the page, a verified-equivalent fallback if not) — safe to use with content you don't fully control
+- ✅ **Rigorously Tested** - 129 real Playwright end-to-end tests across Chromium, Firefox, and WebKit, plus a fast unit suite — not just "it worked on my machine"
+- 🚫 **Zero Runtime Dependencies** - Nothing pulled in when your users load your app
+- 🔧 **Real TypeScript Types** - Full type definitions with real autocomplete and type-checking, not a placeholder `any`
 - 🎨 **Highly Customizable** - Colors, positions, animations, progress bars, and styling
-- 🌐 **Framework Agnostic** - Works with React, Vue, Angular, or vanilla JS
-- 📱 **Responsive** - Works on all screen sizes and devices
-- ⚡ **CDN Ready** - Easy integration via CDN or npm
-- ♿ **Accessible** - ARIA live regions and keyboard navigation support
-- 🔄 **Smart Grouping** - Duplicate notifications are automatically grouped with badges
-- ⏸️ **Pause on Hover** - CTA toasts pause when user hovers or focuses
-- 🎯 **Call-to-Action** - Built-in support for interactive buttons and links
+- ♿ **Accessible** - ARIA live regions, keyboard navigation, and WCAG-contrast text color computed automatically
+- 🔄 **Smart Grouping** - Duplicate notifications are automatically grouped with a count badge instead of stacking
+- ⏸️ **Pause on Hover** - CTA toasts pause on hover or keyboard focus
+- 🎯 **Call-to-Action** - Built-in button or link CTA, with optional async `onClick`
 - 📊 **Queue Management** - Maximum 3 visible toasts with intelligent queueing
 - 🌈 **Multiple Themes** - Success, error, warning, and info styles
-- 🔧 **TypeScript Ready** - Full type definitions included, with real autocomplete and type-checking (not just placeholder types)
+- ⚡ **CDN Ready** - One `<script>` tag, no build step, no npm required
 
 ## 📦 Installation
 
