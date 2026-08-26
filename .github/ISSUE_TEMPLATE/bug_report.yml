@@ -1,0 +1,60 @@
+name: Bug report
+description: Something isn't working the way the README/docs say it should
+title: "[Bug]: "
+labels: ["bug"]
+body:
+  - type: input
+    id: version
+    attributes:
+      label: Package version
+      description: Run `npm ls customizable-toast-notification` to check
+      placeholder: "3.11.4"
+    validations:
+      required: true
+
+  - type: dropdown
+    id: environment
+    attributes:
+      label: Environment
+      options:
+        - Browser (npm/ESM import)
+        - Browser (CDN/UMD <script> tag)
+        - Node.js (CommonJS require)
+        - Other (describe below)
+    validations:
+      required: true
+
+  - type: textarea
+    id: repro
+    attributes:
+      label: Minimal reproduction
+      description: A createToast() call (and any relevant setDefaultColors/setDefaultMessages calls) that demonstrates the issue. This is the single most useful thing you can include.
+      render: javascript
+      placeholder: |
+        createToast({
+          message: "...",
+          type: "error",
+          // ...
+        });
+    validations:
+      required: true
+
+  - type: textarea
+    id: expected
+    attributes:
+      label: Expected behavior
+    validations:
+      required: true
+
+  - type: textarea
+    id: actual
+    attributes:
+      label: Actual behavior
+    validations:
+      required: true
+
+  - type: input
+    id: browser
+    attributes:
+      label: Browser / Node version
+      placeholder: "Chrome 128, or Node 20.11"

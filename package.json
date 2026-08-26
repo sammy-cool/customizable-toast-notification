@@ -60,8 +60,6 @@
     "ui-component",
     "zero-dependency",
     "customizable",
-    "lightweight",
-    "production-ready",
     "framework-agnostic",
     "fallback-system",
     "alert",
@@ -91,9 +89,13 @@
     "customisable-toast-notification",
     "react-component",
     "react-toast",
-    "frontend",
     "frontend-library",
-    "custom-toast"
+    "custom-toast",
+    "typescript",
+    "sanitized-html",
+    "xss-safe",
+    "accessible",
+    "wcag"
   ],
   "publishConfig": {
     "access": "public"

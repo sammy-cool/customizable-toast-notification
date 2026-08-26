@@ -1,0 +1,27 @@
+name: Feature request
+description: Suggest a new option, behavior, or capability
+title: "[Feature]: "
+labels: ["enhancement"]
+body:
+  - type: textarea
+    id: problem
+    attributes:
+      label: What are you trying to do?
+      description: Describe the real use case, not just the API you imagine — sometimes an existing option already covers it.
+    validations:
+      required: true
+
+  - type: textarea
+    id: proposal
+    attributes:
+      label: Proposed API (if you have one in mind)
+      render: javascript
+      placeholder: |
+        createToast({
+          // the option/shape you're picturing
+        });
+
+  - type: textarea
+    id: alternatives
+    attributes:
+      label: What are you doing today as a workaround, if anything?
