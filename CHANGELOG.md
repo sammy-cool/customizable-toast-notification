@@ -1,3 +1,10 @@
+# [3.12.0](https://github.com/sammy-cool/customizable-toast-notification/compare/v3.11.5...v3.12.0) (2026-08-31)
+
+
+### Features
+
+* add toastPromise() and targeted per-toast dismissal handles ([2acd46a](https://github.com/sammy-cool/customizable-toast-notification/commit/2acd46a7b004ff68e078f5a08b4be1cc1d4e3ce7))
+
 ## [3.11.5](https://github.com/sammy-cool/customizable-toast-notification/compare/v3.11.4...v3.11.5) (2026-08-23)
 
 
