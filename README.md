@@ -21,6 +21,7 @@ Toast notifications that work the same everywhere — plain JavaScript, Vue, Sve
 - 🔄 **Smart Grouping** - Duplicate notifications are automatically grouped with a count badge instead of stacking
 - ⏸️ **Pause on Hover** - CTA toasts pause on hover or keyboard focus
 - 🎯 **Call-to-Action** - Built-in button or link CTA, with optional async `onClick`
+- ⏳ **Promise-based Toasts** - `toastPromise()` shows loading → success/error automatically, transparently passing through the original resolved value or error
 - 📊 **Queue Management** - Maximum 3 visible toasts with intelligent queueing
 - 🌈 **Multiple Themes** - Success, error, warning, and info styles
 - ⚡ **CDN Ready** - One `<script>` tag, no build step, no npm required
@@ -94,7 +95,19 @@ Global Variable Name: `customizableToast`
 
 ### `createToast(options)`
 
-Creates and displays a toast notification.
+Creates and displays a toast notification. Returns a handle for
+dismissing _that specific toast_ later — useful when other toasts might
+be created in between:
+
+```js
+const handle = await createToast({ message: "Uploading...", duration: 60000 });
+
+// later, regardless of what else has happened on screen since:
+await handle.dismiss();
+```
+
+`handle.dismiss()` is always safe to call, even if the toast already
+auto-dismissed on its own — it no-ops rather than throwing.
 
 #### Options
 
@@ -219,6 +232,85 @@ setDefaultMessages({
   info: "Here's some information!",
 });
 ```
+
+## ⏳ Promise-based Toasts
+
+Show a loading toast that automatically swaps to success or error once an
+async operation settles — no manual dismiss/create juggling required:
+
+```js
+import { toastPromise } from "customizable-toast-notification";
+
+await toastPromise(
+  saveUserData(), // any Promise
+  {
+    loading: "Saving...",
+    success: "Saved successfully!",
+    error: "Failed to save.",
+  },
+);
+```
+
+Messages can also be functions, receiving the resolved value or the caught
+error:
+
+```js
+await toastPromise(
+  fetch("/api/user").then((r) => r.json()),
+  {
+    loading: "Loading profile...",
+    success: (user) => `Welcome back, ${user.name}!`,
+    error: (err) => `Couldn't load profile: ${err.message}`,
+  },
+);
+
+// A function that returns a promise works too — called immediately
+await toastPromise(() => fetch("/api/save", { method: "POST" }), {
+  loading: "Saving...",
+  success: "Saved!",
+  error: "Save failed.",
+});
+```
+
+`toastPromise` resolves or rejects with whatever the original promise did —
+it's a thin UI layer on top of a promise you're already awaiting, not a
+replacement for your own error handling:
+
+```js
+try {
+  const result = await toastPromise(riskyOperation(), {
+    /* ... */
+  });
+  // result is the real resolved value
+} catch (err) {
+  // err is the real original error — toastPromise re-throws it
+}
+```
+
+A third argument accepts any normal toast options (position, colors, etc.),
+applied to all three phases:
+
+```js
+await toastPromise(
+  syncData(),
+  { loading: "Syncing...", success: "Synced!", error: "Sync failed." },
+  { position: "top-center" },
+);
+```
+
+### `toastPromise` reference
+
+| Parameter          | Type                          | Description                                                                                                                           |
+| ------------------ | ----------------------------- | ------------------------------------------------------------------------------------------------------------------------------------- |
+| `promiseOrFn`      | `Promise \| () => Promise`    | The operation to track. A function is called immediately.                                                                             |
+| `messages.loading` | `string`                      | Default: `"Loading..."`                                                                                                               |
+| `messages.success` | `string \| (value) => string` | Default: `"Done!"`                                                                                                                    |
+| `messages.error`   | `string \| (error) => string` | Default: `"Something went wrong."`                                                                                                    |
+| `options`          | `ToastOptions`                | Applied to the loading, success, and error toasts. `type` and `message` are controlled by this function and can't be overridden here. |
+
+The loading toast doesn't use `duration` from `options` — it stays until
+the promise settles, then is replaced by a success or error toast that
+does respect the normal duration/auto-dismiss behavior.
 
 ## 💡 Examples
 

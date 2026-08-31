@@ -1,6 +1,6 @@
 "use strict";
 
-import { showToast } from "./components/ToastManager.js";
+import { showToast, closeToastByKey } from "./components/ToastManager.js";
 import { getOrCreateToastContainer } from "./utils/containerRegistry.js";
 import { getDynamicAccessibleTextColorHex } from "./utils/dom.js";
 import { setPosition } from "./utils/position.js";
@@ -60,7 +60,12 @@ async function createToastNow(options = {}) {
 
     await createFirstToastContainer(sanitizedOptions);
 
-    await showToast(sanitizedOptions);
+    // AUDIT/FEATURE (toastPromise support): showToast() now returns the
+    // toast's dedup key (see ToastManager.js) — propagating it here lets
+    // createToast() give the caller a handle for targeted dismissal
+    // later. Existing callers that ignore the return value are
+    // unaffected; this is purely additive.
+    return await showToast(sanitizedOptions);
   } catch (error) {
     console.error("CreateToast failed:", error);
 
@@ -70,6 +75,7 @@ async function createToastNow(options = {}) {
         : "Toast creation failed!";
 
     alert(safeMessage);
+    return null;
   }
 }
 
@@ -81,17 +87,22 @@ async function createToast(options = {}) {
     console.warn(
       "ToastNotification: running in non-browser environment, no DOM available.",
     );
-    return;
+    return null;
   }
 
   await checkDOMReady();
 
   if (!domReady) {
+    // Toast requested before the DOM was ready — queued for later (see
+    // checkDOMReady). No key/handle can exist yet since showToast()
+    // hasn't run. toastPromise() and anything else building a handle off
+    // this return value gets a safe no-op handle in this edge case —
+    // narrow (only the first moments of page load) and non-crashing.
     pendingToasts.push(options);
-    return;
+    return null;
   }
 
-  await createToastNow(options);
+  return await createToastNow(options);
 }
 
 async function createFirstToastContainer(options) {
@@ -193,11 +204,6 @@ async function sanitizeToastOptions(options) {
   return final;
 }
 
-/**
- * Overrides the default background color used per toast type. Merges with
- * (doesn't replace) the existing defaults, so you can override just one type.
- * @param {Partial<Record<"success"|"error"|"warning"|"info", string>>} colors
- */
 function setDefaultColors(colors) {
   try {
     if (colors && typeof colors === "object" && !Array.isArray(colors)) {
@@ -208,11 +214,6 @@ function setDefaultColors(colors) {
   }
 }
 
-/**
- * Overrides the default message shown per toast type when no `message` is
- * passed to createToast(). Merges with the existing defaults.
- * @param {Partial<Record<"success"|"error"|"warning"|"info", string>>} messages
- */
 function setDefaultMessages(messages) {
   try {
     if (messages && typeof messages === "object" && !Array.isArray(messages)) {
@@ -242,64 +243,34 @@ async function runWithClosePriority(fn) {
   return fn();
 }
 
-/**
- * @typedef {Object} ToastCTAConfig
- * @property {string} [label] - Button/link text. Defaults to "CTA Label Missing!" if omitted.
- * @property {() => void | Promise<void>} [onClick] - Called on click. If it returns a Promise, autoClose waits for it to resolve first.
- * @property {string} [href] - If set together with variant:"link", renders an <a> instead of a <button>.
- * @property {"button"|"link"} [variant] - "link" only takes effect when href is also set.
- * @property {string} [target] - Anchor target, e.g. "_blank". Automatically gets rel="noopener noreferrer" unless you set rel yourself.
- * @property {string} [rel]
- * @property {string} [ariaLabel] - Falls back to label if omitted.
- * @property {boolean} [autoClose] - Defaults to true: the toast closes after onClick resolves. Set false to keep it open.
- */
-
-/**
- * @typedef {Object} ToastOptions
- * @property {string} [message] - Toast body text. Falls back to a per-type default (see setDefaultMessages) if omitted.
- * @property {"success"|"error"|"warning"|"info"} [type="info"]
- * @property {boolean} [allowHtml=false] - If true, message is sanitized (see sanitizeHtml) and rendered as HTML instead of plain text.
- * @property {boolean} [sanitizeHtml=true] - Set false only if you've already fully sanitized message yourself.
- * @property {boolean} [pauseOnHover] - Defaults to true automatically whenever cta is set; otherwise false unless explicitly set true.
- * @property {number} [duration=2500] - Milliseconds before auto-dismiss.
- * @property {string} [position="bottom-right"] - e.g. "top-left", "bottom-right", "top-center", "bottom-center", "left-center", "right-center", "top-full-width", "bottom-full-width", "center".
- * @property {string} [borderRadius="50px"]
- * @property {string} [backgroundColor] - Auto-computed per type if omitted.
- * @property {string} [textColor] - Auto-computed for WCAG contrast against backgroundColor if omitted.
- * @property {boolean} [showCloseButton=true]
- * @property {string} [animationDuration="0.4s"]
- * @property {string} [animationEasing="ease"]
- * @property {boolean} [showProgressBar=true]
- * @property {string} [progressColor] - Defaults to textColor if omitted.
- * @property {string} [progressHeight="4px"]
- * @property {"top"|"bottom"} [progressPosition="bottom"]
- * @property {string} [fontPadding]
- * @property {string} [fontBorderRadius]
- * @property {string} [fontBackgroundColor]
- * @property {string} [fontFamily]
- * @property {string} [fontSize="14px"]
- * @property {string} [fontWeight="400"]
- * @property {string} [fontLineHeight="1.4"]
- * @property {string} [fontDirection="auto"]
- * @property {"normal"|false} [wrapText="normal"] - "normal" wraps naturally; falsy truncates to 3 lines with an ellipsis.
- * @property {string} [maxWidth] - Auto-set to "100vw" for the two full-width positions, "400px" otherwise, unless overridden.
- * @property {ToastCTAConfig} [cta] - Adds a button or link. Setting this also defaults pauseOnHover to true.
- */
-
 const originalCreateToast = createToast;
+
 /**
- * Creates and shows a toast notification.
+ * @typedef {Object} ToastHandle
+ * @property {() => Promise<void>} dismiss - Dismisses this specific toast. Safe to call even if the toast already closed itself (e.g. its duration expired) — no-ops rather than throwing.
+ */
+
+/**
  * @param {ToastOptions} [options]
- * @returns {Promise<void>}
+ * @returns {Promise<ToastHandle>}
  */
 async function createToastWithPriority(options = {}) {
-  return runWithClosePriority(() => originalCreateToast(options));
+  const key = await runWithClosePriority(() => originalCreateToast(options));
+  // AUDIT/FEATURE (toastPromise support): wraps the internal dedup key in
+  // a small public handle instead of exposing the key itself — the key
+  // format is an internal implementation detail (see makeKey() in
+  // ToastManager.js), not something consumers should depend on directly.
+  // `key` is null in the rare edge cases noted in createToast() above —
+  // the handle's dismiss() safely no-ops in that case rather than
+  // throwing.
+  return {
+    dismiss: () => (key ? closeToastByKey(key) : Promise.resolve()),
+  };
 }
 
 export { createToastWithPriority as createToast };
 
 export { setDefaultColors, setDefaultMessages };
-/** @type {() => Promise<void>} */
 const dismissToast = async () => {
   closeInProgress = true;
   closePromise = (async () => {
@@ -312,7 +283,6 @@ const dismissToast = async () => {
   })();
   await closePromise;
 };
-/** @type {() => Promise<void>} */
 const noopAll = async () => {
   closeInProgress = true;
   closePromise = (async () => {
@@ -326,6 +296,83 @@ const noopAll = async () => {
   await closePromise;
 };
 export { dismissToast as dismiss, noopAll as noop };
+
+// Loading-phase toasts use a long-but-finite duration rather than an
+// "infinite" one — browsers/Node clamp setTimeout delays over ~24.8 days
+// (2^31-1 ms, 32-bit signed int) and fire them almost immediately when
+// exceeded, which would silently break this feature. 24 hours is
+// comfortably under that limit, and no realistic async operation
+// legitimately needs a loading toast to persist longer than that.
+const TOAST_PROMISE_LOADING_DURATION_MS = 24 * 60 * 60 * 1000;
+
+/**
+ * @typedef {Object} ToastPromiseMessages
+ * @property {string} [loading="Loading..."]
+ * @property {string | ((value: any) => string)} [success="Done!"] - Either a fixed string, or a function that receives the resolved value and returns the message.
+ * @property {string | ((error: any) => string)} [error="Something went wrong."] - Either a fixed string, or a function that receives the caught error and returns the message.
+ */
+
+/**
+ * Shows a loading toast, then swaps it for a success or error toast once
+ * the given promise settles. The original promise's resolution/rejection
+ * is passed through unchanged, so `await toastPromise(fetchData(), {...})`
+ * still gives you the real result (or throws the real error) — this is
+ * purely a UI layer on top of a promise you're already awaiting.
+ *
+ * @param {Promise<any> | (() => Promise<any>)} promiseOrFn - A promise, or a function that returns one (called immediately).
+ * @param {ToastPromiseMessages} [messages]
+ * @param {Omit<ToastOptions, "message" | "type">} [options] - Applied to all three toasts (loading/success/error). type and message are controlled by this function.
+ * @returns {Promise<any>} Resolves/rejects with whatever the original promise did.
+ */
+async function toastPromise(promiseOrFn, messages = {}, options = {}) {
+  const loadingMessage = messages.loading ?? "Loading...";
+
+  const loadingHandle = await createToastWithPriority({
+    ...options,
+    type: "info",
+    message: loadingMessage,
+    duration: TOAST_PROMISE_LOADING_DURATION_MS,
+    showProgressBar: false, // a progress bar tied to a 24h fake duration would be misleading, not informative
+  });
+
+  const settledPromise =
+    typeof promiseOrFn === "function" ? promiseOrFn() : promiseOrFn;
+
+  try {
+    const result = await settledPromise;
+    await loadingHandle.dismiss();
+
+    const successMessage =
+      typeof messages.success === "function"
+        ? messages.success(result)
+        : (messages.success ?? "Done!");
+
+    await createToastWithPriority({
+      ...options,
+      type: "success",
+      message: successMessage,
+    });
+
+    return result;
+  } catch (err) {
+    await loadingHandle.dismiss();
+
+    const errorMessage =
+      typeof messages.error === "function"
+        ? messages.error(err)
+        : (messages.error ?? "Something went wrong.");
+
+    await createToastWithPriority({
+      ...options,
+      type: "error",
+      message: errorMessage,
+    });
+
+    throw err;
+  }
+}
+
+export { toastPromise };
 
 if (typeof window !== "undefined" && typeof document !== "undefined") {
   const onKeyDown = (e) => {
@@ -355,6 +402,7 @@ try {
       setDefaultMessages,
       noop: noopAll,
       dismiss: dismissToast,
+      toastPromise,
     };
   }
 } catch (error) {

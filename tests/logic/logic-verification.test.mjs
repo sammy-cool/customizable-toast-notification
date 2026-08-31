@@ -1,27 +1,7 @@
-// tests/logic/logic-verification.test.mjs
-//
-// WHY THIS FILE EXISTS:
-// Playwright needs a real browser (Chromium/Firefox/WebKit) to run — that's
-// correct for visual/interaction testing, but it's overkill and slow for pure
-// logic (string parsing, CSS-value math, sanitizer regexes) that doesn't need
-// real rendering, just a DOM API. `jsdom` gives us a real (if not
-// pixel-accurate) DOM in plain Node, so these tests run in <1s with zero
-// browser download — good for a fast pre-commit/CI gate before the heavier
-// Playwright suite runs.
-//
-// HOW TO RUN:
-//   npm install -D jsdom          (one-time, not currently a devDependency)
-//   node --test tests/logic/
-//
-// Requires Node >= 18 (built-in test runner + native ESM).
-
 import { test, describe } from "node:test";
 import assert from "node:assert/strict";
 import { JSDOM } from "jsdom";
 
-// Each test gets its own fresh JSDOM + globals so tests can't leak DOM state
-// into each other (a real risk with toast libraries — they mutate `document`
-// as a side effect, e.g. appending containers to document.body).
 function freshDom() {
   const dom = new JSDOM("<!doctype html><html><body></body></html>", {
     url: "https://example.test/",
@@ -30,22 +10,7 @@ function freshDom() {
   global.document = dom.window.document;
   global.Node = dom.window.Node;
   global.HTMLElement = dom.window.HTMLElement;
-  // Needed for dom.js's getDynamicAccessibleTextColorHex() to resolve CSS
-  // custom properties (var(--x)) via getComputedStyle — without this,
-  // `typeof getComputedStyle === "function"` correctly evaluates to false
-  // in a bare Node global scope, and the function safely falls through to
-  // its no-resolved-value path. That's the right defensive behavior for a
-  // genuinely getComputedStyle-less environment, but it means tests
-  // couldn't exercise the real resolution path without this.
   global.getComputedStyle = dom.window.getComputedStyle;
-  // jsdom deliberately doesn't implement requestAnimationFrame (it has no
-  // real render loop). toast-utils-core.js's runToastAnimation() and
-  // ToastManager.js's grouping coalescing both call it as fire-and-forget,
-  // so without a polyfill it throws asynchronously *after* a test has
-  // already returned, and Node's test runner (correctly) flags that as a
-  // leaked/uncaught failure attributed to whichever test happened to be
-  // running. A simple setTimeout-based shim is enough since we're only
-  // testing DOM/logic state here, not real frame timing.
   global.requestAnimationFrame = (cb) => setTimeout(() => cb(Date.now()), 0);
   global.cancelAnimationFrame = (id) => clearTimeout(id);
   return dom;
@@ -110,7 +75,6 @@ describe("toast-utils-core.js — createProgressBar width math", () => {
       duration: 2000,
     });
     const bar = toast.querySelector("div");
-    // Fixed: clamped offset means width is now calc(100% - 0px), never "+".
     assert.doesNotMatch(bar.style.width, /\+/);
   });
 
@@ -120,7 +84,7 @@ describe("toast-utils-core.js — createProgressBar width math", () => {
       await import("../../src/components/toast-utils-core.js");
     const toast = document.createElement("div");
     createProgressBar(toast, {
-      borderRadius: "50px", // the library's own default
+      borderRadius: "50px",
       progressHeight: "4px",
       duration: 2000,
     });
@@ -138,7 +102,7 @@ describe("html-sanitizer.js — security boundary", () => {
       '<div style="position:fixed;inset:0;z-index:999999;background:#fff">overlay</div>';
     const clean = fallbackSanitize(payload);
     assert.doesNotMatch(clean, /style=/);
-    assert.match(clean, /overlay/); // content itself is preserved, just not the style
+    assert.match(clean, /overlay/);
   });
 
   test("GOOD: <script> tags are stripped", async () => {
@@ -233,9 +197,6 @@ describe("dom.js — getDynamicAccessibleTextColorHex", () => {
     freshDom();
     const { getDynamicAccessibleTextColorHex } =
       await import("../../src/utils/dom.js");
-    // hsl(0,100%,50%) is pure red — same RGB as #ff0000. If hsl() parsing
-    // is genuinely wired up (not just falling into the fallback path),
-    // this should match calling with the equivalent hex directly.
     const viaHsl = getDynamicAccessibleTextColorHex("hsl(0, 100%, 50%)");
     const viaHex = getDynamicAccessibleTextColorHex("#ff0000");
     assert.equal(viaHsl, viaHex);
@@ -266,13 +227,6 @@ describe("dom.js — getDynamicAccessibleTextColorHex", () => {
     freshDom();
     const { getDynamicAccessibleTextColorHex } =
       await import("../../src/utils/dom.js");
-    // oklch() is intentionally NOT parsed by this fix (kept scoped to
-    // hsl()/hsla()/var() — the formats named in the original audit
-    // finding). It still falls through to the fallback path, same as
-    // before H2 — the difference is that path is now a fixed neutral
-    // gray instead of Math.random(), so the SAME unparseable input (and
-    // even a DIFFERENT unparseable input) gives the SAME result every
-    // time, deterministically, instead of a coin flip.
     const a1 = getDynamicAccessibleTextColorHex("oklch(0.6 0.15 250)");
     const a2 = getDynamicAccessibleTextColorHex("oklch(0.6 0.15 250)");
     const b1 = getDynamicAccessibleTextColorHex("totally-not-a-color");
@@ -301,10 +255,6 @@ describe("PausableTimer.js — pause/resume math", () => {
     await new Promise((r) => setTimeout(r, 100));
     timer.pause();
     const remaining = timer.getRemainingTime();
-    // Widened tolerance (was a tight 60ms window) — sandboxed/shared CI
-    // runners can have enough scheduling jitter on a single setTimeout to
-    // flake a narrow window; this asserts the same underlying behavior
-    // (roughly delay-elapsed remains) without chasing exact milliseconds.
     assert.ok(
       remaining <= 340 && remaining >= 200,
       `expected ~300ms remaining, got ${remaining}ms`,
@@ -322,16 +272,9 @@ describe("PausableTimer.js — pause/resume math", () => {
     timer.start();
     await new Promise((r) => setTimeout(r, 80));
     timer.pause();
-    await new Promise((r) => setTimeout(r, 300)); // long pause, should NOT fire
+    await new Promise((r) => setTimeout(r, 300));
     assert.equal(fired, false);
     timer.resume();
-    // Remaining after pause is ~220ms; waiting nearly double that gives
-    // generous headroom against scheduling jitter while still proving
-    // resume() picked up from the remaining time, not a fresh 300ms delay
-    // (which would also fire within this window, so this alone doesn't
-    // fully distinguish the two — the "should NOT fire" assertion above,
-    // during the 300ms pause, is what actually proves pause() worked;
-    // this just confirms resume() eventually does fire).
     await new Promise((r) => setTimeout(r, 400));
     assert.ok(fired, "timer should have fired after resume");
   });
@@ -353,27 +296,12 @@ describe("PausableTimer.js — pause/resume math", () => {
 describe("ToastManager.js — grouping key stability", () => {
   test("GOOD: identical type+message+position produce the same grouping key", async () => {
     freshDom();
-    // makeKey/hashString aren't exported — re-derive via two showToast calls
-    // and inspect the resulting DOM badge instead of reaching into internals.
     global.requestAnimationFrame = (cb) => setTimeout(cb, 0);
     const { showToast } = await import(
-      // Cache-busted import: ToastManager.js keeps module-level singleton
-      // state (active Map, queue, visibleCount) that would otherwise
-      // persist across every test in this file, since Node caches ES
-      // module instances by specifier. Without this, toasts left
-      // un-dismissed by one test (e.g. this one, which never calls
-      // dismiss/close) silently pollute visibleCount for every test that
-      // imports ToastManager afterward — including the MAX_VISIBLE cap
-      // itself, which can cause a later test's showToast() calls to queue
-      // instead of render immediately. The query string forces Node to
-      // treat this as a distinct module instance with fresh state.
       "../../src/components/ToastManager.js?fresh=" + Date.now() + Math.random()
     );
 
     const container = document.createElement("div");
-    // See the L3 test below for why a unique position (not a fixed
-    // "bottom-right") matters here — containerRegistry.js's module-level
-    // cache persists across tests in this process.
     const pos =
       "bottom-right-grouptest-" +
       Date.now() +
@@ -393,7 +321,7 @@ describe("ToastManager.js — grouping key stability", () => {
 
     await showToast(opts);
     await new Promise((r) => setTimeout(r, 20));
-    await showToast({ ...opts }); // identical options, new object reference
+    await showToast({ ...opts });
     await new Promise((r) => setTimeout(r, 20));
 
     const badge = container.querySelector(".toast-count-badge");
@@ -407,23 +335,10 @@ describe("ToastManager.js — dismissMostRecent() targets the newest toast", () 
     freshDom();
     global.requestAnimationFrame = (cb) => setTimeout(cb, 0);
     const { showToast, dismissMostRecent } = await import(
-      // Same cache-busting reason as the grouping-key test above — this
-      // test needs a clean visibleCount/active Map, not whatever state a
-      // previous test in this file left behind.
       "../../src/components/ToastManager.js?fresh=" + Date.now() + Math.random()
     );
 
     const container = document.createElement("div");
-    // AUDIT/TEST NOTE: containerRegistry.js caches containers in a
-    // module-level Map keyed by container ID, for the process lifetime —
-    // correct for real page usage (document never gets swapped mid-session
-    // in a real browser), but it means a fixed ID like "bottom-right" here
-    // would collide with whatever a PREVIOUS test already cached, even
-    // across different jsdom documents (Element.isConnected is relative to
-    // an element's own document tree, so a stale cached container still
-    // reads as "connected"). A unique position string per test guarantees
-    // a fresh cache miss, so toasts land in THIS test's document instead
-    // of an orphaned one from an earlier test.
     const pos =
       "bottom-right-l3test-" +
       Date.now() +
@@ -461,10 +376,6 @@ describe("ToastManager.js — dismissMostRecent() targets the newest toast", () 
 describe("toast-utils-core.js — progress bar pause-sync wiring (H3)", () => {
   test("createProgressBar falls back gracefully when Element.animate is unavailable (jsdom, older Safari)", async () => {
     freshDom();
-    // Sanity check on the assumption this test relies on: jsdom genuinely
-    // doesn't implement the Web Animations API today. If a future jsdom
-    // version adds it, this test's premise changes — not a failure, just
-    // worth knowing if it ever stops being true.
     assert.equal(typeof document.createElement("div").animate, "undefined");
 
     const { createProgressBar } =
@@ -473,7 +384,6 @@ describe("toast-utils-core.js — progress bar pause-sync wiring (H3)", () => {
     assert.doesNotThrow(() => {
       createProgressBar(toast, { duration: 1000, borderRadius: "50px" });
     });
-    // Fallback path: no _progressAnimation set, but the bar itself exists.
     assert.equal(toast._progressAnimation, undefined);
     assert.ok(toast.querySelector("div"));
   });
@@ -516,5 +426,172 @@ describe("position.js — full-width maxWidth consistency (L5)", () => {
     const opts = { position: "top-full-width" };
     await setPosition(container, opts);
     assert.equal(opts.maxWidth, "100vw");
+  });
+});
+
+describe("index.js — targeted toast dismissal handle (toastPromise foundation)", () => {
+  test("createToast() returns a handle whose dismiss() targets THAT specific toast, not 'most recent'", async () => {
+    freshDom();
+    const { createToast } = await import(
+      "../../src/index.js?fresh=" + Date.now() + Math.random()
+    );
+    // Unique position per test: containerRegistry.js caches containers
+    // for the process lifetime (correct for real page usage), so a fixed
+    // position string would collide with whatever a previous test already
+    // cached, even across different jsdom documents — same issue found
+    // and documented in the L3 tests above.
+    const pos =
+      "handle-test-a-" + Date.now() + "-" + Math.random().toString(36).slice(2);
+
+    await createToast({
+      message: "toast A (should survive)",
+      duration: 60000,
+      position: pos,
+    });
+    await new Promise((r) => setTimeout(r, 100));
+    const handleB = await createToast({
+      message: "toast B (will be dismissed via handle)",
+      duration: 60000,
+      position: pos,
+    });
+    await new Promise((r) => setTimeout(r, 100));
+    // C is created AFTER B, so "most recent" would now be C — proving
+    // dismiss() targets B specifically, not just whatever is newest.
+    await createToast({
+      message: "toast C (should survive)",
+      duration: 60000,
+      position: pos,
+    });
+    await new Promise((r) => setTimeout(r, 100));
+
+    await handleB.dismiss();
+    await new Promise((r) => setTimeout(r, 400));
+
+    const remainingText = document.body.textContent;
+    assert.match(remainingText, /toast A/);
+    assert.match(remainingText, /toast C/);
+    assert.doesNotMatch(remainingText, /toast B/);
+
+    // Cleanup: A and C used a long duration (60000ms) specifically so
+    // they wouldn't auto-expire mid-test — but that means they'd
+    // otherwise sit in ToastManager.js's shared `active` Map (and count
+    // against visibleCount/MAX_VISIBLE=3) for the rest of the whole test
+    // file's run, since that module-level state persists across tests
+    // regardless of cache-busting index.js's own import specifier.
+    // Without this, later tests in this file can have their toasts
+    // silently routed into the internal queue instead of rendered
+    // immediately, once accumulated leftovers hit MAX_VISIBLE.
+    const { noop } = await import(
+      "../../src/index.js?fresh=" + Date.now() + Math.random()
+    );
+    await noop();
+  });
+
+  test("handle.dismiss() is safe to call even if the toast already auto-dismissed", async () => {
+    freshDom();
+    const { createToast } = await import(
+      "../../src/index.js?fresh=" + Date.now() + Math.random()
+    );
+    const pos =
+      "handle-test-b-" + Date.now() + "-" + Math.random().toString(36).slice(2);
+    const handle = await createToast({
+      message: "short-lived",
+      duration: 100,
+      position: pos,
+    });
+    await new Promise((r) => setTimeout(r, 300)); // already auto-dismissed by now
+    await assert.doesNotReject(() => handle.dismiss());
+  });
+});
+
+describe("index.js — toastPromise()", () => {
+  test("success case: resolves with the original value, ends with exactly one success toast", async () => {
+    freshDom();
+    const { toastPromise } = await import(
+      "../../src/index.js?fresh=" + Date.now() + Math.random()
+    );
+    const pos =
+      "promise-test-success-" +
+      Date.now() +
+      "-" +
+      Math.random().toString(36).slice(2);
+
+    const result = await toastPromise(
+      new Promise((resolve) => setTimeout(() => resolve({ id: 42 }), 100)),
+      {
+        loading: "Saving...",
+        success: (val) => `Saved! id=${val.id}`,
+        error: "Save failed",
+      },
+      { position: pos },
+    );
+    await new Promise((r) => setTimeout(r, 100));
+
+    assert.deepEqual(result, { id: 42 });
+    const toastEls = document.querySelectorAll(
+      '[id^="toast-container-"] [id^="toast-"]',
+    );
+    assert.equal(toastEls.length, 1);
+    assert.match(toastEls[0].textContent, /Saved! id=42/);
+  });
+
+  test("error case: re-throws the original error, ends with exactly one error toast", async () => {
+    freshDom();
+    const { toastPromise } = await import(
+      "../../src/index.js?fresh=" + Date.now() + Math.random()
+    );
+    const pos =
+      "promise-test-error-" +
+      Date.now() +
+      "-" +
+      Math.random().toString(36).slice(2);
+
+    let caught = null;
+    try {
+      await toastPromise(
+        new Promise((_resolve, reject) =>
+          setTimeout(() => reject(new Error("network down")), 100),
+        ),
+        {
+          loading: "Syncing...",
+          success: "Synced!",
+          error: (err) => `Sync failed: ${err.message}`,
+        },
+        { position: pos },
+      );
+    } catch (e) {
+      caught = e;
+    }
+    await new Promise((r) => setTimeout(r, 100));
+
+    assert.equal(caught?.message, "network down");
+    const toastEls = document.querySelectorAll(
+      '[id^="toast-container-"] [id^="toast-"]',
+    );
+    assert.equal(toastEls.length, 1);
+    assert.match(toastEls[0].textContent, /Sync failed: network down/);
+  });
+
+  test("accepts a function that returns a promise, not just a promise directly", async () => {
+    freshDom();
+    const { toastPromise } = await import(
+      "../../src/index.js?fresh=" + Date.now() + Math.random()
+    );
+    const pos =
+      "promise-test-fn-" +
+      Date.now() +
+      "-" +
+      Math.random().toString(36).slice(2);
+    let called = false;
+    const result = await toastPromise(
+      () => {
+        called = true;
+        return Promise.resolve("ok");
+      },
+      {},
+      { position: pos },
+    );
+    assert.equal(called, true);
+    assert.equal(result, "ok");
   });
 });
