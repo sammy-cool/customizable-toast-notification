@@ -1,3 +1,10 @@
+## [3.12.1](https://github.com/sammy-cool/customizable-toast-notification/compare/v3.12.0...v3.12.1) (2026-09-11)
+
+
+### Bug Fixes
+
+* decouple progress bar border-radius from toast borderRadius ([7f316ac](https://github.com/sammy-cool/customizable-toast-notification/commit/7f316acd98c23d7cceeb59c1864de9bcfa60da43)), closes [#28a745](https://github.com/sammy-cool/customizable-toast-notification/issues/28a745)
+
 # [3.12.0](https://github.com/sammy-cool/customizable-toast-notification/compare/v3.11.5...v3.12.0) (2026-08-31)
 
 
