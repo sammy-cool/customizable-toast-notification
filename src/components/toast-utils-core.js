@@ -4,14 +4,6 @@ export function createCTA(toast, options, onClose) {
   const rawCfg = options?.cta;
   if (!rawCfg) return;
 
-  // AUDIT FIX (L2): this used to mutate `options.cta` directly
-  // (`cfg.label = ...` below writes straight onto the caller's own
-  // object). If a consumer reuses the same cta config object across
-  // multiple createToast() calls — a natural pattern, e.g. defining a
-  // button config once and reusing it — the fallback label mutation from
-  // the first toast would leak into every later call, even ones that
-  // originally had no label at all. Working on a shallow copy means the
-  // caller's object is never touched.
   const cfg = { ...rawCfg };
 
   if (!cfg.label) {
@@ -102,15 +94,25 @@ export function createProgressBar(toast, options) {
     ? `calc(100% - ${radiusOffset}px)`
     : "100%";
 
+  const progressHeightPx = parseInt(options.progressHeight, 10) || 4;
+
   Object.assign(progressBar.style, {
     position: "absolute",
     left: `${leftVal}`,
-    height: options.progressHeight || "4px",
+    height: `${progressHeightPx}px`,
     background: options.progressColor || "rgba(255, 255, 255, 0.3)",
     width: `${finalWidth}`,
     transition: `width ${options.duration || 1800}ms linear`,
     [options.progressPosition === "top" ? "top" : "bottom"]: "0",
-    borderRadius: options.borderRadius || "4px",
+    // AUDIT FIX: this previously inherited the TOAST's own borderRadius
+    // (e.g. 14px) directly onto this 4px-tall bar — completely unrelated
+    // values conceptually (the bar's rounding has nothing to do with the
+    // toast's corner radius), and browsers clamp any radius over half an
+    // element's smaller dimension, so this always maxed out into a full
+    // pill regardless of what the toast's radius actually was. Sizing it
+    // proportionally to the bar's OWN height gives a sensible, consistent
+    // rounded-end look independent of whatever the toast's radius is.
+    borderRadius: `${progressHeightPx / 2}px`,
   });
 
   toast.appendChild(progressBar);

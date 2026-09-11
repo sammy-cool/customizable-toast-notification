@@ -595,3 +595,55 @@ describe("index.js — toastPromise()", () => {
     assert.equal(result, "ok");
   });
 });
+
+describe("toast-utils-core.js — progress bar border-radius (found via real-world bug report)", () => {
+  test("FIXED: progress bar's own border-radius is proportional to its own height, not the unrelated toast borderRadius", async () => {
+    freshDom();
+    const { createProgressBar } =
+      await import("../../src/components/toast-utils-core.js");
+    for (const toastRadius of ["14px", "50px", "4px", "0px"]) {
+      const toast = document.createElement("div");
+      createProgressBar(toast, {
+        borderRadius: toastRadius,
+        progressHeight: "4px",
+        duration: 3500,
+      });
+      const bar = toast.querySelector("div");
+      assert.equal(
+        bar.style.borderRadius,
+        "2px",
+        `bar radius should always be 2px (half of its 4px height) regardless of toast borderRadius=${toastRadius}`,
+      );
+    }
+  });
+
+  test("bar's border-radius scales with a custom progressHeight, not a hardcoded value", async () => {
+    freshDom();
+    const { createProgressBar } =
+      await import("../../src/components/toast-utils-core.js");
+    const toast = document.createElement("div");
+    createProgressBar(toast, {
+      borderRadius: "14px",
+      progressHeight: "8px",
+      duration: 3500,
+    });
+    const bar = toast.querySelector("div");
+    assert.equal(bar.style.borderRadius, "4px"); // half of 8px
+  });
+});
+
+describe("dom.js — WCAG contrast verified against real-world bug report", () => {
+  test("CONFIRMED CORRECT (not a bug): black is the mathematically right choice against the default success green #28a745", async () => {
+    freshDom();
+    const { getDynamicAccessibleTextColorHex } =
+      await import("../../src/utils/dom.js");
+    // Independently verified: contrast(black, #28a745) ≈ 6.7:1 (passes
+    // WCAG AA normal text, needs >=4.5), contrast(white, #28a745) ≈
+    // 3.13:1 (FAILS AA normal text). Black is the more accessible choice
+    // here even though white-on-green is the more common visual
+    // convention for "success" UI — this test exists specifically
+    // because that surprised a real user into reporting it as a bug.
+    const result = getDynamicAccessibleTextColorHex("#28a745");
+    assert.equal(result, "#000000");
+  });
+});
