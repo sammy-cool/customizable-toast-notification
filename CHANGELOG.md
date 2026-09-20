@@ -1,3 +1,10 @@
+## [3.12.2](https://github.com/sammy-cool/customizable-toast-notification/compare/v3.12.1...v3.12.2) (2026-09-20)
+
+
+### Bug Fixes
+
+* align Babel dependency versions ([7b50f5f](https://github.com/sammy-cool/customizable-toast-notification/commit/7b50f5f48865670a28d0a00501365fa158667509))
+
 ## [3.12.1](https://github.com/sammy-cool/customizable-toast-notification/compare/v3.12.0...v3.12.1) (2026-09-11)
 
 
