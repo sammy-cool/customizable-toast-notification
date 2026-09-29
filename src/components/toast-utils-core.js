@@ -1,5 +1,7 @@
 "use strict";
 
+import { getDynamicAccessibleTextColorHex } from "../utils/dom.js";
+
 export function createCTA(toast, options, onClose) {
   const rawCfg = options?.cta;
   if (!rawCfg) return;
@@ -23,6 +25,11 @@ export function createCTA(toast, options, onClose) {
 
   el.setAttribute("aria-label", cfg.ariaLabel || cfg.label);
 
+  const ctaTextColor = options.textColor || getDynamicAccessibleTextColorHex(options.backgroundColor);
+  const ctaBgColor = options.backgroundColor
+    ? getContrastBackground(options.backgroundColor)
+    : "rgba(255,255,255,0.15)";
+
   Object.assign(el.style, {
     marginLeft: "10px",
     padding: "6px 10px",
@@ -30,9 +37,9 @@ export function createCTA(toast, options, onClose) {
     fontSize: "12px",
     fontWeight: "600",
     lineHeight: "1",
-    border: "1px solid rgba(255,255,255,0.35)",
-    color: options.textColor || "#fff",
-    background: "rgba(255,255,255,0.15)",
+    border: `1px solid ${ctaTextColor}44`,
+    color: ctaTextColor,
+    background: ctaBgColor,
     cursor: "pointer",
     whiteSpace: "nowrap",
     flexShrink: "0",
@@ -64,13 +71,17 @@ export function createCloseButton(toast, options, onClose) {
   closeBtn.setAttribute("title", "Close");
   closeBtn.textContent = "×";
 
+  const closeTextColor = options.textColor || getDynamicAccessibleTextColorHex(options.backgroundColor);
+
   Object.assign(closeBtn.style, {
     background: "none",
     border: "none",
-    color: options.textColor || "white",
+    color: closeTextColor,
     fontSize: "18px",
     marginLeft: "10px",
     cursor: "pointer",
+    lineHeight: "1",
+    padding: "0 4px",
   });
 
   const onClick = () => onClose(toast);
@@ -83,38 +94,39 @@ export function createCloseButton(toast, options, onClose) {
   toast.appendChild(closeBtn);
 }
 
+function getContrastBackground(bgColor) {
+  if (!bgColor) return "rgba(255,255,255,0.15)";
+  const textColor = getDynamicAccessibleTextColorHex(bgColor);
+  if (textColor === "#000000") {
+    return "rgba(0,0,0,0.15)";
+  }
+  return "rgba(255,255,255,0.15)";
+}
+
 export function createProgressBar(toast, options) {
   const progressBar = document.createElement("div");
-  const borderRadiusStr = options.borderRadius || 0;
+  const borderRadiusStr = options.borderRadius || "0";
   const borderRadiusNum = parseInt(borderRadiusStr, 10);
-  const leftVal = borderRadiusNum ? "12px" : "0";
-  const minSafeOffset = borderRadiusNum ? 12 : 0;
-  const radiusOffset = Math.max(borderRadiusNum - 10, minSafeOffset);
-  const finalWidth = borderRadiusNum
-    ? `calc(100% - ${radiusOffset}px)`
-    : "100%";
 
   const progressHeightPx = parseInt(options.progressHeight, 10) || 4;
-  // Match PausableTimer's delay: duration + 5ms buffer
-  const progressDuration = Number(options.duration ?? 1800) + 5;
+  const duration = Number(options.duration ?? 2500);
+  const progressDuration = duration + 5;
+
+  const leftOffset = Math.min(borderRadiusNum, progressHeightPx * 2);
+  const finalWidth = borderRadiusNum > 0
+    ? `calc(100% - ${leftOffset}px)`
+    : "100%";
 
   Object.assign(progressBar.style, {
     position: "absolute",
-    left: `${leftVal}`,
+    left: `${leftOffset}px`,
     height: `${progressHeightPx}px`,
-    background: options.progressColor || "rgba(255, 255, 255, 0.3)",
+    background: options.progressColor || "currentColor",
     width: `${finalWidth}`,
     transition: `width ${progressDuration}ms linear`,
     [options.progressPosition === "top" ? "top" : "bottom"]: "0",
-    // AUDIT FIX: this previously inherited the TOAST's own borderRadius
-    // (e.g. 14px) directly onto this 4px-tall bar — completely unrelated
-    // values conceptually (the bar's rounding has nothing to do with the
-    // toast's corner radius), and browsers clamp any radius over half an
-    // element's smaller dimension, so this always maxed out into a full
-    // pill regardless of what the toast's radius actually was. Sizing it
-    // proportionally to the bar's OWN height gives a sensible, consistent
-    // rounded-end look independent of whatever the toast's radius is.
     borderRadius: `${progressHeightPx / 2}px`,
+    opacity: "0.8",
   });
 
   toast.appendChild(progressBar);
@@ -139,10 +151,11 @@ export function createProgressBar(toast, options) {
 }
 
 export function runToastAnimation(toast) {
+  const delay = 50;
   setTimeout(() => {
     requestAnimationFrame(() => {
       toast.style.opacity = "1";
       toast.style.transform = "translateY(0)";
     });
-  }, 50);
+  }, delay);
 }
