@@ -1,3 +1,10 @@
+## [3.12.3](https://github.com/sammy-cool/customizable-toast-notification/compare/v3.12.2...v3.12.3) (2026-09-29)
+
+
+### Bug Fixes
+
+* resolve 22 bugs across positioning, sanitization, timers, cleanup, and a11y ([8d8c181](https://github.com/sammy-cool/customizable-toast-notification/commit/8d8c18195384b2058128817ff823d15c785c8252))
+
 ## [3.12.2](https://github.com/sammy-cool/customizable-toast-notification/compare/v3.12.1...v3.12.2) (2026-09-20)
 
 
