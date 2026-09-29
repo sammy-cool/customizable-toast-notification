@@ -129,7 +129,14 @@ auto-dismissed on its own — it no-ops rather than throwing.
 | `progressPosition`  | `string`  | `"bottom"`                      | Progress bar position: `"top"` or `"bottom"`              |
 | `pauseOnHover`      | `boolean` | `auto`                          | Pause timer on hover (auto: true for CTA toasts)          |
 | `allowHtml`         | `boolean` | `false`                         | Render `message` as sanitized HTML instead of plain text  |
+| `sanitizeHtml`      | `boolean` | `true`                          | Sanitize HTML when `allowHtml=true`                       |
 | `wrapText`          | `string`  | `"normal"`                      | `"normal"` wraps naturally; falsy truncates to 3 lines    |
+| `maxWidth`          | `string`  | Auto                            | Max width (auto: `400px` / `100vw` for full-width)        |
+| `fontFamily`        | `string`  | System default                  | Font family                                               |
+| `fontSize`          | `string`  | `"14px"`                        | Font size                                                 |
+| `fontWeight`        | `string`  | `"400"`                         | Font weight                                               |
+| `fontLineHeight`    | `string`  | `"1.4"`                         | Font line height                                          |
+| `fontDirection`     | `string`  | `"auto"`                        | Font direction: `"auto"`, `"ltr"`, `"rtl"`                |
 | `cta`               | `object`  | `null`                          | Call-to-action configuration (see [CTA](#call-to-action)) |
 
 #### Position Options

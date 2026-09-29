@@ -19,6 +19,7 @@ import {
  */
 export async function applyRichStyling(toast, options, onClose) {
   const durationMs = await parseAnimationDuration(options?.animationDuration);
+  const validAnimationDuration = `${durationMs}ms`;
 
   // Compose className based on provided type (default to "info")
   toast.className = `toast toast-${options?.type ?? "info"}`;
@@ -40,7 +41,7 @@ export async function applyRichStyling(toast, options, onClose) {
     cursor: "default",
     boxSizing: "border-box",
     userSelect: "text",
-    transition: `opacity ${options?.animationDuration} ${options?.animationEasing}, transform ${options?.animationDuration} ${options?.animationEasing}`,
+    transition: `opacity ${validAnimationDuration} ${options?.animationEasing}, transform ${validAnimationDuration} ${options?.animationEasing}`,
     transform: "translateY(20px)",
     zIndex: "9999",
   });

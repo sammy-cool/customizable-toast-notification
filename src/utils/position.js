@@ -24,16 +24,17 @@ function resetContainerStyles(container) {
 
 function parsePosition(position) {
   const pos = position.toLowerCase().trim();
+  const isFullWidth = 
+    pos === "top-full-width" ||
+    pos === "bottom-full-width" ||
+    pos === "fullwidth";
   return {
-    hasTop: pos.includes("top"),
-    hasBottom: pos.includes("bottom") || pos.includes("below"),
-    hasLeft: pos.includes("left"),
-    hasRight: pos.includes("right"),
-    hasCenter: pos.includes("center"),
-    hasFullWidth:
-      pos.includes("top-full-width") ||
-      pos.includes("bottom-full-width") ||
-      pos.includes("fullwidth"),
+    hasTop: pos.startsWith("top") || (pos === "center" ? false : pos.includes("top")),
+    hasBottom: pos.startsWith("bottom") || pos.includes("below"),
+    hasLeft: pos.startsWith("left"),
+    hasRight: pos.startsWith("right"),
+    hasCenter: pos === "center" || (pos.includes("center") && !pos.includes("left") && !pos.includes("right") && !pos.includes("top") && !pos.includes("bottom")),
+    hasFullWidth: isFullWidth,
   };
 }
 
@@ -115,6 +116,9 @@ function applyStandardPositioning(container, flags) {
     container.style.bottom = "10px";
   } else if (flags.hasTop) {
     container.style.top = "10px";
+  } else {
+    // Default to bottom if neither specified
+    container.style.bottom = "10px";
   }
 
   if (flags.hasRight) {
@@ -122,9 +126,6 @@ function applyStandardPositioning(container, flags) {
   } else if (flags.hasLeft) {
     container.style.left = "10px";
   } else {
-    if (!flags.hasBottom && !flags.hasTop) {
-      container.style.bottom = "10px";
-    }
     container.style.left = "50%";
     container.style.transform = "translateX(-50%)";
   }

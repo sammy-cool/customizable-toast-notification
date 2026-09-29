@@ -95,6 +95,8 @@ export function createProgressBar(toast, options) {
     : "100%";
 
   const progressHeightPx = parseInt(options.progressHeight, 10) || 4;
+  // Match PausableTimer's delay: duration + 5ms buffer
+  const progressDuration = Number(options.duration ?? 1800) + 5;
 
   Object.assign(progressBar.style, {
     position: "absolute",
@@ -102,7 +104,7 @@ export function createProgressBar(toast, options) {
     height: `${progressHeightPx}px`,
     background: options.progressColor || "rgba(255, 255, 255, 0.3)",
     width: `${finalWidth}`,
-    transition: `width ${options.duration || 1800}ms linear`,
+    transition: `width ${progressDuration}ms linear`,
     [options.progressPosition === "top" ? "top" : "bottom"]: "0",
     // AUDIT FIX: this previously inherited the TOAST's own borderRadius
     // (e.g. 14px) directly onto this 4px-tall bar — completely unrelated
@@ -121,14 +123,14 @@ export function createProgressBar(toast, options) {
     toast._progressAnimation = progressBar.animate(
       [{ width: finalWidth }, { width: "0%" }],
       {
-        duration: Number(options.duration) || 1800,
+        duration: progressDuration,
         easing: "linear",
         fill: "forwards",
         delay: 50,
       },
     );
   } else {
-    progressBar.style.transition = `width ${options.duration || 1800}ms linear`;
+    progressBar.style.transition = `width ${progressDuration}ms linear`;
     setTimeout(() => {
       progressBar.offsetWidth;
       progressBar.style.width = "0%";

@@ -58,7 +58,7 @@ export function fallbackSanitize(dirty) {
   if (!dirty || typeof dirty !== "string") return "";
 
   const blockedTags =
-    /<\/?(script|iframe|object|embed|link|meta|style|form|input|button)[^>]*>/gi;
+    /<\/?(script|iframe|object|embed|link|meta|style|form|input|button|svg|math|img|video|audio|details|dialog|applet|embed|frame|frameset|textarea|select|option|optgroup|fieldset|legend|datalist|output|progress|meter|keygen|canvas|map|area|base|basefont|bgsound|blink|center|dir|font|frame|frameset|hgroup|isindex|listing|marquee|multicol|nextid|noembed|noframes|plaintext|rb|rtc|spacer|strike|tt|xmp)[^>]*>/gi;
   let step1 = dirty.replace(blockedTags, "");
 
   step1 = step1.replace(/\s(on\w+)\s*=\s*(['"])[\s\S]*?\2/gi, "");
