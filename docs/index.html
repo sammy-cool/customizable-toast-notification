@@ -996,6 +996,7 @@ npm install customizable-toast-notification</pre
           message: "",
           type: "info",
           allowHtml: false,
+          sanitizeHtml: true,
           duration: 2500,
           position: "bottom-right",
           borderRadius: "50px",
@@ -1008,18 +1009,22 @@ npm install customizable-toast-notification</pre
           progressPosition: "bottom",
           animationDuration: "0.4s",
           animationEasing: "ease",
-          fontFamily: "",
+          fontFamily: '-apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif, "Apple Color Emoji", "Segoe UI Emoji", "Segoe UI Symbol"',
           fontSize: "14px",
           fontWeight: "400",
           fontLineHeight: "1.4",
+          fontDirection: "auto",
           wrapText: "normal",
+          maxWidth: "",
           pauseOnHover: null, // null = "auto" (true only if cta is set)
           ctaEnabled: false,
           ctaLabel: "Undo",
           ctaVariant: "button",
           ctaHref: "",
           ctaTarget: "",
+          ctaRel: "",
           ctaAutoClose: true,
+          ctaAriaLabel: "",
         };
 
         var state = Object.assign({}, DEFAULTS);
@@ -1037,6 +1042,7 @@ npm install customizable-toast-notification</pre
           if (s.message) opts.message = s.message;
           if (s.type !== DEFAULTS.type) opts.type = s.type;
           if (s.allowHtml) opts.allowHtml = true;
+          if (s.sanitizeHtml !== DEFAULTS.sanitizeHtml) opts.sanitizeHtml = s.sanitizeHtml;
           if (s.duration !== DEFAULTS.duration)
             opts.duration = Number(s.duration);
           if (s.position !== DEFAULTS.position) opts.position = s.position;
@@ -1057,13 +1063,15 @@ npm install customizable-toast-notification</pre
             opts.animationDuration = s.animationDuration;
           if (s.animationEasing !== DEFAULTS.animationEasing)
             opts.animationEasing = s.animationEasing;
-          if (s.fontFamily) opts.fontFamily = s.fontFamily;
+          if (s.fontFamily && s.fontFamily !== DEFAULTS.fontFamily) opts.fontFamily = s.fontFamily;
           if (s.fontSize !== DEFAULTS.fontSize) opts.fontSize = s.fontSize;
           if (s.fontWeight !== DEFAULTS.fontWeight)
             opts.fontWeight = s.fontWeight;
           if (s.fontLineHeight !== DEFAULTS.fontLineHeight)
             opts.fontLineHeight = s.fontLineHeight;
+          if (s.fontDirection !== DEFAULTS.fontDirection) opts.fontDirection = s.fontDirection;
           if (s.wrapText !== DEFAULTS.wrapText) opts.wrapText = s.wrapText;
+          if (s.maxWidth && s.maxWidth !== DEFAULTS.maxWidth) opts.maxWidth = s.maxWidth;
           if (s.pauseOnHover !== null) opts.pauseOnHover = s.pauseOnHover;
           if (s.ctaEnabled) {
             var cta = { label: s.ctaLabel || "Undo" };
@@ -1071,9 +1079,11 @@ npm install customizable-toast-notification</pre
               cta.href = s.ctaHref;
               cta.variant = "link";
               if (s.ctaTarget) cta.target = s.ctaTarget;
+              if (s.ctaRel) cta.rel = s.ctaRel;
             }
             if (s.ctaAutoClose !== DEFAULTS.ctaAutoClose)
               cta.autoClose = s.ctaAutoClose;
+            if (s.ctaAriaLabel) cta.ariaLabel = s.ctaAriaLabel;
             opts.cta = cta;
           }
           return opts;
@@ -1184,6 +1194,12 @@ npm install customizable-toast-notification</pre
                 label: "wrapText",
                 options: ["normal", "false"],
               },
+              {
+                key: "maxWidth",
+                type: "text",
+                label: "maxWidth (auto: 400px / 100vw for full-width)",
+                placeholder: "e.g. 500px",
+              },
             ],
           },
           {
@@ -1226,9 +1242,16 @@ npm install customizable-toast-notification</pre
           {
             title: "Typography",
             fields: [
+              { key: "fontFamily", type: "text", label: "fontFamily (leave empty for system default)", placeholder: "e.g. Inter, system-ui, sans-serif" },
               { key: "fontSize", type: "text", label: "fontSize" },
               { key: "fontWeight", type: "text", label: "fontWeight" },
               { key: "fontLineHeight", type: "text", label: "fontLineHeight" },
+              {
+                key: "fontDirection",
+                type: "select",
+                label: "fontDirection",
+                options: ["auto", "ltr", "rtl"],
+              },
             ],
           },
           {
@@ -1240,6 +1263,11 @@ npm install customizable-toast-notification</pre
                 label: "showCloseButton",
               },
               {
+                key: "sanitizeHtml",
+                type: "checkbox",
+                label: "sanitizeHtml (when allowHtml=true)",
+              },
+              {
                 key: "pauseOnHoverTri",
                 type: "select",
                 label: "pauseOnHover",
@@ -1249,6 +1277,11 @@ npm install customizable-toast-notification</pre
                 key: "animationDuration",
                 type: "text",
                 label: "animationDuration",
+              },
+              {
+                key: "animationEasing",
+                type: "text",
+                label: "animationEasing",
               },
             ],
           },
@@ -1275,7 +1308,18 @@ npm install customizable-toast-notification</pre
                 label: "cta.target",
                 placeholder: "_blank",
               },
+              {
+                key: "ctaRel",
+                type: "text",
+                label: "cta.rel (auto: noopener noreferrer for _blank)",
+                placeholder: "noopener noreferrer",
+              },
               { key: "ctaAutoClose", type: "checkbox", label: "cta.autoClose" },
+              {
+                key: "ctaAriaLabel",
+                type: "text",
+                label: "cta.ariaLabel (accessibility)",
+              },
             ],
           },
         ];

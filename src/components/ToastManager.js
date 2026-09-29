@@ -317,6 +317,11 @@ export async function closeToastByKey(key) {
 
     data.timer?.clear();
     data.outer?._pauseCleanup?.();
+    data.toast?._cleanupCloseButton?.();
+    data.toast?._cleanup?.();
+    // Clean up CTA click listener if present
+    const ctaEl = data.toast?.querySelector("button, a");
+    ctaEl?._cleanup?.();
 
     active.delete(key);
     visibleCount = Math.max(0, visibleCount - 1);
@@ -324,7 +329,8 @@ export async function closeToastByKey(key) {
     const badge = data.outer.querySelector(".toast-count-badge");
     if (badge) badge.remove();
 
-    await removeWithTransition(data.outer);
+    const animDuration = data.toast?._animationDuration ?? 400;
+    await removeWithTransition(data.outer, animDuration);
 
     await drainQueue();
   } catch (error) {
@@ -345,7 +351,7 @@ async function drainQueue() {
   }
 }
 
-async function removeWithTransition(el) {
+async function removeWithTransition(el, animationDurationMs = 400) {
   if (!el) return Promise.resolve();
 
   return new Promise((resolve) => {
@@ -376,6 +382,8 @@ async function removeWithTransition(el) {
       console.error("removeWithTransition error:", error);
     }
 
+    // Use animation duration + buffer for fallback timeout
+    const fallbackTimeout = animationDurationMs + 300;
     setTimeout(() => {
       try {
         child.removeEventListener("transitionend", onEnd, true);
@@ -383,7 +391,7 @@ async function removeWithTransition(el) {
       } catch (error) {
         console.error("removeWithTransition error:", error);
       }
-    }, 700);
+    }, fallbackTimeout);
   });
 }
 

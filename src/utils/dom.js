@@ -304,10 +304,10 @@ Object.entries(namedColors).forEach(([name, [r, g, b]]) => {
     contrastBlack >= contrastWhite ? "#000000" : "#ffffff";
 });
 
-export function getDynamicAccessibleTextColorHex(toastBg, opa = 1) {
+export function getDynamicAccessibleTextColorHex(toastBg) {
   if (!toastBg) return "snow";
 
-  const key = `${toastBg}|${opa}`;
+  const key = String(toastBg);
   const cached = colorCache.get(key);
   if (cached) return cached;
 
@@ -420,10 +420,6 @@ export function getDynamicAccessibleTextColorHex(toastBg, opa = 1) {
     // every time for the same unparseable input instead of a coin flip.
     r = g = b = 128;
   }
-
-  r = Math.round(r * opa + 255 * (1 - opa));
-  g = Math.round(g * opa + 255 * (1 - opa));
-  b = Math.round(b * opa + 255 * (1 - opa));
 
   const rgbToHsl = (r, g, b) => {
     r /= 255;

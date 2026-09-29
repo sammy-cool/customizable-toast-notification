@@ -41,11 +41,15 @@ export function createLoader(opts = {}) {
   }
 
   // add minimal spinner keyframes if not present
-  if (!document.getElementById("toast-spinner-styles")) {
-    const st = document.createElement("style");
-    st.id = "toast-spinner-styles";
-    st.innerHTML = `@keyframes toast-spinner { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }`;
-    document.head.appendChild(st);
+  // Use a module-level flag to avoid race conditions
+  if (!createLoader._stylesInjected) {
+    createLoader._stylesInjected = true;
+    if (!document.getElementById("toast-spinner-styles")) {
+      const st = document.createElement("style");
+      st.id = "toast-spinner-styles";
+      st.innerHTML = `@keyframes toast-spinner { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }`;
+      document.head.appendChild(st);
+    }
   }
 
   return wrapper;

@@ -207,7 +207,16 @@ async function sanitizeToastOptions(options) {
 function setDefaultColors(colors) {
   try {
     if (colors && typeof colors === "object" && !Array.isArray(colors)) {
-      defaultColors = { ...defaultColors, ...colors };
+      const validTypes = ["success", "error", "warning", "info"];
+      const validated = {};
+      for (const [key, value] of Object.entries(colors)) {
+        if (validTypes.includes(key) && typeof value === "string" && value.trim()) {
+          validated[key] = value.trim();
+        }
+      }
+      if (Object.keys(validated).length > 0) {
+        defaultColors = { ...defaultColors, ...validated };
+      }
     }
   } catch (error) {
     console.error("setDefaultColors failed:", error);
@@ -217,7 +226,16 @@ function setDefaultColors(colors) {
 function setDefaultMessages(messages) {
   try {
     if (messages && typeof messages === "object" && !Array.isArray(messages)) {
-      defaultMessages = { ...defaultMessages, ...messages };
+      const validTypes = ["success", "error", "warning", "info"];
+      const validated = {};
+      for (const [key, value] of Object.entries(messages)) {
+        if (validTypes.includes(key) && typeof value === "string" && value.trim()) {
+          validated[key] = value.trim();
+        }
+      }
+      if (Object.keys(validated).length > 0) {
+        defaultMessages = { ...defaultMessages, ...validated };
+      }
     }
   } catch (error) {
     console.error("setDefaultMessages failed:", error);
@@ -244,6 +262,43 @@ async function runWithClosePriority(fn) {
 }
 
 const originalCreateToast = createToast;
+
+/**
+ * @typedef {Object} ToastOptions
+ * @property {string} [message] - Toast message content
+ * @property {"info"|"success"|"error"|"warning"} [type="info"] - Toast type
+ * @property {number} [duration=2500] - Auto-dismiss time in milliseconds
+ * @property {string} [position="bottom-right"] - Toast position on screen
+ * @property {string} [borderRadius="50px"] - Toast corner radius
+ * @property {string} [backgroundColor] - Custom background color (per-type default if unset)
+ * @property {string} [textColor] - Custom text color (auto-computed for WCAG contrast if unset)
+ * @property {boolean} [showCloseButton=true] - Show close (×) button
+ * @property {boolean} [showProgressBar=true] - Show countdown progress bar
+ * @property {string} [animationDuration="0.4s"] - CSS animation duration
+ * @property {string} [animationEasing="ease"] - CSS animation easing function
+ * @property {string} [progressColor] - Progress bar color (falls back to textColor)
+ * @property {string} [progressHeight="4px"] - Progress bar height
+ * @property {"top"|"bottom"} [progressPosition="bottom"] - Progress bar position
+ * @property {boolean|undefined} [pauseOnHover] - Pause timer on hover (auto: true for CTA toasts)
+ * @property {boolean} [allowHtml=false] - Render message as sanitized HTML
+ * @property {boolean} [sanitizeHtml=true] - Sanitize HTML when allowHtml=true
+ * @property {string} [wrapText="normal"] - "normal" wraps naturally; falsy truncates to 3 lines
+ * @property {string} [maxWidth] - Max width (auto: 400px / 100vw for full-width positions)
+ * @property {string} [fontFamily] - Font family (system default if unset)
+ * @property {string} [fontSize="14px"] - Font size
+ * @property {string} [fontWeight="400"] - Font weight
+ * @property {string} [fontLineHeight="1.4"] - Font line height
+ * @property {"auto"|"ltr"|"rtl"} [fontDirection="auto"] - Font direction
+ * @property {Object} [cta] - Call-to-action configuration
+ * @property {string} [cta.label] - Button/link text
+ * @property {Function} [cta.onClick] - Click handler (may be async)
+ * @property {string} [cta.href] - URL for link variant
+ * @property {"button"|"link"} [cta.variant="button"] - Button or link
+ * @property {string} [cta.target] - Link target (_blank, etc.)
+ * @property {string} [cta.rel] - Link rel (auto: noopener noreferrer for _blank)
+ * @property {boolean} [cta.autoClose=true] - Close toast after CTA click
+ * @property {string} [cta.ariaLabel] - Accessibility label for CTA
+ */
 
 /**
  * @typedef {Object} ToastHandle
@@ -333,6 +388,7 @@ async function toastPromise(promiseOrFn, messages = {}, options = {}) {
     message: loadingMessage,
     duration: TOAST_PROMISE_LOADING_DURATION_MS,
     showProgressBar: false, // a progress bar tied to a 24h fake duration would be misleading, not informative
+    pauseOnHover: false, // loading toast should not pause on hover
   });
 
   const settledPromise =
@@ -378,16 +434,22 @@ if (typeof window !== "undefined" && typeof document !== "undefined") {
   const onKeyDown = (e) => {
     if (e.key === "Escape" || e.key === "Esc") {
       (async () => {
-        closeInProgress = true;
-        closePromise = (async () => {
-          try {
-            await dismiss();
-          } finally {
-            closeInProgress = false;
-            closePromise = null;
-          }
-        })();
-        await closePromise;
+        try {
+          closeInProgress = true;
+          closePromise = (async () => {
+            try {
+              await dismiss();
+            } finally {
+              closeInProgress = false;
+              closePromise = null;
+            }
+          })();
+          await closePromise;
+        } catch (error) {
+          console.error("Escape key dismiss failed:", error);
+          closeInProgress = false;
+          closePromise = null;
+        }
       })();
     }
   };

@@ -40,6 +40,10 @@ export async function getOrCreateToastContainer(options, setPosition) {
     if (cached?.isConnected) {
       return cached;
     }
+    // Clean up stale registry entry if container was removed from DOM
+    if (cached && !cached.isConnected) {
+      containerRegistry.delete(id);
+    }
 
     // 2) Find existing in DOM
     let el = document.getElementById(id); // unique by spec, but may return first if duplicates exist
@@ -97,6 +101,6 @@ export async function getOrCreateToastContainer(options, setPosition) {
     return out;
   } finally {
     // Clear the lock so future calls can re-enter if needed
-    containerLocks.delete(getContainerId(options.position));
+    containerLocks.delete(id);
   }
 }
