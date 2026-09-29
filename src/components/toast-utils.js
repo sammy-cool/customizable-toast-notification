@@ -64,7 +64,9 @@ export async function applyRichStyling(toast, options, onClose) {
       display: "-webkit-box",
       WebkitBoxOrient: "vertical",
       WebkitLineClamp: "3",
-      whiteSpace: "nowrap",
+      whiteSpace: "normal",
+      overflow: "hidden",
+      textOverflow: "ellipsis",
     });
   }
 
@@ -166,19 +168,41 @@ export async function applyRichStyling(toast, options, onClose) {
 export async function createEmergencyToast(options, onClose) {
   try {
     const emergency = document.createElement("div");
+    const position = options?.position || "bottom-right";
+    const posFlags = position.toLowerCase().trim();
+    let top = "auto", bottom = "auto", left = "auto", right = "auto", transform = "none";
+
+    if (posFlags.startsWith("top")) top = "20px";
+    else if (posFlags.startsWith("bottom") || posFlags.includes("below")) bottom = "20px";
+
+    if (posFlags.startsWith("left")) left = "20px";
+    else if (posFlags.startsWith("right")) right = "20px";
+    else if (posFlags === "center") {
+      left = "50%"; top = "50%"; transform = "translate(-50%, -50%)";
+    } else if (posFlags.includes("center")) {
+      if (posFlags.includes("left")) { left = "20px"; top = "50%"; transform = "translateY(-50%)"; }
+      else if (posFlags.includes("right")) { right = "20px"; top = "50%"; transform = "translateY(-50%)"; }
+      else if (posFlags.includes("top")) { top = "20px"; left = "50%"; transform = "translateX(-50%)"; }
+      else if (posFlags.includes("bottom")) { bottom = "20px"; left = "50%"; transform = "translateX(-50%)"; }
+    } else {
+      right = "20px"; bottom = "20px";
+    }
+
     Object.assign(emergency.style, {
       background: "#333",
       color: "white",
       padding: "10px 15px",
       position: "fixed",
-      top: "20px",
-      right: "20px",
+      top,
+      bottom,
+      left,
+      right,
+      transform,
       zIndex: "99999",
       borderRadius: "3px",
       maxWidth: "250px",
       wordWrap: "break-word",
       boxShadow: "0 2px 10px rgba(0,0,0,0.3)",
-      cursor: "pointer",
     });
 
     const innerWrapper = document.createElement("div");
@@ -195,25 +219,25 @@ export async function createEmergencyToast(options, onClose) {
     }
     innerWrapper.appendChild(msgEl);
 
-    // add close X via textContent to avoid innerHTML
     const closeSpan = document.createElement("span");
     closeSpan.style.cssText =
-      "float: right; margin-left: 10px; font-weight: bold;";
+      "float: right; margin-left: 10px; font-weight: bold; cursor: pointer;";
     closeSpan.textContent = "×";
     innerWrapper.appendChild(closeSpan);
 
     while (emergency.firstChild) emergency.removeChild(emergency.firstChild);
     emergency.appendChild(innerWrapper);
-    closeSpan.onclick = () => {
+    closeSpan.addEventListener("click", () => {
       emergency.remove();
       onClose(emergency);
-    };
+    });
 
     document.body.appendChild(emergency);
+    const duration = Number(options?.duration) || 2500;
     setTimeout(() => {
       emergency.remove();
       onClose(emergency);
-    }, options?.duration);
+    }, duration);
 
     return emergency;
   } catch (error) {

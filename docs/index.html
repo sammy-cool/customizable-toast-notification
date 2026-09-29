@@ -979,7 +979,7 @@ npm install customizable-toast-notification</pre
       </div>
     </footer>
 
-    <script src="https://cdn.jsdelivr.net/npm/customizable-toast-notification/dist/index.umd.js"></script>
+    <script src="../../dist/index.umd.js"></script>
     <script>
       (function () {
         var TYPE_COLORS = {
@@ -1015,7 +1015,7 @@ npm install customizable-toast-notification</pre
           fontLineHeight: "1.4",
           fontDirection: "auto",
           wrapText: "normal",
-          maxWidth: "",
+          maxWidth: "400px",
           pauseOnHover: null, // null = "auto" (true only if cta is set)
           ctaEnabled: false,
           ctaLabel: "Undo",
@@ -1324,8 +1324,10 @@ npm install customizable-toast-notification</pre
           },
         ];
 
-        var controlsEl = document.getElementById("pgControls");
-        controlGroups.forEach(function (group) {
+        function buildControls() {
+          var controlsEl = document.getElementById("pgControls");
+          controlsEl.innerHTML = "";
+          controlGroups.forEach(function (group) {
           var details = document.createElement("details");
           details.className = "ctrl-group";
           if (group.open) details.open = true;
@@ -1459,8 +1461,9 @@ npm install customizable-toast-notification</pre
 
           controlsEl.appendChild(details);
         });
+      }
 
-        document
+        buildControls();
           .getElementById("pgFireBtn")
           .addEventListener("click", fireCurrentConfig);
         document
@@ -1468,8 +1471,8 @@ npm install customizable-toast-notification</pre
           .addEventListener("click", function () {
             state = Object.assign({}, DEFAULTS);
             controlsEl.innerHTML = "";
-            controlGroups.length = 0; // rebuild not needed; simplest is a reload of control values
-            location.reload();
+            buildControls();
+            renderCode();
           });
 
         document

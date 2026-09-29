@@ -1,8 +1,35 @@
 "use strict";
 
+const DOCUMENTED_POSITIONS = new Set([
+  "top-left",
+  "top-right",
+  "bottom-left",
+  "bottom-right",
+  "top-center",
+  "bottom-center",
+  "left-center",
+  "right-center",
+  "top-full-width",
+  "bottom-full-width",
+  "center",
+]);
+
+const LEGACY_POSITIONS = new Set(["top", "bottom"]);
+
+function isDocumentedPosition(pos) {
+  return DOCUMENTED_POSITIONS.has(pos);
+}
+
 export async function setPosition(container, options) {
   if (!container || !options.position) {
     throw new Error("Invalid container or position!");
+  }
+
+  const pos = options.position.toLowerCase().trim();
+
+  if (!isDocumentedPosition(pos) && !LEGACY_POSITIONS.has(pos)) {
+    console.warn(`Unknown position "${options.position}", defaulting to "bottom-right"`);
+    options.position = "bottom-right";
   }
 
   resetContainerStyles(container);
@@ -24,16 +51,21 @@ function resetContainerStyles(container) {
 
 function parsePosition(position) {
   const pos = position.toLowerCase().trim();
-  const isFullWidth = 
-    pos === "top-full-width" ||
-    pos === "bottom-full-width" ||
-    pos === "fullwidth";
+
+  const hasTop = pos.startsWith("top");
+  const hasBottom = pos.startsWith("bottom") || pos.startsWith("below");
+  const hasLeft = pos.startsWith("left");
+  const hasRight = pos.startsWith("right");
+  const hasCenter = pos === "center" || (pos.includes("center") && !pos.includes("left") && !pos.includes("right") && !pos.includes("top") && !pos.includes("bottom"));
+
+  const isFullWidth = pos === "top-full-width" || pos === "bottom-full-width";
+
   return {
-    hasTop: pos.startsWith("top") || (pos === "center" ? false : pos.includes("top")),
-    hasBottom: pos.startsWith("bottom") || pos.includes("below"),
-    hasLeft: pos.startsWith("left"),
-    hasRight: pos.startsWith("right"),
-    hasCenter: pos === "center" || (pos.includes("center") && !pos.includes("left") && !pos.includes("right") && !pos.includes("top") && !pos.includes("bottom")),
+    hasTop,
+    hasBottom,
+    hasLeft,
+    hasRight,
+    hasCenter,
     hasFullWidth: isFullWidth,
   };
 }
@@ -41,16 +73,6 @@ function parsePosition(position) {
 function handleFullWidthPositions(container, options, flags) {
   if (!flags.hasFullWidth) return false;
 
-  // AUDIT FIX (L5): options.maxWidth was previously set to "100vw"
-  // unconditionally here, before checking whether hasTop/hasBottom
-  // actually matched. For the undocumented bare "fullwidth" value (no
-  // top-/bottom- prefix), neither branch below matches, this function
-  // returns false, and positioning falls through to the normal
-  // small-toast logic further down — but maxWidth had already been
-  // mutated to 100vw, leaving a 100vw-wide toast positioned as if it
-  // were a normal small one. Moving the mutation inside each branch
-  // means it only happens when full-width positioning is actually
-  // being applied.
   if (flags.hasTop) {
     options.maxWidth = "100vw";
     container.style.top = "10px";
@@ -117,7 +139,6 @@ function applyStandardPositioning(container, flags) {
   } else if (flags.hasTop) {
     container.style.top = "10px";
   } else {
-    // Default to bottom if neither specified
     container.style.bottom = "10px";
   }
 

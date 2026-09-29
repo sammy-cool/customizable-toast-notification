@@ -45,7 +45,16 @@ const ALLOWED_ATTRS = new Set([
   "class",
   "target",
   "rel",
+  "loading",
 ]);
+
+const BLOCKED_TAGS_REGEX = /<\/?(script|iframe|object|embed|link|meta|style|form|input|button|svg|math|img|video|audio|details|dialog|applet|frame|frameset|textarea|select|option|optgroup|fieldset|legend|datalist|output|progress|meter|keygen|canvas|map|area|base|basefont|bgsound|blink|center|dir|font|hgroup|isindex|listing|marquee|multicol|nextid|noembed|noframes|plaintext|rb|rtc|spacer|strike|tt|xmp)[^>]*>/gi;
+
+const EVENT_HANDLER_REGEX = /\s(on\w+)\s*=\s*(['"])[\s\S]*?\2/gi;
+
+const JAVASCRIPT_URI_REGEX = /(href|src)\s*=\s*(['"])\s*javascript:[^'"]*\2/gi;
+
+const ALLOWED_URI_REGEX = /^\s*(https?:|data:image\/)/i;
 
 export function hasDOMPurify() {
   try {
@@ -54,70 +63,90 @@ export function hasDOMPurify() {
   return false;
 }
 
+function sanitizeAttributes(el, allowedAttrs) {
+  const attrsToRemove = [];
+  Array.from(el.attributes || []).forEach((attr) => {
+    const name = attr.name.toLowerCase();
+    const val = attr.value;
+    if (!allowedAttrs.has(name)) {
+      attrsToRemove.push(name);
+      return;
+    }
+    if ((name === "href" || name === "src") && /^\s*javascript:/i.test(val)) {
+      attrsToRemove.push(name);
+      return;
+    }
+    if (name === "src" && !/^\s*(https?:|data:image\/)/i.test(val)) {
+      attrsToRemove.push(name);
+      return;
+    }
+    if (name === "target" && val === "_blank") {
+      const rel = (el.getAttribute("rel") || "").split(/\s+/).filter(Boolean);
+      if (!rel.includes("noopener")) rel.push("noopener");
+      if (!rel.includes("noreferrer")) rel.push("noreferrer");
+      el.setAttribute("rel", rel.join(" "));
+    }
+  });
+  attrsToRemove.forEach((name) => el.removeAttribute(name));
+}
+
+function sanitizeNode(node, allowedTags, allowedAttrs) {
+  if (node.nodeType === Node.TEXT_NODE) {
+    return document.createTextNode(node.nodeValue);
+  }
+  if (node.nodeType === Node.COMMENT_NODE) {
+    return null;
+  }
+  if (node.nodeType !== Node.ELEMENT_NODE) {
+    return null;
+  }
+  const tag = node.tagName.toUpperCase();
+  if (!allowedTags.has(tag)) {
+    const frag = document.createDocumentFragment();
+    Array.from(node.childNodes).forEach((child) => {
+      const sanitized = sanitizeNode(child, allowedTags, allowedAttrs);
+      if (sanitized) frag.appendChild(sanitized);
+    });
+    return frag;
+  }
+  const el = document.createElement(node.tagName);
+  sanitizeAttributes(el, allowedAttrs);
+  Array.from(node.childNodes).forEach((child) => {
+    const sanitizedChild = sanitizeNode(child, allowedTags, allowedAttrs);
+    if (sanitizedChild) el.appendChild(sanitizedChild);
+  });
+  return el;
+}
+
 export function fallbackSanitize(dirty) {
   if (!dirty || typeof dirty !== "string") return "";
 
-  const blockedTags =
-    /<\/?(script|iframe|object|embed|link|meta|style|form|input|button|svg|math|img|video|audio|details|dialog|applet|embed|frame|frameset|textarea|select|option|optgroup|fieldset|legend|datalist|output|progress|meter|keygen|canvas|map|area|base|basefont|bgsound|blink|center|dir|font|frame|frameset|hgroup|isindex|listing|marquee|multicol|nextid|noembed|noframes|plaintext|rb|rtc|spacer|strike|tt|xmp)[^>]*>/gi;
-  let step1 = dirty.replace(blockedTags, "");
-
-  step1 = step1.replace(/\s(on\w+)\s*=\s*(['"])[\s\S]*?\2/gi, "");
-
+  let step1 = dirty.replace(BLOCKED_TAGS_REGEX, "");
+  step1 = step1.replace(EVENT_HANDLER_REGEX, "");
   step1 = step1.replace(
-    /(href|src)\s*=\s*(['"])\s*javascript:[^'"]*\2/gi,
+    JAVASCRIPT_URI_REGEX,
     "$1=$2#$2",
   );
 
   const container = document.createElement("div");
   container.innerHTML = step1;
 
-  function sanitizeNode(node) {
-    if (node.nodeType === Node.TEXT_NODE) {
-      return document.createTextNode(node.nodeValue);
-    }
-    if (node.nodeType !== Node.ELEMENT_NODE) {
-      return null;
-    }
-    const tag = node.tagName.toUpperCase();
-    if (!ALLOWED_TAGS.has(tag)) {
-      const frag = document.createDocumentFragment();
-      Array.from(node.childNodes).forEach((child) => {
-        const sanitized = sanitizeNode(child);
-        if (sanitized) frag.appendChild(sanitized);
-      });
-      return frag;
-    }
-    const el = document.createElement(node.tagName);
-    Array.from(node.attributes || []).forEach((attr) => {
-      const name = attr.name.toLowerCase();
-      const val = attr.value;
-      if (!ALLOWED_ATTRS.has(name)) return;
-      if ((name === "href" || name === "src") && /^\s*javascript:/i.test(val))
-        return;
-      if (name === "src" && !/^\s*(https?:|data:image\/)/i.test(val)) return;
-      if (name === "target" && val === "_blank") {
-        el.setAttribute(
-          "rel",
-          (node.getAttribute("rel") || "") + " noopener noreferrer",
-        );
-      }
-      el.setAttribute(name, val);
-    });
-    Array.from(node.childNodes).forEach((child) => {
-      const sanitizedChild = sanitizeNode(child);
-      if (sanitizedChild) el.appendChild(sanitizedChild);
-    });
-    return el;
-  }
-
   const outFrag = document.createDocumentFragment();
   Array.from(container.childNodes).forEach((child) => {
-    const s = sanitizeNode(child);
-    if (s) outFrag.appendChild(s);
+    const sanitized = sanitizeNode(child, ALLOWED_TAGS, ALLOWED_ATTRS);
+    if (sanitized) outFrag.appendChild(sanitized);
   });
 
   const wrapper = document.createElement("div");
   wrapper.appendChild(outFrag);
+
+  wrapper.querySelectorAll('a[target="_blank"]').forEach((a) => {
+    const rel = (a.getAttribute("rel") || "").split(/\s+/).filter(Boolean);
+    if (!rel.includes("noopener")) rel.push("noopener");
+    if (!rel.includes("noreferrer")) rel.push("noreferrer");
+    a.setAttribute("rel", rel.join(" "));
+  });
+
   return wrapper.innerHTML;
 }
 
@@ -126,14 +155,6 @@ export function sanitizeHtml(dirty, opts = {}) {
   try {
     if (!opts.forceFallback && hasDOMPurify()) {
       const DOMPurify = window.DOMPurify;
-      // AUDIT FIX (H1): previously called DOMPurify.sanitize() with only
-      // ADD_ATTR/ALLOWED_URI_REGEXP, meaning tags/attributes were governed
-      // by DOMPurify's own broad DEFAULT allowlist — not the tight,
-      // deliberately-curated one this library actually promises. Now
-      // passing the SAME ALLOWED_TAGS/ALLOWED_ATTRS used by
-      // fallbackSanitize(), so a consumer gets identical sanitization
-      // behavior whether or not some other script on the page happens to
-      // have loaded DOMPurify.
       const cleaned = DOMPurify.sanitize(dirty, {
         ALLOWED_TAGS: Array.from(ALLOWED_TAGS),
         ALLOWED_ATTR: Array.from(ALLOWED_ATTRS),
@@ -141,12 +162,6 @@ export function sanitizeHtml(dirty, opts = {}) {
           /^(?:(?:https?|mailto|ftp|tel|data):|[^a-z]|[a-z+.\-]+(?:[^a-z+.\-:]|$))/i,
       });
 
-      // Replicates fallbackSanitize()'s auto rel="noopener noreferrer" on
-      // target="_blank" links — DOMPurify doesn't do this automatically,
-      // so without this the two paths would still diverge on this one
-      // detail even with matching tag/attribute allowlists. Re-parsing the
-      // already-clean output (not the original dirty string) so this can
-      // only ever tighten, never loosen, what DOMPurify already produced.
       const wrapper = document.createElement("div");
       wrapper.innerHTML = cleaned;
       wrapper.querySelectorAll('a[target="_blank"]').forEach((a) => {
@@ -157,6 +172,8 @@ export function sanitizeHtml(dirty, opts = {}) {
       });
       return wrapper.innerHTML;
     }
-  } catch (err) {}
+  } catch (err) {
+    console.warn("DOMPurify sanitization failed, falling back:", err);
+  }
   return fallbackSanitize(dirty);
 }

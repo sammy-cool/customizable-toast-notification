@@ -108,7 +108,7 @@
   },
   "license": "Apache-2.0",
   "files": [
-    "postinstall.js",
+    "postinstall.cjs",
     "dist/index.esm.mjs",
     "dist/index.esm.mjs.map",
     "dist/index.umd.js",

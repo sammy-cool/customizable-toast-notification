@@ -24,18 +24,6 @@ export async function appendChild(parent, child) {
       console.warn("appendChild fallback failed:", fallbackError);
       try {
         if (parent === document.body) {
-          // AUDIT FIX (M4): cloneNode(true) copies attributes and inline
-          // styles but NEVER copies JS-attached event listeners — a toast
-          // that lands here via this emergency path would render with no
-          // working close button or CTA. This is a genuine last resort
-          // (only reached when BOTH the primary appendChild AND
-          // insertAdjacentElement already threw), and there's no generic
-          // way for this low-level utility to know which listeners the
-          // caller attached, so recreating them isn't practical here.
-          // What we CAN do is stop silently returning success as if
-          // nothing were lost — a clear warning at least gives developers
-          // a real diagnostic instead of a toast that mysteriously
-          // doesn't respond to clicks.
           console.warn(
             "appendChild: using last-resort cloneNode fallback — the " +
               "appended element's event listeners (close button, CTA " +
@@ -46,7 +34,7 @@ export async function appendChild(parent, child) {
           );
           const clone = child.cloneNode(true);
           parent.appendChild(clone);
-          return true;
+          return false; // Return false to indicate fallback was used and listeners lost
         }
       } catch (emergencyError) {
         console.error("appendChild emergency failed:", emergencyError);
@@ -75,14 +63,10 @@ export async function removeElement(el) {
   } catch {}
 
   try {
-    Object.assign(el.style, {
-      display: "none",
-      opacity: "0",
-      pointerEvents: "none",
-      position: "absolute",
-      left: "-9999px",
-    });
-    return true;
+    if (el.parentNode) {
+      el.parentNode.removeChild(el);
+      return true;
+    }
   } catch {}
 
   return false;
