@@ -8,11 +8,6 @@
   "unpkg": "dist/index.umd.js",
   "jsdelivr": "dist/index.umd.js",
   "types": "dist/index.d.ts",
-  "author": {
-    "name": "Priyanshu Patel",
-    "email": "priyanshu.alt191@gmail.com",
-    "url": "https://github.com/sammy-cool"
-  },
   "exports": {
     ".": {
       "types": "./dist/index.d.ts",
@@ -110,7 +105,6 @@
   },
   "license": "Apache-2.0",
   "files": [
-    "postinstall.cjs",
     "dist/index.esm.mjs",
     "dist/index.esm.mjs.map",
     "dist/index.umd.js",
