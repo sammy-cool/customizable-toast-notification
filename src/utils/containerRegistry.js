@@ -21,7 +21,8 @@ export function normalizePositionKey(position) {
  * Canonical container id
  */
 export function getContainerId(position) {
-  return `toast-container-${normalizePositionKey(position)}`;
+  const pos = position || "bottom-right";
+  return `toast-container-${normalizePositionKey(pos)}`;
 }
 
 export function resetContainerRegistry() {
@@ -33,7 +34,7 @@ export function resetContainerRegistry() {
  * Atomically get or create a single container per canonical id.
  */
 export async function getOrCreateToastContainer(options, setPosition) {
-  const id = getContainerId(options.position);
+  const id = getContainerId(options?.position || "bottom-right");
   // If a creation is in-flight, await it
   if (containerLocks.has(id)) {
     return containerLocks.get(id);

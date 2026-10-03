@@ -894,4 +894,59 @@ describe("toast-utils-core.js — defensive CTA input handling", () => {
   });
 });
 
+describe("html-sanitizer.js — edge cases and type defense", () => {
+  test("sanitizeHtml safely handles non-string inputs (number, object, boolean, null)", async () => {
+    freshDom();
+    const { sanitizeHtml } = await import("../../src/utils/html-sanitizer.js");
+    assert.equal(sanitizeHtml(null), "");
+    assert.equal(sanitizeHtml(undefined), "");
+    assert.equal(sanitizeHtml(12345), "");
+    assert.equal(sanitizeHtml({}), "");
+    assert.equal(sanitizeHtml(true), "");
+  });
+});
+
+describe("dom.js — parseAnimationDuration and query edge cases", () => {
+  test("parseAnimationDuration safely handles NaN, Infinity, negative, and invalid values", async () => {
+    freshDom();
+    const { parseAnimationDuration } = await import("../../src/utils/dom.js");
+    assert.equal(await parseAnimationDuration(NaN), 500);
+    assert.equal(await parseAnimationDuration(Infinity), 500);
+    assert.equal(await parseAnimationDuration(-200), 500);
+    assert.equal(await parseAnimationDuration("invalid"), 500);
+    assert.equal(await parseAnimationDuration("0.3s"), 300);
+    assert.equal(await parseAnimationDuration("250ms"), 250);
+  });
+
+  test("query safely returns null when root or document has no querySelector", async () => {
+    freshDom();
+    const { query } = await import("../../src/utils/dom.js");
+    assert.equal(query(".missing", null), null);
+    assert.equal(query(".missing", {}), null);
+  });
+});
+
+describe("containerRegistry.js — getContainerId edge cases", () => {
+  test("getContainerId defaults safely when position is null or undefined", async () => {
+    freshDom();
+    const { getContainerId } = await import("../../src/utils/containerRegistry.js");
+    assert.equal(getContainerId(null), "toast-container-bottom-right");
+    assert.equal(getContainerId(undefined), "toast-container-bottom-right");
+    assert.equal(getContainerId(""), "toast-container-bottom-right");
+  });
+});
+
+describe("position.js — setPosition edge cases", () => {
+  test("setPosition throws clean Error when options or container is null without unhandled TypeError", async () => {
+    freshDom();
+    const { setPosition } = await import("../../src/utils/position.js");
+    await assert.rejects(async () => {
+      await setPosition(null, { position: "top-right" });
+    }, /Invalid container or position!/);
+    await assert.rejects(async () => {
+      await setPosition(document.createElement("div"), null);
+    }, /Invalid container or position!/);
+  });
+});
+
 

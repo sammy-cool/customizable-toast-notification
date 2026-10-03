@@ -21,9 +21,10 @@ function hashString(str) {
 }
 
 function makeKey(options = {}) {
-  const type = String(options.type || "info").trim().toLowerCase();
-  const messageHash = hashString(String(options.message || "")).toString(16);
-  const position = normalizePositionKey(options.position || "bottom-right");
+  const safe = options && typeof options === "object" ? options : {};
+  const type = String(safe.type || "info").trim().toLowerCase();
+  const messageHash = hashString(String(safe.message || "")).toString(16);
+  const position = normalizePositionKey(safe.position || "bottom-right");
 
   return `${type}|${messageHash}|${position}`;
 }
@@ -238,7 +239,9 @@ export const dismiss = dismissMostRecent;
 export const noop = closeAllToasts;
 
 function createDismissTimer(toast, options) {
-  const delay = Number(options?.duration ?? 2500) + 5;
+  const raw = Number(options?.duration);
+  const duration = Number.isFinite(raw) && raw > 0 ? raw : 2500;
+  const delay = duration + 5;
   const timer = new PausableTimer(async () => await closeToast(toast), delay);
   timer.start();
   return timer;

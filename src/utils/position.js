@@ -21,7 +21,7 @@ function isDocumentedPosition(pos) {
 }
 
 export async function setPosition(container, options) {
-  if (!container || !options.position) {
+  if (!container || !options?.position) {
     throw new Error("Invalid container or position!");
   }
 

@@ -8,6 +8,11 @@
   "unpkg": "dist/index.umd.js",
   "jsdelivr": "dist/index.umd.js",
   "types": "dist/index.d.ts",
+  "author": {
+    "name": "Priyanshu Patel",
+    "email": "priyanshu.alt191@gmail.com",
+    "url": "https://github.com/sammy-cool"
+  },
   "exports": {
     ".": {
       "types": "./dist/index.d.ts",
@@ -39,7 +44,6 @@
     "build:types:bundle": "rollup -c rollup.dts.config.mjs",
     "build:types": "npm run build:types:emit && npm run build:types:bundle",
     "zone-build": "npm run dist:clean && npm run build:js && npm run build:types && du -h dist/*",
-    "postinstall": "node postinstall.cjs",
     "build": "rollup -c",
     "test:builds": "node scripts/test-build.cjs",
     "test": "npm run ci:test",

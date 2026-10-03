@@ -154,7 +154,7 @@ export function fallbackSanitize(dirty) {
 }
 
 export function sanitizeHtml(dirty, opts = {}) {
-  if (!dirty) return "";
+  if (typeof dirty !== "string" || !dirty.trim()) return "";
   try {
     if (!opts.forceFallback && hasDOMPurify()) {
       const DOMPurify = window.DOMPurify;
