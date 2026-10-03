@@ -4,7 +4,7 @@ import { getDynamicAccessibleTextColorHex } from "../utils/dom.js";
 
 export function createCTA(toast, options, onClose) {
   const rawCfg = options?.cta;
-  if (!rawCfg) return;
+  if (!rawCfg || typeof rawCfg !== "object" || Array.isArray(rawCfg)) return;
 
   const cfg = { ...rawCfg };
 

@@ -832,6 +832,17 @@ describe("loader.js — createLoader unit tests", () => {
     assert.ok(styleEl, "toast-spinner-styles should be injected");
     assert.ok(styleEl.innerHTML.includes("@keyframes toast-spinner"), "Should define toast-spinner animation");
   });
+
+  test("createLoader safely handles null or non-object input without throwing", async () => {
+    freshDom();
+    const { createLoader } = await import("../../src/components/loader.js");
+    let loader;
+    assert.doesNotThrow(() => {
+      loader = createLoader(null);
+    });
+    assert.ok(loader && loader.className === "toast-loader");
+    assert.equal(loader.querySelector("svg")?.getAttribute("width"), "14");
+  });
 });
 
 describe("toast-utils.js — loader and fontPadding integration", () => {
@@ -866,6 +877,20 @@ describe("toast-utils.js — loader and fontPadding integration", () => {
     );
     const span = toast.querySelector("span");
     assert.equal(span.style.padding, "6px 12px");
+  });
+});
+
+describe("toast-utils-core.js — defensive CTA input handling", () => {
+  test("createCTA does not throw and ignores invalid cta options", async () => {
+    freshDom();
+    const { createCTA } = await import("../../src/components/toast-utils-core.js");
+    const toast = document.createElement("div");
+    assert.doesNotThrow(() => {
+      createCTA(toast, { cta: "not an object" }, () => {});
+      createCTA(toast, { cta: ["an", "array"] }, () => {});
+      createCTA(toast, { cta: null }, () => {});
+    });
+    assert.equal(toast.children.length, 0);
   });
 });
 

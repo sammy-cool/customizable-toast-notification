@@ -1,8 +1,9 @@
 // src/components/loader.js
 export function createLoader(opts = {}) {
-  const size = opts.size || 14;
-  const color = opts.color || "currentColor";
-  const labelText = opts.text || "";
+  const safeOpts = opts && typeof opts === "object" && !Array.isArray(opts) ? opts : {};
+  const size = Number(safeOpts.size) || 14;
+  const color = typeof safeOpts.color === "string" && safeOpts.color.trim() ? safeOpts.color.trim() : "currentColor";
+  const labelText = typeof safeOpts.text === "string" ? safeOpts.text : "";
   const wrapper = document.createElement("span");
   wrapper.className = "toast-loader";
   wrapper.style.display = "inline-flex";
