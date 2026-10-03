@@ -780,6 +780,42 @@
             </button>
           </div>
         </div>
+
+        <div class="api-demo">
+          <h3>Smart notification triage — TypeSafe AI</h3>
+          <p class="api-desc">
+            Use TypeSafe System One models (Jev) to turn unstructured application events, error logs, or user feedback into typed toast configs (<code style="font-family: var(--mono); background: var(--ink-2); padding: 1px 5px; border-radius: 4px;">Choice</code> for severity, <code style="font-family: var(--mono); background: var(--ink-2); padding: 1px 5px; border-radius: 4px;">Noul</code> for actionability, and <code style="font-family: var(--mono); background: var(--ink-2); padding: 1px 5px; border-radius: 4px;">Score</code> for urgency) before calling <code style="font-family: var(--mono); background: var(--ink-2); padding: 1px 5px; border-radius: 4px;">createToast()</code>.
+          </p>
+          <div class="code-block">
+            <span class="tok-cm">// TypeSafe AI System One returns typed judgments:</span>
+            <span class="tok-kw">const</span> { answers } = <span class="tok-kw">await</span> client.systemOne({
+              state: { event: <span class="tok-str">"Payment failed: card expired"</span> },
+              questions: {
+                severity: choice(<span class="tok-str">"Severity level"</span>, { info: <span class="tok-kw">null</span>, success: <span class="tok-kw">null</span>, warning: <span class="tok-kw">null</span>, error: <span class="tok-kw">null</span> }),
+                needsAction: noul(<span class="tok-str">"Requires user action?"</span>),
+                urgency: score(<span class="tok-str">"Urgency 1-5"</span>, [1, 2, 3, 4, 5])
+              }
+            });
+            <span class="tok-cm">// Code maps typed answers directly to toast configuration:</span>
+            createToast({
+              type: answers.severity.choice,
+              message: <span class="tok-str">"Payment failed: card expired"</span>,
+              duration: answers.urgency.score &gt; 3 ? 6000 : 3000,
+              cta: answers.needsAction.probability &gt; 0.7 ? { label: <span class="tok-str">"Update Card"</span> } : <span class="tok-kw">undefined</span>
+            });
+          </div>
+          <div class="try-row">
+            <button class="try-btn" id="aiTriageErrorBtn">
+              Triage: Card Expired (Error + CTA)
+            </button>
+            <button class="try-btn secondary" id="aiTriageSuccessBtn">
+              Triage: Export Ready (Success + CTA)
+            </button>
+            <button class="try-btn secondary" id="aiTriageWarningBtn">
+              Triage: Storage Alert (Warning)
+            </button>
+          </div>
+        </div>
       </div>
     </section>
 
@@ -979,7 +1015,7 @@ npm install customizable-toast-notification</pre
       </div>
     </footer>
 
-    <script src="https://cdn.jsdelivr.net/npm/customizable-toast-notification@3.12.2/dist/index.umd.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/customizable-toast-notification@3.12.3/dist/index.umd.js"></script>
     <script>
       if (!window.customizableToast) {
         document.write('<script src="../dist/index.umd.js"><\/script>');
@@ -1019,9 +1055,14 @@ npm install customizable-toast-notification</pre
           fontWeight: "400",
           fontLineHeight: "1.4",
           fontDirection: "auto",
+          fontPadding: "",
           wrapText: "normal",
           maxWidth: "400px",
           pauseOnHover: null, // null = "auto" (true only if cta is set)
+          showLoader: false,
+          loaderSize: 14,
+          loaderColor: "",
+          loaderText: "",
           ctaEnabled: false,
           ctaLabel: "Undo",
           ctaVariant: "button",
@@ -1075,9 +1116,20 @@ npm install customizable-toast-notification</pre
           if (s.fontLineHeight !== DEFAULTS.fontLineHeight)
             opts.fontLineHeight = s.fontLineHeight;
           if (s.fontDirection !== DEFAULTS.fontDirection) opts.fontDirection = s.fontDirection;
+          if (s.fontPadding) opts.fontPadding = s.fontPadding;
           if (s.wrapText !== DEFAULTS.wrapText) opts.wrapText = s.wrapText;
           if (s.maxWidth && s.maxWidth !== DEFAULTS.maxWidth) opts.maxWidth = s.maxWidth;
           if (s.pauseOnHover !== null) opts.pauseOnHover = s.pauseOnHover;
+          if (s.showLoader) {
+            opts.showLoader = true;
+            var loaderObj = {};
+            if (s.loaderSize && Number(s.loaderSize) !== 14) loaderObj.size = Number(s.loaderSize);
+            if (s.loaderColor) loaderObj.color = s.loaderColor;
+            if (s.loaderText) loaderObj.text = s.loaderText;
+            if (Object.keys(loaderObj).length > 0) {
+              opts.loader = loaderObj;
+            }
+          }
           if (s.ctaEnabled) {
             var cta = { label: s.ctaLabel || "Undo" };
             if (s.ctaVariant === "link" && s.ctaHref) {
@@ -1098,12 +1150,12 @@ npm install customizable-toast-notification</pre
           var lines = [];
           Object.keys(opts).forEach(function (key) {
             var val = opts[key];
-            if (key === "cta") {
-              var ctaLines = [];
+            if (key === "cta" || key === "loader") {
+              var nestedLines = [];
               Object.keys(val).forEach(function (k) {
-                ctaLines.push("      " + k + ": " + JSON.stringify(val[k]));
+                nestedLines.push("      " + k + ": " + JSON.stringify(val[k]));
               });
-              lines.push("  cta: {\n" + ctaLines.join(",\n") + "\n  }");
+              lines.push("  " + key + ": {\n" + nestedLines.join(",\n") + "\n  }");
             } else {
               lines.push("  " + key + ": " + JSON.stringify(val));
             }
@@ -1256,6 +1308,34 @@ npm install customizable-toast-notification</pre
                 type: "select",
                 label: "fontDirection",
                 options: ["auto", "ltr", "rtl"],
+              },
+              { key: "fontPadding", type: "text", label: "fontPadding", placeholder: "e.g. 0 4px" },
+            ],
+          },
+          {
+            title: "Loader / Spinner",
+            fields: [
+              {
+                key: "showLoader",
+                type: "checkbox",
+                label: "showLoader (inline SVG spinner)",
+              },
+              {
+                key: "loaderSize",
+                type: "number",
+                label: "loader.size (px, default 14)",
+                placeholder: "14",
+              },
+              {
+                key: "loaderColor",
+                type: "color",
+                label: "loader.color (auto: currentColor)",
+              },
+              {
+                key: "loaderText",
+                type: "text",
+                label: "loader.text (inline label next to spinner)",
+                placeholder: "e.g. Loading...",
               },
             ],
           },
@@ -1469,6 +1549,7 @@ npm install customizable-toast-notification</pre
       }
 
         buildControls();
+        document
           .getElementById("pgFireBtn")
           .addEventListener("click", fireCurrentConfig);
         document
@@ -1570,6 +1651,18 @@ npm install customizable-toast-notification</pre
               message: "Scheduled maintenance tonight at 11pm UTC.",
               position: "top-full-width",
               duration: 4000,
+            },
+          },
+          {
+            icon: "⏳",
+            title: "Inline SVG loader",
+            tag: "showLoader: true",
+            desc: "Displays an animated inline SVG spinner alongside notification message.",
+            options: {
+              type: "info",
+              message: "Processing file upload...",
+              showLoader: true,
+              duration: 3500,
             },
           },
         ];
@@ -1693,6 +1786,43 @@ npm install customizable-toast-notification</pre
               message: "New comment on your post",
             });
           }
+        });
+
+        wire("aiTriageErrorBtn", function () {
+          customizableToast.createToast({
+            type: "error",
+            message: "Payment failed: card expired (TypeSafe AI Triaged)",
+            duration: 6000,
+            cta: {
+              label: "Update Card",
+              onClick: function () {},
+              autoClose: true,
+            },
+          });
+          setAccent("error");
+        });
+
+        wire("aiTriageSuccessBtn", function () {
+          customizableToast.createToast({
+            type: "success",
+            message: "Export completed: sales_report.csv ready (24MB)",
+            duration: 4500,
+            cta: {
+              label: "Download",
+              onClick: function () {},
+              autoClose: true,
+            },
+          });
+          setAccent("success");
+        });
+
+        wire("aiTriageWarningBtn", function () {
+          customizableToast.createToast({
+            type: "warning",
+            message: "Cloud storage usage reached 88% capacity",
+            duration: 4000,
+          });
+          setAccent("warning");
         });
       })();
     </script>
