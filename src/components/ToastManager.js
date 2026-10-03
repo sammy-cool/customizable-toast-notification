@@ -601,7 +601,7 @@ async function updateBadge({ outer, count }) {
 /**
  * Updates an active, pending, or queued toast in-place with new options.
  * @param {string} key
- * @param {Object} newOptions
+ * @param {Partial<import('../index.js').ToastOptions>} [newOptions]
  */
 export async function updateToastByKey(key, newOptions = {}) {
   if (!key || typeof newOptions !== "object" || newOptions === null) return;
@@ -735,6 +735,7 @@ export async function updateToastByKey(key, newOptions = {}) {
   // 4. Update Progress Bar
   if (newOptions.progress !== undefined) {
     let pct = Number(newOptions.progress);
+    if (!Number.isFinite(pct)) pct = 0;
     if (pct <= 1 && pct > 0) pct = pct * 100;
     pct = Math.min(100, Math.max(0, pct));
 

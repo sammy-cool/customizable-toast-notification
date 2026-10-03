@@ -86,8 +86,8 @@ import { setAudioEnabled, isAudioEnabled, playTone } from "./utils/audio.js";
 /**
  * @typedef {Object} ToastPromiseMessages
  * @property {string} [loading]
- * @property {string | ((result: any) => string)} [success]
- * @property {string | ((error: any) => string)} [error]
+ * @property {string | ((result: unknown) => string)} [success]
+ * @property {string | ((error: unknown) => string)} [error]
  */
 
 let defaultColors = {

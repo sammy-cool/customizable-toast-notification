@@ -141,6 +141,16 @@ export function createProgressBar(toast, options) {
 
   toast.appendChild(progressBar);
 
+  if (options.progress !== undefined) {
+    let pct = Number(options.progress);
+    if (!Number.isFinite(pct)) pct = 0;
+    if (pct <= 1 && pct > 0) pct = pct * 100;
+    pct = Math.min(100, Math.max(0, pct));
+    progressBar.style.width = `${pct}%`;
+    progressBar.style.transition = "width 200ms ease";
+    return;
+  }
+
   if (typeof progressBar.animate === "function") {
     toast._progressAnimation = progressBar.animate(
       [{ width: finalWidth }, { width: "0%" }],

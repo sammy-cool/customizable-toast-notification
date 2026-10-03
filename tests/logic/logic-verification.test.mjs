@@ -1464,3 +1464,32 @@ describe("audio.js — Web Audio API notification sound synth", () => {
     playTone("pop");
   });
 });
+
+describe("toast-utils-core.js — progress bar options and live update robustness", () => {
+  test("createProgressBar sets initial fixed width when progress is provided", async () => {
+    freshDom();
+    const { createProgressBar } = await import("../../src/components/toast-utils-core.js");
+    const toast = document.createElement("div");
+
+    createProgressBar(toast, { progress: 45, duration: 2500 });
+    const bar = toast.querySelector(".toast-progress-bar");
+    assert.ok(bar);
+    assert.equal(bar.style.width, "45%");
+    assert.equal(toast._progressAnimation, undefined);
+  });
+
+  test("createProgressBar safely handles float (0..1) and non-finite values", async () => {
+    freshDom();
+    const { createProgressBar } = await import("../../src/components/toast-utils-core.js");
+    const toast1 = document.createElement("div");
+    createProgressBar(toast1, { progress: 0.75 });
+    const bar1 = toast1.querySelector(".toast-progress-bar");
+    assert.equal(bar1.style.width, "75%");
+
+    const toast2 = document.createElement("div");
+    createProgressBar(toast2, { progress: NaN });
+    const bar2 = toast2.querySelector(".toast-progress-bar");
+    assert.equal(bar2.style.width, "0%");
+  });
+});
+
