@@ -1,3 +1,27 @@
+# [3.13.0](https://github.com/sammy-cool/customizable-toast-notification/compare/v3.12.4...v3.13.0) (2026-10-03)
+
+
+### Bug Fixes
+
+* correct wrapText truncate logic, enhance CTA href handling, and prune dead code ([6252d35](https://github.com/sammy-cool/customizable-toast-notification/commit/6252d35d0552b2207a767d40d35545c58a00e0a8))
+* eliminate postinstall anti-pattern, harden CI gates, and add defensive edge-case handling ([7856d30](https://github.com/sammy-cool/customizable-toast-notification/commit/7856d3064437b048cdaa20328c9c9bf5decd914b))
+* harden edge cases across id generator, timers, container registry, and promise wrappers ([0678f85](https://github.com/sammy-cool/customizable-toast-notification/commit/0678f85c93731796800cec3a179feef1ed033359))
+* harden progress option, ensure strict typings, and defend against NaN ([fd8a082](https://github.com/sammy-cool/customizable-toast-notification/commit/fd8a0824f9810d41d0b77a3aa5f79f774dc4261e))
+* harden workflows, make toast dismissal concurrent, and document className ([8d4ad60](https://github.com/sammy-cool/customizable-toast-notification/commit/8d4ad607b182ad7ac673ced996989c77aa991f6b))
+* **package:** remove duplicate author field and remove postinstall from files array ([125ece6](https://github.com/sammy-cool/customizable-toast-notification/commit/125ece6a44f44e3760e191f7ce0bbe3423a6321e))
+* preserve loader element during text rendering and add loader types and tests ([fa30711](https://github.com/sammy-cool/customizable-toast-notification/commit/fa30711d5330f921401e85a6996892d2bd022003))
+* prioritize active toasts in dismissMostRecent to drain queue ([ab6d0a3](https://github.com/sammy-cool/customizable-toast-notification/commit/ab6d0a37c2c721412f64f70c420e3c3b2d2a2045))
+* resolve 28 bugs across positioning, sanitization, timers, workflows, and a11y ([9f21ee7](https://github.com/sammy-cool/customizable-toast-notification/commit/9f21ee7fb9d90d6673d61695e82c5953a14174db))
+* standardize toast exit animation transform to downward movement ([3e4e273](https://github.com/sammy-cool/customizable-toast-notification/commit/3e4e273dd0f8fe521832082250b7a7b35bfc5da5))
+
+
+### Features
+
+* add live updates, stacked card deck, swipe dismiss, and audio synth ([67b2ede](https://github.com/sammy-cool/customizable-toast-notification/commit/67b2eded62c9443be119319daae7c6da738807c6))
+* add loader controls to playground and TypeSafe AI smart toast recipe ([b8e84e7](https://github.com/sammy-cool/customizable-toast-notification/commit/b8e84e7c91c5794e6333cef2e61d51a0823bdd85))
+* **animation:** add custom animation, exit transitions, and memory safeguards ([f8cf63c](https://github.com/sammy-cool/customizable-toast-notification/commit/f8cf63cfb600c606e8fd77fc5ebac9f0b275181c))
+* auto-convert numeric dimensional options to px and restore forceReflow ([6a42f71](https://github.com/sammy-cool/customizable-toast-notification/commit/6a42f718f5bbc6b1366956c875e2fd8fa22657b1))
+
 ## [3.12.4](https://github.com/sammy-cool/customizable-toast-notification/compare/v3.12.3...v3.12.4) (2026-10-03)
 
 
