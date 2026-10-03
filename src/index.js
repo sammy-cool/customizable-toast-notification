@@ -91,43 +91,38 @@ let defaultMessages = {
   info: "Information message!",
 };
 
-const pendingToasts = [];
-
 let domReady = false;
+let domReadyPromise = null;
 
 async function checkDOMReady() {
   if (domReady) return;
 
-  const SETTLE_DELAY_MS = 200;
+  if (typeof window === "undefined" || typeof document === "undefined") {
+    return;
+  }
 
-  if (typeof window !== "undefined" && typeof document !== "undefined") {
-    if (
-      document.readyState === "complete" ||
-      document.readyState === "interactive"
-    ) {
-      domReady = true;
-      const toFlush = [...pendingToasts];
-      pendingToasts.length = 0;
-      for (const options of toFlush) {
-        setTimeout(() => createToastNow(options), 0);
-      }
-    } else {
+  if (
+    document.readyState === "complete" ||
+    document.readyState === "interactive"
+  ) {
+    domReady = true;
+    return;
+  }
+
+  if (!domReadyPromise) {
+    domReadyPromise = new Promise((resolve) => {
       document.addEventListener(
         "DOMContentLoaded",
         () => {
-          setTimeout(() => {
-            domReady = true;
-            const toFlush = [...pendingToasts];
-            pendingToasts.length = 0;
-            for (const options of toFlush) {
-              setTimeout(() => createToastNow(options), 0);
-            }
-          }, SETTLE_DELAY_MS);
+          domReady = true;
+          resolve();
         },
         { once: true },
       );
-    }
+    });
   }
+
+  await domReadyPromise;
 }
 
 async function createToastNow(options = {}) {
@@ -155,11 +150,6 @@ async function createToast(options = {}) {
   }
 
   await checkDOMReady();
-
-  if (!domReady) {
-    pendingToasts.push(options);
-    return null;
-  }
 
   return await createToastNow(options);
 }

@@ -1056,6 +1056,7 @@ npm install customizable-toast-notification</pre
           fontLineHeight: "1.4",
           fontDirection: "auto",
           fontPadding: "",
+          className: "",
           wrapText: "normal",
           maxWidth: "400px",
           pauseOnHover: null, // null = "auto" (true only if cta is set)
@@ -1117,6 +1118,7 @@ npm install customizable-toast-notification</pre
             opts.fontLineHeight = s.fontLineHeight;
           if (s.fontDirection !== DEFAULTS.fontDirection) opts.fontDirection = s.fontDirection;
           if (s.fontPadding) opts.fontPadding = s.fontPadding;
+          if (s.className) opts.className = s.className;
           if (s.wrapText !== DEFAULTS.wrapText) opts.wrapText = s.wrapText;
           if (s.maxWidth && s.maxWidth !== DEFAULTS.maxWidth) opts.maxWidth = s.maxWidth;
           if (s.pauseOnHover !== null) opts.pauseOnHover = s.pauseOnHover;
@@ -1367,6 +1369,12 @@ npm install customizable-toast-notification</pre
                 key: "animationEasing",
                 type: "text",
                 label: "animationEasing",
+              },
+              {
+                key: "className",
+                type: "text",
+                label: "className (custom CSS class)",
+                placeholder: "e.g. custom-animation-bounce",
               },
             ],
           },

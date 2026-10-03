@@ -58,7 +58,9 @@ jobs:
 
       - name: Run ESLint
         run: npm run lint
-        continue-on-error: true
+
+      - name: Audit Production Security
+        run: npm audit --omit=dev
 
       - name: Build Package
         run: npm run zone-build

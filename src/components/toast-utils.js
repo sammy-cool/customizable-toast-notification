@@ -235,7 +235,6 @@ export async function createEmergencyToast(options, onClose) {
       if (typeof onClose === "function") onClose(emergency);
     });
 
-    document.body.appendChild(emergency);
     const duration = Number(options?.duration) || 2500;
     const timer = setTimeout(() => {
       emergency.remove();

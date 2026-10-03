@@ -140,6 +140,7 @@ auto-dismissed on its own — it no-ops rather than throwing.
 | `loader`            | `object`  | `null`                          | Custom loader config (`size`, `color`, `text`)            |
 | `fontDirection`     | `string`  | `"auto"`                        | Font direction: `"auto"`, `"ltr"`, `"rtl"`                |
 | `fontPadding`       | `string`  | `undefined`                     | Custom padding for message container (e.g. `"4px 8px"`)    |
+| `className`         | `string`  | `undefined`                     | Custom CSS class name(s) for animations / styling         |
 | `cta`               | `object`  | `null`                          | Call-to-action configuration (see [CTA](#call-to-action)) |
 
 #### Position Options

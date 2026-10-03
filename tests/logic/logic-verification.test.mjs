@@ -1067,6 +1067,84 @@ describe("ToastManager.js — exit animation triggers on dismissal", () => {
   });
 });
 
+describe("ToastManager.js — dismissMostRecent with in-flight pending toasts", () => {
+  test("dismissMostRecent cancels in-flight pending toast before it mounts", async () => {
+    freshDom();
+    const { showToast, dismissMostRecent } = await import(
+      "../../src/components/ToastManager.js?fresh=" + Date.now() + Math.random()
+    );
+    // showToast schedules creation in rAF (pending)
+    await showToast({ message: "In-flight toast" });
+    // dismiss immediately before rAF runs
+    await dismissMostRecent();
+    // Wait for rAF / timer to settle
+    await new Promise((r) => setTimeout(r, 50));
+    const mountedToast = document.querySelector('[id^="toast-"]');
+    assert.equal(mountedToast, null, "Toast should have been cancelled before mounting");
+  });
+});
+
+describe("ToastManager.js — closeAllToasts concurrent dismissal", () => {
+  test("closeAllToasts dismisses multiple active toasts concurrently", async () => {
+    freshDom();
+    const { showToast, closeAllToasts } = await import(
+      "../../src/components/ToastManager.js?fresh=" + Date.now() + Math.random()
+    );
+    await showToast({ message: "Toast 1", position: "top-left", duration: 10000 });
+    await showToast({ message: "Toast 2", position: "bottom-left", duration: 10000 });
+    await new Promise((r) => setTimeout(r, 100));
+
+    const toasts = document.querySelectorAll(".toast");
+    assert.equal(toasts.length, 2);
+
+    await closeAllToasts();
+    assert.equal(document.querySelectorAll(".toast").length, 0);
+  });
+});
+
+describe("toast-utils.js — createEmergencyToast purity", () => {
+  test("createEmergencyToast returns element without appending directly to document.body", async () => {
+    freshDom();
+    const { createEmergencyToast } = await import(
+      "../../src/components/toast-utils.js?fresh=" + Date.now() + Math.random()
+    );
+    const bodyChildrenBefore = document.body.children.length;
+    const el = await createEmergencyToast({ message: "Emergency Alert" });
+    assert.ok(el);
+    assert.equal(document.body.children.length, bodyChildrenBefore, "Should not attach directly to body");
+  });
+});
+
+describe("toast-utils.js — animation & custom className across all toast types", () => {
+  test("custom className and animation styles apply to all toast types", async () => {
+    freshDom();
+    const { applyRichStyling } = await import(
+      "../../src/components/toast-utils.js?fresh=" + Date.now() + Math.random()
+    );
+    const types = ["info", "success", "error", "warning"];
+    for (const type of types) {
+      const toast = document.createElement("div");
+      await applyRichStyling(
+        toast,
+        {
+          type,
+          message: `${type} anim test`,
+          className: "animate-bounce custom-shadow",
+          animationDuration: "0.5s",
+          animationEasing: "ease-in-out",
+        },
+        () => {},
+      );
+      assert.ok(toast.className.includes(`toast-${type}`));
+      assert.ok(toast.className.includes("animate-bounce"));
+      assert.ok(toast.className.includes("custom-shadow"));
+      assert.equal(toast.style.opacity, "0");
+      assert.equal(toast.style.transform, "translateY(20px)");
+      assert.equal(toast.style.transition, "opacity 500ms ease-in-out, transform 500ms ease-in-out");
+    }
+  });
+});
+
 
 
 

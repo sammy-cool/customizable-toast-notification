@@ -160,6 +160,18 @@ async function createOne(options, key, initialCount) {
 
 export async function dismissMostRecent() {
   try {
+    if (pending.size > 0) {
+      const [pendingKey, pendingEntry] = Array.from(pending.entries()).at(-1);
+      if (pendingEntry?.rafId) cancelAnimationFrame(pendingEntry.rafId);
+      pending.delete(pendingKey);
+      return;
+    }
+
+    if (queue.length > 0) {
+      queue.pop();
+      return;
+    }
+
     if (active.size === 0) return;
 
     let lastToastEl = null;
@@ -209,13 +221,15 @@ export async function closeAllToasts() {
       .map((d) => d.toast)
       .filter(Boolean);
 
-    for (const t of activeToasts) {
-      try {
-        await closeToast(t);
-      } catch (error_inner) {
-        console.warn("closeAllToasts: failed to close one toast:", error_inner);
-      }
-    }
+    await Promise.allSettled(
+      activeToasts.map(async (t) => {
+        try {
+          await closeToast(t);
+        } catch (error_inner) {
+          console.warn("closeAllToasts: failed to close one toast:", error_inner);
+        }
+      }),
+    );
   } catch (err) {
     console.error("closeAllToasts failed:", err);
   }
