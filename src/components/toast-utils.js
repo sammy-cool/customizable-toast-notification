@@ -20,9 +20,15 @@ import {
 export async function applyRichStyling(toast, options, onClose) {
   const durationMs = await parseAnimationDuration(options?.animationDuration);
   const validAnimationDuration = `${durationMs}ms`;
+  const easing = typeof options?.animationEasing === "string" && options.animationEasing.trim()
+    ? options.animationEasing.trim()
+    : "ease";
 
-  // Compose className based on provided type (default to "info")
-  toast.className = `toast toast-${options?.type ?? "info"}`;
+  // Compose className based on provided type and optional custom className
+  const customClass = typeof options?.className === "string" && options.className.trim()
+    ? ` ${options.className.trim()}`
+    : "";
+  toast.className = `toast toast-${options?.type ?? "info"}${customClass}`;
 
   Object.assign(toast.style, {
     background: options?.backgroundColor,
@@ -41,7 +47,8 @@ export async function applyRichStyling(toast, options, onClose) {
     cursor: "default",
     boxSizing: "border-box",
     userSelect: "text",
-    transition: `opacity ${validAnimationDuration} ${options?.animationEasing}, transform ${validAnimationDuration} ${options?.animationEasing}`,
+    pointerEvents: "auto",
+    transition: `opacity ${validAnimationDuration} ${easing}, transform ${validAnimationDuration} ${easing}`,
     transform: "translateY(20px)",
     zIndex: "9999",
   });
@@ -82,13 +89,10 @@ export async function applyRichStyling(toast, options, onClose) {
     wordBreak: "break-word",
     overflow: "hidden",
     textOverflow: "ellipsis",
-    // AUDIT FIX (C4): display/WebkitLineClamp/WebkitBoxOrient used to be
-    // re-applied here unconditionally, silently overwriting whatever the
-    // wrapText conditional above had just set — meaning wrapText:"normal"
-    // never actually worked; every toast truncated to 3 lines regardless.
-    // Those three properties are already correctly set by the if/else block
-    // above based on options.wrapText, so they're intentionally NOT
-    // repeated here anymore.
+    direction:
+      options?.fontDirection && options.fontDirection !== "auto"
+        ? options.fontDirection
+        : undefined,
   });
 
   const allowHtml = !!options.allowHtml; // opt-in flag
@@ -127,15 +131,14 @@ export async function applyRichStyling(toast, options, onClose) {
         "HTML message sanitization failed, falling back to text:",
         err
       );
-      messageSpan.textContent = rawMessage;
+      messageSpan.appendChild(document.createTextNode(String(rawMessage)));
     }
   } else {
-    // default safe text mode
-    messageSpan.textContent = String(rawMessage);
+    // default safe text node mode (preserves loader and spacer elements)
+    messageSpan.appendChild(document.createTextNode(String(rawMessage)));
   }
 
-  // set aria + title
-  messageSpan.setAttribute("aria-label", "Toast Notification Center");
+  // Set title for overflow tooltip without masking accessible text
   messageSpan.setAttribute(
     "title",
     typeof rawMessage === "string"
@@ -229,23 +232,21 @@ export async function createEmergencyToast(options, onClose) {
     emergency.appendChild(innerWrapper);
     closeSpan.addEventListener("click", () => {
       emergency.remove();
-      onClose(emergency);
+      if (typeof onClose === "function") onClose(emergency);
     });
 
     document.body.appendChild(emergency);
     const duration = Number(options?.duration) || 2500;
-    setTimeout(() => {
+    const timer = setTimeout(() => {
       emergency.remove();
-      onClose(emergency);
+      if (typeof onClose === "function") onClose(emergency);
     }, duration);
+    if (typeof timer?.unref === "function") timer.unref();
 
     return emergency;
   } catch (error) {
     console.error("Emergency toast creation failed:", error);
-    setTimeout(() => {
-      alert(options?.message || "Emergency Toast Creation Showing!");
-      onClose(null);
-    }, 100);
+    if (typeof onClose === "function") onClose(null);
     return null;
   }
 }

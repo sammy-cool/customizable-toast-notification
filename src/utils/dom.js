@@ -49,14 +49,7 @@ export async function removeElement(el) {
   if (!el) return true;
 
   try {
-    if (el?.parentNode?.id.includes("toast-container-")) {
-      el.parentNode.removeChild(el);
-      return true;
-    }
-  } catch {}
-
-  try {
-    if (el.remove) {
+    if (typeof el.remove === "function") {
       el.remove();
       return true;
     }
@@ -73,14 +66,14 @@ export async function removeElement(el) {
 }
 
 export async function parseAnimationDuration(duration) {
-  if (typeof duration === "number" && duration > 0) return duration;
+  if (typeof duration === "number" && Number.isFinite(duration) && duration > 0) return duration;
   if (typeof duration === "string") {
     if (duration.endsWith("s") && !duration.endsWith("ms")) {
       const parsed = parseFloat(duration) * 1000;
-      return parsed > 0 ? parsed : 500;
+      return Number.isFinite(parsed) && parsed > 0 ? parsed : 500;
     }
     const parsed = parseFloat(duration);
-    return parsed > 0 ? parsed : 500;
+    return Number.isFinite(parsed) && parsed > 0 ? parsed : 500;
   }
   return 500;
 }
@@ -94,8 +87,8 @@ export function forceReflow(el) {
   }
 }
 
-export function query(selector, root = document) {
-  return root.querySelector(selector);
+export function query(selector, root = (typeof document !== "undefined" ? document : null)) {
+  return root?.querySelector ? root.querySelector(selector) : null;
 }
 
 class LRUCache {

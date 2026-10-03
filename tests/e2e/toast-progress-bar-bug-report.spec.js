@@ -40,6 +40,9 @@ test.describe("real-world bug report: borderRadius 14px + success type + link CT
     const bar = toast.locator("div").last();
     await expect(bar).toBeVisible();
 
+    // Wait for entrance transition (400ms) to settle so bounding boxes are measured at rest
+    await page.waitForTimeout(500);
+
     const toastBox = await toast.boundingBox();
     const barBox = await bar.boundingBox();
 
@@ -116,6 +119,9 @@ test.describe("real-world bug report: borderRadius 14px + success type + link CT
       .first();
     const bar = toast.locator("div").last();
     await expect(bar).toBeVisible();
+
+    // Wait for entrance transition (400ms) to settle so bounding boxes are measured at rest
+    await page.waitForTimeout(500);
 
     const toastBox = await toast.boundingBox();
     const barBox = await bar.boundingBox();

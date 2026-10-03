@@ -4,7 +4,7 @@ import { getDynamicAccessibleTextColorHex } from "../utils/dom.js";
 
 export function createCTA(toast, options, onClose) {
   const rawCfg = options?.cta;
-  if (!rawCfg) return;
+  if (!rawCfg || typeof rawCfg !== "object" || Array.isArray(rawCfg)) return;
 
   const cfg = { ...rawCfg };
 
@@ -30,6 +30,9 @@ export function createCTA(toast, options, onClose) {
     ? getContrastBackground(options.backgroundColor)
     : "rgba(255,255,255,0.15)";
 
+  const isHex6 = typeof ctaTextColor === "string" && /^#[0-9a-fA-F]{6}$/.test(ctaTextColor.trim());
+  const ctaBorderColor = isHex6 ? `${ctaTextColor.trim()}44` : "rgba(128, 128, 128, 0.3)";
+
   Object.assign(el.style, {
     marginLeft: "10px",
     padding: "6px 10px",
@@ -37,7 +40,7 @@ export function createCTA(toast, options, onClose) {
     fontSize: "12px",
     fontWeight: "600",
     lineHeight: "1",
-    border: `1px solid ${ctaTextColor}44`,
+    border: `1px solid ${ctaBorderColor}`,
     color: ctaTextColor,
     background: ctaBgColor,
     cursor: "pointer",
@@ -53,14 +56,19 @@ export function createCTA(toast, options, onClose) {
         const res = cfg.onClick(e);
         if (res?.then) await res;
       }
+    } catch (err) {
+      console.error("CTA onClick handler error:", err);
     } finally {
-      if (cfg.autoClose !== false) onClose(toast);
+      if (cfg.autoClose !== false && typeof onClose === "function") {
+        onClose(toast);
+      }
     }
   };
 
   el.addEventListener("click", onClick);
 
   el._cleanup = () => el.removeEventListener("click", onClick);
+  toast._cleanupCTA = () => el.removeEventListener("click", onClick);
 
   toast.appendChild(el);
 }
@@ -84,7 +92,9 @@ export function createCloseButton(toast, options, onClose) {
     padding: "0 4px",
   });
 
-  const onClick = () => onClose(toast);
+  const onClick = () => {
+    if (typeof onClose === "function") onClose(toast);
+  };
   closeBtn.addEventListener("click", onClick);
 
   toast._cleanupCloseButton = () => {

@@ -3,7 +3,7 @@
 import { createToastElement } from "./Toast.js";
 import { removeElement } from "../utils/dom.js";
 import { createEmergencyToast } from "./toast-utils.js";
-import { getOrCreateToastContainer } from "../utils/containerRegistry.js";
+import { getOrCreateToastContainer, normalizePositionKey } from "../utils/containerRegistry.js";
 import { setPosition } from "../utils/position.js";
 import { PausableTimer } from "../utils/PausableTimer.js";
 
@@ -21,9 +21,10 @@ function hashString(str) {
 }
 
 function makeKey(options = {}) {
-  const type = String(options.type).trim().toLowerCase();
-  const messageHash = hashString(String(options.message || "")).toString(16);
-  const position = String(options.position).trim().toLowerCase();
+  const safe = options && typeof options === "object" ? options : {};
+  const type = String(safe.type || "info").trim().toLowerCase();
+  const messageHash = hashString(String(safe.message || "")).toString(16);
+  const position = normalizePositionKey(safe.position || "bottom-right");
 
   return `${type}|${messageHash}|${position}`;
 }
@@ -112,6 +113,7 @@ async function createOne(options, key, initialCount) {
       marginBottom: "10px",
       zIndex: "0",
       width: "100%",
+      pointerEvents: "auto",
     });
 
     const inner = document.createElement("div");
@@ -135,6 +137,7 @@ async function createOne(options, key, initialCount) {
     const data = {
       outer,
       toast,
+      options,
       count: Math.max(1, Math.floor(initialCount ?? 0)),
       timeout: null,
       pauseOnHover: shouldPauseOnHover,
@@ -161,24 +164,25 @@ export async function dismissMostRecent() {
 
     let lastToastEl = null;
 
-    const containers = document.querySelectorAll('[id^="toast-container-"]');
-    containers.forEach((container) => {
-      const children = Array.from(container.children || []);
-      if (children.length === 0) return;
-      const candidate = children.at(-1);
-      if (candidate) {
-        lastToastEl = candidate.querySelector('[id^="toast-"]') || candidate;
-      }
-    });
+    // Direct lookup: last active entry is the most recently created toast
+    const activeValues = Array.from(active.values());
+    if (activeValues.length > 0) {
+      const lastData = activeValues.at(-1);
+      lastToastEl =
+        lastData.toast ||
+        (lastData.outer && lastData.outer.querySelector('[id^="toast-"]'));
+    }
 
     if (!lastToastEl) {
-      const entries = Array.from(active.entries());
-      if (entries.length > 0) {
-        const [, data] = entries.at(-1);
-        lastToastEl =
-          data.toast ||
-          (data.outer && data.outer.querySelector('[id^="toast-"]'));
-      }
+      const containers = document.querySelectorAll('[id^="toast-container-"]');
+      containers.forEach((container) => {
+        const children = Array.from(container.children || []);
+        if (children.length === 0) return;
+        const candidate = children.at(-1);
+        if (candidate) {
+          lastToastEl = candidate.querySelector('[id^="toast-"]') || candidate;
+        }
+      });
     }
 
     if (!lastToastEl) return;
@@ -195,11 +199,15 @@ export async function dismissMostRecent() {
 
 export async function closeAllToasts() {
   try {
+    for (const [, entry] of pending) {
+      if (entry?.rafId) cancelAnimationFrame(entry.rafId);
+    }
+    pending.clear();
+    queue.length = 0;
+
     const activeToasts = Array.from(active.values())
       .map((d) => d.toast)
       .filter(Boolean);
-    queue.length = 0;
-    pending.clear();
 
     for (const t of activeToasts) {
       try {
@@ -213,11 +221,29 @@ export async function closeAllToasts() {
   }
 }
 
+export function resetToastManager() {
+  for (const [, entry] of pending) {
+    if (entry?.rafId) cancelAnimationFrame(entry.rafId);
+  }
+  pending.clear();
+  queue.length = 0;
+  for (const [, data] of active) {
+    data.timer?.clear();
+    data.outer?._pauseCleanup?.();
+    data.toast?._cleanupCloseButton?.();
+    data.toast?._cleanup?.();
+  }
+  active.clear();
+  visibleCount = 0;
+}
+
 export const dismiss = dismissMostRecent;
 export const noop = closeAllToasts;
 
 function createDismissTimer(toast, options) {
-  const delay = Number(options.duration ?? 1800) + 5;
+  const raw = Number(options?.duration);
+  const duration = Number.isFinite(raw) && raw > 0 ? raw : 2500;
+  const delay = duration + 5;
   const timer = new PausableTimer(async () => await closeToast(toast), delay);
   timer.start();
   return timer;
@@ -318,8 +344,9 @@ export async function closeToastByKey(key) {
     data.timer?.clear();
     data.outer?._pauseCleanup?.();
     data.toast?._cleanupCloseButton?.();
+    data.toast?._cleanupCTA?.();
     data.toast?._cleanup?.();
-    // Clean up CTA click listener if present
+    // Clean up CTA click listener if present directly on button/link
     const ctaEl = data.toast?.querySelector("button, a");
     ctaEl?._cleanup?.();
 
@@ -330,7 +357,23 @@ export async function closeToastByKey(key) {
     if (badge) badge.remove();
 
     const animDuration = data.toast?._animationDuration ?? 400;
-    await removeWithTransition(data.outer, animDuration);
+    if (data.toast) {
+      data.toast.style.opacity = "0";
+      data.toast.style.transform = "translateY(20px)";
+    }
+
+    const parentContainer = data.outer?.parentElement;
+    await removeWithTransition(data.outer, data.toast, animDuration);
+
+    if (
+      parentContainer &&
+      parentContainer.children.length === 0 &&
+      parentContainer.id?.startsWith("toast-container-")
+    ) {
+      try {
+        parentContainer.remove();
+      } catch {}
+    }
 
     await drainQueue();
   } catch (error) {
@@ -351,7 +394,7 @@ async function drainQueue() {
   }
 }
 
-async function removeWithTransition(el, animationDurationMs = 400) {
+async function removeWithTransition(el, targetEl, animationDurationMs = 400) {
   if (!el) return Promise.resolve();
 
   return new Promise((resolve) => {
@@ -363,13 +406,13 @@ async function removeWithTransition(el, animationDurationMs = 400) {
       resolve();
     };
 
-    const child = el.firstElementChild || el;
-    if (!child) return resolve();
+    const animEl = targetEl || el.firstElementChild || el;
+    if (!animEl) return resolve();
 
     const onEnd = (e) => {
       try {
-        if (e.target !== child) return;
-        child.removeEventListener("transitionend", onEnd, true);
+        if (e.target !== animEl) return;
+        animEl.removeEventListener("transitionend", onEnd, true);
         finish();
       } catch (error) {
         console.error("removeWithTransition error:", error);
@@ -377,16 +420,16 @@ async function removeWithTransition(el, animationDurationMs = 400) {
     };
 
     try {
-      child.addEventListener("transitionend", onEnd, true);
+      animEl.addEventListener("transitionend", onEnd, true);
     } catch (error) {
       console.error("removeWithTransition error:", error);
     }
 
-    // Use animation duration + buffer for fallback timeout
-    const fallbackTimeout = animationDurationMs + 300;
+    // Use animation duration + 100ms buffer for fallback timeout
+    const fallbackTimeout = animationDurationMs + 100;
     setTimeout(() => {
       try {
-        child.removeEventListener("transitionend", onEnd, true);
+        animEl.removeEventListener("transitionend", onEnd, true);
         finish();
       } catch (error) {
         console.error("removeWithTransition error:", error);

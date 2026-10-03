@@ -68,7 +68,7 @@ Global Variable Name: `customizableToast`
 <script src="https://cdn.jsdelivr.net/npm/customizable-toast-notification/dist/index.umd.js"></script>
 
 <!-- OR pin to a specific version (recommended for stability) -->
-<script src="https://cdn.jsdelivr.net/npm/customizable-toast-notification@3.11.4/dist/index.umd.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/customizable-toast-notification@3.12.3/dist/index.umd.js"></script>
 
 <script>
   // Access the global UMD export
@@ -136,7 +136,10 @@ auto-dismissed on its own — it no-ops rather than throwing.
 | `fontSize`          | `string`  | `"14px"`                        | Font size                                                 |
 | `fontWeight`        | `string`  | `"400"`                         | Font weight                                               |
 | `fontLineHeight`    | `string`  | `"1.4"`                         | Font line height                                          |
+| `showLoader`        | `boolean` | `false`                         | Show spinner loader before the message                    |
+| `loader`            | `object`  | `null`                          | Custom loader config (`size`, `color`, `text`)            |
 | `fontDirection`     | `string`  | `"auto"`                        | Font direction: `"auto"`, `"ltr"`, `"rtl"`                |
+| `fontPadding`       | `string`  | `undefined`                     | Custom padding for message container (e.g. `"4px 8px"`)    |
 | `cta`               | `object`  | `null`                          | Call-to-action configuration (see [CTA](#call-to-action)) |
 
 #### Position Options
@@ -213,6 +216,28 @@ Any toast with a `cta` automatically gets `pauseOnHover: true` unless you overri
 | `rel`       | `string`   | `auto`                            | Link relationship — `target="_blank"` automatically gets `rel="noopener noreferrer"` unless you set your own |
 | `autoClose` | `boolean`  | `true`                            | Close toast after CTA click                                                                                  |
 | `ariaLabel` | `string`   | `label`                           | Accessibility label                                                                                          |
+
+### Loader Options
+
+Add an animated SVG spinner directly alongside the message:
+
+```js
+createToast({
+  message: "Processing file...",
+  showLoader: true,
+  loader: {
+    size: 16,
+    color: "currentColor",
+    text: "Working...",
+  },
+});
+```
+
+| Parameter | Type     | Default          | Description                                    |
+| --------- | -------- | ---------------- | ---------------------------------------------- |
+| `size`    | `number` | `14`             | Spinner width and height in pixels             |
+| `color`   | `string` | `"currentColor"` | SVG stroke color                               |
+| `text`    | `string` | `""`             | Optional inline label text next to the spinner |
 
 ### `setDefaultColors(colors)`
 

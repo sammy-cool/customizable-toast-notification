@@ -20,12 +20,12 @@ below for why that matters here specifically.
 
 ```bash
 npm run lint            # ESLint
-node --test tests/logic/  # fast unit-style tests, no browser needed
+npm run ci:test         # fast unit & logic verification tests, no browser needed
 npm run zone-build       # full build: JS bundles + TypeScript types
 npx playwright test      # full end-to-end suite (Chromium/Firefox/WebKit)
 ```
 
-Please run at least `npm run lint` and `node --test tests/logic/` before
+Please run at least `npm run lint` and `npm run ci:test` before
 opening a PR — both are fast (well under a minute) and CI will catch
 anything you miss anyway, but catching it locally saves a round trip.
 

@@ -8,8 +8,9 @@ const containerLocks = new Map(); // id -> Promise<HTMLElement>
  * Normalize a position string to a canonical key (id-safe, stable).
  */
 export function normalizePositionKey(position) {
-  // lower-case, trim, unify separators, alias "below" -> "bottom"
-  const raw = String(position).toLowerCase().trim();
+  if (!position || typeof position !== "string") return "bottom-right";
+  const raw = position.toLowerCase().trim();
+  if (!raw) return "bottom-right";
   const aliased = raw.replace(/\bbelow\b/g, "bottom");
   return aliased
     .replace(/\s+/g, "-")
@@ -21,27 +22,34 @@ export function normalizePositionKey(position) {
  * Canonical container id
  */
 export function getContainerId(position) {
-  return `toast-container-${normalizePositionKey(position)}`;
+  const pos = normalizePositionKey(position);
+  return `toast-container-${pos}`;
+}
+
+export function resetContainerRegistry() {
+  containerRegistry.clear();
+  containerLocks.clear();
 }
 
 /**
  * Atomically get or create a single container per canonical id.
  */
 export async function getOrCreateToastContainer(options, setPosition) {
-  const id = getContainerId(options.position);
+  const id = getContainerId(options?.position || "bottom-right");
   // If a creation is in-flight, await it
   if (containerLocks.has(id)) {
     return containerLocks.get(id);
   }
 
   const p = (async () => {
-    // 1) Prefer registry cache if still connected
+    // 1) Prefer registry cache if still connected to current document
     const cached = containerRegistry.get(id);
-    if (cached?.isConnected) {
+    const isCurrentDoc = typeof document === "undefined" || cached?.ownerDocument === document;
+    if (cached?.isConnected && isCurrentDoc) {
       return cached;
     }
-    // Clean up stale registry entry if container was removed from DOM
-    if (cached && !cached.isConnected) {
+    // Clean up stale registry entry if container was removed from DOM or from old document
+    if (cached) {
       containerRegistry.delete(id);
     }
 
@@ -60,6 +68,7 @@ export async function getOrCreateToastContainer(options, setPosition) {
       el.setAttribute("aria-atomic", "true"); // explicit for consistency
       el.style.position = "fixed";
       el.style.zIndex = "9999";
+      el.style.pointerEvents = "none";
       el.style.inset = "auto 10px 10px auto";
       el.style.display = "flex";
       el.style.justifyContent = "space-between";

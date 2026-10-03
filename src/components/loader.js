@@ -1,8 +1,9 @@
 // src/components/loader.js
 export function createLoader(opts = {}) {
-  const size = opts.size || 14;
-  const color = opts.color || "currentColor";
-  const labelText = opts.text || "";
+  const safeOpts = opts && typeof opts === "object" && !Array.isArray(opts) ? opts : {};
+  const size = Number(safeOpts.size) || 14;
+  const color = typeof safeOpts.color === "string" && safeOpts.color.trim() ? safeOpts.color.trim() : "currentColor";
+  const labelText = typeof safeOpts.text === "string" ? safeOpts.text : "";
   const wrapper = document.createElement("span");
   wrapper.className = "toast-loader";
   wrapper.style.display = "inline-flex";
@@ -41,15 +42,12 @@ export function createLoader(opts = {}) {
   }
 
   // add minimal spinner keyframes if not present
-  // Use a module-level flag to avoid race conditions
-  if (!createLoader._stylesInjected) {
-    createLoader._stylesInjected = true;
-    if (!document.getElementById("toast-spinner-styles")) {
-      const st = document.createElement("style");
-      st.id = "toast-spinner-styles";
-      st.innerHTML = `@keyframes toast-spinner { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }`;
-      document.head.appendChild(st);
-    }
+  if (typeof document !== "undefined" && !document.getElementById("toast-spinner-styles")) {
+    const st = document.createElement("style");
+    st.id = "toast-spinner-styles";
+    st.textContent = `@keyframes toast-spinner { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }`;
+    const target = document.head || document.documentElement;
+    if (target) target.appendChild(st);
   }
 
   return wrapper;
