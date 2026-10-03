@@ -1,4 +1,3 @@
-// src/components/ToastContainer.js  //# Container logic
 "use strict";
 
 import { setPosition } from "../utils/position.js";
@@ -7,7 +6,7 @@ import { getOrCreateToastContainer } from "../utils/containerRegistry.js";
 /**
  * Create toast container with error handling
  * @param {object} options - Toast options
- * @returns {HTMLElement} Toast container element
+ * @returns {Promise<HTMLElement>}
  */
 export async function createToastContainer(options = {}) {
   try {

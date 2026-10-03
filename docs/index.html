@@ -804,6 +804,19 @@
               cta: answers.needsAction.probability &gt; 0.7 ? { label: <span class="tok-str">"Update Card"</span> } : <span class="tok-kw">undefined</span>
             });
           </div>
+          <div class="try-row">
+            <button class="try-btn" id="aiTriageErrorBtn">
+              Triage: Card Expired (Error + CTA)
+            </button>
+            <button class="try-btn secondary" id="aiTriageSuccessBtn">
+              Triage: Export Ready (Success + CTA)
+            </button>
+            <button class="try-btn secondary" id="aiTriageWarningBtn">
+              Triage: Storage Alert (Warning)
+            </button>
+          </div>
+        </div>
+
         <div class="api-demo">
           <h3>Live in-place mutation & streaming updates — <code>handle.update()</code></h3>
           <p class="api-desc">
@@ -1057,7 +1070,7 @@ npm install customizable-toast-notification</pre
       </div>
     </footer>
 
-    <script src="https://cdn.jsdelivr.net/npm/customizable-toast-notification@3.12.3/dist/index.umd.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/customizable-toast-notification@latest/dist/index.umd.js"></script>
     <script>
       if (!window.customizableToast) {
         document.write('<script src="../dist/index.umd.js"><\/script>');
@@ -1874,7 +1887,6 @@ npm install customizable-toast-notification</pre
           });
           setAccent("warning");
         });
-
         wire("streamUpdateBtn", function () {
           customizableToast
             .createToast({

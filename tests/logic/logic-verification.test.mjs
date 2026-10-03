@@ -917,7 +917,6 @@ describe("toast-utils-core.js — defensive CTA input handling", () => {
     });
     assert.equal(toast.children.length, 0);
   });
-
   test("createCTA defaults to link when href is provided without explicit variant", async () => {
     freshDom();
     const { createCTA } = await import("../../src/components/toast-utils-core.js");
@@ -1465,8 +1464,3 @@ describe("audio.js — Web Audio API notification sound synth", () => {
     playTone("pop");
   });
 });
-
-
-
-
-
