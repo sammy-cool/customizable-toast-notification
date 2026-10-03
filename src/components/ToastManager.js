@@ -250,19 +250,21 @@ async function createOne(options, key, initialCount) {
 
 export async function dismissMostRecent() {
   try {
-    if (pending.size > 0) {
-      const [pendingKey, pendingEntry] = Array.from(pending.entries()).at(-1);
-      if (pendingEntry?.rafId) cancelAnimationFrame(pendingEntry.rafId);
-      pending.delete(pendingKey);
+    if (active.size === 0) {
+      if (pending.size > 0) {
+        const [pendingKey, pendingEntry] = Array.from(pending.entries()).at(-1);
+        if (pendingEntry?.rafId) cancelAnimationFrame(pendingEntry.rafId);
+        pending.delete(pendingKey);
+        return;
+      }
+
+      if (queue.length > 0) {
+        queue.pop();
+        return;
+      }
+
       return;
     }
-
-    if (queue.length > 0) {
-      queue.pop();
-      return;
-    }
-
-    if (active.size === 0) return;
 
     let lastToastEl = null;
 

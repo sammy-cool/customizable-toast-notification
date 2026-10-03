@@ -1129,6 +1129,38 @@ describe("ToastManager.js — dismissMostRecent with in-flight pending toasts", 
     const mountedToast = document.querySelector('[id^="toast-"]');
     assert.equal(mountedToast, null, "Toast should have been cancelled before mounting");
   });
+
+  test("dismissMostRecent dismisses active toast and drains queued toast when visibleCount reaches MAX_VISIBLE", async () => {
+    freshDom();
+    const { showToast, dismissMostRecent, resetToastManager } = await import(
+      "../../src/components/ToastManager.js?fresh=" + Date.now() + Math.random()
+    );
+    resetToastManager();
+
+    for (let i = 0; i < 4; i++) {
+      await showToast({ message: `queue item ${i}`, position: "bottom-right", duration: 60000 });
+    }
+    // Wait for rAF to settle mounting first 3 items and queueing 4th
+    await new Promise((r) => setTimeout(r, 120));
+
+    const textsInitial = Array.from(
+      document.querySelectorAll('[id^="toast-container-"] [id^="toast-"]'),
+    ).map((el) => el.textContent);
+    assert.equal(textsInitial.length, 3);
+    assert.ok(!textsInitial.some((t) => t.includes("queue item 3")));
+
+    // dismissMostRecent() should close the most recent active toast, draining queue item 3
+    await dismissMostRecent();
+    await new Promise((r) => setTimeout(r, 550));
+
+    const textsAfter = Array.from(
+      document.querySelectorAll('[id^="toast-container-"] [id^="toast-"]'),
+    ).map((el) => el.textContent);
+    assert.equal(textsAfter.length, 3);
+    assert.ok(textsAfter.some((t) => t.includes("queue item 3")));
+
+    resetToastManager();
+  });
 });
 
 describe("ToastManager.js — closeAllToasts concurrent dismissal", () => {
