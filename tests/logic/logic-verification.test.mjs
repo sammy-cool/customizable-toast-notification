@@ -794,3 +794,79 @@ describe("dom.js — removeElement safety", () => {
   });
 });
 
+describe("loader.js — createLoader unit tests", () => {
+  test("createLoader creates inline SVG spinner with default attributes", async () => {
+    freshDom();
+    const { createLoader } = await import("../../src/components/loader.js");
+    const loader = createLoader();
+    assert.equal(loader.className, "toast-loader");
+    const svg = loader.querySelector("svg");
+    assert.ok(svg, "SVG element should be created");
+    assert.equal(svg.getAttribute("width"), "14");
+    assert.equal(svg.getAttribute("height"), "14");
+    const circle = svg.querySelector("circle");
+    assert.ok(circle, "Circle element should be created");
+    assert.equal(circle.getAttribute("stroke"), "currentColor");
+  });
+
+  test("createLoader configures custom size, stroke color, and text label", async () => {
+    freshDom();
+    const { createLoader } = await import("../../src/components/loader.js");
+    const loader = createLoader({ size: 24, color: "#ff5500", text: "Loading..." });
+    const svg = loader.querySelector("svg");
+    assert.equal(svg.getAttribute("width"), "24");
+    assert.equal(svg.getAttribute("height"), "24");
+    const circle = svg.querySelector("circle");
+    assert.equal(circle.getAttribute("stroke"), "#ff5500");
+    const label = loader.querySelector("span");
+    assert.ok(label, "Text label span should be rendered");
+    assert.equal(label.textContent, "Loading...");
+  });
+
+  test("createLoader injects toast-spinner keyframes into document head", async () => {
+    freshDom();
+    const { createLoader } = await import("../../src/components/loader.js");
+    createLoader._stylesInjected = false;
+    createLoader();
+    const styleEl = document.getElementById("toast-spinner-styles");
+    assert.ok(styleEl, "toast-spinner-styles should be injected");
+    assert.ok(styleEl.innerHTML.includes("@keyframes toast-spinner"), "Should define toast-spinner animation");
+  });
+});
+
+describe("toast-utils.js — loader and fontPadding integration", () => {
+  test("showLoader: true attaches toast-loader before message text", async () => {
+    freshDom();
+    const { applyRichStyling } = await import("../../src/components/toast-utils.js");
+    const toast = document.createElement("div");
+    await applyRichStyling(
+      toast,
+      {
+        message: "Processing data...",
+        showLoader: true,
+      },
+      () => {},
+    );
+    const loader = toast.querySelector(".toast-loader");
+    assert.ok(loader, "Toast should contain .toast-loader element");
+    assert.ok(toast.textContent.includes("Processing data..."));
+  });
+
+  test("fontPadding applies custom padding to message container", async () => {
+    freshDom();
+    const { applyRichStyling } = await import("../../src/components/toast-utils.js");
+    const toast = document.createElement("div");
+    await applyRichStyling(
+      toast,
+      {
+        message: "Padded message",
+        fontPadding: "6px 12px",
+      },
+      () => {},
+    );
+    const span = toast.querySelector("span");
+    assert.equal(span.style.padding, "6px 12px");
+  });
+});
+
+

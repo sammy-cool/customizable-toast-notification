@@ -124,11 +124,11 @@ export async function applyRichStyling(toast, options, onClose) {
         "HTML message sanitization failed, falling back to text:",
         err
       );
-      messageSpan.textContent = rawMessage;
+      messageSpan.appendChild(document.createTextNode(String(rawMessage)));
     }
   } else {
-    // default safe text mode
-    messageSpan.textContent = String(rawMessage);
+    // default safe text node mode (preserves loader and spacer elements)
+    messageSpan.appendChild(document.createTextNode(String(rawMessage)));
   }
 
   // Set title for overflow tooltip without masking accessible text

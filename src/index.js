@@ -26,6 +26,13 @@ import { setPosition } from "./utils/position.js";
  */
 
 /**
+ * @typedef {Object} ToastLoaderOptions
+ * @property {number} [size] - Spinner size in pixels (default 14)
+ * @property {string} [color] - Spinner SVG stroke color (default 'currentColor')
+ * @property {string} [text] - Optional text label alongside spinner
+ */
+
+/**
  * @typedef {Object} ToastOptions
  * @property {string} [message]
  * @property {ToastType} [type]
@@ -45,7 +52,7 @@ import { setPosition } from "./utils/position.js";
  * @property {boolean} [allowHtml]
  * @property {boolean} [sanitizeHtml]
  * @property {boolean} [showLoader]
- * @property {Object} [loader]
+ * @property {ToastLoaderOptions} [loader]
  * @property {'normal' | 'truncate' | string | boolean} [wrapText]
  * @property {string} [maxWidth]
  * @property {string} [fontFamily]
