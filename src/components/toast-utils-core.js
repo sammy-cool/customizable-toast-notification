@@ -12,7 +12,7 @@ export function createCTA(toast, options, onClose) {
     cfg.label = "CTA Label Missing!";
   }
 
-  const isLink = !!cfg.href && cfg.variant === "link";
+  const isLink = cfg.variant === "link" || (!cfg.variant && !!cfg.href);
   const el = document.createElement(isLink ? "a" : "button");
 
   if (isLink) {

@@ -61,12 +61,12 @@ export async function applyRichStyling(toast, options, onClose) {
 
   const messageSpan = document.createElement("span");
 
-  if (options?.wrapText) {
-    Object.assign(messageSpan.style, {
-      display: "block",
-      whiteSpace: "normal",
-    });
-  } else {
+  const isTruncate =
+    options?.wrapText === "truncate" ||
+    options?.wrapText === "ellipsis" ||
+    options?.wrapText === false;
+
+  if (isTruncate || !options?.wrapText) {
     Object.assign(messageSpan.style, {
       display: "-webkit-box",
       WebkitBoxOrient: "vertical",
@@ -74,6 +74,11 @@ export async function applyRichStyling(toast, options, onClose) {
       whiteSpace: "normal",
       overflow: "hidden",
       textOverflow: "ellipsis",
+    });
+  } else {
+    Object.assign(messageSpan.style, {
+      display: "block",
+      whiteSpace: "normal",
     });
   }
 

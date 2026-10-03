@@ -2,8 +2,7 @@
 "use strict";
 
 import { setPosition } from "../utils/position.js";
-import { appendChild } from "../utils/dom.js";
-import { normalizePositionKey } from "../utils/containerRegistry.js";
+import { getOrCreateToastContainer } from "../utils/containerRegistry.js";
 
 /**
  * Create toast container with error handling
@@ -12,21 +11,7 @@ import { normalizePositionKey } from "../utils/containerRegistry.js";
  */
 export async function createToastContainer(options = {}) {
   try {
-    const canonicalKey = normalizePositionKey(options?.position);
-    const containerId = `toast-container-${canonicalKey}`;
-    let toastContainer = document.getElementById(containerId);
-
-    if (!toastContainer) {
-      toastContainer = document.createElement("div");
-      toastContainer.id = containerId;
-      toastContainer.style.position = "fixed";
-      toastContainer.style.zIndex = "9999";
-      toastContainer.style.pointerEvents = "none";
-      await setPosition(toastContainer, { ...options, position: canonicalKey });
-      await appendChild(document.body, toastContainer);
-    }
-
-    return toastContainer;
+    return await getOrCreateToastContainer(options, setPosition);
   } catch (error) {
     console.error("Failed to create toast container:", error);
     // Fallback: return body element

@@ -65,6 +65,31 @@ describe("toast-utils.js — applyRichStyling / wrapText", () => {
     assert.equal(span.style.display, "-webkit-box");
     assert.equal(span.style.webkitLineClamp, "3");
   });
+
+  test("FIXED: wrapText:'truncate' and 'ellipsis' correctly apply 3-line truncation", async () => {
+    freshDom();
+    const { applyRichStyling } =
+      await import("../../src/components/toast-utils.js");
+    for (const val of ["truncate", "ellipsis"]) {
+      const toast = document.createElement("div");
+      await applyRichStyling(
+        toast,
+        {
+          type: "info",
+          message: "a message that should truncate",
+          backgroundColor: "#111111",
+          textColor: "#ffffff",
+          wrapText: val,
+          animationDuration: "0.4s",
+          animationEasing: "ease",
+        },
+        () => {},
+      );
+      const span = toast.querySelector("span");
+      assert.equal(span.style.display, "-webkit-box");
+      assert.equal(span.style.webkitLineClamp, "3");
+    }
+  });
 });
 
 describe("toast-utils-core.js — createProgressBar width math", () => {
@@ -891,6 +916,29 @@ describe("toast-utils-core.js — defensive CTA input handling", () => {
       createCTA(toast, { cta: null }, () => {});
     });
     assert.equal(toast.children.length, 0);
+  });
+
+  test("createCTA defaults to link when href is provided without explicit variant", async () => {
+    freshDom();
+    const { createCTA } = await import("../../src/components/toast-utils-core.js");
+    const toast = document.createElement("div");
+    createCTA(
+      toast,
+      {
+        cta: {
+          label: "View Docs",
+          href: "https://example.com/docs",
+          target: "_blank",
+        },
+      },
+      () => {},
+    );
+    const linkEl = toast.querySelector("a");
+    assert.ok(linkEl, "Should create an anchor element");
+    assert.equal(linkEl.tagName.toLowerCase(), "a");
+    assert.equal(linkEl.href, "https://example.com/docs");
+    assert.equal(linkEl.target, "_blank");
+    assert.ok(linkEl.rel.includes("noopener"));
   });
 });
 

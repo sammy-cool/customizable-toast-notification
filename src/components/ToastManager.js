@@ -139,7 +139,6 @@ async function createOne(options, key, initialCount) {
       toast,
       options,
       count: Math.max(1, Math.floor(initialCount ?? 0)),
-      timeout: null,
       pauseOnHover: shouldPauseOnHover,
     };
     active.set(key, data);

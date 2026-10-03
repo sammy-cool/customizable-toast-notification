@@ -1,6 +1,12 @@
 "use strict";
 
-import { showToast, closeToastByKey, resetToastManager } from "./components/ToastManager.js";
+import {
+  showToast,
+  closeToastByKey,
+  resetToastManager,
+  dismiss,
+  noop as managerNoop,
+} from "./components/ToastManager.js";
 import { getOrCreateToastContainer, resetContainerRegistry } from "./utils/containerRegistry.js";
 import { getDynamicAccessibleTextColorHex } from "./utils/dom.js";
 import { setPosition } from "./utils/position.js";
@@ -294,8 +300,6 @@ function setDefaultMessages(messages) {
     console.error("setDefaultMessages failed:", error);
   }
 }
-
-import { dismiss, noop as managerNoop } from "./components/ToastManager.js";
 
 let closeInProgress = false;
 let closePromise = null;
