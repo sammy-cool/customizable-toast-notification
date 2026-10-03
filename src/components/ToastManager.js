@@ -359,8 +359,7 @@ export async function closeToastByKey(key) {
     const animDuration = data.toast?._animationDuration ?? 400;
     if (data.toast) {
       data.toast.style.opacity = "0";
-      const isTop = String(data.options?.position || "").toLowerCase().startsWith("top");
-      data.toast.style.transform = isTop ? "translateY(-20px)" : "translateY(20px)";
+      data.toast.style.transform = "translateY(20px)";
     }
 
     const parentContainer = data.outer?.parentElement;

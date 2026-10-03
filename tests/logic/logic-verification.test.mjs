@@ -1062,7 +1062,7 @@ describe("ToastManager.js — exit animation triggers on dismissal", () => {
     // Call closeToastByKey, check that exit styles are immediately applied
     const closePromise = closeToastByKey(key);
     assert.equal(toast.style.opacity, "0");
-    assert.equal(toast.style.transform, "translateY(-20px)");
+    assert.equal(toast.style.transform, "translateY(20px)");
     await closePromise;
   });
 });

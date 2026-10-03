@@ -30,9 +30,6 @@ export async function applyRichStyling(toast, options, onClose) {
     : "";
   toast.className = `toast toast-${options?.type ?? "info"}${customClass}`;
 
-  const isTopPos = String(options?.position || "").toLowerCase().startsWith("top");
-  const initialTransform = isTopPos ? "translateY(-20px)" : "translateY(20px)";
-
   Object.assign(toast.style, {
     background: options?.backgroundColor,
     padding: "12px 16px",
@@ -52,7 +49,7 @@ export async function applyRichStyling(toast, options, onClose) {
     userSelect: "text",
     pointerEvents: "auto",
     transition: `opacity ${validAnimationDuration} ${easing}, transform ${validAnimationDuration} ${easing}`,
-    transform: initialTransform,
+    transform: "translateY(20px)",
     zIndex: "9999",
   });
   // Accessibility settings
