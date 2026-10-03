@@ -95,53 +95,72 @@ Global Variable Name: `customizableToast`
 
 ### `createToast(options)`
 
-Creates and displays a toast notification. Returns a handle for
-dismissing _that specific toast_ later — useful when other toasts might
-be created in between:
+Creates and displays a toast notification. Returns a handle `{ dismiss, update }` for
+dismissing or modifying _that specific toast_ later — without flickering or remounting:
 
 ```js
-const handle = await createToast({ message: "Uploading...", duration: 60000 });
+const handle = await createToast({
+  message: "Uploading assets...",
+  showLoader: true,
+  duration: 60000,
+});
 
-// later, regardless of what else has happened on screen since:
+// Update progress in-place:
+await handle.update({ progress: 65, message: "Uploading assets... 65%" });
+
+// Transition state seamlessly:
+await handle.update({
+  type: "success",
+  message: "Upload complete!",
+  showLoader: false,
+  duration: 3000,
+  sound: "success",
+});
+
+// Or dismiss manually at any point:
 await handle.dismiss();
 ```
 
-`handle.dismiss()` is always safe to call, even if the toast already
-auto-dismissed on its own — it no-ops rather than throwing.
+`handle.dismiss()` and `handle.update()` are always safe to call, even if the toast already
+auto-dismissed on its own — they no-op gracefully rather than throwing.
 
 #### Options
 
-| Parameter           | Type      | Default                         | Description                                               |
-| ------------------- | --------- | ------------------------------- | --------------------------------------------------------- |
-| `message`           | `string`  | Based on `type`                 | Toast message content                                     |
-| `type`              | `string`  | `"info"`                        | `"info"`, `"success"`, `"error"`, `"warning"`             |
-| `duration`          | `number`  | `2500`                          | Auto-dismiss time in milliseconds                         |
-| `position`          | `string`  | `"bottom-right"`                | Toast position on screen                                  |
-| `borderRadius`      | `string`  | `"50px"`                        | Toast corner radius                                       |
-| `backgroundColor`   | `string`  | Based on `type`                 | Custom background color                                   |
-| `textColor`         | `string`  | Auto-computed for WCAG contrast | Custom text color                                         |
-| `showCloseButton`   | `boolean` | `true`                          | Show close (×) button                                     |
-| `showProgressBar`   | `boolean` | `true`                          | Show countdown progress bar                               |
-| `animationDuration` | `string`  | `"0.4s"`                        | CSS animation duration                                    |
-| `animationEasing`   | `string`  | `"ease"`                        | CSS animation easing function                             |
-| `progressColor`     | `string`  | Falls back to `textColor`       | Progress bar color                                        |
-| `progressHeight`    | `string`  | `"4px"`                         | Progress bar height                                       |
-| `progressPosition`  | `string`  | `"bottom"`                      | Progress bar position: `"top"` or `"bottom"`              |
-| `pauseOnHover`      | `boolean` | `auto`                          | Pause timer on hover (auto: true for CTA toasts)          |
-| `allowHtml`         | `boolean` | `false`                         | Render `message` as sanitized HTML instead of plain text  |
-| `sanitizeHtml`      | `boolean` | `true`                          | Sanitize HTML when `allowHtml=true`                       |
-| `wrapText`          | `string`  | `"normal"`                      | `"normal"` wraps naturally; falsy truncates to 3 lines    |
-| `maxWidth`          | `string`  | Auto                            | Max width (auto: `400px` / `100vw` for full-width)        |
-| `fontFamily`        | `string`  | System default                  | Font family                                               |
-| `fontSize`          | `string`  | `"14px"`                        | Font size                                                 |
-| `fontWeight`        | `string`  | `"400"`                         | Font weight                                               |
-| `fontLineHeight`    | `string`  | `"1.4"`                         | Font line height                                          |
-| `showLoader`        | `boolean` | `false`                         | Show spinner loader before the message                    |
-| `loader`            | `object`  | `null`                          | Custom loader config (`size`, `color`, `text`)            |
-| `fontDirection`     | `string`  | `"auto"`                        | Font direction: `"auto"`, `"ltr"`, `"rtl"`                |
-| `fontPadding`       | `string`  | `undefined`                     | Custom padding for message container (e.g. `"4px 8px"`)    |
-| `className`         | `string`  | `undefined`                     | Custom CSS class name(s) for animations / styling         |
-| `cta`               | `object`  | `null`                          | Call-to-action configuration (see [CTA](#call-to-action)) |
+| Parameter           | Type               | Default                         | Description                                                                    |
+| ------------------- | ------------------ | ------------------------------- | ------------------------------------------------------------------------------ |
+| `message`           | `string`           | Based on `type`                 | Toast message content                                                          |
+| `type`              | `string`           | `"info"`                        | `"info"`, `"success"`, `"error"`, `"warning"`                                  |
+| `duration`          | `number`           | `2500`                          | Auto-dismiss time in milliseconds                                              |
+| `position`          | `string`           | `"bottom-right"`                | Toast position on screen                                                       |
+| `borderRadius`      | `string`           | `"50px"`                        | Toast corner radius                                                            |
+| `backgroundColor`   | `string`           | Based on `type`                 | Custom background color                                                        |
+| `textColor`         | `string`           | Auto-computed for WCAG contrast | Custom text color                                                              |
+| `showCloseButton`   | `boolean`          | `true`                          | Show close (×) button                                                          |
+| `showProgressBar`   | `boolean`          | `true`                          | Show countdown progress bar                                                    |
+| `animationDuration` | `string`           | `"0.4s"`                        | CSS animation duration                                                         |
+| `animationEasing`   | `string`           | `"ease"`                        | CSS animation easing function                                                  |
+| `progressColor`     | `string`           | Falls back to `textColor`       | Progress bar color                                                             |
+| `progressHeight`    | `string`           | `"4px"`                         | Progress bar height                                                            |
+| `progressPosition`  | `string`           | `"bottom"`                      | Progress bar position: `"top"` or `"bottom"`                                   |
+| `pauseOnHover`      | `boolean`          | `auto`                          | Pause timer on hover (auto: true for CTA toasts)                               |
+| `allowHtml`         | `boolean`          | `false`                         | Render `message` as sanitized HTML instead of plain text                       |
+| `sanitizeHtml`      | `boolean`          | `true`                          | Sanitize HTML when `allowHtml=true`                                            |
+| `wrapText`          | `string`           | `"normal"`                      | `"normal"` wraps naturally; falsy truncates to 3 lines                         |
+| `maxWidth`          | `string`           | Auto                            | Max width (auto: `400px` / `100vw` for full-width)                             |
+| `fontFamily`        | `string`           | System default                  | Font family                                                                    |
+| `fontSize`          | `string`           | `"14px"`                        | Font size                                                                      |
+| `fontWeight`        | `string`           | `"400"`                         | Font weight                                                                    |
+| `fontLineHeight`    | `string`           | `"1.4"`                         | Font line height                                                               |
+| `showLoader`        | `boolean`          | `false`                         | Show spinner loader before the message                                         |
+| `loader`            | `object`           | `null`                          | Custom loader config (`size`, `color`, `text`)                                 |
+| `fontDirection`     | `string`           | `"auto"`                        | Font direction: `"auto"`, `"ltr"`, `"rtl"`                                     |
+| `fontPadding`       | `string`           | `undefined`                     | Custom padding for message container (e.g. `"4px 8px"`)                         |
+| `className`         | `string`           | `undefined`                     | Custom CSS class name(s) for animations / styling                              |
+| `stacked`           | `boolean`          | `false`                         | Enable iOS-style card deck stacking for multiple toasts                        |
+| `sound`             | `boolean \| string`| `false`                         | Zero-asset audio chime (`true`, `'success'`, `'error'`, `'warning'`, `'pop'`)   |
+| `swipeToDismiss`    | `boolean`          | `true`                          | Mobile touch swipe-to-dismiss gesture with physics                             |
+| `progress`          | `number`           | `undefined`                     | Explicit progress bar percentage (0 to 100)                                    |
+| `cta`               | `object`           | `null`                          | Call-to-action configuration (see [CTA](#call-to-action))                      |
 
 #### Position Options
 
@@ -239,6 +258,45 @@ createToast({
 | `size`    | `number` | `14`             | Spinner width and height in pixels             |
 | `color`   | `string` | `"currentColor"` | SVG stroke color                               |
 | `text`    | `string` | `""`             | Optional inline label text next to the spinner |
+
+### 🗂️ iOS-Style Card Deck Stacked Mode
+
+Group multiple notifications into a beautiful, compact card stack that collapses behind each other with natural depth physics, and automatically fans out on hover or focus:
+
+```js
+// Enable stacking per toast or for an entire workflow
+createToast({ message: "New comment on your post", stacked: true });
+createToast({ message: "Sarah mentioned you", stacked: true });
+createToast({ message: "Deploy finished successfully", type: "success", stacked: true });
+```
+
+- When multiple toasts arrive, earlier toasts smoothly scale down and tuck behind the active card (`scale(0.95)`, `scale(0.90)`).
+- Hovering or keyboard-focusing on the deck automatically expands all notifications with spring animations.
+- Leaving collapses them back into a clean stack.
+
+### 🔊 Zero-Asset Web Audio API Chimes
+
+Play pleasant micro-feedback audio chimes generated entirely on the fly with the browser's native `AudioContext` and pure math oscillators — **zero external audio files, zero MP3 assets, and 0 network overhead**:
+
+```js
+import { createToast, setAudioEnabled, playTone } from "customizable-toast-notification";
+
+// Automatically chime based on type or custom tone:
+createToast({ message: "Changes saved", type: "success", sound: true }); // pleasant major chord
+createToast({ message: "Network error", type: "error", sound: "error" }); // gentle alert buzz
+createToast({ message: "Warning threshold", sound: "warning" });
+createToast({ message: "New ping", sound: "pop" });
+
+// Globally toggle sound effects (e.g. user accessibility preferences)
+setAudioEnabled(false);
+```
+
+### 👆 Mobile Touch Swipe-to-Dismiss
+
+Toasts feature native-feeling touch velocity gestures:
+- Swipe horizontally past 75px on any mobile device to smoothly fling the toast off-screen.
+- Releases below the threshold snap cleanly back into place.
+- Can be disabled if needed via `swipeToDismiss: false`.
 
 ### `setDefaultColors(colors)`
 

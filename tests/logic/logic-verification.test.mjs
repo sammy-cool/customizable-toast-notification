@@ -1227,6 +1227,246 @@ describe("toast-utils.js — numeric dimensions auto-converted to px", () => {
   });
 });
 
+describe("ToastManager.js — handle.update live updates", () => {
+  test("updates active toast message and type in-place without unmounting", async () => {
+    freshDom();
+    const { createToast, resetToastManager } = await import("../../src/index.js");
+    resetToastManager();
+
+    const handle = await createToast({
+      message: "Initial status",
+      type: "info",
+      duration: 5000,
+    });
+    await new Promise((r) => setTimeout(r, 60));
+    const toast = document.querySelector(".toast");
+    assert.ok(toast);
+    assert.ok(toast.textContent.includes("Initial status"));
+    assert.ok(toast.className.includes("toast-info"));
+
+    await handle.update({
+      message: "Task completed successfully!",
+      type: "success",
+    });
+
+    assert.ok(toast.textContent.includes("Task completed successfully!"));
+    assert.ok(toast.className.includes("toast-success"));
+    assert.ok(!toast.className.includes("toast-info"));
+    await handle.dismiss();
+    resetToastManager();
+  });
+
+  test("updates progress bar dynamically", async () => {
+    freshDom();
+    const { createToast, resetToastManager } = await import("../../src/index.js");
+    resetToastManager();
+
+    const handle = await createToast({
+      message: "Uploading file...",
+      showProgressBar: true,
+      duration: 10000,
+    });
+    await new Promise((r) => setTimeout(r, 60));
+    const toast = document.querySelector(".toast");
+    assert.ok(toast);
+
+    await handle.update({ progress: 50 });
+    const bar = toast.querySelector(".toast-progress-bar");
+    assert.ok(bar);
+    assert.equal(bar.style.width, "50%");
+
+    await handle.update({ progress: 100 });
+    assert.equal(bar.style.width, "100%");
+    await handle.dismiss();
+    resetToastManager();
+  });
+
+  test("handles live addition and removal of loader", async () => {
+    freshDom();
+    const { createToast, resetToastManager } = await import("../../src/index.js");
+    resetToastManager();
+
+    const handle = await createToast({
+      message: "Processing...",
+      showLoader: true,
+    });
+    await new Promise((r) => setTimeout(r, 60));
+    const toast = document.querySelector(".toast");
+    assert.ok(toast);
+    assert.ok(toast.querySelector(".toast-loader"));
+
+    await handle.update({
+      message: "Done processing!",
+      showLoader: false,
+    });
+    assert.equal(toast.querySelector(".toast-loader"), null);
+    assert.ok(toast.textContent.includes("Done processing!"));
+    await handle.dismiss();
+    resetToastManager();
+  });
+});
+
+describe("ToastManager.js — iOS-style card deck stacked mode", () => {
+  test("stacked: true marks container and applies depth scale and peek offsets", async () => {
+    freshDom();
+    const { createToast, resetToastManager } = await import("../../src/index.js");
+    resetToastManager();
+
+    await createToast({ message: "Card 1", stacked: true, position: "bottom-right", duration: 10000 });
+    await new Promise((r) => requestAnimationFrame(r));
+
+    await createToast({ message: "Card 2", stacked: true, position: "bottom-right", duration: 10000 });
+    await new Promise((r) => requestAnimationFrame(r));
+
+    const container = document.querySelector('[id^="toast-container-"]');
+    assert.ok(container);
+    assert.equal(container.getAttribute("data-stacked"), "true");
+
+    const cards = Array.from(container.children);
+    assert.equal(cards.length, 2);
+
+    // Front card (last child, Card 2)
+    assert.equal(cards[1].style.transform, "scale(1)");
+    assert.equal(cards[1].style.zIndex, "30");
+
+    // Peeking card behind (first child, Card 1)
+    assert.ok(cards[0].style.transform.includes("scale(0.95)"));
+    assert.equal(cards[0].style.marginTop, "-55px");
+
+    // Test expand on hover
+    container.dispatchEvent(new window.MouseEvent("mouseenter"));
+    assert.equal(cards[0].style.transform, "none");
+    assert.equal(cards[0].style.marginTop, "0px");
+
+    // Test collapse on mouseleave
+    container.dispatchEvent(new window.MouseEvent("mouseleave"));
+    assert.ok(cards[0].style.transform.includes("scale(0.95)"));
+    assert.equal(cards[0].style.marginTop, "-55px");
+
+    resetToastManager();
+  });
+});
+
+describe("toast-utils-core.js — swipeToDismiss touch gesture handling", () => {
+  test("swipe past threshold triggers dismissal callback and cleanup removes listeners", async () => {
+    freshDom();
+    const { attachSwipeToDismiss } = await import("../../src/components/toast-utils-core.js");
+    const toast = document.createElement("div");
+    let closed = false;
+    attachSwipeToDismiss(toast, () => {
+      closed = true;
+    });
+
+    toast.dispatchEvent(
+      new window.TouchEvent("touchstart", {
+        touches: [{ clientX: 100, clientY: 100 }],
+      }),
+    );
+
+    toast.dispatchEvent(
+      new window.TouchEvent("touchmove", {
+        touches: [{ clientX: 220, clientY: 100 }],
+        cancelable: true,
+      }),
+    );
+
+    toast.dispatchEvent(new window.TouchEvent("touchend", { touches: [] }));
+
+    await new Promise((r) => setTimeout(r, 220));
+    assert.equal(closed, true);
+
+    assert.equal(typeof toast._cleanupSwipe, "function");
+    toast._cleanupSwipe();
+  });
+
+  test("swipe below threshold snaps back to original position", async () => {
+    freshDom();
+    const { attachSwipeToDismiss } = await import("../../src/components/toast-utils-core.js");
+    const toast = document.createElement("div");
+    let closed = false;
+    attachSwipeToDismiss(toast, () => {
+      closed = true;
+    });
+
+    toast.dispatchEvent(
+      new window.TouchEvent("touchstart", {
+        touches: [{ clientX: 100, clientY: 100 }],
+      }),
+    );
+    toast.dispatchEvent(
+      new window.TouchEvent("touchmove", {
+        touches: [{ clientX: 130, clientY: 100 }],
+        cancelable: true,
+      }),
+    );
+    toast.dispatchEvent(new window.TouchEvent("touchend", { touches: [] }));
+
+    await new Promise((r) => setTimeout(r, 50));
+    assert.equal(closed, false);
+    assert.equal(toast.style.transform, "translateX(0)");
+    assert.equal(toast.style.opacity, "1");
+    toast._cleanupSwipe?.();
+  });
+});
+
+describe("audio.js — Web Audio API notification sound synth", () => {
+  test("playTone synthesizes tones without throwing and handles audio toggle", async () => {
+    freshDom();
+    const { playTone, setAudioEnabled, isAudioEnabled } = await import("../../src/utils/audio.js");
+
+    assert.equal(isAudioEnabled(), true);
+    setAudioEnabled(false);
+    assert.equal(isAudioEnabled(), false);
+
+    playTone("success");
+    playTone("error");
+    playTone("warning");
+    playTone("info");
+
+    setAudioEnabled(true);
+    assert.equal(isAudioEnabled(), true);
+
+    let oscillatorCreated = false;
+    window.AudioContext = class {
+      constructor() {
+        this.currentTime = 0;
+        this.state = "running";
+        this.destination = {};
+      }
+      createOscillator() {
+        oscillatorCreated = true;
+        return {
+          type: "sine",
+          frequency: {
+            setValueAtTime: () => {},
+            exponentialRampToValueAtTime: () => {},
+          },
+          connect: () => {},
+          start: () => {},
+          stop: () => {},
+        };
+      }
+      createGain() {
+        return {
+          gain: {
+            setValueAtTime: () => {},
+            exponentialRampToValueAtTime: () => {},
+          },
+          connect: () => {},
+        };
+      }
+    };
+
+    playTone("success");
+    assert.equal(oscillatorCreated, true);
+
+    playTone("error");
+    playTone("warning");
+    playTone("pop");
+  });
+});
+
+
 
 
 

@@ -1,11 +1,15 @@
 "use strict";
 
 import { createToastElement } from "./Toast.js";
-import { removeElement } from "../utils/dom.js";
+import { removeElement, getDynamicAccessibleTextColorHex } from "../utils/dom.js";
 import { createEmergencyToast } from "./toast-utils.js";
 import { getOrCreateToastContainer, normalizePositionKey } from "../utils/containerRegistry.js";
 import { setPosition } from "../utils/position.js";
 import { PausableTimer } from "../utils/PausableTimer.js";
+import { sanitizeHtml } from "../utils/html-sanitizer.js";
+import { playTone } from "../utils/audio.js";
+import { createProgressBar } from "./toast-utils-core.js";
+import { createLoader } from "./loader.js";
 
 const MAX_VISIBLE = 3;
 
@@ -13,6 +17,87 @@ const active = new Map();
 const pending = new Map();
 const queue = [];
 let visibleCount = 0;
+
+export function updateStackedLayout(container) {
+  if (!container || !container.children) return;
+  const isStacked = container.getAttribute("data-stacked") === "true";
+  if (!isStacked) return;
+
+  if (!container._stackedInitialized && typeof container.addEventListener === "function") {
+    container._stackedInitialized = true;
+    container.addEventListener("mouseenter", () => {
+      container._isExpanded = true;
+      updateStackedLayout(container);
+    });
+    container.addEventListener("mouseleave", () => {
+      container._isExpanded = false;
+      updateStackedLayout(container);
+    });
+    container.addEventListener("focusin", () => {
+      container._isExpanded = true;
+      updateStackedLayout(container);
+    });
+    container.addEventListener("focusout", (e) => {
+      if (!container.contains(e.relatedTarget)) {
+        container._isExpanded = false;
+        updateStackedLayout(container);
+      }
+    });
+  }
+
+  const items = Array.from(container.children);
+  const count = items.length;
+  const isExpanded = Boolean(container._isExpanded);
+  const isTop = Boolean(container.id && container.id.includes("top"));
+
+  items.forEach((item, index) => {
+    const depthFromTop = count - 1 - index;
+    item.style.transition =
+      "transform 240ms cubic-bezier(0.16, 1, 0.3, 1), margin 240ms cubic-bezier(0.16, 1, 0.3, 1), opacity 240ms ease";
+
+    if (isExpanded) {
+      item.style.transform = "none";
+      item.style.marginTop = "0px";
+      item.style.marginBottom = "10px";
+      item.style.opacity = "1";
+      item.style.zIndex = String(100 + index);
+      item.style.pointerEvents = "auto";
+    } else {
+      if (depthFromTop === 0) {
+        item.style.transform = "scale(1)";
+        item.style.marginTop = "0px";
+        item.style.marginBottom = "0px";
+        item.style.opacity = "1";
+        item.style.zIndex = "30";
+        item.style.pointerEvents = "auto";
+      } else if (depthFromTop === 1) {
+        const y = isTop ? 10 : -10;
+        item.style.transform = `scale(0.95) translateY(${y}px)`;
+        item.style.marginTop = "-55px";
+        item.style.marginBottom = "0px";
+        item.style.opacity = "0.9";
+        item.style.zIndex = "20";
+        item.style.pointerEvents = "auto";
+      } else if (depthFromTop === 2) {
+        const y = isTop ? 20 : -20;
+        item.style.transform = `scale(0.90) translateY(${y}px)`;
+        item.style.marginTop = "-55px";
+        item.style.marginBottom = "0px";
+        item.style.opacity = "0.75";
+        item.style.zIndex = "10";
+        item.style.pointerEvents = "auto";
+      } else {
+        const y = isTop ? 30 : -30;
+        item.style.transform = `scale(0.85) translateY(${y}px)`;
+        item.style.marginTop = "-55px";
+        item.style.marginBottom = "0px";
+        item.style.opacity = "0";
+        item.style.zIndex = "1";
+        item.style.pointerEvents = "none";
+      }
+    }
+  });
+}
 
 function hashString(str) {
   let h = 5381;
@@ -128,6 +213,12 @@ async function createOne(options, key, initialCount) {
 
     if (container.id.includes("toast-container-")) {
       container.appendChild(outer);
+      if (options.stacked) {
+        container.setAttribute("data-stacked", "true");
+      }
+      if (container.getAttribute("data-stacked") === "true") {
+        updateStackedLayout(container);
+      }
     }
 
     const shouldPauseOnHover =
@@ -244,6 +335,8 @@ export function resetToastManager() {
     data.timer?.clear();
     data.outer?._pauseCleanup?.();
     data.toast?._cleanupCloseButton?.();
+    data.toast?._cleanupCTA?.();
+    data.toast?._cleanupSwipe?.();
     data.toast?._cleanup?.();
   }
   active.clear();
@@ -358,6 +451,7 @@ export async function closeToastByKey(key) {
     data.outer?._pauseCleanup?.();
     data.toast?._cleanupCloseButton?.();
     data.toast?._cleanupCTA?.();
+    data.toast?._cleanupSwipe?.();
     data.toast?._cleanup?.();
     // Clean up CTA click listener if present directly on button/link
     const ctaEl = data.toast?.querySelector("button, a");
@@ -386,6 +480,8 @@ export async function closeToastByKey(key) {
       try {
         parentContainer.remove();
       } catch {}
+    } else if (parentContainer && parentContainer.getAttribute("data-stacked") === "true") {
+      updateStackedLayout(parentContainer);
     }
 
     await drainQueue();
@@ -501,3 +597,192 @@ async function updateBadge({ outer, count }) {
     console.error("updateBadge animation error:", error);
   }
 }
+
+/**
+ * Updates an active, pending, or queued toast in-place with new options.
+ * @param {string} key
+ * @param {Object} newOptions
+ */
+export async function updateToastByKey(key, newOptions = {}) {
+  if (!key || typeof newOptions !== "object" || newOptions === null) return;
+
+  if (pending.has(key)) {
+    const entry = pending.get(key);
+    entry.options = { ...entry.options, ...newOptions };
+    return;
+  }
+
+  const queued = queue.find((q) => q.key === key);
+  if (queued) {
+    queued.options = { ...queued.options, ...newOptions };
+    return;
+  }
+
+  const data = active.get(key);
+  if (!data || !data.toast) return;
+
+  data.options = { ...data.options, ...newOptions };
+  const toast = data.toast;
+  const messageSpan =
+    toast._messageSpan ||
+    toast.querySelector(".toast-message") ||
+    toast.querySelector("span:not(.toast-count-badge)");
+
+  // 1. Update message
+  if (newOptions.message !== undefined) {
+    const rawMessage = String(newOptions.message ?? "");
+    const allowHtml =
+      newOptions.allowHtml !== undefined
+        ? Boolean(newOptions.allowHtml)
+        : Boolean(data.options.allowHtml);
+
+    if (messageSpan) {
+      const existingLoader = messageSpan.querySelector(".toast-loader");
+      messageSpan.innerHTML = "";
+      if (
+        existingLoader &&
+        newOptions.showLoader !== false &&
+        newOptions.loader !== null
+      ) {
+        messageSpan.appendChild(existingLoader);
+        const spacer = document.createElement("span");
+        spacer.style.display = "inline-block";
+        spacer.style.width = "8px";
+        messageSpan.appendChild(spacer);
+      }
+
+      if (allowHtml && rawMessage.trim().length > 0) {
+        try {
+          const sanitized = sanitizeHtml(rawMessage);
+          const tmp = document.createElement("div");
+          tmp.innerHTML = sanitized;
+          while (tmp.firstChild) {
+            messageSpan.appendChild(tmp.firstChild);
+          }
+        } catch {
+          messageSpan.appendChild(document.createTextNode(rawMessage));
+        }
+      } else {
+        messageSpan.appendChild(document.createTextNode(rawMessage));
+      }
+
+      messageSpan.setAttribute(
+        "title",
+        rawMessage.replace(/<[^>]+>/g, "")
+      );
+    }
+  }
+
+  // 2. Handle Loader
+  if (newOptions.showLoader === false || newOptions.loader === null) {
+    const loaderEl = messageSpan?.querySelector(".toast-loader");
+    if (loaderEl) {
+      if (loaderEl.nextSibling && loaderEl.nextSibling.nodeName === "SPAN") {
+        loaderEl.nextSibling.remove();
+      }
+      loaderEl.remove();
+    }
+  } else if (
+    (newOptions.showLoader === true ||
+      (newOptions.loader && typeof newOptions.loader === "object")) &&
+    messageSpan &&
+    !messageSpan.querySelector(".toast-loader")
+  ) {
+    const loaderEl = createLoader(newOptions.loader || {});
+    messageSpan.insertBefore(loaderEl, messageSpan.firstChild);
+    const spacer = document.createElement("span");
+    spacer.style.display = "inline-block";
+    spacer.style.width = "8px";
+    messageSpan.insertBefore(spacer, loaderEl.nextSibling);
+  }
+
+  // 3. Update type & colors
+  if (newOptions.type) {
+    const newType = String(newOptions.type).toLowerCase().trim();
+    toast.className = toast.className.replace(
+      /\btoast-(info|success|error|warning)\b/g,
+      `toast-${newType}`,
+    );
+    if (!newOptions.backgroundColor) {
+      const typeColors = {
+        success: "#28a745",
+        error: "#dc3545",
+        warning: "#ffc107",
+        info: "#17a2b8",
+      };
+      if (typeColors[newType]) {
+        toast.style.background = typeColors[newType];
+      }
+    }
+  }
+
+  if (newOptions.backgroundColor) {
+    toast.style.background = newOptions.backgroundColor;
+  }
+
+  if (newOptions.textColor) {
+    toast.style.color = newOptions.textColor;
+    if (messageSpan) messageSpan.style.color = newOptions.textColor;
+  } else if (newOptions.type || newOptions.backgroundColor) {
+    const bg = toast.style.background;
+    if (bg) {
+      const dynamicColor = getDynamicAccessibleTextColorHex(bg);
+      toast.style.color = dynamicColor;
+      if (messageSpan) messageSpan.style.color = dynamicColor;
+    }
+  }
+
+  // 4. Update Progress Bar
+  if (newOptions.progress !== undefined) {
+    let pct = Number(newOptions.progress);
+    if (pct <= 1 && pct > 0) pct = pct * 100;
+    pct = Math.min(100, Math.max(0, pct));
+
+    let progressBar = toast.querySelector(".toast-progress-bar");
+    if (
+      !progressBar &&
+      (newOptions.showProgressBar || data.options.showProgressBar)
+    ) {
+      createProgressBar(toast, { ...data.options, ...newOptions });
+      progressBar = toast.querySelector(".toast-progress-bar");
+    }
+    if (progressBar) {
+      if (toast._progressAnimation) {
+        try {
+          toast._progressAnimation.cancel();
+        } catch {}
+        toast._progressAnimation = null;
+      }
+      progressBar.style.transition = "width 200ms ease";
+      progressBar.style.width = `${pct}%`;
+    }
+  } else if (newOptions.showProgressBar === false) {
+    const bar = toast.querySelector(".toast-progress-bar");
+    if (bar) bar.remove();
+  }
+
+  // 5. Update Duration / Timer
+  if (newOptions.duration !== undefined) {
+    data.timer?.clear();
+    const raw = Number(newOptions.duration);
+    if (Number.isFinite(raw) && raw > 0) {
+      data.timer = createDismissTimer(toast, { duration: raw });
+    }
+  }
+
+  // 6. Audio Tone
+  if (newOptions.sound) {
+    const tone =
+      typeof newOptions.sound === "string"
+        ? newOptions.sound
+        : newOptions.type || data.options.type || "info";
+    playTone(tone);
+  }
+
+  // 7. Stacked update
+  const container = toast.closest('[id^="toast-container-"]');
+  if (container && container.getAttribute("data-stacked") === "true") {
+    updateStackedLayout(container);
+  }
+}
+

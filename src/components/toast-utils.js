@@ -9,7 +9,9 @@ import {
   createCloseButton,
   createProgressBar,
   runToastAnimation,
+  attachSwipeToDismiss,
 } from "./toast-utils-core.js";
+import { playTone } from "../utils/audio.js";
 
 /**
  * Applies rich styling and content to a toast element.
@@ -66,10 +68,11 @@ export async function applyRichStyling(toast, options, onClose) {
   toast.setAttribute("role", "alert");
   toast.setAttribute("aria-live", "polite");
   toast.tabIndex = 0; // Make focusable for accessibility if needed
-
   toast._animationDuration = durationMs;
 
   const messageSpan = document.createElement("span");
+  messageSpan.className = "toast-message";
+  toast._messageSpan = messageSpan;
 
   const isTruncate =
     options?.wrapText === "truncate" ||
@@ -177,6 +180,15 @@ export async function applyRichStyling(toast, options, onClose) {
 
   if (options?.showProgressBar) {
     createProgressBar(toast, options);
+  }
+
+  if (options?.swipeToDismiss !== false) {
+    attachSwipeToDismiss(toast, onClose);
+  }
+
+  if (options?.sound) {
+    const tone = typeof options.sound === "string" ? options.sound : options?.type || "info";
+    playTone(tone);
   }
 
   runToastAnimation(toast);

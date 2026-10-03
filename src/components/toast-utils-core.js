@@ -113,6 +113,8 @@ function getContrastBackground(bgColor) {
 
 export function createProgressBar(toast, options) {
   const progressBar = document.createElement("div");
+  progressBar.className = "toast-progress-bar";
+  toast._progressBar = progressBar;
   const borderRadiusStr = options.borderRadius || "0";
   const borderRadiusNum = parseInt(borderRadiusStr, 10);
 
@@ -167,4 +169,85 @@ export function runToastAnimation(toast) {
       toast.style.transform = "translateY(0)";
     });
   }, delay);
+}
+
+export function attachSwipeToDismiss(toast, onClose) {
+  if (!toast || typeof toast.addEventListener !== "function") return;
+
+  let startX = 0;
+  let startY = 0;
+  let currentX = 0;
+  let isDragging = false;
+  let isHorizontal = false;
+
+  const onTouchStart = (e) => {
+    if (!e || !e.touches || e.touches.length !== 1) return;
+    startX = e.touches[0].clientX;
+    startY = e.touches[0].clientY;
+    currentX = startX;
+    isDragging = true;
+    isHorizontal = false;
+    toast.style.transition = "none";
+  };
+
+  const onTouchMove = (e) => {
+    if (!isDragging || !e || !e.touches || e.touches.length !== 1) return;
+    const x = e.touches[0].clientX;
+    const y = e.touches[0].clientY;
+    const dx = x - startX;
+    const dy = y - startY;
+
+    if (!isHorizontal) {
+      if (Math.abs(dx) > 8 && Math.abs(dx) > Math.abs(dy)) {
+        isHorizontal = true;
+      } else if (Math.abs(dy) > 8) {
+        isDragging = false;
+        return;
+      }
+    }
+
+    if (isHorizontal) {
+      currentX = x;
+      const opacity = Math.max(0, 1 - Math.abs(dx) / 280);
+      toast.style.transform = `translateX(${dx}px)`;
+      toast.style.opacity = String(opacity);
+      if (e.cancelable) e.preventDefault();
+    }
+  };
+
+  const onTouchEnd = () => {
+    if (!isDragging || !isHorizontal) {
+      isDragging = false;
+      return;
+    }
+    isDragging = false;
+    const dx = currentX - startX;
+    const threshold = 75;
+
+    if (Math.abs(dx) >= threshold) {
+      const exitX = dx > 0 ? 320 : -320;
+      toast.style.transition = "transform 180ms ease-out, opacity 180ms ease-out";
+      toast.style.transform = `translateX(${exitX}px)`;
+      toast.style.opacity = "0";
+      setTimeout(() => {
+        if (typeof onClose === "function") onClose(toast);
+      }, 180);
+    } else {
+      toast.style.transition = "transform 200ms ease, opacity 200ms ease";
+      toast.style.transform = "translateX(0)";
+      toast.style.opacity = "1";
+    }
+  };
+
+  toast.addEventListener("touchstart", onTouchStart, { passive: true });
+  toast.addEventListener("touchmove", onTouchMove, { passive: false });
+  toast.addEventListener("touchend", onTouchEnd, { passive: true });
+  toast.addEventListener("touchcancel", onTouchEnd, { passive: true });
+
+  toast._cleanupSwipe = () => {
+    toast.removeEventListener("touchstart", onTouchStart);
+    toast.removeEventListener("touchmove", onTouchMove);
+    toast.removeEventListener("touchend", onTouchEnd);
+    toast.removeEventListener("touchcancel", onTouchEnd);
+  };
 }

@@ -3,6 +3,7 @@
 import {
   showToast,
   closeToastByKey,
+  updateToastByKey,
   resetToastManager,
   dismiss,
   noop as managerNoop,
@@ -10,6 +11,7 @@ import {
 import { getOrCreateToastContainer, resetContainerRegistry } from "./utils/containerRegistry.js";
 import { getDynamicAccessibleTextColorHex } from "./utils/dom.js";
 import { setPosition } from "./utils/position.js";
+import { setAudioEnabled, isAudioEnabled, playTone } from "./utils/audio.js";
 
 /**
  * @typedef {'info' | 'success' | 'error' | 'warning'} ToastType
@@ -69,11 +71,16 @@ import { setPosition } from "./utils/position.js";
  * @property {string} [fontPadding]
  * @property {string} [className]
  * @property {CTAOptions} [cta]
+ * @property {boolean} [stacked]
+ * @property {boolean | 'success' | 'error' | 'warning' | 'info' | 'pop' | string} [sound]
+ * @property {boolean} [swipeToDismiss]
+ * @property {number} [progress]
  */
 
 /**
  * @typedef {Object} ToastHandle
  * @property {() => Promise<void>} dismiss
+ * @property {(newOptions: Partial<ToastOptions>) => Promise<void>} update
  */
 
 /**
@@ -329,6 +336,8 @@ async function createToastWithPriority(options = {}) {
   const key = await runWithClosePriority(() => originalCreateToast(options));
   return {
     dismiss: () => (key ? closeToastByKey(key) : Promise.resolve()),
+    update: (newOptions) =>
+      key ? updateToastByKey(key, newOptions) : Promise.resolve(),
   };
 }
 
@@ -426,7 +435,15 @@ async function toastPromise(promiseOrFn, messages = {}, options = {}) {
   }
 }
 
-export { toastPromise, resetToastManager, resetContainerRegistry };
+export {
+  toastPromise,
+  resetToastManager,
+  resetContainerRegistry,
+  updateToastByKey,
+  setAudioEnabled,
+  isAudioEnabled,
+  playTone,
+};
 
 if (typeof window !== "undefined" && typeof document !== "undefined") {
   if (!window.__customizableToastEscapeAttached) {
@@ -466,6 +483,10 @@ try {
       noop: noopAll,
       dismiss: dismissToast,
       toastPromise,
+      updateToastByKey,
+      setAudioEnabled,
+      isAudioEnabled,
+      playTone,
     };
   }
 } catch (error) {
