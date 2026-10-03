@@ -1,3 +1,10 @@
+# [3.15.0](https://github.com/sammy-cool/customizable-toast-notification/compare/v3.14.0...v3.15.0) (2026-10-03)
+
+
+### Features
+
+* automate package version synchronization across release lifecycle ([203a260](https://github.com/sammy-cool/customizable-toast-notification/commit/203a260f3fd912e6065d001777b905b944dad5a1))
+
 # [3.14.0](https://github.com/sammy-cool/customizable-toast-notification/compare/v3.13.0...v3.14.0) (2026-10-03)
 
 
