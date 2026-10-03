@@ -78,6 +78,14 @@ export async function parseAnimationDuration(duration) {
   return 500;
 }
 
+export function forceReflow(el) {
+  try {
+    return el?.offsetWidth || 0;
+  } catch {
+    return 0;
+  }
+}
+
 export function query(selector, root = (typeof document !== "undefined" ? document : null)) {
   return root?.querySelector ? root.querySelector(selector) : null;
 }

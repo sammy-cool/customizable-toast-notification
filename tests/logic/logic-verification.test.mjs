@@ -1193,6 +1193,40 @@ describe("toast-utils.js — animation & custom className across all toast types
   });
 });
 
+describe("dom.js — forceReflow utility", () => {
+  test("forceReflow safely returns offsetWidth or 0 on non-elements/errors", async () => {
+    freshDom();
+    const { forceReflow } = await import("../../src/utils/dom.js");
+    assert.equal(forceReflow(null), 0);
+    assert.equal(forceReflow(undefined), 0);
+    assert.equal(forceReflow({}), 0);
+    const div = document.createElement("div");
+    assert.equal(typeof forceReflow(div), "number");
+  });
+});
+
+describe("toast-utils.js — numeric dimensions auto-converted to px", () => {
+  test("accepts numbers for borderRadius, maxWidth, and fontSize and appends px", async () => {
+    freshDom();
+    const { applyRichStyling } = await import("../../src/components/toast-utils.js");
+    const toast = document.createElement("div");
+    await applyRichStyling(
+      toast,
+      {
+        message: "Dimension test",
+        borderRadius: 16,
+        maxWidth: 550,
+        fontSize: 18,
+      },
+      () => {},
+    );
+    assert.equal(toast.style.borderRadius, "16px");
+    assert.equal(toast.style.maxWidth, "550px");
+    const span = toast.querySelector("span");
+    assert.equal(span.style.fontSize, "18px");
+  });
+});
+
 
 
 

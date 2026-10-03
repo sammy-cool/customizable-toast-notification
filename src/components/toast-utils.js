@@ -30,18 +30,28 @@ export async function applyRichStyling(toast, options, onClose) {
     : "";
   toast.className = `toast toast-${options?.type ?? "info"}${customClass}`;
 
+  const borderRadius =
+    typeof options?.borderRadius === "number"
+      ? `${options.borderRadius}px`
+      : options?.borderRadius;
+
+  const maxWidth =
+    typeof options?.maxWidth === "number"
+      ? `${options.maxWidth}px`
+      : options?.maxWidth;
+
   Object.assign(toast.style, {
     background: options?.backgroundColor,
     padding: "12px 16px",
     marginBottom: "10px",
-    borderRadius: options?.borderRadius,
+    borderRadius,
     overflow: "hidden",
     display: "flex",
     alignItems: "center",
     justifyContent: "space-between",
     boxShadow: "0 4px 6px rgba(0, 0, 0, 0.1)",
     minWidth: "250px",
-    maxWidth: options?.maxWidth,
+    maxWidth,
     opacity: "0",
     position: "relative",
     cursor: "default",
@@ -82,11 +92,16 @@ export async function applyRichStyling(toast, options, onClose) {
     });
   }
 
+  const fontSize =
+    typeof options?.fontSize === "number"
+      ? `${options.fontSize}px`
+      : options?.fontSize;
+
   Object.assign(messageSpan.style, {
     flex: "1",
     padding: options?.fontPadding,
     fontFamily: options?.fontFamily,
-    fontSize: options?.fontSize,
+    fontSize,
     fontWeight: options?.fontWeight,
     lineHeight: options?.fontLineHeight,
     color: options?.textColor,

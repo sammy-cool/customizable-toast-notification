@@ -1,6 +1,4 @@
-"use strict";
-
-import { getDynamicAccessibleTextColorHex } from "../utils/dom.js";
+import { getDynamicAccessibleTextColorHex, forceReflow } from "../utils/dom.js";
 
 export function createCTA(toast, options, onClose) {
   const rawCfg = options?.cta;
@@ -154,13 +152,14 @@ export function createProgressBar(toast, options) {
   } else {
     progressBar.style.transition = `width ${progressDuration}ms linear`;
     setTimeout(() => {
-      progressBar.offsetWidth;
+      forceReflow(progressBar);
       progressBar.style.width = "0%";
     }, 50);
   }
 }
 
 export function runToastAnimation(toast) {
+  forceReflow(toast);
   const delay = 50;
   setTimeout(() => {
     requestAnimationFrame(() => {
