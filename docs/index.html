@@ -111,7 +111,8 @@
       }
       .navlinks {
         display: flex;
-        gap: 26px;
+        gap: 20px;
+        align-items: center;
       }
       .navlinks a {
         text-decoration: none;
@@ -122,6 +123,42 @@
       }
       .navlinks a:hover {
         color: var(--text);
+      }
+      .version-pill {
+        font-family: var(--mono);
+        font-size: 11px;
+        font-weight: 600;
+        background: var(--ink-2);
+        color: var(--accent);
+        border: 1px solid var(--line);
+        border-radius: 12px;
+        padding: 2px 8px;
+        letter-spacing: 0.02em;
+        transition: border-color 0.2s ease, color 0.2s ease;
+      }
+      .sound-toggle-btn {
+        font-family: var(--mono);
+        font-size: 11.5px;
+        font-weight: 500;
+        color: var(--text-dim);
+        background: var(--ink-2);
+        border: 1px solid var(--line);
+        border-radius: 6px;
+        padding: 5px 10px;
+        cursor: pointer;
+        display: inline-flex;
+        align-items: center;
+        gap: 5px;
+        transition: all 0.2s ease;
+      }
+      .sound-toggle-btn:hover {
+        color: var(--text);
+        border-color: var(--accent);
+      }
+      .sound-toggle-btn.active {
+        background: var(--accent-soft);
+        color: var(--accent);
+        border-color: var(--accent);
       }
 
       /* ---------- hero ---------- */
@@ -372,6 +409,62 @@
         color: var(--text);
       }
 
+      .pos-grid-container {
+        display: flex;
+        flex-direction: column;
+        gap: 4px;
+        margin: 8px 0 10px;
+        padding: 8px;
+        background: var(--ink);
+        border: 1px solid var(--line);
+        border-radius: 8px;
+      }
+      .pos-bar {
+        height: 20px;
+        border-radius: 4px;
+        background: var(--ink-2);
+        border: 1px solid var(--line);
+        font-family: var(--mono);
+        font-size: 10px;
+        color: var(--text-faint);
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        cursor: pointer;
+        user-select: none;
+        transition: all 0.15s ease;
+      }
+      .pos-bar:hover, .pos-cell:hover {
+        border-color: var(--accent);
+        color: var(--text);
+      }
+      .pos-bar.active, .pos-cell.active {
+        background: var(--accent-soft);
+        border-color: var(--accent);
+        color: var(--accent);
+        font-weight: 600;
+      }
+      .pos-matrix {
+        display: grid;
+        grid-template-columns: repeat(3, 1fr);
+        gap: 4px;
+        height: 72px;
+      }
+      .pos-cell {
+        border-radius: 4px;
+        background: var(--ink-2);
+        border: 1px solid var(--line);
+        font-family: var(--mono);
+        font-size: 10px;
+        color: var(--text-faint);
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        cursor: pointer;
+        user-select: none;
+        transition: all 0.15s ease;
+      }
+
       .code-panel {
         background: var(--ink);
         border: 1px solid var(--line);
@@ -578,16 +671,20 @@
   <body>
     <nav class="top">
       <div class="wrap">
-        <a class="brand" href="#top"
-          ><span class="dot" id="brandDot"></span
-          >customizable-toast-notification</a
-        >
+        <div style="display: flex; align-items: center; gap: 10px">
+          <a class="brand" href="#top"
+            ><span class="dot" id="brandDot"></span
+            >customizable-toast-notification</a
+          >
+          <span class="version-pill" id="pkgVersionBadge">v3.13.0</span>
+        </div>
         <div class="navlinks">
           <a href="#presets">Try it instantly</a>
           <a href="#playground">Playground</a>
           <a href="#api">API</a>
           <a href="#compare">Why this one</a>
           <a href="#install">Install</a>
+          <button id="audioToggleBtn" class="sound-toggle-btn active" title="Toggle native Web Audio API chimes">🔊 Sound: ON</button>
           <a
             href="https://github.com/sammy-cool/customizable-toast-notification"
             target="_blank"
@@ -1070,7 +1167,18 @@ npm install customizable-toast-notification</pre
       </div>
     </footer>
 
-    <script src="https://cdn.jsdelivr.net/npm/customizable-toast-notification@latest/dist/index.umd.js"></script>
+    <script>
+      (function () {
+        var isLocal =
+          location.hostname === "localhost" ||
+          location.hostname === "127.0.0.1" ||
+          location.protocol === "file:";
+        var scriptSrc = isLocal
+          ? "../dist/index.umd.js"
+          : "https://cdn.jsdelivr.net/npm/customizable-toast-notification@latest/dist/index.umd.js";
+        document.write('<script src="' + scriptSrc + '"><\/script>');
+      })();
+    </script>
     <script>
       if (!window.customizableToast) {
         document.write('<script src="../dist/index.umd.js"><\/script>');
@@ -1084,6 +1192,54 @@ npm install customizable-toast-notification</pre
           warning: "#ffc107",
           info: "#17a2b8",
         };
+
+        // Update version badge dynamically from runtime or registry
+        function updateVersionBadge() {
+          var badge = document.getElementById("pkgVersionBadge");
+          if (!badge) return;
+          var ver =
+            window.customizableToast && window.customizableToast.version
+              ? window.customizableToast.version
+              : "3.13.0";
+          badge.textContent = "v" + String(ver).replace(/^v/, "");
+          if (navigator.onLine && location.protocol !== "file:") {
+            fetch(
+              "https://registry.npmjs.org/customizable-toast-notification/latest",
+              { cache: "no-cache" },
+            )
+              .then(function (res) {
+                return res.json();
+              })
+              .then(function (data) {
+                if (data && data.version) {
+                  badge.textContent = "v" + data.version;
+                }
+              })
+              .catch(function () {});
+          }
+        }
+        updateVersionBadge();
+
+        // Audio chime toggle in navbar
+        var audioBtn = document.getElementById("audioToggleBtn");
+        if (audioBtn) {
+          audioBtn.addEventListener("click", function () {
+            if (!window.customizableToast || !window.customizableToast.setAudioEnabled) return;
+            var current = window.customizableToast.isAudioEnabled();
+            var next = !current;
+            window.customizableToast.setAudioEnabled(next);
+            if (next) {
+              audioBtn.classList.add("active");
+              audioBtn.textContent = "🔊 Sound: ON";
+              if (window.customizableToast.playTone) {
+                window.customizableToast.playTone("pop");
+              }
+            } else {
+              audioBtn.classList.remove("active");
+              audioBtn.textContent = "🔇 Sound: OFF";
+            }
+          });
+        }
 
         // ---- Real, verified defaults — pulled directly from the library's own
         // source (src/index.js's `defaults` object), not guessed or copied from
@@ -1100,6 +1256,7 @@ npm install customizable-toast-notification</pre
           textColor: "",
           showCloseButton: true,
           showProgressBar: true,
+          progress: "",
           progressColor: "",
           progressHeight: "4px",
           progressPosition: "bottom",
@@ -1115,6 +1272,9 @@ npm install customizable-toast-notification</pre
           wrapText: "normal",
           maxWidth: "400px",
           pauseOnHover: null, // null = "auto" (true only if cta is set)
+          stacked: false,
+          swipeToDismiss: true,
+          sound: "none",
           showLoader: false,
           loaderSize: 14,
           loaderColor: "",
@@ -1199,6 +1359,14 @@ npm install customizable-toast-notification</pre
               cta.autoClose = s.ctaAutoClose;
             if (s.ctaAriaLabel) cta.ariaLabel = s.ctaAriaLabel;
             opts.cta = cta;
+          }
+          if (s.stacked) opts.stacked = true;
+          if (s.swipeToDismiss === false) opts.swipeToDismiss = false;
+          if (s.sound && s.sound !== "none") {
+            opts.sound = s.sound === "default" ? true : s.sound;
+          }
+          if (s.progress !== "" && !isNaN(Number(s.progress))) {
+            opts.progress = Number(s.progress);
           }
           return opts;
         }
@@ -1332,12 +1500,40 @@ npm install customizable-toast-notification</pre
             ],
           },
           {
+            title: "Physics & Micro-Feedback",
+            open: true,
+            fields: [
+              {
+                key: "stacked",
+                type: "checkbox",
+                label: "stacked (iOS-style 3D card deck with hover expand)",
+              },
+              {
+                key: "swipeToDismiss",
+                type: "checkbox",
+                label: "swipeToDismiss (touch swipe physics with velocity snap)",
+              },
+              {
+                key: "sound",
+                type: "select",
+                label: "sound (zero-asset Web Audio chime)",
+                options: ["none", "default", "success", "error", "warning", "pop"],
+              },
+            ],
+          },
+          {
             title: "Progress Bar",
             fields: [
               {
                 key: "showProgressBar",
                 type: "checkbox",
                 label: "showProgressBar",
+              },
+              {
+                key: "progress",
+                type: "text",
+                label: "progress (0–100 fixed or blank for timer countdown)",
+                placeholder: "e.g. 50 or leave blank",
               },
               {
                 key: "progressPosition",
@@ -1531,8 +1727,57 @@ npm install customizable-toast-notification</pre
                   renderCode();
                 });
               }
-              field.appendChild(label2);
-              field.appendChild(select);
+              if (f.key === "position") {
+                var gridWrap = document.createElement("div");
+                gridWrap.className = "pos-grid-container";
+                gridWrap.innerHTML =
+                  '<div class="pos-bar" data-pos="top-full-width">top-full-width</div>' +
+                  '<div class="pos-matrix">' +
+                  '  <div class="pos-cell" data-pos="top-left">TL</div>' +
+                  '  <div class="pos-cell" data-pos="top-center">TC</div>' +
+                  '  <div class="pos-cell" data-pos="top-right">TR</div>' +
+                  '  <div class="pos-cell" data-pos="left-center">LC</div>' +
+                  '  <div class="pos-cell" data-pos="center">Center</div>' +
+                  '  <div class="pos-cell" data-pos="right-center">RC</div>' +
+                  '  <div class="pos-cell" data-pos="bottom-left">BL</div>' +
+                  '  <div class="pos-cell" data-pos="bottom-center">BC</div>' +
+                  '  <div class="pos-cell" data-pos="bottom-right">BR</div>' +
+                  '</div>' +
+                  '<div class="pos-bar" data-pos="bottom-full-width">bottom-full-width</div>';
+
+                var syncActiveCell = function (pos) {
+                  var all = gridWrap.querySelectorAll("[data-pos]");
+                  all.forEach(function (el) {
+                    if (el.getAttribute("data-pos") === pos) {
+                      el.classList.add("active");
+                    } else {
+                      el.classList.remove("active");
+                    }
+                  });
+                };
+                syncActiveCell(state.position);
+
+                gridWrap.addEventListener("click", function (e) {
+                  var target = e.target.closest("[data-pos]");
+                  if (!target) return;
+                  var pos = target.getAttribute("data-pos");
+                  state.position = pos;
+                  select.value = pos;
+                  syncActiveCell(pos);
+                  renderCode();
+                });
+
+                select.addEventListener("change", function () {
+                  syncActiveCell(select.value);
+                });
+
+                field.appendChild(label2);
+                field.appendChild(gridWrap);
+                field.appendChild(select);
+              } else {
+                field.appendChild(label2);
+                field.appendChild(select);
+              }
             } else if (f.type === "radio") {
               var label3 = document.createElement("label");
               label3.textContent = f.label;
@@ -1728,6 +1973,43 @@ npm install customizable-toast-notification</pre
               duration: 3500,
             },
           },
+          {
+            icon: "⚡",
+            title: "Live in-place mutation",
+            tag: "handle.update()",
+            desc: "Mutates toast in-place from 0% → 50% → 100% complete without flickering or timer jumps.",
+            isStreamingDemo: true,
+          },
+          {
+            icon: "🗂️",
+            title: "iOS card deck stacked mode",
+            tag: "stacked: true",
+            desc: "Stacks multiple toasts in 3D depth with peek offsets. Hover or tap expands the deck.",
+            isStackedDemo: true,
+          },
+          {
+            icon: "🔊",
+            title: "Zero-asset sound chimes",
+            tag: "sound: 'success'",
+            desc: "Pure native browser Web Audio API synthesis — 0 audio requests, 0KB network payload.",
+            options: {
+              type: "success",
+              message: "Task completed with audio confirmation!",
+              sound: "success",
+            },
+          },
+          {
+            icon: "👆",
+            title: "Touch swipe-to-dismiss",
+            tag: "swipeToDismiss: true",
+            desc: "Flick or swipe horizontally or vertically on touch screen to dismiss with velocity spring physics.",
+            options: {
+              type: "info",
+              message: "Swipe me away! (Flick or drag on touch screen)",
+              swipeToDismiss: true,
+              duration: 15000,
+            },
+          },
         ];
 
         var presetGrid = document.getElementById("presetGrid");
@@ -1757,6 +2039,63 @@ npm install customizable-toast-notification</pre
                 });
               }
               setAccent("info");
+              return;
+            }
+            if (p.isStreamingDemo) {
+              customizableToast
+                .createToast({
+                  message: "Exporting data... 0%",
+                  type: "info",
+                  showLoader: true,
+                  showProgressBar: true,
+                  duration: 20000,
+                })
+                .then(function (handle) {
+                  setAccent("info");
+                  setTimeout(function () {
+                    handle.update({
+                      message: "Processing rows... 50%",
+                      progress: 50,
+                    });
+                  }, 800);
+                  setTimeout(function () {
+                    handle.update({
+                      type: "success",
+                      message: "Export ready: 10,000 rows processed!",
+                      progress: 100,
+                      showLoader: false,
+                      duration: 4000,
+                      sound: "success",
+                    });
+                    setAccent("success");
+                  }, 1600);
+                });
+              return;
+            }
+            if (p.isStackedDemo) {
+              customizableToast.createToast({
+                message: "Deploying build...",
+                type: "info",
+                stacked: true,
+                duration: 12000,
+              });
+              setTimeout(function () {
+                customizableToast.createToast({
+                  message: "47 suites running...",
+                  type: "warning",
+                  stacked: true,
+                  duration: 12000,
+                });
+              }, 250);
+              setTimeout(function () {
+                customizableToast.createToast({
+                  message: "All 88 tests verified cleanly!",
+                  type: "success",
+                  stacked: true,
+                  sound: "success",
+                  duration: 12000,
+                });
+              }, 500);
               return;
             }
             customizableToast.createToast(p.options);

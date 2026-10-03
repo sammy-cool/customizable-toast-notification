@@ -435,7 +435,10 @@ async function toastPromise(promiseOrFn, messages = {}, options = {}) {
   }
 }
 
+const version = "3.13.0";
+
 export {
+  version,
   toastPromise,
   resetToastManager,
   resetContainerRegistry,
@@ -477,6 +480,7 @@ if (typeof window !== "undefined" && typeof document !== "undefined") {
 try {
   if (typeof window !== "undefined") {
     window.customizableToast = {
+      version,
       createToast: createToastWithPriority,
       setDefaultColors,
       setDefaultMessages,
