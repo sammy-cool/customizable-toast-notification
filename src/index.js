@@ -61,6 +61,7 @@ import { setPosition } from "./utils/position.js";
  * @property {string} [fontLineHeight]
  * @property {'auto' | 'ltr' | 'rtl'} [fontDirection]
  * @property {string} [fontPadding]
+ * @property {string} [className]
  * @property {CTAOptions} [cta]
  */
 
@@ -434,29 +435,32 @@ async function toastPromise(promiseOrFn, messages = {}, options = {}) {
 export { toastPromise, resetToastManager, resetContainerRegistry };
 
 if (typeof window !== "undefined" && typeof document !== "undefined") {
-  const onKeyDown = (e) => {
-    if (e.key === "Escape" || e.key === "Esc") {
-      (async () => {
-        try {
-          closeInProgress = true;
-          closePromise = (async () => {
-            try {
-              await dismiss();
-            } finally {
-              closeInProgress = false;
-              closePromise = null;
-            }
-          })();
-          await closePromise;
-        } catch (error) {
-          console.error("Escape key dismiss failed:", error);
-          closeInProgress = false;
-          closePromise = null;
-        }
-      })();
-    }
-  };
-  window.addEventListener("keydown", onKeyDown, { passive: true });
+  if (!window.__customizableToastEscapeAttached) {
+    window.__customizableToastEscapeAttached = true;
+    const onKeyDown = (e) => {
+      if (e.key === "Escape" || e.key === "Esc") {
+        (async () => {
+          try {
+            closeInProgress = true;
+            closePromise = (async () => {
+              try {
+                await dismiss();
+              } finally {
+                closeInProgress = false;
+                closePromise = null;
+              }
+            })();
+            await closePromise;
+          } catch (error) {
+            console.error("Escape key dismiss failed:", error);
+            closeInProgress = false;
+            closePromise = null;
+          }
+        })();
+      }
+    };
+    window.addEventListener("keydown", onKeyDown, { passive: true });
+  }
 }
 
 try {

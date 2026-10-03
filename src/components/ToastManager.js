@@ -113,6 +113,7 @@ async function createOne(options, key, initialCount) {
       marginBottom: "10px",
       zIndex: "0",
       width: "100%",
+      pointerEvents: "auto",
     });
 
     const inner = document.createElement("div");
@@ -136,6 +137,7 @@ async function createOne(options, key, initialCount) {
     const data = {
       outer,
       toast,
+      options,
       count: Math.max(1, Math.floor(initialCount ?? 0)),
       timeout: null,
       pauseOnHover: shouldPauseOnHover,
@@ -342,8 +344,9 @@ export async function closeToastByKey(key) {
     data.timer?.clear();
     data.outer?._pauseCleanup?.();
     data.toast?._cleanupCloseButton?.();
+    data.toast?._cleanupCTA?.();
     data.toast?._cleanup?.();
-    // Clean up CTA click listener if present
+    // Clean up CTA click listener if present directly on button/link
     const ctaEl = data.toast?.querySelector("button, a");
     ctaEl?._cleanup?.();
 
@@ -354,7 +357,24 @@ export async function closeToastByKey(key) {
     if (badge) badge.remove();
 
     const animDuration = data.toast?._animationDuration ?? 400;
-    await removeWithTransition(data.outer, animDuration);
+    if (data.toast) {
+      data.toast.style.opacity = "0";
+      const isTop = String(data.options?.position || "").toLowerCase().startsWith("top");
+      data.toast.style.transform = isTop ? "translateY(-20px)" : "translateY(20px)";
+    }
+
+    const parentContainer = data.outer?.parentElement;
+    await removeWithTransition(data.outer, data.toast, animDuration);
+
+    if (
+      parentContainer &&
+      parentContainer.children.length === 0 &&
+      parentContainer.id?.startsWith("toast-container-")
+    ) {
+      try {
+        parentContainer.remove();
+      } catch {}
+    }
 
     await drainQueue();
   } catch (error) {
@@ -375,7 +395,7 @@ async function drainQueue() {
   }
 }
 
-async function removeWithTransition(el, animationDurationMs = 400) {
+async function removeWithTransition(el, targetEl, animationDurationMs = 400) {
   if (!el) return Promise.resolve();
 
   return new Promise((resolve) => {
@@ -387,13 +407,13 @@ async function removeWithTransition(el, animationDurationMs = 400) {
       resolve();
     };
 
-    const child = el.firstElementChild || el;
-    if (!child) return resolve();
+    const animEl = targetEl || el.firstElementChild || el;
+    if (!animEl) return resolve();
 
     const onEnd = (e) => {
       try {
-        if (e.target !== child) return;
-        child.removeEventListener("transitionend", onEnd, true);
+        if (e.target !== animEl) return;
+        animEl.removeEventListener("transitionend", onEnd, true);
         finish();
       } catch (error) {
         console.error("removeWithTransition error:", error);
@@ -401,16 +421,16 @@ async function removeWithTransition(el, animationDurationMs = 400) {
     };
 
     try {
-      child.addEventListener("transitionend", onEnd, true);
+      animEl.addEventListener("transitionend", onEnd, true);
     } catch (error) {
       console.error("removeWithTransition error:", error);
     }
 
-    // Use animation duration + buffer for fallback timeout
-    const fallbackTimeout = animationDurationMs + 300;
+    // Use animation duration + 100ms buffer for fallback timeout
+    const fallbackTimeout = animationDurationMs + 100;
     setTimeout(() => {
       try {
-        child.removeEventListener("transitionend", onEnd, true);
+        animEl.removeEventListener("transitionend", onEnd, true);
         finish();
       } catch (error) {
         console.error("removeWithTransition error:", error);

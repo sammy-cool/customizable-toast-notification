@@ -56,12 +56,7 @@ const getCommonPlugins = (target) => [
           targets:
             target === "cjs"
               ? { node: "14.0.0" }
-              : target === "umd"
-                ? {
-                    browsers:
-                      "> 0.25%, not dead, chrome >= 49, firefox >= 45, safari >= 10, edge >= 14",
-                  }
-                : { browsers: "> 0.25%, not dead, chrome >= 60", node: "14" },
+              : { browsers: "> 0.25%, not dead, not ie 11, chrome >= 60, safari >= 11" },
           useBuiltIns: false,
           modules: false,
         },
@@ -72,6 +67,7 @@ const getCommonPlugins = (target) => [
     compress: {
       drop_console: ["log", "info", "debug"],
       drop_debugger: true,
+      passes: 2,
     },
     mangle: true,
     format: {

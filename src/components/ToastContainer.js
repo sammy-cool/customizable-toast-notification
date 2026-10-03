@@ -21,6 +21,7 @@ export async function createToastContainer(options = {}) {
       toastContainer.id = containerId;
       toastContainer.style.position = "fixed";
       toastContainer.style.zIndex = "9999";
+      toastContainer.style.pointerEvents = "none";
       await setPosition(toastContainer, { ...options, position: canonicalKey });
       await appendChild(document.body, toastContainer);
     }

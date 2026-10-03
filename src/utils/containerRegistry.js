@@ -68,6 +68,7 @@ export async function getOrCreateToastContainer(options, setPosition) {
       el.setAttribute("aria-atomic", "true"); // explicit for consistency
       el.style.position = "fixed";
       el.style.zIndex = "9999";
+      el.style.pointerEvents = "none";
       el.style.inset = "auto 10px 10px auto";
       el.style.display = "flex";
       el.style.justifyContent = "space-between";

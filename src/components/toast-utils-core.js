@@ -68,6 +68,7 @@ export function createCTA(toast, options, onClose) {
   el.addEventListener("click", onClick);
 
   el._cleanup = () => el.removeEventListener("click", onClick);
+  toast._cleanupCTA = () => el.removeEventListener("click", onClick);
 
   toast.appendChild(el);
 }

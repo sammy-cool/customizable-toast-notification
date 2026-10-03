@@ -1002,5 +1002,71 @@ describe("index.js — toastPromise null argument safety", () => {
   });
 });
 
+describe("toast-utils.js — custom animation className support", () => {
+  test("custom className is applied to toast element alongside type classes", async () => {
+    freshDom();
+    const { createToast } = await import(
+      "../../src/index.js?fresh=" + Date.now() + Math.random()
+    );
+    await createToast({
+      message: "Custom animated toast",
+      className: "animate-slide-in custom-glow",
+      duration: 10000,
+    });
+    await new Promise((r) => setTimeout(r, 100));
+    const toast = document.querySelector('[id^="toast-container-"] [id^="toast-"]');
+    assert.ok(toast);
+    assert.ok(toast.classList.contains("toast"));
+    assert.ok(toast.classList.contains("toast-info"));
+    assert.ok(toast.classList.contains("animate-slide-in"));
+    assert.ok(toast.classList.contains("custom-glow"));
+  });
+});
+
+describe("containerRegistry.js & ToastManager.js — pointer-events non-blocking guarantee", () => {
+  test("container has pointer-events: none and toast/outer has pointer-events: auto", async () => {
+    freshDom();
+    const { createToast } = await import(
+      "../../src/index.js?fresh=" + Date.now() + Math.random()
+    );
+    await createToast({
+      message: "Click-through test",
+      duration: 10000,
+    });
+    await new Promise((r) => setTimeout(r, 100));
+    const container = document.querySelector('[id^="toast-container-"]');
+    const toast = document.querySelector('[id^="toast-container-"] [id^="toast-"]');
+    assert.ok(container);
+    assert.ok(toast);
+    assert.equal(container.style.pointerEvents, "none");
+    assert.equal(toast.style.pointerEvents, "auto");
+  });
+});
+
+describe("ToastManager.js — exit animation triggers on dismissal", () => {
+  test("dismiss sets opacity to 0 and triggers exit transform", async () => {
+    freshDom();
+    const { showToast, closeToastByKey } = await import(
+      "../../src/components/ToastManager.js?fresh=" + Date.now() + Math.random()
+    );
+    const pos = "top-right";
+    const key = await showToast({
+      message: "Exit anim test",
+      position: pos,
+      duration: 10000,
+    });
+    await new Promise((r) => setTimeout(r, 100));
+    const toast = document.querySelector('[id^="toast-container-"] [id^="toast-"]');
+    assert.ok(toast);
+
+    // Call closeToastByKey, check that exit styles are immediately applied
+    const closePromise = closeToastByKey(key);
+    assert.equal(toast.style.opacity, "0");
+    assert.equal(toast.style.transform, "translateY(-20px)");
+    await closePromise;
+  });
+});
+
+
 
 

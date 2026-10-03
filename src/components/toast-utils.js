@@ -20,9 +20,18 @@ import {
 export async function applyRichStyling(toast, options, onClose) {
   const durationMs = await parseAnimationDuration(options?.animationDuration);
   const validAnimationDuration = `${durationMs}ms`;
+  const easing = typeof options?.animationEasing === "string" && options.animationEasing.trim()
+    ? options.animationEasing.trim()
+    : "ease";
 
-  // Compose className based on provided type (default to "info")
-  toast.className = `toast toast-${options?.type ?? "info"}`;
+  // Compose className based on provided type and optional custom className
+  const customClass = typeof options?.className === "string" && options.className.trim()
+    ? ` ${options.className.trim()}`
+    : "";
+  toast.className = `toast toast-${options?.type ?? "info"}${customClass}`;
+
+  const isTopPos = String(options?.position || "").toLowerCase().startsWith("top");
+  const initialTransform = isTopPos ? "translateY(-20px)" : "translateY(20px)";
 
   Object.assign(toast.style, {
     background: options?.backgroundColor,
@@ -41,8 +50,9 @@ export async function applyRichStyling(toast, options, onClose) {
     cursor: "default",
     boxSizing: "border-box",
     userSelect: "text",
-    transition: `opacity ${validAnimationDuration} ${options?.animationEasing}, transform ${validAnimationDuration} ${options?.animationEasing}`,
-    transform: "translateY(20px)",
+    pointerEvents: "auto",
+    transition: `opacity ${validAnimationDuration} ${easing}, transform ${validAnimationDuration} ${easing}`,
+    transform: initialTransform,
     zIndex: "9999",
   });
   // Accessibility settings
