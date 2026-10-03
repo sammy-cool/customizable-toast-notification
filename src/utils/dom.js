@@ -81,8 +81,7 @@ export async function parseAnimationDuration(duration) {
 export function forceReflow(el) {
   try {
     return el?.offsetWidth || 0;
-  } catch (error) {
-    console.warn("Force reflow failed:", error);
+  } catch {
     return 0;
   }
 }

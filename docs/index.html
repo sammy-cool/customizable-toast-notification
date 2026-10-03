@@ -816,6 +816,61 @@
             </button>
           </div>
         </div>
+
+        <div class="api-demo">
+          <h3>Live in-place mutation & streaming updates — <code>handle.update()</code></h3>
+          <p class="api-desc">
+            Update message, progress bar, type, and icon on active toasts in-place without unmounting, flickering, or timer jumps.
+          </p>
+          <div class="code-block">
+            <span class="tok-kw">const</span> handle = <span class="tok-kw">await</span> createToast({ message: <span class="tok-str">"Exporting report... 0%"</span>, showProgressBar: <span class="tok-kw">true</span>, showLoader: <span class="tok-kw">true</span> });<br/>
+            <span class="tok-kw">await</span> handle.update({ progress: 50, message: <span class="tok-str">"Exporting report... 50%"</span> });<br/>
+            <span class="tok-kw">await</span> handle.update({ type: <span class="tok-str">"success"</span>, message: <span class="tok-str">"Export finished!"</span>, showLoader: <span class="tok-kw">false</span>, sound: <span class="tok-str">"success"</span> });
+          </div>
+          <div class="try-row">
+            <button class="try-btn" id="streamUpdateBtn">
+              Run Live In-Place Streaming Demo
+            </button>
+          </div>
+        </div>
+
+        <div class="api-demo">
+          <h3>iOS-Style Card Deck Stacked Mode — <code>stacked: true</code></h3>
+          <p class="api-desc">
+            Stack multiple toasts behind each other with scale and peek offsets. Hover or focus expands the deck; leaving collapses it.
+          </p>
+          <div class="code-block">
+            createToast({ message: <span class="tok-str">"Deploying v3.12.3..."</span>, stacked: <span class="tok-kw">true</span> });<br/>
+            createToast({ message: <span class="tok-str">"3 tests running..."</span>, stacked: <span class="tok-kw">true</span> });<br/>
+            createToast({ message: <span class="tok-str">"All builds verified!"</span>, type: <span class="tok-str">"success"</span>, stacked: <span class="tok-kw">true</span> });
+          </div>
+          <div class="try-row">
+            <button class="try-btn" id="stackedDeckBtn">
+              Fire Stacked Deck (3 Toasts)
+            </button>
+          </div>
+        </div>
+
+        <div class="api-demo">
+          <h3>Zero-Asset Web Audio API Micro-Feedback Synth — <code>sound: true</code></h3>
+          <p class="api-desc">
+            Pure native browser math oscillators — 0 MP3s, 0 audio assets, 0KB network payload.
+          </p>
+          <div class="try-row">
+            <button class="try-btn" id="soundSuccessBtn">
+              ♫ Success Chime
+            </button>
+            <button class="try-btn secondary" id="soundErrorBtn">
+              ♫ Error Buzz
+            </button>
+            <button class="try-btn secondary" id="soundWarnBtn">
+              ♫ Warning Ping
+            </button>
+            <button class="try-btn secondary" id="soundPopBtn">
+              ♫ Droplet Pop
+            </button>
+          </div>
+        </div>
       </div>
     </section>
 
@@ -1056,6 +1111,7 @@ npm install customizable-toast-notification</pre
           fontLineHeight: "1.4",
           fontDirection: "auto",
           fontPadding: "",
+          className: "",
           wrapText: "normal",
           maxWidth: "400px",
           pauseOnHover: null, // null = "auto" (true only if cta is set)
@@ -1117,6 +1173,7 @@ npm install customizable-toast-notification</pre
             opts.fontLineHeight = s.fontLineHeight;
           if (s.fontDirection !== DEFAULTS.fontDirection) opts.fontDirection = s.fontDirection;
           if (s.fontPadding) opts.fontPadding = s.fontPadding;
+          if (s.className) opts.className = s.className;
           if (s.wrapText !== DEFAULTS.wrapText) opts.wrapText = s.wrapText;
           if (s.maxWidth && s.maxWidth !== DEFAULTS.maxWidth) opts.maxWidth = s.maxWidth;
           if (s.pauseOnHover !== null) opts.pauseOnHover = s.pauseOnHover;
@@ -1367,6 +1424,12 @@ npm install customizable-toast-notification</pre
                 key: "animationEasing",
                 type: "text",
                 label: "animationEasing",
+              },
+              {
+                key: "className",
+                type: "text",
+                label: "className (custom CSS class)",
+                placeholder: "e.g. custom-animation-bounce",
               },
             ],
           },
@@ -1823,6 +1886,79 @@ npm install customizable-toast-notification</pre
             duration: 4000,
           });
           setAccent("warning");
+        });
+        wire("streamUpdateBtn", function () {
+          customizableToast
+            .createToast({
+              message: "Exporting data... 0%",
+              type: "info",
+              showLoader: true,
+              showProgressBar: true,
+              duration: 20000,
+            })
+            .then(function (handle) {
+              setAccent("info");
+              setTimeout(function () {
+                handle.update({
+                  message: "Processing rows... 50%",
+                  progress: 50,
+                });
+              }, 900);
+              setTimeout(function () {
+                handle.update({
+                  type: "success",
+                  message: "Export ready: 10,000 rows processed!",
+                  progress: 100,
+                  showLoader: false,
+                  duration: 4000,
+                  sound: "success",
+                });
+                setAccent("success");
+              }, 1800);
+            });
+        });
+
+        wire("stackedDeckBtn", function () {
+          customizableToast.createToast({
+            message: "Deploying v3.12.3...",
+            type: "info",
+            stacked: true,
+            duration: 12000,
+          });
+          setTimeout(function () {
+            customizableToast.createToast({
+              message: "3 suites running...",
+              type: "warning",
+              stacked: true,
+              duration: 12000,
+            });
+          }, 250);
+          setTimeout(function () {
+            customizableToast.createToast({
+              message: "All 85 tests verified cleanly!",
+              type: "success",
+              stacked: true,
+              sound: "success",
+              duration: 12000,
+            });
+          }, 500);
+        });
+
+        wire("soundSuccessBtn", function () {
+          if (customizableToast.playTone) customizableToast.playTone("success");
+          customizableToast.createToast({ message: "Task completed successfully!", type: "success" });
+        });
+        wire("soundErrorBtn", function () {
+          if (customizableToast.playTone) customizableToast.playTone("error");
+          customizableToast.createToast({ message: "Action failed. Please retry.", type: "error" });
+        });
+        wire("soundWarnBtn", function () {
+          if (customizableToast.playTone) customizableToast.playTone("warning");
+          customizableToast.createToast({ message: "Warning: High memory usage.", type: "warning" });
+        });
+        wire("soundPopBtn", function () {
+          if (customizableToast.playTone) customizableToast.playTone("pop");
+          customizableToast.createToast({ message: "Incoming notification ping", type: "info" });
         });
       })();
     </script>

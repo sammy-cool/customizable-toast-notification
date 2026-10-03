@@ -1,9 +1,17 @@
 "use strict";
 
-import { showToast, closeToastByKey, resetToastManager } from "./components/ToastManager.js";
+import {
+  showToast,
+  closeToastByKey,
+  updateToastByKey,
+  resetToastManager,
+  dismiss,
+  noop as managerNoop,
+} from "./components/ToastManager.js";
 import { getOrCreateToastContainer, resetContainerRegistry } from "./utils/containerRegistry.js";
 import { getDynamicAccessibleTextColorHex } from "./utils/dom.js";
 import { setPosition } from "./utils/position.js";
+import { setAudioEnabled, isAudioEnabled, playTone } from "./utils/audio.js";
 
 /**
  * @typedef {'info' | 'success' | 'error' | 'warning'} ToastType
@@ -63,18 +71,23 @@ import { setPosition } from "./utils/position.js";
  * @property {string} [fontPadding]
  * @property {string} [className]
  * @property {CTAOptions} [cta]
+ * @property {boolean} [stacked]
+ * @property {boolean | 'success' | 'error' | 'warning' | 'info' | 'pop' | string} [sound]
+ * @property {boolean} [swipeToDismiss]
+ * @property {number} [progress]
  */
 
 /**
  * @typedef {Object} ToastHandle
  * @property {() => Promise<void>} dismiss
+ * @property {(newOptions: Partial<ToastOptions>) => Promise<void>} update
  */
 
 /**
  * @typedef {Object} ToastPromiseMessages
  * @property {string} [loading]
- * @property {string | ((result: any) => string)} [success]
- * @property {string | ((error: any) => string)} [error]
+ * @property {string | ((result: unknown) => string)} [success]
+ * @property {string | ((error: unknown) => string)} [error]
  */
 
 let defaultColors = {
@@ -91,43 +104,38 @@ let defaultMessages = {
   info: "Information message!",
 };
 
-const pendingToasts = [];
-
 let domReady = false;
+let domReadyPromise = null;
 
 async function checkDOMReady() {
   if (domReady) return;
 
-  const SETTLE_DELAY_MS = 200;
+  if (typeof window === "undefined" || typeof document === "undefined") {
+    return;
+  }
 
-  if (typeof window !== "undefined" && typeof document !== "undefined") {
-    if (
-      document.readyState === "complete" ||
-      document.readyState === "interactive"
-    ) {
-      domReady = true;
-      const toFlush = [...pendingToasts];
-      pendingToasts.length = 0;
-      for (const options of toFlush) {
-        setTimeout(() => createToastNow(options), 0);
-      }
-    } else {
+  if (
+    document.readyState === "complete" ||
+    document.readyState === "interactive"
+  ) {
+    domReady = true;
+    return;
+  }
+
+  if (!domReadyPromise) {
+    domReadyPromise = new Promise((resolve) => {
       document.addEventListener(
         "DOMContentLoaded",
         () => {
-          setTimeout(() => {
-            domReady = true;
-            const toFlush = [...pendingToasts];
-            pendingToasts.length = 0;
-            for (const options of toFlush) {
-              setTimeout(() => createToastNow(options), 0);
-            }
-          }, SETTLE_DELAY_MS);
+          domReady = true;
+          resolve();
         },
         { once: true },
       );
-    }
+    });
   }
+
+  await domReadyPromise;
 }
 
 async function createToastNow(options = {}) {
@@ -155,11 +163,6 @@ async function createToast(options = {}) {
   }
 
   await checkDOMReady();
-
-  if (!domReady) {
-    pendingToasts.push(options);
-    return null;
-  }
 
   return await createToastNow(options);
 }
@@ -305,8 +308,6 @@ function setDefaultMessages(messages) {
   }
 }
 
-import { dismiss, noop as managerNoop } from "./components/ToastManager.js";
-
 let closeInProgress = false;
 let closePromise = null;
 
@@ -335,6 +336,8 @@ async function createToastWithPriority(options = {}) {
   const key = await runWithClosePriority(() => originalCreateToast(options));
   return {
     dismiss: () => (key ? closeToastByKey(key) : Promise.resolve()),
+    update: (newOptions) =>
+      key ? updateToastByKey(key, newOptions) : Promise.resolve(),
   };
 }
 
@@ -432,7 +435,15 @@ async function toastPromise(promiseOrFn, messages = {}, options = {}) {
   }
 }
 
-export { toastPromise, resetToastManager, resetContainerRegistry };
+export {
+  toastPromise,
+  resetToastManager,
+  resetContainerRegistry,
+  updateToastByKey,
+  setAudioEnabled,
+  isAudioEnabled,
+  playTone,
+};
 
 if (typeof window !== "undefined" && typeof document !== "undefined") {
   if (!window.__customizableToastEscapeAttached) {
@@ -472,6 +483,10 @@ try {
       noop: noopAll,
       dismiss: dismissToast,
       toastPromise,
+      updateToastByKey,
+      setAudioEnabled,
+      isAudioEnabled,
+      playTone,
     };
   }
 } catch (error) {

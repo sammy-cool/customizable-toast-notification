@@ -65,6 +65,31 @@ describe("toast-utils.js — applyRichStyling / wrapText", () => {
     assert.equal(span.style.display, "-webkit-box");
     assert.equal(span.style.webkitLineClamp, "3");
   });
+
+  test("FIXED: wrapText:'truncate' and 'ellipsis' correctly apply 3-line truncation", async () => {
+    freshDom();
+    const { applyRichStyling } =
+      await import("../../src/components/toast-utils.js");
+    for (const val of ["truncate", "ellipsis"]) {
+      const toast = document.createElement("div");
+      await applyRichStyling(
+        toast,
+        {
+          type: "info",
+          message: "a message that should truncate",
+          backgroundColor: "#111111",
+          textColor: "#ffffff",
+          wrapText: val,
+          animationDuration: "0.4s",
+          animationEasing: "ease",
+        },
+        () => {},
+      );
+      const span = toast.querySelector("span");
+      assert.equal(span.style.display, "-webkit-box");
+      assert.equal(span.style.webkitLineClamp, "3");
+    }
+  });
 });
 
 describe("toast-utils-core.js — createProgressBar width math", () => {
@@ -892,6 +917,28 @@ describe("toast-utils-core.js — defensive CTA input handling", () => {
     });
     assert.equal(toast.children.length, 0);
   });
+  test("createCTA defaults to link when href is provided without explicit variant", async () => {
+    freshDom();
+    const { createCTA } = await import("../../src/components/toast-utils-core.js");
+    const toast = document.createElement("div");
+    createCTA(
+      toast,
+      {
+        cta: {
+          label: "View Docs",
+          href: "https://example.com/docs",
+          target: "_blank",
+        },
+      },
+      () => {},
+    );
+    const linkEl = toast.querySelector("a");
+    assert.ok(linkEl, "Should create an anchor element");
+    assert.equal(linkEl.tagName.toLowerCase(), "a");
+    assert.equal(linkEl.href, "https://example.com/docs");
+    assert.equal(linkEl.target, "_blank");
+    assert.ok(linkEl.rel.includes("noopener"));
+  });
 });
 
 describe("html-sanitizer.js — edge cases and type defense", () => {
@@ -1067,6 +1114,414 @@ describe("ToastManager.js — exit animation triggers on dismissal", () => {
   });
 });
 
+describe("ToastManager.js — dismissMostRecent with in-flight pending toasts", () => {
+  test("dismissMostRecent cancels in-flight pending toast before it mounts", async () => {
+    freshDom();
+    const { showToast, dismissMostRecent } = await import(
+      "../../src/components/ToastManager.js?fresh=" + Date.now() + Math.random()
+    );
+    // showToast schedules creation in rAF (pending)
+    await showToast({ message: "In-flight toast" });
+    // dismiss immediately before rAF runs
+    await dismissMostRecent();
+    // Wait for rAF / timer to settle
+    await new Promise((r) => setTimeout(r, 50));
+    const mountedToast = document.querySelector('[id^="toast-"]');
+    assert.equal(mountedToast, null, "Toast should have been cancelled before mounting");
+  });
 
+  test("dismissMostRecent dismisses active toast and drains queued toast when visibleCount reaches MAX_VISIBLE", async () => {
+    freshDom();
+    const { showToast, dismissMostRecent, resetToastManager } = await import(
+      "../../src/components/ToastManager.js?fresh=" + Date.now() + Math.random()
+    );
+    resetToastManager();
 
+    for (let i = 0; i < 4; i++) {
+      await showToast({ message: `queue item ${i}`, position: "bottom-right", duration: 60000 });
+    }
+    // Wait for rAF to settle mounting first 3 items and queueing 4th
+    await new Promise((r) => setTimeout(r, 120));
+
+    const textsInitial = Array.from(
+      document.querySelectorAll('[id^="toast-container-"] [id^="toast-"]'),
+    ).map((el) => el.textContent);
+    assert.equal(textsInitial.length, 3);
+    assert.ok(!textsInitial.some((t) => t.includes("queue item 3")));
+
+    // dismissMostRecent() should close the most recent active toast, draining queue item 3
+    await dismissMostRecent();
+    await new Promise((r) => setTimeout(r, 550));
+
+    const textsAfter = Array.from(
+      document.querySelectorAll('[id^="toast-container-"] [id^="toast-"]'),
+    ).map((el) => el.textContent);
+    assert.equal(textsAfter.length, 3);
+    assert.ok(textsAfter.some((t) => t.includes("queue item 3")));
+
+    resetToastManager();
+  });
+});
+
+describe("ToastManager.js — closeAllToasts concurrent dismissal", () => {
+  test("closeAllToasts dismisses multiple active toasts concurrently", async () => {
+    freshDom();
+    const { showToast, closeAllToasts } = await import(
+      "../../src/components/ToastManager.js?fresh=" + Date.now() + Math.random()
+    );
+    await showToast({ message: "Toast 1", position: "top-left", duration: 10000 });
+    await showToast({ message: "Toast 2", position: "bottom-left", duration: 10000 });
+    await new Promise((r) => setTimeout(r, 100));
+
+    const toasts = document.querySelectorAll(".toast");
+    assert.equal(toasts.length, 2);
+
+    await closeAllToasts();
+    assert.equal(document.querySelectorAll(".toast").length, 0);
+  });
+});
+
+describe("toast-utils.js — createEmergencyToast purity", () => {
+  test("createEmergencyToast returns element without appending directly to document.body", async () => {
+    freshDom();
+    const { createEmergencyToast } = await import(
+      "../../src/components/toast-utils.js?fresh=" + Date.now() + Math.random()
+    );
+    const bodyChildrenBefore = document.body.children.length;
+    const el = await createEmergencyToast({ message: "Emergency Alert" });
+    assert.ok(el);
+    assert.equal(document.body.children.length, bodyChildrenBefore, "Should not attach directly to body");
+  });
+});
+
+describe("toast-utils.js — animation & custom className across all toast types", () => {
+  test("custom className and animation styles apply to all toast types", async () => {
+    freshDom();
+    const { applyRichStyling } = await import(
+      "../../src/components/toast-utils.js?fresh=" + Date.now() + Math.random()
+    );
+    const types = ["info", "success", "error", "warning"];
+    for (const type of types) {
+      const toast = document.createElement("div");
+      await applyRichStyling(
+        toast,
+        {
+          type,
+          message: `${type} anim test`,
+          className: "animate-bounce custom-shadow",
+          animationDuration: "0.5s",
+          animationEasing: "ease-in-out",
+        },
+        () => {},
+      );
+      assert.ok(toast.className.includes(`toast-${type}`));
+      assert.ok(toast.className.includes("animate-bounce"));
+      assert.ok(toast.className.includes("custom-shadow"));
+      assert.equal(toast.style.opacity, "0");
+      assert.equal(toast.style.transform, "translateY(20px)");
+      assert.equal(toast.style.transition, "opacity 500ms ease-in-out, transform 500ms ease-in-out");
+    }
+  });
+});
+
+describe("dom.js — forceReflow utility", () => {
+  test("forceReflow safely returns offsetWidth or 0 on non-elements/errors", async () => {
+    freshDom();
+    const { forceReflow } = await import("../../src/utils/dom.js");
+    assert.equal(forceReflow(null), 0);
+    assert.equal(forceReflow(undefined), 0);
+    assert.equal(forceReflow({}), 0);
+    const div = document.createElement("div");
+    assert.equal(typeof forceReflow(div), "number");
+  });
+});
+
+describe("toast-utils.js — numeric dimensions auto-converted to px", () => {
+  test("accepts numbers for borderRadius, maxWidth, and fontSize and appends px", async () => {
+    freshDom();
+    const { applyRichStyling } = await import("../../src/components/toast-utils.js");
+    const toast = document.createElement("div");
+    await applyRichStyling(
+      toast,
+      {
+        message: "Dimension test",
+        borderRadius: 16,
+        maxWidth: 550,
+        fontSize: 18,
+      },
+      () => {},
+    );
+    assert.equal(toast.style.borderRadius, "16px");
+    assert.equal(toast.style.maxWidth, "550px");
+    const span = toast.querySelector("span");
+    assert.equal(span.style.fontSize, "18px");
+  });
+});
+
+describe("ToastManager.js — handle.update live updates", () => {
+  test("updates active toast message and type in-place without unmounting", async () => {
+    freshDom();
+    const { createToast, resetToastManager } = await import("../../src/index.js");
+    resetToastManager();
+
+    const handle = await createToast({
+      message: "Initial status",
+      type: "info",
+      duration: 5000,
+    });
+    await new Promise((r) => setTimeout(r, 60));
+    const toast = document.querySelector(".toast");
+    assert.ok(toast);
+    assert.ok(toast.textContent.includes("Initial status"));
+    assert.ok(toast.className.includes("toast-info"));
+
+    await handle.update({
+      message: "Task completed successfully!",
+      type: "success",
+    });
+
+    assert.ok(toast.textContent.includes("Task completed successfully!"));
+    assert.ok(toast.className.includes("toast-success"));
+    assert.ok(!toast.className.includes("toast-info"));
+    await handle.dismiss();
+    resetToastManager();
+  });
+
+  test("updates progress bar dynamically", async () => {
+    freshDom();
+    const { createToast, resetToastManager } = await import("../../src/index.js");
+    resetToastManager();
+
+    const handle = await createToast({
+      message: "Uploading file...",
+      showProgressBar: true,
+      duration: 10000,
+    });
+    await new Promise((r) => setTimeout(r, 60));
+    const toast = document.querySelector(".toast");
+    assert.ok(toast);
+
+    await handle.update({ progress: 50 });
+    const bar = toast.querySelector(".toast-progress-bar");
+    assert.ok(bar);
+    assert.equal(bar.style.width, "50%");
+
+    await handle.update({ progress: 100 });
+    assert.equal(bar.style.width, "100%");
+    await handle.dismiss();
+    resetToastManager();
+  });
+
+  test("handles live addition and removal of loader", async () => {
+    freshDom();
+    const { createToast, resetToastManager } = await import("../../src/index.js");
+    resetToastManager();
+
+    const handle = await createToast({
+      message: "Processing...",
+      showLoader: true,
+    });
+    await new Promise((r) => setTimeout(r, 60));
+    const toast = document.querySelector(".toast");
+    assert.ok(toast);
+    assert.ok(toast.querySelector(".toast-loader"));
+
+    await handle.update({
+      message: "Done processing!",
+      showLoader: false,
+    });
+    assert.equal(toast.querySelector(".toast-loader"), null);
+    assert.ok(toast.textContent.includes("Done processing!"));
+    await handle.dismiss();
+    resetToastManager();
+  });
+});
+
+describe("ToastManager.js — iOS-style card deck stacked mode", () => {
+  test("stacked: true marks container and applies depth scale and peek offsets", async () => {
+    freshDom();
+    const { createToast, resetToastManager } = await import("../../src/index.js");
+    resetToastManager();
+
+    await createToast({ message: "Card 1", stacked: true, position: "bottom-right", duration: 10000 });
+    await new Promise((r) => requestAnimationFrame(r));
+
+    await createToast({ message: "Card 2", stacked: true, position: "bottom-right", duration: 10000 });
+    await new Promise((r) => requestAnimationFrame(r));
+
+    const container = document.querySelector('[id^="toast-container-"]');
+    assert.ok(container);
+    assert.equal(container.getAttribute("data-stacked"), "true");
+
+    const cards = Array.from(container.children);
+    assert.equal(cards.length, 2);
+
+    // Front card (last child, Card 2)
+    assert.equal(cards[1].style.transform, "scale(1)");
+    assert.equal(cards[1].style.zIndex, "30");
+
+    // Peeking card behind (first child, Card 1)
+    assert.ok(cards[0].style.transform.includes("scale(0.95)"));
+    assert.equal(cards[0].style.marginTop, "-55px");
+
+    // Test expand on hover
+    container.dispatchEvent(new window.MouseEvent("mouseenter"));
+    assert.equal(cards[0].style.transform, "none");
+    assert.equal(cards[0].style.marginTop, "0px");
+
+    // Test collapse on mouseleave
+    container.dispatchEvent(new window.MouseEvent("mouseleave"));
+    assert.ok(cards[0].style.transform.includes("scale(0.95)"));
+    assert.equal(cards[0].style.marginTop, "-55px");
+
+    resetToastManager();
+  });
+});
+
+describe("toast-utils-core.js — swipeToDismiss touch gesture handling", () => {
+  test("swipe past threshold triggers dismissal callback and cleanup removes listeners", async () => {
+    freshDom();
+    const { attachSwipeToDismiss } = await import("../../src/components/toast-utils-core.js");
+    const toast = document.createElement("div");
+    let closed = false;
+    attachSwipeToDismiss(toast, () => {
+      closed = true;
+    });
+
+    toast.dispatchEvent(
+      new window.TouchEvent("touchstart", {
+        touches: [{ clientX: 100, clientY: 100 }],
+      }),
+    );
+
+    toast.dispatchEvent(
+      new window.TouchEvent("touchmove", {
+        touches: [{ clientX: 220, clientY: 100 }],
+        cancelable: true,
+      }),
+    );
+
+    toast.dispatchEvent(new window.TouchEvent("touchend", { touches: [] }));
+
+    await new Promise((r) => setTimeout(r, 220));
+    assert.equal(closed, true);
+
+    assert.equal(typeof toast._cleanupSwipe, "function");
+    toast._cleanupSwipe();
+  });
+
+  test("swipe below threshold snaps back to original position", async () => {
+    freshDom();
+    const { attachSwipeToDismiss } = await import("../../src/components/toast-utils-core.js");
+    const toast = document.createElement("div");
+    let closed = false;
+    attachSwipeToDismiss(toast, () => {
+      closed = true;
+    });
+
+    toast.dispatchEvent(
+      new window.TouchEvent("touchstart", {
+        touches: [{ clientX: 100, clientY: 100 }],
+      }),
+    );
+    toast.dispatchEvent(
+      new window.TouchEvent("touchmove", {
+        touches: [{ clientX: 130, clientY: 100 }],
+        cancelable: true,
+      }),
+    );
+    toast.dispatchEvent(new window.TouchEvent("touchend", { touches: [] }));
+
+    await new Promise((r) => setTimeout(r, 50));
+    assert.equal(closed, false);
+    assert.equal(toast.style.transform, "translateX(0)");
+    assert.equal(toast.style.opacity, "1");
+    toast._cleanupSwipe?.();
+  });
+});
+
+describe("audio.js — Web Audio API notification sound synth", () => {
+  test("playTone synthesizes tones without throwing and handles audio toggle", async () => {
+    freshDom();
+    const { playTone, setAudioEnabled, isAudioEnabled } = await import("../../src/utils/audio.js");
+
+    assert.equal(isAudioEnabled(), true);
+    setAudioEnabled(false);
+    assert.equal(isAudioEnabled(), false);
+
+    playTone("success");
+    playTone("error");
+    playTone("warning");
+    playTone("info");
+
+    setAudioEnabled(true);
+    assert.equal(isAudioEnabled(), true);
+
+    let oscillatorCreated = false;
+    window.AudioContext = class {
+      constructor() {
+        this.currentTime = 0;
+        this.state = "running";
+        this.destination = {};
+      }
+      createOscillator() {
+        oscillatorCreated = true;
+        return {
+          type: "sine",
+          frequency: {
+            setValueAtTime: () => {},
+            exponentialRampToValueAtTime: () => {},
+          },
+          connect: () => {},
+          start: () => {},
+          stop: () => {},
+        };
+      }
+      createGain() {
+        return {
+          gain: {
+            setValueAtTime: () => {},
+            exponentialRampToValueAtTime: () => {},
+          },
+          connect: () => {},
+        };
+      }
+    };
+
+    playTone("success");
+    assert.equal(oscillatorCreated, true);
+
+    playTone("error");
+    playTone("warning");
+    playTone("pop");
+  });
+});
+
+describe("toast-utils-core.js — progress bar options and live update robustness", () => {
+  test("createProgressBar sets initial fixed width when progress is provided", async () => {
+    freshDom();
+    const { createProgressBar } = await import("../../src/components/toast-utils-core.js");
+    const toast = document.createElement("div");
+
+    createProgressBar(toast, { progress: 45, duration: 2500 });
+    const bar = toast.querySelector(".toast-progress-bar");
+    assert.ok(bar);
+    assert.equal(bar.style.width, "45%");
+    assert.equal(toast._progressAnimation, undefined);
+  });
+
+  test("createProgressBar safely handles float (0..1) and non-finite values", async () => {
+    freshDom();
+    const { createProgressBar } = await import("../../src/components/toast-utils-core.js");
+    const toast1 = document.createElement("div");
+    createProgressBar(toast1, { progress: 0.75 });
+    const bar1 = toast1.querySelector(".toast-progress-bar");
+    assert.equal(bar1.style.width, "75%");
+
+    const toast2 = document.createElement("div");
+    createProgressBar(toast2, { progress: NaN });
+    const bar2 = toast2.querySelector(".toast-progress-bar");
+    assert.equal(bar2.style.width, "0%");
+  });
+});
 

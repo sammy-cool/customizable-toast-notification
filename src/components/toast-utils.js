@@ -9,7 +9,9 @@ import {
   createCloseButton,
   createProgressBar,
   runToastAnimation,
+  attachSwipeToDismiss,
 } from "./toast-utils-core.js";
+import { playTone } from "../utils/audio.js";
 
 /**
  * Applies rich styling and content to a toast element.
@@ -30,18 +32,28 @@ export async function applyRichStyling(toast, options, onClose) {
     : "";
   toast.className = `toast toast-${options?.type ?? "info"}${customClass}`;
 
+  const borderRadius =
+    typeof options?.borderRadius === "number"
+      ? `${options.borderRadius}px`
+      : options?.borderRadius;
+
+  const maxWidth =
+    typeof options?.maxWidth === "number"
+      ? `${options.maxWidth}px`
+      : options?.maxWidth;
+
   Object.assign(toast.style, {
     background: options?.backgroundColor,
     padding: "12px 16px",
     marginBottom: "10px",
-    borderRadius: options?.borderRadius,
+    borderRadius,
     overflow: "hidden",
     display: "flex",
     alignItems: "center",
     justifyContent: "space-between",
     boxShadow: "0 4px 6px rgba(0, 0, 0, 0.1)",
     minWidth: "250px",
-    maxWidth: options?.maxWidth,
+    maxWidth,
     opacity: "0",
     position: "relative",
     cursor: "default",
@@ -56,17 +68,18 @@ export async function applyRichStyling(toast, options, onClose) {
   toast.setAttribute("role", "alert");
   toast.setAttribute("aria-live", "polite");
   toast.tabIndex = 0; // Make focusable for accessibility if needed
-
   toast._animationDuration = durationMs;
 
   const messageSpan = document.createElement("span");
+  messageSpan.className = "toast-message";
+  toast._messageSpan = messageSpan;
 
-  if (options?.wrapText) {
-    Object.assign(messageSpan.style, {
-      display: "block",
-      whiteSpace: "normal",
-    });
-  } else {
+  const isTruncate =
+    options?.wrapText === "truncate" ||
+    options?.wrapText === "ellipsis" ||
+    options?.wrapText === false;
+
+  if (isTruncate || !options?.wrapText) {
     Object.assign(messageSpan.style, {
       display: "-webkit-box",
       WebkitBoxOrient: "vertical",
@@ -75,13 +88,23 @@ export async function applyRichStyling(toast, options, onClose) {
       overflow: "hidden",
       textOverflow: "ellipsis",
     });
+  } else {
+    Object.assign(messageSpan.style, {
+      display: "block",
+      whiteSpace: "normal",
+    });
   }
+
+  const fontSize =
+    typeof options?.fontSize === "number"
+      ? `${options.fontSize}px`
+      : options?.fontSize;
 
   Object.assign(messageSpan.style, {
     flex: "1",
     padding: options?.fontPadding,
     fontFamily: options?.fontFamily,
-    fontSize: options?.fontSize,
+    fontSize,
     fontWeight: options?.fontWeight,
     lineHeight: options?.fontLineHeight,
     color: options?.textColor,
@@ -157,6 +180,15 @@ export async function applyRichStyling(toast, options, onClose) {
 
   if (options?.showProgressBar) {
     createProgressBar(toast, options);
+  }
+
+  if (options?.swipeToDismiss !== false) {
+    attachSwipeToDismiss(toast, onClose);
+  }
+
+  if (options?.sound) {
+    const tone = typeof options.sound === "string" ? options.sound : options?.type || "info";
+    playTone(tone);
   }
 
   runToastAnimation(toast);
@@ -235,7 +267,6 @@ export async function createEmergencyToast(options, onClose) {
       if (typeof onClose === "function") onClose(emergency);
     });
 
-    document.body.appendChild(emergency);
     const duration = Number(options?.duration) || 2500;
     const timer = setTimeout(() => {
       emergency.remove();
