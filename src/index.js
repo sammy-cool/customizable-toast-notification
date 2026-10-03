@@ -377,10 +377,12 @@ const TOAST_PROMISE_LOADING_DURATION_MS = 24 * 60 * 60 * 1000;
  * @returns {Promise<T>}
  */
 async function toastPromise(promiseOrFn, messages = {}, options = {}) {
-  const loadingMessage = messages.loading ?? "Loading...";
+  const safeMessages = messages && typeof messages === "object" ? messages : {};
+  const safeOptions = options && typeof options === "object" ? options : {};
+  const loadingMessage = safeMessages.loading ?? "Loading...";
 
   const loadingHandle = await createToastWithPriority({
-    ...options,
+    ...safeOptions,
     type: "info",
     message: loadingMessage,
     duration: TOAST_PROMISE_LOADING_DURATION_MS,
@@ -389,8 +391,8 @@ async function toastPromise(promiseOrFn, messages = {}, options = {}) {
   });
 
   const baseOptions = {
-    ...options,
-    pauseOnHover: options.pauseOnHover,
+    ...safeOptions,
+    pauseOnHover: safeOptions.pauseOnHover,
   };
 
   try {
@@ -400,9 +402,9 @@ async function toastPromise(promiseOrFn, messages = {}, options = {}) {
     await loadingHandle.dismiss();
 
     const successMessage =
-      typeof messages.success === "function"
-        ? messages.success(result)
-        : (messages.success ?? "Done!");
+      typeof safeMessages.success === "function"
+        ? safeMessages.success(result)
+        : (safeMessages.success ?? "Done!");
 
     await createToastWithPriority({
       ...baseOptions,
@@ -415,9 +417,9 @@ async function toastPromise(promiseOrFn, messages = {}, options = {}) {
     await loadingHandle.dismiss();
 
     const errorMessage =
-      typeof messages.error === "function"
-        ? messages.error(err)
-        : (messages.error ?? "Something went wrong.");
+      typeof safeMessages.error === "function"
+        ? safeMessages.error(err)
+        : (safeMessages.error ?? "Something went wrong.");
 
     await createToastWithPriority({
       ...baseOptions,

@@ -225,21 +225,21 @@ export async function createEmergencyToast(options, onClose) {
     emergency.appendChild(innerWrapper);
     closeSpan.addEventListener("click", () => {
       emergency.remove();
-      onClose(emergency);
+      if (typeof onClose === "function") onClose(emergency);
     });
 
     document.body.appendChild(emergency);
     const duration = Number(options?.duration) || 2500;
     const timer = setTimeout(() => {
       emergency.remove();
-      onClose(emergency);
+      if (typeof onClose === "function") onClose(emergency);
     }, duration);
     if (typeof timer?.unref === "function") timer.unref();
 
     return emergency;
   } catch (error) {
     console.error("Emergency toast creation failed:", error);
-    onClose(null);
+    if (typeof onClose === "function") onClose(null);
     return null;
   }
 }

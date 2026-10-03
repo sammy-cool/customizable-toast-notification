@@ -3,9 +3,10 @@
 
 export class PausableTimer {
   constructor(callback, delay) {
-    this.callback = callback;
-    this.delay = delay;
-    this.remaining = delay;
+    this.callback = typeof callback === "function" ? callback : () => {};
+    const safeDelay = Number.isFinite(delay) && delay >= 0 ? delay : 0;
+    this.delay = safeDelay;
+    this.remaining = safeDelay;
     this.startTime = null;
     this.timeoutId = null;
     this.isPaused = false;
@@ -18,7 +19,11 @@ export class PausableTimer {
     this.timeoutId = setTimeout(() => {
       this.isCompleted = true;
       this.timeoutId = null;
-      this.callback();
+      try {
+        this.callback();
+      } catch (err) {
+        console.error("PausableTimer callback error:", err);
+      }
     }, this.remaining);
     if (typeof this.timeoutId?.unref === "function") {
       this.timeoutId.unref();

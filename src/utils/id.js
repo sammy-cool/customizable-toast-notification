@@ -6,8 +6,9 @@
  * @param {string} prefix - Optional prefix for ID
  * @returns {string} Unique ID
  */
-export function generateToastId(prefix) {
+export function generateToastId(prefix = "toast") {
+  const safePrefix = typeof prefix === "string" && prefix.trim() ? prefix.trim() : "toast";
   const timestamp = Date.now().toString(36); // shorter timestamp
   const random = Math.floor(Math.random() * 0xfffff).toString(36); // short random part
-  return `${prefix}-${timestamp}-${random}`;
+  return `${safePrefix}-${timestamp}-${random}`;
 }

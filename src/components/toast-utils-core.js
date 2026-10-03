@@ -56,8 +56,12 @@ export function createCTA(toast, options, onClose) {
         const res = cfg.onClick(e);
         if (res?.then) await res;
       }
+    } catch (err) {
+      console.error("CTA onClick handler error:", err);
     } finally {
-      if (cfg.autoClose !== false) onClose(toast);
+      if (cfg.autoClose !== false && typeof onClose === "function") {
+        onClose(toast);
+      }
     }
   };
 
@@ -87,7 +91,9 @@ export function createCloseButton(toast, options, onClose) {
     padding: "0 4px",
   });
 
-  const onClick = () => onClose(toast);
+  const onClick = () => {
+    if (typeof onClose === "function") onClose(toast);
+  };
   closeBtn.addEventListener("click", onClick);
 
   toast._cleanupCloseButton = () => {

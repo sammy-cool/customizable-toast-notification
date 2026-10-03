@@ -8,8 +8,9 @@ const containerLocks = new Map(); // id -> Promise<HTMLElement>
  * Normalize a position string to a canonical key (id-safe, stable).
  */
 export function normalizePositionKey(position) {
-  // lower-case, trim, unify separators, alias "below" -> "bottom"
-  const raw = String(position).toLowerCase().trim();
+  if (!position || typeof position !== "string") return "bottom-right";
+  const raw = position.toLowerCase().trim();
+  if (!raw) return "bottom-right";
   const aliased = raw.replace(/\bbelow\b/g, "bottom");
   return aliased
     .replace(/\s+/g, "-")
@@ -21,8 +22,8 @@ export function normalizePositionKey(position) {
  * Canonical container id
  */
 export function getContainerId(position) {
-  const pos = position || "bottom-right";
-  return `toast-container-${normalizePositionKey(pos)}`;
+  const pos = normalizePositionKey(position);
+  return `toast-container-${pos}`;
 }
 
 export function resetContainerRegistry() {

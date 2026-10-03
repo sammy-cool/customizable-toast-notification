@@ -949,4 +949,58 @@ describe("position.js — setPosition edge cases", () => {
   });
 });
 
+describe("id.js — generateToastId prefix defaults", () => {
+  test("generateToastId defaults safely to toast when prefix is omitted or empty", async () => {
+    const { generateToastId } = await import("../../src/utils/id.js");
+    assert.match(generateToastId(), /^toast-[a-z0-9]+-[a-z0-9]+$/);
+    assert.match(generateToastId(undefined), /^toast-[a-z0-9]+-[a-z0-9]+$/);
+    assert.match(generateToastId(""), /^toast-[a-z0-9]+-[a-z0-9]+$/);
+    assert.match(generateToastId("custom"), /^custom-[a-z0-9]+-[a-z0-9]+$/);
+  });
+});
+
+describe("PausableTimer.js — defensive delay and callback error handling", () => {
+  test("handles negative or non-finite delay safely", async () => {
+    const { PausableTimer } = await import("../../src/utils/PausableTimer.js");
+    let called = false;
+    const t1 = new PausableTimer(() => { called = true; }, -100);
+    assert.equal(t1.delay, 0);
+    assert.equal(t1.remaining, 0);
+
+    const t2 = new PausableTimer(() => {}, NaN);
+    assert.equal(t2.delay, 0);
+
+    const t3 = new PausableTimer(null, 50);
+    assert.doesNotThrow(() => t3.start());
+    t3.clear();
+  });
+});
+
+describe("containerRegistry.js — normalizePositionKey edge cases", () => {
+  test("normalizePositionKey safely handles null, undefined, empty, and non-string inputs", async () => {
+    const { normalizePositionKey } = await import("../../src/utils/containerRegistry.js");
+    assert.equal(normalizePositionKey(null), "bottom-right");
+    assert.equal(normalizePositionKey(undefined), "bottom-right");
+    assert.equal(normalizePositionKey(""), "bottom-right");
+    assert.equal(normalizePositionKey("  top-left  "), "top-left");
+    assert.equal(normalizePositionKey("below-center"), "bottom-center");
+  });
+});
+
+describe("index.js — toastPromise null argument safety", () => {
+  test("toastPromise handles null messages and null options without throwing TypeError", async () => {
+    freshDom();
+    const { toastPromise } = await import(
+      "../../src/index.js?fresh=" + Date.now() + Math.random()
+    );
+    const result = await toastPromise(
+      Promise.resolve("hello"),
+      null,
+      null,
+    );
+    assert.equal(result, "hello");
+  });
+});
+
+
 
