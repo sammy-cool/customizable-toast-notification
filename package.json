@@ -47,6 +47,8 @@
     "test:e2e": "playwright test",
     "test:e2e:ui": "playwright test --ui",
     "test:e2e:headed": "playwright test --headed",
+    "version": "node scripts/sync-version.cjs && npm run zone-build",
+    "prepublishOnly": "node scripts/sync-version.cjs && npm run zone-build",
     "prepare": "husky"
   },
   "keywords": [
