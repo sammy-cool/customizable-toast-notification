@@ -1,3 +1,10 @@
+# [3.14.0](https://github.com/sammy-cool/customizable-toast-notification/compare/v3.13.0...v3.14.0) (2026-10-03)
+
+
+### Features
+
+* elevate playground UI/UX and fix release workflow git notes ([7a06f36](https://github.com/sammy-cool/customizable-toast-notification/commit/7a06f360716eb9ad7120203981135f781742ff4a))
+
 # [3.13.0](https://github.com/sammy-cool/customizable-toast-notification/compare/v3.12.4...v3.13.0) (2026-10-03)
 
 
