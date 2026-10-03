@@ -68,7 +68,7 @@ Global Variable Name: `customizableToast`
 <script src="https://cdn.jsdelivr.net/npm/customizable-toast-notification/dist/index.umd.js"></script>
 
 <!-- OR pin to a specific version (recommended for stability) -->
-<script src="https://cdn.jsdelivr.net/npm/customizable-toast-notification@3.11.4/dist/index.umd.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/customizable-toast-notification@3.12.3/dist/index.umd.js"></script>
 
 <script>
   // Access the global UMD export
@@ -136,6 +136,8 @@ auto-dismissed on its own — it no-ops rather than throwing.
 | `fontSize`          | `string`  | `"14px"`                        | Font size                                                 |
 | `fontWeight`        | `string`  | `"400"`                         | Font weight                                               |
 | `fontLineHeight`    | `string`  | `"1.4"`                         | Font line height                                          |
+| `showLoader`        | `boolean` | `false`                         | Show spinner loader before the message                    |
+| `loader`            | `object`  | `null`                          | Custom loader config (`size`, `color`, `text`)            |
 | `fontDirection`     | `string`  | `"auto"`                        | Font direction: `"auto"`, `"ltr"`, `"rtl"`                |
 | `cta`               | `object`  | `null`                          | Call-to-action configuration (see [CTA](#call-to-action)) |
 

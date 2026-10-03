@@ -30,6 +30,9 @@ export function createCTA(toast, options, onClose) {
     ? getContrastBackground(options.backgroundColor)
     : "rgba(255,255,255,0.15)";
 
+  const isHex6 = typeof ctaTextColor === "string" && /^#[0-9a-fA-F]{6}$/.test(ctaTextColor.trim());
+  const ctaBorderColor = isHex6 ? `${ctaTextColor.trim()}44` : "rgba(128, 128, 128, 0.3)";
+
   Object.assign(el.style, {
     marginLeft: "10px",
     padding: "6px 10px",
@@ -37,7 +40,7 @@ export function createCTA(toast, options, onClose) {
     fontSize: "12px",
     fontWeight: "600",
     lineHeight: "1",
-    border: `1px solid ${ctaTextColor}44`,
+    border: `1px solid ${ctaBorderColor}`,
     color: ctaTextColor,
     background: ctaBgColor,
     cursor: "pointer",

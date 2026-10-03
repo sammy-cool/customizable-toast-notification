@@ -31,10 +31,7 @@
     "edge >= 79",
     "node >= 14"
   ],
-  "sideEffects": [
-    false,
-    "*.css"
-  ],
+  "sideEffects": false,
   "scripts": {
     "dist:clean": "rm -rf dist",
     "build:js": "rollup -c",
@@ -45,6 +42,7 @@
     "postinstall": "node postinstall.cjs",
     "build": "rollup -c",
     "test:builds": "node scripts/test-build.cjs",
+    "test": "npm run ci:test",
     "ci:test": "node tests/logic/logic-verification.test.mjs",
     "lint": "eslint src",
     "test:e2e": "playwright test",

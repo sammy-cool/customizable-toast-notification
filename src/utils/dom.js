@@ -49,14 +49,7 @@ export async function removeElement(el) {
   if (!el) return true;
 
   try {
-    if (el?.parentNode?.id.includes("toast-container-")) {
-      el.parentNode.removeChild(el);
-      return true;
-    }
-  } catch {}
-
-  try {
-    if (el.remove) {
+    if (typeof el.remove === "function") {
       el.remove();
       return true;
     }

@@ -48,7 +48,8 @@ export function createLoader(opts = {}) {
       const st = document.createElement("style");
       st.id = "toast-spinner-styles";
       st.innerHTML = `@keyframes toast-spinner { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }`;
-      document.head.appendChild(st);
+      const target = document.head || document.documentElement;
+      if (target) target.appendChild(st);
     }
   }
 

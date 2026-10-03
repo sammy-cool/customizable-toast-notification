@@ -979,7 +979,12 @@ npm install customizable-toast-notification</pre
       </div>
     </footer>
 
-    <script src="../../dist/index.umd.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/customizable-toast-notification@3.12.2/dist/index.umd.js"></script>
+    <script>
+      if (!window.customizableToast) {
+        document.write('<script src="../dist/index.umd.js"><\/script>');
+      }
+    </script>
     <script>
       (function () {
         var TYPE_COLORS = {

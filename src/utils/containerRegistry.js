@@ -24,6 +24,11 @@ export function getContainerId(position) {
   return `toast-container-${normalizePositionKey(position)}`;
 }
 
+export function resetContainerRegistry() {
+  containerRegistry.clear();
+  containerLocks.clear();
+}
+
 /**
  * Atomically get or create a single container per canonical id.
  */
@@ -35,13 +40,14 @@ export async function getOrCreateToastContainer(options, setPosition) {
   }
 
   const p = (async () => {
-    // 1) Prefer registry cache if still connected
+    // 1) Prefer registry cache if still connected to current document
     const cached = containerRegistry.get(id);
-    if (cached?.isConnected) {
+    const isCurrentDoc = typeof document === "undefined" || cached?.ownerDocument === document;
+    if (cached?.isConnected && isCurrentDoc) {
       return cached;
     }
-    // Clean up stale registry entry if container was removed from DOM
-    if (cached && !cached.isConnected) {
+    // Clean up stale registry entry if container was removed from DOM or from old document
+    if (cached) {
       containerRegistry.delete(id);
     }
 

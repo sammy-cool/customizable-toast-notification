@@ -20,6 +20,9 @@ export class PausableTimer {
       this.timeoutId = null;
       this.callback();
     }, this.remaining);
+    if (typeof this.timeoutId?.unref === "function") {
+      this.timeoutId.unref();
+    }
     return this;
   }
 

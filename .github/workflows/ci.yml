@@ -3,10 +3,12 @@ name: CI
 on:
   push:
     branches:
+      - master
       - migration-phase-v2
 
   pull_request:
     branches:
+      - master
       - migration-phase-v2
 
 jobs:
@@ -31,11 +33,14 @@ jobs:
     # you bump the package. The "-noble" suffix targets Ubuntu 24.04 —
     # match this to whatever your package.json currently specifies.
     container:
-      image: mcr.microsoft.com/playwright:v1.62.1-noble
+      image: mcr.microsoft.com/playwright:v1.63.0-noble
 
     steps:
       - name: Checkout Code
         uses: actions/checkout@v7
+
+      - name: Mark workspace as safe for Git
+        run: git config --global --add safe.directory "$GITHUB_WORKSPACE"
 
       - name: Setup Node
         uses: actions/setup-node@v7
@@ -54,6 +59,9 @@ jobs:
       - name: Build Package
         run: npm run zone-build
 
+      - name: Test Build Artifacts
+        run: npm run test:builds
+
       - name: Run Unit Tests
         run: npm run ci:test
 
@@ -63,6 +71,7 @@ jobs:
         with:
           name: coverage
           path: coverage/
+          if-no-files-found: ignore
 
       # AUDIT/CI FIX: removed entirely. The Docker image above already
       # ships chromium, firefox, and webkit pre-installed with all system

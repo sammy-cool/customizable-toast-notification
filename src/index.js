@@ -1,9 +1,73 @@
 "use strict";
 
-import { showToast, closeToastByKey } from "./components/ToastManager.js";
-import { getOrCreateToastContainer } from "./utils/containerRegistry.js";
+import { showToast, closeToastByKey, resetToastManager } from "./components/ToastManager.js";
+import { getOrCreateToastContainer, resetContainerRegistry } from "./utils/containerRegistry.js";
 import { getDynamicAccessibleTextColorHex } from "./utils/dom.js";
 import { setPosition } from "./utils/position.js";
+
+/**
+ * @typedef {'info' | 'success' | 'error' | 'warning'} ToastType
+ */
+
+/**
+ * @typedef {'top-left' | 'top-right' | 'bottom-left' | 'bottom-right' | 'top-center' | 'bottom-center' | 'left-center' | 'right-center' | 'top-full-width' | 'bottom-full-width' | 'center'} ToastPosition
+ */
+
+/**
+ * @typedef {Object} CTAOptions
+ * @property {string} [label]
+ * @property {string} [href]
+ * @property {'button' | 'link'} [variant]
+ * @property {string} [target]
+ * @property {string} [rel]
+ * @property {string} [ariaLabel]
+ * @property {boolean} [autoClose]
+ * @property {(e: MouseEvent) => void | Promise<void>} [onClick]
+ */
+
+/**
+ * @typedef {Object} ToastOptions
+ * @property {string} [message]
+ * @property {ToastType} [type]
+ * @property {number} [duration]
+ * @property {ToastPosition | string} [position]
+ * @property {string} [borderRadius]
+ * @property {string} [backgroundColor]
+ * @property {string} [textColor]
+ * @property {boolean} [showCloseButton]
+ * @property {boolean} [showProgressBar]
+ * @property {string} [animationDuration]
+ * @property {string} [animationEasing]
+ * @property {string} [progressColor]
+ * @property {string} [progressHeight]
+ * @property {'top' | 'bottom'} [progressPosition]
+ * @property {boolean} [pauseOnHover]
+ * @property {boolean} [allowHtml]
+ * @property {boolean} [sanitizeHtml]
+ * @property {boolean} [showLoader]
+ * @property {Object} [loader]
+ * @property {'normal' | 'truncate' | string | boolean} [wrapText]
+ * @property {string} [maxWidth]
+ * @property {string} [fontFamily]
+ * @property {string} [fontSize]
+ * @property {string} [fontWeight]
+ * @property {string} [fontLineHeight]
+ * @property {'auto' | 'ltr' | 'rtl'} [fontDirection]
+ * @property {string} [fontPadding]
+ * @property {CTAOptions} [cta]
+ */
+
+/**
+ * @typedef {Object} ToastHandle
+ * @property {() => Promise<void>} dismiss
+ */
+
+/**
+ * @typedef {Object} ToastPromiseMessages
+ * @property {string} [loading]
+ * @property {string | ((result: any) => string)} [success]
+ * @property {string | ((error: any) => string)} [error]
+ */
 
 let defaultColors = {
   success: "#28a745",
@@ -31,12 +95,8 @@ async function checkDOMReady() {
   if (typeof window !== "undefined" && typeof document !== "undefined") {
     if (
       document.readyState === "complete" ||
-      document.readyState === "interactive" ||
-      document.readyState === "loading"
+      document.readyState === "interactive"
     ) {
-      // DOM is already parsed (complete/interactive) or still loading but parsed enough
-      // (loading) - flush immediately without delay. The settle delay only applies
-      // when we actually wait for DOMContentLoaded event.
       domReady = true;
       const toFlush = [...pendingToasts];
       pendingToasts.length = 0;
@@ -47,7 +107,6 @@ async function checkDOMReady() {
       document.addEventListener(
         "DOMContentLoaded",
         () => {
-          // Only apply settle delay when we actually waited for DOMContentLoaded
           setTimeout(() => {
             domReady = true;
             const toFlush = [...pendingToasts];
@@ -72,13 +131,6 @@ async function createToastNow(options = {}) {
     return await showToast(sanitizedOptions);
   } catch (error) {
     console.error("CreateToast failed:", error);
-
-    const safeMessage =
-      typeof options?.message === "string" && options?.message !== null
-        ? `${options.message.substring(0, 200)} toast creation failed!`
-        : "Toast creation failed!";
-
-    alert(safeMessage);
     return null;
   }
 }
@@ -199,6 +251,10 @@ async function sanitizeToastOptions(options) {
   return final;
 }
 
+/**
+ * Sets default background colors for toast types.
+ * @param {Partial<Record<ToastType, string>>} colors
+ */
 function setDefaultColors(colors) {
   try {
     if (colors && typeof colors === "object" && !Array.isArray(colors)) {
@@ -218,6 +274,10 @@ function setDefaultColors(colors) {
   }
 }
 
+/**
+ * Sets default messages for toast types.
+ * @param {Partial<Record<ToastType, string>>} messages
+ */
 function setDefaultMessages(messages) {
   try {
     if (messages && typeof messages === "object" && !Array.isArray(messages)) {
@@ -258,6 +318,11 @@ async function runWithClosePriority(fn) {
 
 const originalCreateToast = createToast;
 
+/**
+ * Creates and displays a toast notification.
+ * @param {ToastOptions} [options]
+ * @returns {Promise<ToastHandle>}
+ */
 async function createToastWithPriority(options = {}) {
   const key = await runWithClosePriority(() => originalCreateToast(options));
   return {
@@ -296,6 +361,14 @@ export { dismissToast as dismiss, noopAll as noop };
 
 const TOAST_PROMISE_LOADING_DURATION_MS = 24 * 60 * 60 * 1000;
 
+/**
+ * Wraps a promise or function with automatic loading, success, and error toasts.
+ * @template T
+ * @param {Promise<T> | (() => Promise<T> | T)} promiseOrFn
+ * @param {ToastPromiseMessages} [messages]
+ * @param {ToastOptions} [options]
+ * @returns {Promise<T>}
+ */
 async function toastPromise(promiseOrFn, messages = {}, options = {}) {
   const loadingMessage = messages.loading ?? "Loading...";
 
@@ -308,15 +381,14 @@ async function toastPromise(promiseOrFn, messages = {}, options = {}) {
     pauseOnHover: false,
   });
 
-  const settledPromise =
-    typeof promiseOrFn === "function" ? promiseOrFn() : promiseOrFn;
-
   const baseOptions = {
     ...options,
     pauseOnHover: options.pauseOnHover,
   };
 
   try {
+    const settledPromise =
+      typeof promiseOrFn === "function" ? promiseOrFn() : promiseOrFn;
     const result = await settledPromise;
     await loadingHandle.dismiss();
 
@@ -350,7 +422,7 @@ async function toastPromise(promiseOrFn, messages = {}, options = {}) {
   }
 }
 
-export { toastPromise };
+export { toastPromise, resetToastManager, resetContainerRegistry };
 
 if (typeof window !== "undefined" && typeof document !== "undefined") {
   const onKeyDown = (e) => {

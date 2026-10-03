@@ -82,13 +82,10 @@ export async function applyRichStyling(toast, options, onClose) {
     wordBreak: "break-word",
     overflow: "hidden",
     textOverflow: "ellipsis",
-    // AUDIT FIX (C4): display/WebkitLineClamp/WebkitBoxOrient used to be
-    // re-applied here unconditionally, silently overwriting whatever the
-    // wrapText conditional above had just set — meaning wrapText:"normal"
-    // never actually worked; every toast truncated to 3 lines regardless.
-    // Those three properties are already correctly set by the if/else block
-    // above based on options.wrapText, so they're intentionally NOT
-    // repeated here anymore.
+    direction:
+      options?.fontDirection && options.fontDirection !== "auto"
+        ? options.fontDirection
+        : undefined,
   });
 
   const allowHtml = !!options.allowHtml; // opt-in flag
@@ -134,8 +131,7 @@ export async function applyRichStyling(toast, options, onClose) {
     messageSpan.textContent = String(rawMessage);
   }
 
-  // set aria + title
-  messageSpan.setAttribute("aria-label", "Toast Notification Center");
+  // Set title for overflow tooltip without masking accessible text
   messageSpan.setAttribute(
     "title",
     typeof rawMessage === "string"
@@ -234,18 +230,16 @@ export async function createEmergencyToast(options, onClose) {
 
     document.body.appendChild(emergency);
     const duration = Number(options?.duration) || 2500;
-    setTimeout(() => {
+    const timer = setTimeout(() => {
       emergency.remove();
       onClose(emergency);
     }, duration);
+    if (typeof timer?.unref === "function") timer.unref();
 
     return emergency;
   } catch (error) {
     console.error("Emergency toast creation failed:", error);
-    setTimeout(() => {
-      alert(options?.message || "Emergency Toast Creation Showing!");
-      onClose(null);
-    }, 100);
+    onClose(null);
     return null;
   }
 }

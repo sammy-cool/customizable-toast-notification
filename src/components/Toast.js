@@ -11,10 +11,6 @@ import { applyRichStyling, createEmergencyToast } from "./toast-utils.js";
  * @returns {HTMLElement} Toast element
  */
 export async function createToastElement(options, onClose) {
-  const toastContainerSelector = '[id^="toast-container-"]';
-  const toastContainer = document.querySelector(toastContainerSelector);
-  if (!toastContainer) return null;
-
   let toast;
   const tagName = "div";
   const prefix = "toast";

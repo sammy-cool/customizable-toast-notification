@@ -48,7 +48,7 @@ const ALLOWED_ATTRS = new Set([
   "loading",
 ]);
 
-const BLOCKED_TAGS_REGEX = /<\/?(script|iframe|object|embed|link|meta|style|form|input|button|svg|math|img|video|audio|details|dialog|applet|frame|frameset|textarea|select|option|optgroup|fieldset|legend|datalist|output|progress|meter|keygen|canvas|map|area|base|basefont|bgsound|blink|center|dir|font|hgroup|isindex|listing|marquee|multicol|nextid|noembed|noframes|plaintext|rb|rtc|spacer|strike|tt|xmp)[^>]*>/gi;
+const BLOCKED_TAGS_REGEX = /<\/?(script|iframe|object|embed|link|meta|style|form|input|button|svg|math|video|audio|details|dialog|applet|frame|frameset|textarea|select|option|optgroup|fieldset|legend|datalist|output|progress|meter|keygen|canvas|map|area|base|basefont|bgsound|blink|center|dir|font|hgroup|isindex|listing|marquee|multicol|nextid|noembed|noframes|plaintext|rb|rtc|spacer|strike|tt|xmp)[^>]*>/gi;
 
 const EVENT_HANDLER_REGEX = /\s(on\w+)\s*=\s*(['"])[\s\S]*?\2/gi;
 
@@ -110,6 +110,9 @@ function sanitizeNode(node, allowedTags, allowedAttrs) {
     return frag;
   }
   const el = document.createElement(node.tagName);
+  Array.from(node.attributes || []).forEach((attr) => {
+    el.setAttribute(attr.name, attr.value);
+  });
   sanitizeAttributes(el, allowedAttrs);
   Array.from(node.childNodes).forEach((child) => {
     const sanitizedChild = sanitizeNode(child, allowedTags, allowedAttrs);

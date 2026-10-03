@@ -25,15 +25,16 @@ export async function setPosition(container, options) {
     throw new Error("Invalid container or position!");
   }
 
-  const pos = options.position.toLowerCase().trim();
+  const rawPos = String(options.position).toLowerCase().trim();
+  let effectivePos = rawPos;
 
-  if (!isDocumentedPosition(pos) && !LEGACY_POSITIONS.has(pos)) {
+  if (!isDocumentedPosition(rawPos) && !LEGACY_POSITIONS.has(rawPos)) {
     console.warn(`Unknown position "${options.position}", defaulting to "bottom-right"`);
-    options.position = "bottom-right";
+    effectivePos = "bottom-right";
   }
 
   resetContainerStyles(container);
-  const positionFlags = parsePosition(options.position);
+  const positionFlags = parsePosition(effectivePos);
 
   if (handleFullWidthPositions(container, options, positionFlags)) return;
   if (handleCenterPositions(container, positionFlags)) return;
@@ -73,8 +74,14 @@ function parsePosition(position) {
 function handleFullWidthPositions(container, options, flags) {
   if (!flags.hasFullWidth) return false;
 
+  container.style.maxWidth = "100vw";
+  try {
+    if (options && !options.maxWidth) {
+      options.maxWidth = "100vw";
+    }
+  } catch {}
+
   if (flags.hasTop) {
-    options.maxWidth = "100vw";
     container.style.top = "10px";
     container.style.left = "10px";
     container.style.right = "10px";
@@ -82,7 +89,6 @@ function handleFullWidthPositions(container, options, flags) {
   }
 
   if (flags.hasBottom) {
-    options.maxWidth = "100vw";
     container.style.bottom = "10px";
     container.style.left = "10px";
     container.style.right = "10px";

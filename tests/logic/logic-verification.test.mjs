@@ -1,8 +1,12 @@
 import { test, describe } from "node:test";
 import assert from "node:assert/strict";
 import { JSDOM } from "jsdom";
+import { resetToastManager } from "../../src/components/ToastManager.js";
+import { resetContainerRegistry } from "../../src/utils/containerRegistry.js";
 
 function freshDom() {
+  resetToastManager();
+  resetContainerRegistry();
   const dom = new JSDOM("<!doctype html><html><body></body></html>", {
     url: "https://example.test/",
   });
@@ -124,6 +128,7 @@ describe("html-sanitizer.js — security boundary", () => {
       '<img src="https://example.test/x.png" onerror="alert(1)">',
     );
     assert.doesNotMatch(clean, /onerror/i);
+    assert.match(clean, /<img\s+src="https:\/\/example\.test\/x\.png"/);
   });
 
   test("GOOD: javascript: URIs are neutralized in href", async () => {
@@ -647,3 +652,145 @@ describe("dom.js — WCAG contrast verified against real-world bug report", () =
     assert.equal(result, "#000000");
   });
 });
+
+describe("position.js — options immutability", () => {
+  test("setPosition does not mutate caller's options.position even for unknown positions", async () => {
+    freshDom();
+    const { setPosition } = await import("../../src/utils/position.js");
+    const container = document.createElement("div");
+    const opts = Object.freeze({ position: "custom-invalid-pos" });
+    await assert.doesNotReject(async () => {
+      await setPosition(container, opts);
+    });
+    assert.equal(opts.position, "custom-invalid-pos");
+  });
+});
+
+describe("index.js — toastPromise sync exception handling", () => {
+  test("synchronous exception in promiseOrFn is caught, loading toast dismissed, and error re-thrown", async () => {
+    freshDom();
+    const { toastPromise } = await import(
+      "../../src/index.js?fresh=" + Date.now() + Math.random()
+    );
+    const pos = "promise-sync-err-" + Date.now();
+
+    let caught = null;
+    try {
+      await toastPromise(
+        () => {
+          throw new Error("Immediate sync crash");
+        },
+        {
+          loading: "Starting...",
+          error: (e) => `Caught: ${e.message}`,
+        },
+        { position: pos },
+      );
+    } catch (e) {
+      caught = e;
+    }
+
+    assert.equal(caught?.message, "Immediate sync crash");
+    await new Promise((r) => setTimeout(r, 100));
+    const toastEls = document.querySelectorAll(
+      '[id^="toast-container-"] [id^="toast-"]',
+    );
+    assert.equal(toastEls.length, 1);
+    assert.match(toastEls[0].textContent, /Caught: Immediate sync crash/);
+  });
+});
+
+describe("toast-utils-core.js — createCTA border color validity", () => {
+  test("non-hex text color does not produce invalid CSS border like 'black44'", async () => {
+    freshDom();
+    const { createCTA } = await import("../../src/components/toast-utils-core.js");
+    const toast = document.createElement("div");
+    createCTA(
+      toast,
+      {
+        textColor: "rgb(0, 0, 0)",
+        cta: { label: "Action", onClick: () => {} },
+      },
+      () => {},
+    );
+    const btn = toast.querySelector("button");
+    assert.ok(btn);
+    assert.doesNotMatch(btn.style.border, /44/);
+  });
+});
+
+describe("toast-utils.js — fontDirection and accessibility", () => {
+  test("fontDirection: 'rtl' applies direction: rtl to messageSpan", async () => {
+    freshDom();
+    const { applyRichStyling } = await import("../../src/components/toast-utils.js");
+    const toast = document.createElement("div");
+    await applyRichStyling(
+      toast,
+      {
+        message: "مرحبا",
+        fontDirection: "rtl",
+      },
+      () => {},
+    );
+    const span = toast.querySelector("span");
+    assert.equal(span.style.direction, "rtl");
+  });
+
+  test("messageSpan does not have aria-label that masks actual message content", async () => {
+    freshDom();
+    const { applyRichStyling } = await import("../../src/components/toast-utils.js");
+    const toast = document.createElement("div");
+    await applyRichStyling(
+      toast,
+      {
+        message: "Real message content",
+      },
+      () => {},
+    );
+    const span = toast.querySelector("span");
+    assert.equal(
+      span.getAttribute("aria-label"),
+      null,
+      "message span should not override its content with a generic aria-label",
+    );
+  });
+});
+
+describe("position.js — frozen options immutability on full-width", () => {
+  test("setPosition does not throw or mutate frozen options on top-full-width", async () => {
+    freshDom();
+    const { setPosition } = await import("../../src/utils/position.js");
+    const container = document.createElement("div");
+    const frozenOpts = Object.freeze({ position: "top-full-width" });
+    await assert.doesNotReject(async () => {
+      await setPosition(container, frozenOpts);
+    });
+    assert.equal(container.style.maxWidth, "100vw");
+    assert.equal(frozenOpts.maxWidth, undefined);
+  });
+});
+
+describe("ToastContainer.js — position normalization", () => {
+  test("createToastContainer normalizes position and creates canonical container ID", async () => {
+    freshDom();
+    const { createToastContainer } = await import("../../src/components/ToastContainer.js");
+    const container = await createToastContainer({ position: "Top-Right " });
+    assert.equal(container.id, "toast-container-top-right");
+  });
+});
+
+describe("dom.js — removeElement safety", () => {
+  test("removeElement cleanly removes child when parent has no id attribute", async () => {
+    freshDom();
+    const { removeElement } = await import("../../src/utils/dom.js");
+    const parent = document.createElement("div");
+    const child = document.createElement("span");
+    parent.appendChild(child);
+    document.body.appendChild(parent);
+
+    const removed = await removeElement(child);
+    assert.equal(removed, true);
+    assert.equal(parent.contains(child), false);
+  });
+});
+
