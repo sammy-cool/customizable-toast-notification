@@ -3,6 +3,10 @@
  */
 
 /**
+ * @typedef {'light' | 'dark' | 'high-contrast' | 'compact' | 'spacious' | 'glass'} ToastTheme
+ */
+
+/**
  * @typedef {Element | DocumentFragment | ShadowRoot} ToastMountTarget
  */
 
@@ -14,6 +18,7 @@
  * @property {boolean} disableInlineStyles
  * @property {ReducedMotionMode} reducedMotion
  * @property {string} defaultPosition
+ * @property {ToastTheme} theme
  */
 
 const globalConfig = {
@@ -23,6 +28,7 @@ const globalConfig = {
   disableInlineStyles: false,
   reducedMotion: "auto",
   defaultPosition: "bottom-right",
+  theme: "light",
 };
 
 function isValidMountTarget(value) {
@@ -39,7 +45,7 @@ export function setConfig(options = {}) {
     return getConfig();
   }
 
-  const { maxVisible, zIndex, targetNode, disableInlineStyles, reducedMotion, defaultPosition } = options;
+  const { maxVisible, zIndex, targetNode, disableInlineStyles, reducedMotion, defaultPosition, theme } = options;
 
   if (maxVisible !== undefined) {
     const v = Number(maxVisible);
@@ -74,6 +80,17 @@ export function setConfig(options = {}) {
     const p = String(defaultPosition || "").toLowerCase().trim();
     if (p) {
       globalConfig.defaultPosition = p;
+    }
+  }
+
+  if (theme !== undefined) {
+    const t = String(theme || "light").toLowerCase();
+    if (["light", "dark", "high-contrast", "compact", "spacious", "glass"].includes(t)) {
+      globalConfig.theme = t;
+      // Apply theme to document root
+      if (typeof document !== "undefined") {
+        document.documentElement.setAttribute("data-toast-theme", t);
+      }
     }
   }
 

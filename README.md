@@ -711,6 +711,177 @@ createToast({ message: "Using external CSS!" });
 
 **Note:** Some dynamic features (stacked layout transforms, animated exit transitions) rely on computed inline styles and are not available in strict CSS-only mode. Core toast functionality (appearance, positioning, animations, progress bars) is fully supported.
 
+## 🎨 CSS Customization & Themes
+
+### CSS Variables (Custom Properties)
+
+All toast styles can be customized globally via CSS variables. Set them on `:root` for global defaults, or use `data-toast-theme` attribute for theme-specific values:
+
+```css
+:root {
+  /* Colors */
+  --toast-bg: #ffffff;
+  --toast-text: #1a1a1a;
+  --toast-border-radius: 50px;
+  --toast-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+  --toast-padding: 12px 16px;
+  --toast-min-width: 250px;
+  --toast-max-width: 400px;
+
+  /* Animations */
+  --toast-transition-duration: 0.4s;
+  --toast-transition-timing: ease;
+
+  /* Type-specific Colors */
+  --toast-success-bg: #28a745;
+  --toast-success-text: #ffffff;
+  --toast-error-bg: #dc3545;
+  --toast-error-text: #ffffff;
+  --toast-warning-bg: #ffc107;
+  --toast-warning-text: #000000;
+  --toast-info-bg: #17a2b8;
+  --toast-info-text: #ffffff;
+
+  /* Z-index Stack */
+  --toast-z-index: 9999;
+  --toast-emergency-z-index: 10099;
+
+  /* Spacing */
+  --toast-gap: 10px;
+  --toast-offset: 10px;
+}
+```
+
+**Example: Custom Dark Theme**
+
+```css
+:root {
+  --toast-bg: #1a1a1a;
+  --toast-text: #f5f5f5;
+  --toast-shadow: 0 4px 6px rgba(0, 0, 0, 0.4);
+  --toast-success-bg: #1e7e34;
+  --toast-error-bg: #a71930;
+}
+```
+
+**Example: Compact Layout**
+
+```css
+:root {
+  --toast-padding: 8px 12px;
+  --toast-min-width: 200px;
+  --toast-max-width: 300px;
+  --toast-border-radius: 6px;
+}
+```
+
+### Built-in Themes
+
+Use the global `setConfig()` API to switch between pre-built themes:
+
+```js
+import { setConfig } from 'customizable-toast-notification';
+import 'customizable-toast-notification/index.css';
+
+// Apply theme globally
+setConfig({ theme: 'dark' });
+createToast({ message: 'Dark mode enabled!' });
+```
+
+**Available Themes:**
+
+| Theme | Use Case | Example |
+|-------|----------|---------|
+| `light` (default) | Standard bright interface | Default white background |
+| `dark` | Dark mode apps | Dark background, light text |
+| `high-contrast` | WCAG AAA accessibility | High contrast borders, colors |
+| `compact` | Space-constrained UIs | Reduced padding, smaller bounds |
+| `spacious` | Relaxed, prominent toasts | Larger padding, wider bounds |
+| `glass` | Modern glassmorphism | Backdrop blur, semi-transparent |
+
+**Example: High-Contrast Theme**
+
+```js
+setConfig({ 
+  theme: 'high-contrast',
+  disableInlineStyles: true 
+});
+createToast({ 
+  message: 'Accessible toast',
+  type: 'success' 
+});
+```
+
+### TypeScript Support for CSS Classes
+
+All CSS class names are automatically typed when you import the CSS file:
+
+```ts
+import { toast, toastMessage, toastCta, toastSuccess } from 'customizable-toast-notification/index.css';
+
+// ✅ Full autocomplete and type checking
+console.log(toast); // "toast"
+console.log(toastSuccess); // "toast-success"
+```
+
+**Available CSS Classes:**
+
+- **Container:** `toast-container-base`, `toast-position-*` (13 positions)
+- **Toast:** `toast`, `toast-outer-wrapper`, `toast-inner-wrapper`
+- **Types:** `toast-success`, `toast-error`, `toast-warning`, `toast-info`
+- **Content:** `toast-message`, `toast-message-spacer`, `toast-loader`, `toast-loader-circle`
+- **UI:** `toast-cta`, `toast-close-btn`, `toast-progress-bar`, `toast-count-badge`
+- **States:** `active`, `is-truncated`
+
+### Combining Custom CSS + Global Config
+
+```js
+import { createToast, setConfig } from 'customizable-toast-notification';
+import 'customizable-toast-notification/index.css';
+
+// Set theme
+setConfig({ 
+  theme: 'dark',
+  maxVisible: 5,
+  defaultPosition: 'top-right'
+});
+
+// Override specific variables in your app CSS
+document.documentElement.style.setProperty('--toast-max-width', '600px');
+document.documentElement.style.setProperty('--toast-success-bg', '#10b981');
+```
+
+### CSS Variables Full Reference
+
+```css
+/* Core Dimensions */
+--toast-padding: 12px 16px;
+--toast-min-width: 250px;
+--toast-max-width: 400px;
+--toast-border-radius: 50px;
+
+/* Visual Effects */
+--toast-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+--toast-bg: #ffffff;
+--toast-text: #1a1a1a;
+
+/* Animations */
+--toast-transition-duration: 0.4s;
+--toast-transition-timing: ease;
+
+/* Type-Specific Colors (6 variants) */
+--toast-success-bg, --toast-success-text
+--toast-error-bg, --toast-error-text
+--toast-warning-bg, --toast-warning-text
+--toast-info-bg, --toast-info-text
+
+/* Layout & Positioning */
+--toast-gap: 10px; /* Space between toasts */
+--toast-offset: 10px; /* Distance from viewport edge */
+--toast-z-index: 9999; /* Normal toast z-index */
+--toast-emergency-z-index: 10099; /* Emergency fallback z-index */
+```
+
 ## 🤝 Contributing
 
 Exciting times ahead! Looking for sponsors and eager to explore new collaborations:) . Contributions are welcome! Please read our [Contributing Guidelines](CONTRIBUTING.md) for details.
