@@ -403,6 +403,89 @@ The loading toast doesn't use `duration` from `options` — it stays until
 the promise settles, then is replaced by a success or error toast that
 does respect the normal duration/auto-dismiss behavior.
 
+## ⚙️ Global Configuration
+
+Configure library-wide defaults using `setConfig()` and check current settings with `getConfig()`:
+
+```js
+import { setConfig, getConfig, shouldReduceMotion } from "customizable-toast-notification";
+
+// Configure global defaults
+setConfig({
+  maxVisible: 5,                    // Max simultaneously visible toasts (default: 3)
+  zIndex: 10000,                    // Base z-index for containers (default: 9999)
+  defaultPosition: "top-right",     // Default position for all toasts (default: "bottom-right")
+  disableInlineStyles: false,       // Use external CSS mode (default: false)
+  reducedMotion: "auto",            // Respect prefers-reduced-motion (default: "auto")
+  targetNode: document.getElementById("toast-root"), // Custom mount target (default: document.body)
+});
+
+// Read current config
+const config = getConfig();
+console.log(config.maxVisible); // 5
+
+// Check if animations should be reduced
+if (shouldReduceMotion()) {
+  console.log("User prefers reduced motion");
+}
+```
+
+### Global Config Options
+
+| Parameter              | Type                              | Default           | Description                                                                                                      |
+| ---------------------- | --------------------------------- | ----------------- | ---------------------------------------------------------------------------------------------------------------- |
+| `maxVisible`           | `number`                          | `3`               | Maximum simultaneously visible toasts. Additional toasts are queued.                                             |
+| `zIndex`               | `number`                          | `9999`            | Base z-index for toast containers and toasts. Adjust if toasts appear behind other elements.                     |
+| `defaultPosition`      | `string`                          | `"bottom-right"`  | Default position when individual toast options omit `position`.                                                   |
+| `disableInlineStyles`  | `boolean`                         | `false`           | When `true`, toasts use CSS classes instead of inline `style.*` for stricter CSP compliance.                      |
+| `reducedMotion`        | `"auto" \| "always" \| "never"`   | `"auto"`          | Control animation behavior. `"auto"` respects `prefers-reduced-motion`, `"always"` disables, `"never"` enables.  |
+| `targetNode`           | `Element \| ShadowRoot \| null`   | `null`            | Custom DOM node to mount toast containers. Defaults to `document.body` if not provided.                           |
+
+### Use Cases
+
+**Strict Content Security Policy (CSP):**
+
+```js
+// Use external CSS instead of inline styles
+setConfig({ disableInlineStyles: true });
+// Don't forget to import the CSS: import "customizable-toast-notification/dist/index.css"
+```
+
+**Accessibility: Respect User Motion Preferences:**
+
+```js
+// Enable automatic animation reduction
+setConfig({ reducedMotion: "auto" });
+
+// Or force reduction for all users
+setConfig({ reducedMotion: "always" });
+```
+
+**Shadow DOM / Scoped Mounting:**
+
+```js
+const shadowHost = document.querySelector("#app");
+const shadowRoot = shadowHost.attachShadow({ mode: "open" });
+shadowRoot.innerHTML = `<style>/* your styles */</style>`;
+
+setConfig({ targetNode: shadowRoot });
+createToast({ message: "Mounted in Shadow DOM!" });
+```
+
+**Increase Visible Toasts:**
+
+```js
+// Allow up to 5 toasts instead of 3
+setConfig({ maxVisible: 5 });
+```
+
+**Adjust Z-Index:**
+
+```js
+// If toasts appear behind other elements, increase z-index
+setConfig({ zIndex: 50000 });
+```
+
 ## 💡 Examples
 
 ### Basic Toast Types
@@ -463,6 +546,89 @@ setDefaultMessages({
 createToast({ type: "success" }); // Uses your custom colors & messages
 ```
 
+### React Integration
+
+```jsx
+import { useCallback } from "react";
+import { createToast, toastPromise, dismiss, setConfig } from "customizable-toast-notification";
+
+export function useToast() {
+  const showToast = useCallback(
+    (type, message, options = {}) =>
+      createToast({ type, message, ...options }),
+    []
+  );
+
+  return {
+    success: (msg, opts) => showToast("success", msg, opts),
+    error: (msg, opts) => showToast("error", msg, opts),
+    warning: (msg, opts) => showToast("warning", msg, opts),
+    info: (msg, opts) => showToast("info", msg, opts),
+    promise: toastPromise,
+    dismiss: dismiss,
+    setConfig: setConfig,
+  };
+}
+
+// Usage in a component:
+export function MyComponent() {
+  const toast = useToast();
+
+  const handleSave = async () => {
+    try {
+      await toast.promise(saveData(), {
+        loading: "Saving...",
+        success: "Saved!",
+        error: "Failed to save",
+      });
+    } catch (err) {
+      toast.error(err.message);
+    }
+  };
+
+  return <button onClick={handleSave}>Save</button>;
+}
+```
+
+### Vue Integration
+
+```js
+// composables/useToast.js
+import { createToast, toastPromise, dismiss, setConfig } from "customizable-toast-notification";
+
+export function useToast() {
+  return {
+    success: (message, options = {}) => createToast({ type: "success", message, ...options }),
+    error: (message, options = {}) => createToast({ type: "error", message, ...options }),
+    warning: (message, options = {}) => createToast({ type: "warning", message, ...options }),
+    info: (message, options = {}) => createToast({ type: "info", message, ...options }),
+    promise: toastPromise,
+    dismiss: dismiss,
+    setConfig: setConfig,
+  };
+}
+
+// Usage in a component:
+<script setup>
+import { useToast } from "@/composables/useToast";
+
+const toast = useToast();
+
+const handleSave = async () => {
+  try {
+    await toast.promise(saveData(), {
+      loading: "Saving...",
+      success: "Saved!",
+      error: "Failed to save",
+    });
+  } catch (err) {
+    toast.error(err.message);
+  }
+};
+</script>
+```
+
+
 ### HTML content (sanitized)
 
 ```js
@@ -519,6 +685,31 @@ Identical toasts (same type, message, and position) are automatically grouped:
 - **Dependencies**: Zero
 - **Formats**: UMD, ES Modules, CommonJS
 - **TypeScript**: Full type definitions included — real autocomplete and type-checking, not just placeholder types
+
+### External CSS Mode (Strict CSP Compliance)
+
+For environments with strict Content Security Policies that disallow inline `style.*` assignments, import the external CSS file and enable CSS-only mode:
+
+```js
+// JavaScript
+import "customizable-toast-notification/dist/index.css";
+import { setConfig, createToast } from "customizable-toast-notification";
+
+setConfig({ disableInlineStyles: true });
+createToast({ message: "Using external CSS!" });
+```
+
+```html
+<!-- HTML (CDN) -->
+<link rel="stylesheet" href="https://unpkg.com/customizable-toast-notification@3.15.0/dist/index.css">
+<script src="https://unpkg.com/customizable-toast-notification@3.15.0/dist/index.umd.js"></script>
+<script>
+  customizableToast.setConfig({ disableInlineStyles: true });
+  customizableToast.createToast({ message: "Using external CSS!" });
+</script>
+```
+
+**Note:** Some dynamic features (stacked layout transforms, animated exit transitions) rely on computed inline styles and are not available in strict CSS-only mode. Core toast functionality (appearance, positioning, animations, progress bars) is fully supported.
 
 ## 🤝 Contributing
 

@@ -1,11 +1,15 @@
 // src/utils/containerRegistry.js
 "use strict";
 
+import { getConfig, getToastRoot } from "./config.js";
+
 const containerRegistry = new Map(); // id -> HTMLElement
 const containerLocks = new Map(); // id -> Promise<HTMLElement>
 
 /**
  * Normalize a position string to a canonical key (id-safe, stable).
+ * @param {unknown} position
+ * @returns {string}
  */
 export function normalizePositionKey(position) {
   if (!position || typeof position !== "string") return "bottom-right";
@@ -19,7 +23,9 @@ export function normalizePositionKey(position) {
 }
 
 /**
- * Canonical container id
+ * Canonical container id.
+ * @param {unknown} position
+ * @returns {string}
  */
 export function getContainerId(position) {
   const pos = normalizePositionKey(position);
@@ -31,72 +37,83 @@ export function resetContainerRegistry() {
   containerLocks.clear();
 }
 
+function getContainerRoot() {
+  return getToastRoot();
+}
+
+function findContainerById(root, id) {
+  if (!root) return null;
+  if (typeof root.getElementById === "function") return root.getElementById(id);
+  if (typeof root.querySelector === "function") return root.querySelector(`#${id}`);
+  return null;
+}
+
+function isConnectedToRoot(el, root) {
+  if (!el || !root) return false;
+  if (root === document.body) return el.isConnected && el.ownerDocument === document;
+  if (typeof root.contains === "function") return root.contains(el);
+  return el.isConnected && el.ownerDocument === document;
+}
+
+function applyContainerBaseStyles(el) {
+  const config = getConfig();
+  el.className = "toast-container-base";
+  if (config.disableInlineStyles) return;
+
+  el.style.position = "fixed";
+  el.style.zIndex = String(config.zIndex);
+  el.style.pointerEvents = "none";
+  el.style.inset = "auto 10px 10px auto";
+  el.style.display = "flex";
+  el.style.justifyContent = "space-between";
+  el.style.alignItems = "center";
+  el.style.flexDirection = "column";
+  el.style.overflow = "hidden";
+}
+
 /**
  * Atomically get or create a single container per canonical id.
+ * @param {object} options
+ * @param {(container: HTMLElement, options: object) => Promise<void>} setPosition
+ * @returns {Promise<HTMLElement>}
  */
-export async function getOrCreateToastContainer(options, setPosition) {
-  const id = getContainerId(options?.position || "bottom-right");
-  // If a creation is in-flight, await it
+export async function getOrCreateToastContainer(options = {}, setPosition) {
+  const config = getConfig();
+  const id = getContainerId(options?.position || config.defaultPosition);
+  const root = getContainerRoot();
+  if (!root) throw new Error("Toast container root is unavailable");
+
   if (containerLocks.has(id)) {
     return containerLocks.get(id);
   }
 
   const p = (async () => {
-    // 1) Prefer registry cache if still connected to current document
     const cached = containerRegistry.get(id);
-    const isCurrentDoc = typeof document === "undefined" || cached?.ownerDocument === document;
-    if (cached?.isConnected && isCurrentDoc) {
-      return cached;
-    }
-    // Clean up stale registry entry if container was removed from DOM or from old document
-    if (cached) {
-      containerRegistry.delete(id);
-    }
+    if (isConnectedToRoot(cached, root)) return cached;
+    if (cached) containerRegistry.delete(id);
 
-    // 2) Find existing in DOM
-    let el = document.getElementById(id); // unique by spec, but may return first if duplicates exist
-    if (el && !el.isConnected) {
-      // re-attach if detached
-      document.body.appendChild(el);
-    }
-
-    // 3) If not found, create
+    let el = findContainerById(root, id);
     if (!el) {
       el = document.createElement("div");
       el.id = id;
-      el.setAttribute("role", "status"); // polite + atomic by default
-      el.setAttribute("aria-atomic", "true"); // explicit for consistency
-      el.style.position = "fixed";
-      el.style.zIndex = "9999";
-      el.style.pointerEvents = "none";
-      el.style.inset = "auto 10px 10px auto";
-      el.style.display = "flex";
-      el.style.justifyContent = "space-between";
-      el.style.alignItems = "center";
-      el.style.flexDirection = "column";
-      el.style.overflow = "hidden";
-      // Position with provided helper
-      if (typeof setPosition === "function") {
-        await setPosition(el, options);
-      }
-      document.body.appendChild(el);
+      el.setAttribute("role", "status");
+      el.setAttribute("aria-atomic", "true");
+      applyContainerBaseStyles(el);
+      if (typeof setPosition === "function") await setPosition(el, options);
+      root.appendChild(el);
     } else {
-      // Ensure base styles and (re)apply position in case options changed
-      el.style.position = el.style.position || "fixed";
-      el.style.zIndex = el.style.zIndex || "9999";
-      if (typeof setPosition === "function") {
-        await setPosition(el, options);
-      }
+      applyContainerBaseStyles(el);
+      if (typeof setPosition === "function") await setPosition(el, options);
     }
 
-    // 4) If somehow duplicates exist, keep the first and remove the rest
-    // getElementById would have returned the first; clean up others proactively
-    const all = document.querySelectorAll(`#${id}`);
-    if (all.length > 1) {
-      for (let i = 1; i < all.length; i++) {
-        try {
-          all[i].remove();
-        } catch {}
+    if (typeof root.querySelectorAll === "function") {
+      const all = root.querySelectorAll(`#${id}`);
+      if (all.length > 1) {
+        for (let i = 1; i < all.length; i++) {
+          try {
+            all[i].remove();
+          } catch {}
+        }
       }
     }
 
@@ -106,10 +123,8 @@ export async function getOrCreateToastContainer(options, setPosition) {
 
   containerLocks.set(id, p);
   try {
-    const out = await p;
-    return out;
+    return await p;
   } finally {
-    // Clear the lock so future calls can re-enter if needed
     containerLocks.delete(id);
   }
 }

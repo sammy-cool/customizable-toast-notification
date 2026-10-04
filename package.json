@@ -15,6 +15,7 @@
       "require": "./dist/index.cjs",
       "default": "./dist/index.umd.js"
     },
+    "./index.css": "./dist/index.css",
     "./package.json": "./package.json"
   },
   "engines": {
@@ -34,7 +35,7 @@
   "sideEffects": false,
   "scripts": {
     "dist:clean": "rm -rf dist",
-    "build:js": "rollup -c",
+    "build:js": "rollup -c && cp src/styles.css dist/index.css",
     "build:types:emit": "tsc -p tsconfig.types.json",
     "build:types:bundle": "rollup -c rollup.dts.config.mjs",
     "build:types": "npm run build:types:emit && npm run build:types:bundle",
@@ -114,6 +115,7 @@
     "dist/index.cjs",
     "dist/index.cjs.map",
     "dist/index.d.ts",
+    "dist/index.css",
     "README.md",
     "LICENSE",
     "CHANGELOG.md"

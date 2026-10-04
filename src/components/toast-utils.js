@@ -12,6 +12,7 @@ import {
   attachSwipeToDismiss,
 } from "./toast-utils-core.js";
 import { playTone } from "../utils/audio.js";
+import { getConfig } from "../utils/config.js";
 
 /**
  * Applies rich styling and content to a toast element.
@@ -20,13 +21,13 @@ import { playTone } from "../utils/audio.js";
  * @param {Function} onClose - Callback invoked when the toast closes.
  */
 export async function applyRichStyling(toast, options, onClose) {
+  const config = getConfig();
   const durationMs = await parseAnimationDuration(options?.animationDuration);
   const validAnimationDuration = `${durationMs}ms`;
   const easing = typeof options?.animationEasing === "string" && options.animationEasing.trim()
     ? options.animationEasing.trim()
     : "ease";
 
-  // Compose className based on provided type and optional custom className
   const customClass = typeof options?.className === "string" && options.className.trim()
     ? ` ${options.className.trim()}`
     : "";
@@ -42,32 +43,34 @@ export async function applyRichStyling(toast, options, onClose) {
       ? `${options.maxWidth}px`
       : options?.maxWidth;
 
-  Object.assign(toast.style, {
-    background: options?.backgroundColor,
-    padding: "12px 16px",
-    marginBottom: "10px",
-    borderRadius,
-    overflow: "hidden",
-    display: "flex",
-    alignItems: "center",
-    justifyContent: "space-between",
-    boxShadow: "0 4px 6px rgba(0, 0, 0, 0.1)",
-    minWidth: "250px",
-    maxWidth,
-    opacity: "0",
-    position: "relative",
-    cursor: "default",
-    boxSizing: "border-box",
-    userSelect: "text",
-    pointerEvents: "auto",
-    transition: `opacity ${validAnimationDuration} ${easing}, transform ${validAnimationDuration} ${easing}`,
-    transform: "translateY(20px)",
-    zIndex: "9999",
-  });
-  // Accessibility settings
+  if (!config.disableInlineStyles) {
+    Object.assign(toast.style, {
+      background: options?.backgroundColor,
+      padding: "12px 16px",
+      marginBottom: "10px",
+      borderRadius,
+      overflow: "hidden",
+      display: "flex",
+      alignItems: "center",
+      justifyContent: "space-between",
+      boxShadow: "0 4px 6px rgba(0, 0, 0, 0.1)",
+      minWidth: "250px",
+      maxWidth,
+      opacity: "0",
+      position: "relative",
+      cursor: "default",
+      boxSizing: "border-box",
+      userSelect: "text",
+      pointerEvents: "auto",
+      transition: `opacity ${validAnimationDuration} ${easing}, transform ${validAnimationDuration} ${easing}`,
+      transform: "translateY(20px)",
+      zIndex: String(config.zIndex),
+    });
+  }
+
   toast.setAttribute("role", "alert");
   toast.setAttribute("aria-live", "polite");
-  toast.tabIndex = 0; // Make focusable for accessibility if needed
+  toast.tabIndex = 0;
   toast._animationDuration = durationMs;
 
   const messageSpan = document.createElement("span");
@@ -80,15 +83,18 @@ export async function applyRichStyling(toast, options, onClose) {
     options?.wrapText === false;
 
   if (isTruncate || !options?.wrapText) {
-    Object.assign(messageSpan.style, {
-      display: "-webkit-box",
-      WebkitBoxOrient: "vertical",
-      WebkitLineClamp: "3",
-      whiteSpace: "normal",
-      overflow: "hidden",
-      textOverflow: "ellipsis",
-    });
-  } else {
+    messageSpan.classList.add("is-truncated");
+    if (!config.disableInlineStyles) {
+      Object.assign(messageSpan.style, {
+        display: "-webkit-box",
+        WebkitBoxOrient: "vertical",
+        WebkitLineClamp: "3",
+        whiteSpace: "normal",
+        overflow: "hidden",
+        textOverflow: "ellipsis",
+      });
+    }
+  } else if (!config.disableInlineStyles) {
     Object.assign(messageSpan.style, {
       display: "block",
       whiteSpace: "normal",
@@ -100,41 +106,41 @@ export async function applyRichStyling(toast, options, onClose) {
       ? `${options.fontSize}px`
       : options?.fontSize;
 
-  Object.assign(messageSpan.style, {
-    flex: "1",
-    padding: options?.fontPadding,
-    fontFamily: options?.fontFamily,
-    fontSize,
-    fontWeight: options?.fontWeight,
-    lineHeight: options?.fontLineHeight,
-    color: options?.textColor,
-    userSelect: "text",
-    wordBreak: "break-word",
-    overflow: "hidden",
-    textOverflow: "ellipsis",
-    direction:
-      options?.fontDirection && options.fontDirection !== "auto"
-        ? options.fontDirection
-        : undefined,
-  });
+  if (!config.disableInlineStyles) {
+    Object.assign(messageSpan.style, {
+      flex: "1",
+      padding: options?.fontPadding,
+      fontFamily: options?.fontFamily,
+      fontSize,
+      fontWeight: options?.fontWeight,
+      lineHeight: options?.fontLineHeight,
+      color: options?.textColor,
+      userSelect: "text",
+      wordBreak: "break-word",
+      overflow: "hidden",
+      textOverflow: "ellipsis",
+      direction:
+        options?.fontDirection && options.fontDirection !== "auto"
+          ? options.fontDirection
+          : undefined,
+    });
+  }
 
-  const allowHtml = !!options.allowHtml; // opt-in flag
+  const allowHtml = !!options.allowHtml;
   const rawMessage = options.message ?? "";
 
-  // If a loader is requested as part of the message, create it safely
   if (options.loader || options.showLoader) {
-    // createLoader returns an element (see new function below)
     const loaderEl = createLoader(options.loader || {});
-    // Put loader before message content
     messageSpan.appendChild(loaderEl);
-    // Small spacer
     const spacer = document.createElement("span");
-    spacer.style.display = "inline-block";
-    spacer.style.width = "8px";
+    spacer.className = "toast-message-spacer";
+    if (!config.disableInlineStyles) {
+      spacer.style.display = "inline-block";
+      spacer.style.width = "8px";
+    }
     messageSpan.appendChild(spacer);
   }
 
-  // If allowHtml is explicitly true, sanitize and set innerHTML, otherwise use textContent
   if (
     allowHtml &&
     typeof rawMessage === "string" &&
@@ -142,10 +148,8 @@ export async function applyRichStyling(toast, options, onClose) {
   ) {
     try {
       const sanitized = sanitizeHtml(rawMessage);
-      // Use DOM APIs to set sanitized HTML safely
       const tmp = document.createElement("div");
       tmp.innerHTML = sanitized;
-      // Move children to messageSpan to avoid re-parsing at outer scope
       while (tmp.firstChild) {
         messageSpan.appendChild(tmp.firstChild);
       }
@@ -157,11 +161,9 @@ export async function applyRichStyling(toast, options, onClose) {
       messageSpan.appendChild(document.createTextNode(String(rawMessage)));
     }
   } else {
-    // default safe text node mode (preserves loader and spacer elements)
     messageSpan.appendChild(document.createTextNode(String(rawMessage)));
   }
 
-  // Set title for overflow tooltip without masking accessible text
   messageSpan.setAttribute(
     "title",
     typeof rawMessage === "string"
@@ -200,11 +202,12 @@ export async function applyRichStyling(toast, options, onClose) {
  * @param {Function} onClose - Callback invoked when the toast closes.
  * @returns {Promise<HTMLElement|null>}
  */
-export async function createEmergencyToast(options, onClose) {
+export async function createEmergencyToast(options = {}, onClose) {
   try {
+    const config = getConfig();
     const emergency = document.createElement("div");
-    const position = options?.position || "bottom-right";
-    const posFlags = position.toLowerCase().trim();
+    const position = options?.position || config.defaultPosition;
+    const posFlags = String(position).toLowerCase().trim();
     let top = "auto", bottom = "auto", left = "auto", right = "auto", transform = "none";
 
     if (posFlags.startsWith("top")) top = "20px";
@@ -223,26 +226,30 @@ export async function createEmergencyToast(options, onClose) {
       right = "20px"; bottom = "20px";
     }
 
-    Object.assign(emergency.style, {
-      background: "#333",
-      color: "white",
-      padding: "10px 15px",
-      position: "fixed",
-      top,
-      bottom,
-      left,
-      right,
-      transform,
-      zIndex: "99999",
-      borderRadius: "3px",
-      maxWidth: "250px",
-      wordWrap: "break-word",
-      boxShadow: "0 2px 10px rgba(0,0,0,0.3)",
-    });
+    emergency.className = "toast-emergency";
+    if (!config.disableInlineStyles) {
+      Object.assign(emergency.style, {
+        background: "#333",
+        color: "white",
+        padding: "10px 15px",
+        position: "fixed",
+        top,
+        bottom,
+        left,
+        right,
+        transform,
+        zIndex: String(config.zIndex + 100),
+        borderRadius: "3px",
+        maxWidth: "250px",
+        wordWrap: "break-word",
+        boxShadow: "0 2px 10px rgba(0,0,0,0.3)",
+      });
+    }
 
     const innerWrapper = document.createElement("div");
     const msgEl = document.createElement("span");
-    msgEl.style.display = "inline-block";
+    msgEl.className = "toast-emergency-message";
+    if (!config.disableInlineStyles) msgEl.style.display = "inline-block";
     if (options.allowHtml) {
       msgEl.innerHTML = sanitizeHtml(
         String(options.message || "Emergency Toast Showing!")
@@ -255,8 +262,15 @@ export async function createEmergencyToast(options, onClose) {
     innerWrapper.appendChild(msgEl);
 
     const closeSpan = document.createElement("span");
-    closeSpan.style.cssText =
-      "float: right; margin-left: 10px; font-weight: bold; cursor: pointer;";
+    closeSpan.className = "toast-emergency-close";
+    if (!config.disableInlineStyles) {
+      Object.assign(closeSpan.style, {
+        float: "right",
+        marginLeft: "10px",
+        fontWeight: "bold",
+        cursor: "pointer",
+      });
+    }
     closeSpan.textContent = "×";
     innerWrapper.appendChild(closeSpan);
 

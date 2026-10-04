@@ -1,4 +1,5 @@
 import { getDynamicAccessibleTextColorHex, forceReflow } from "../utils/dom.js";
+import { getConfig, shouldReduceMotion } from "../utils/config.js";
 
 export function createCTA(toast, options, onClose) {
   const rawCfg = options?.cta;
@@ -31,7 +32,9 @@ export function createCTA(toast, options, onClose) {
   const isHex6 = typeof ctaTextColor === "string" && /^#[0-9a-fA-F]{6}$/.test(ctaTextColor.trim());
   const ctaBorderColor = isHex6 ? `${ctaTextColor.trim()}44` : "rgba(128, 128, 128, 0.3)";
 
-  Object.assign(el.style, {
+  el.className = "toast-cta";
+  if (!getConfig().disableInlineStyles) {
+    Object.assign(el.style, {
     marginLeft: "10px",
     padding: "6px 10px",
     borderRadius: "6px",
@@ -45,6 +48,7 @@ export function createCTA(toast, options, onClose) {
     whiteSpace: "nowrap",
     flexShrink: "0",
   });
+  }
 
   el.textContent = cfg.label;
 
@@ -79,7 +83,9 @@ export function createCloseButton(toast, options, onClose) {
 
   const closeTextColor = options.textColor || getDynamicAccessibleTextColorHex(options.backgroundColor);
 
-  Object.assign(closeBtn.style, {
+  closeBtn.className = "toast-close-btn";
+  if (!getConfig().disableInlineStyles) {
+    Object.assign(closeBtn.style, {
     background: "none",
     border: "none",
     color: closeTextColor,
@@ -89,6 +95,7 @@ export function createCloseButton(toast, options, onClose) {
     lineHeight: "1",
     padding: "0 4px",
   });
+  }
 
   const onClick = () => {
     if (typeof onClose === "function") onClose(toast);
@@ -127,7 +134,8 @@ export function createProgressBar(toast, options) {
     ? `calc(100% - ${leftOffset}px)`
     : "100%";
 
-  Object.assign(progressBar.style, {
+  if (!getConfig().disableInlineStyles) {
+    Object.assign(progressBar.style, {
     position: "absolute",
     left: `${leftOffset}px`,
     height: `${progressHeightPx}px`,
@@ -138,6 +146,7 @@ export function createProgressBar(toast, options) {
     borderRadius: `${progressHeightPx / 2}px`,
     opacity: "0.8",
   });
+  }
 
   toast.appendChild(progressBar);
 
@@ -151,7 +160,9 @@ export function createProgressBar(toast, options) {
     return;
   }
 
-  if (typeof progressBar.animate === "function") {
+  if (shouldReduceMotion()) {
+    progressBar.style.display = "none";
+  } else if (typeof progressBar.animate === "function") {
     toast._progressAnimation = progressBar.animate(
       [{ width: finalWidth }, { width: "0%" }],
       {
@@ -171,6 +182,12 @@ export function createProgressBar(toast, options) {
 }
 
 export function runToastAnimation(toast) {
+  if (shouldReduceMotion()) {
+    toast.style.transition = "none";
+    toast.style.opacity = "1";
+    toast.style.transform = "translateY(0)";
+    return;
+  }
   forceReflow(toast);
   const delay = 50;
   setTimeout(() => {
@@ -190,20 +207,24 @@ export function attachSwipeToDismiss(toast, onClose) {
   let isDragging = false;
   let isHorizontal = false;
 
-  const onTouchStart = (e) => {
-    if (!e || !e.touches || e.touches.length !== 1) return;
-    startX = e.touches[0].clientX;
-    startY = e.touches[0].clientY;
+  
+  const onPointerDown = (e) => {
+    if (!e) return;
+    const ev = e.touches ? e.touches[0] : e;
+    startX = ev.clientX;
+    startY = ev.clientY;
     currentX = startX;
     isDragging = true;
     isHorizontal = false;
     toast.style.transition = "none";
+    toast.style.userSelect = "none";
   };
 
-  const onTouchMove = (e) => {
-    if (!isDragging || !e || !e.touches || e.touches.length !== 1) return;
-    const x = e.touches[0].clientX;
-    const y = e.touches[0].clientY;
+  const onPointerMove = (e) => {
+    if (!isDragging || !e) return;
+    const ev = e.touches ? e.touches[0] : e;
+    const x = ev.clientX;
+    const y = ev.clientY;
     const dx = x - startX;
     const dy = y - startY;
 
@@ -219,45 +240,64 @@ export function attachSwipeToDismiss(toast, onClose) {
     if (isHorizontal) {
       currentX = x;
       const opacity = Math.max(0, 1 - Math.abs(dx) / 280);
-      toast.style.transform = `translateX(${dx}px)`;
-      toast.style.opacity = String(opacity);
+      if (!getConfig().disableInlineStyles || shouldReduceMotion() === false) {
+          toast.style.transform = `translateX(${dx}px)`;
+          toast.style.opacity = String(opacity);
+      }
       if (e.cancelable) e.preventDefault();
     }
   };
 
-  const onTouchEnd = () => {
+  const onPointerEnd = () => {
     if (!isDragging || !isHorizontal) {
       isDragging = false;
+      toast.style.userSelect = "";
       return;
     }
     isDragging = false;
+    toast.style.userSelect = "";
+    
+    // Desktop generally needs less threshold, but 75 is okay
     const dx = currentX - startX;
     const threshold = 75;
 
     if (Math.abs(dx) >= threshold) {
       const exitX = dx > 0 ? 320 : -320;
-      toast.style.transition = "transform 180ms ease-out, opacity 180ms ease-out";
-      toast.style.transform = `translateX(${exitX}px)`;
-      toast.style.opacity = "0";
+      if (!getConfig().disableInlineStyles || shouldReduceMotion() === false) {
+          toast.style.transition = "transform 180ms ease-out, opacity 180ms ease-out";
+          toast.style.transform = `translateX(${exitX}px)`;
+          toast.style.opacity = "0";
+      }
       setTimeout(() => {
         if (typeof onClose === "function") onClose(toast);
       }, 180);
     } else {
-      toast.style.transition = "transform 200ms ease, opacity 200ms ease";
-      toast.style.transform = "translateX(0)";
-      toast.style.opacity = "1";
+      if (!getConfig().disableInlineStyles || shouldReduceMotion() === false) {
+          toast.style.transition = "transform 200ms ease, opacity 200ms ease";
+          toast.style.transform = "translateX(0)";
+          toast.style.opacity = "1";
+      }
     }
   };
 
-  toast.addEventListener("touchstart", onTouchStart, { passive: true });
-  toast.addEventListener("touchmove", onTouchMove, { passive: false });
-  toast.addEventListener("touchend", onTouchEnd, { passive: true });
-  toast.addEventListener("touchcancel", onTouchEnd, { passive: true });
+  toast.addEventListener("touchstart", onPointerDown, { passive: true });
+  toast.addEventListener("touchmove", onPointerMove, { passive: false });
+  toast.addEventListener("touchend", onPointerEnd, { passive: true });
+  toast.addEventListener("touchcancel", onPointerEnd, { passive: true });
+
+  toast.addEventListener("mousedown", onPointerDown, { passive: true });
+  window.addEventListener("mousemove", onPointerMove, { passive: false });
+  window.addEventListener("mouseup", onPointerEnd, { passive: true });
 
   toast._cleanupSwipe = () => {
-    toast.removeEventListener("touchstart", onTouchStart);
-    toast.removeEventListener("touchmove", onTouchMove);
-    toast.removeEventListener("touchend", onTouchEnd);
-    toast.removeEventListener("touchcancel", onTouchEnd);
+    toast.removeEventListener("touchstart", onPointerDown);
+    toast.removeEventListener("touchmove", onPointerMove);
+    toast.removeEventListener("touchend", onPointerEnd);
+    toast.removeEventListener("touchcancel", onPointerEnd);
+
+    toast.removeEventListener("mousedown", onPointerDown);
+    window.removeEventListener("mousemove", onPointerMove);
+    window.removeEventListener("mouseup", onPointerEnd);
   };
+
 }

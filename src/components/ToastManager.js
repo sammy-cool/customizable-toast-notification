@@ -10,8 +10,8 @@ import { sanitizeHtml } from "../utils/html-sanitizer.js";
 import { playTone } from "../utils/audio.js";
 import { createProgressBar } from "./toast-utils-core.js";
 import { createLoader } from "./loader.js";
+import { getConfig, shouldReduceMotion } from "../utils/config.js";
 
-const MAX_VISIBLE = 3;
 
 const active = new Map();
 const pending = new Map();
@@ -145,7 +145,7 @@ export async function showToast(options = {}) {
       if (!current) return;
       pending.delete(key);
 
-      if (visibleCount >= MAX_VISIBLE) {
+      if (visibleCount >= getConfig().maxVisible) {
         queue.push({ options: current.options, key, count: current.count });
         await drainQueue();
         return;
@@ -191,7 +191,9 @@ async function createOne(options, key, initialCount) {
     }
 
     const outer = document.createElement("div");
-    Object.assign(outer.style, {
+    outer.className = "toast-outer-wrapper";
+    if (!getConfig().disableInlineStyles) {
+      Object.assign(outer.style, {
       position: "relative",
       display: "inline-block",
       overflow: "visible",
@@ -199,14 +201,18 @@ async function createOne(options, key, initialCount) {
       zIndex: "0",
       width: "100%",
       pointerEvents: "auto",
-    });
+    }); 
+    }
 
     const inner = document.createElement("div");
-    Object.assign(inner.style, {
+    inner.className = "toast-inner-wrapper";
+    if (!getConfig().disableInlineStyles) {
+      Object.assign(inner.style, {
       position: "relative",
       overflow: "hidden",
       zIndex: "1",
-    });
+    }); 
+    }
 
     inner.appendChild(toast);
     outer.appendChild(inner);
@@ -493,7 +499,7 @@ export async function closeToastByKey(key) {
 }
 
 async function drainQueue() {
-  while (visibleCount < MAX_VISIBLE && queue.length) {
+  while (visibleCount < getConfig().maxVisible && queue.length) {
     const item = queue.shift();
     if (active.has(item.key)) {
       const data = active.get(item.key);
@@ -566,7 +572,8 @@ async function updateBadge({ outer, count }) {
     badge.className = "toast-count-badge";
     badge.setAttribute("aria-label", `${count} identical notifications`);
 
-    Object.assign(badge.style, {
+    if (!getConfig().disableInlineStyles) {
+      Object.assign(badge.style, {
       position: "absolute",
       top: "6px",
       right: "6px",
@@ -585,7 +592,8 @@ async function updateBadge({ outer, count }) {
       zIndex: "2",
       pointerEvents: "none",
       transition: "transform 150ms ease",
-    });
+    }); 
+    }
 
     outer.appendChild(badge);
   }
@@ -593,8 +601,10 @@ async function updateBadge({ outer, count }) {
   badge.textContent = count > 99 ? "99+" : String(count);
 
   try {
-    badge.style.transform = "scale(1.2)";
-    setTimeout(() => (badge.style.transform = "scale(1)"), 150);
+    if (!shouldReduceMotion()) {
+      badge.style.transform = "scale(1.2)";
+      setTimeout(() => (badge.style.transform = "scale(1)"), 150);
+    }
   } catch (error) {
     console.error("updateBadge animation error:", error);
   }

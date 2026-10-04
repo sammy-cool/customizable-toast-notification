@@ -1,5 +1,7 @@
 "use strict";
 
+import { setConfig, getConfig, shouldReduceMotion } from "./utils/config.js";
+
 import {
   showToast,
   closeToastByKey,
@@ -75,6 +77,24 @@ import { setAudioEnabled, isAudioEnabled, playTone } from "./utils/audio.js";
  * @property {boolean | 'success' | 'error' | 'warning' | 'info' | 'pop' | string} [sound]
  * @property {boolean} [swipeToDismiss]
  * @property {number} [progress]
+ */
+
+/**
+ * @typedef {'auto' | 'always' | 'never'} ReducedMotionMode
+ */
+
+/**
+ * @typedef {Element | DocumentFragment | ShadowRoot} ToastMountTarget
+ */
+
+/**
+ * @typedef {Object} ToastGlobalConfig
+ * @property {number} [maxVisible]
+ * @property {number} [zIndex]
+ * @property {ToastMountTarget | null} [targetNode]
+ * @property {boolean} [disableInlineStyles]
+ * @property {ReducedMotionMode} [reducedMotion]
+ * @property {ToastPosition | string} [defaultPosition]
  */
 
 /**
@@ -172,12 +192,13 @@ async function createFirstToastContainer(options) {
     return await getOrCreateToastContainer(options, setPosition);
   } catch (error) {
     console.error("Failed to create toast container:", error);
-    return document.body;
+    return getConfig().targetNode || document.body;
   }
 }
 
 async function sanitizeToastOptions(options) {
-  const contPosition = options?.position?.toLowerCase()?.trim();
+  const config = getConfig();
+  const contPosition = String(options?.position ?? config.defaultPosition).toLowerCase().trim();
   const contMaxWidth =
     contPosition?.includes("top-full-width") ||
     contPosition?.includes("bottom-full-width")
@@ -189,7 +210,7 @@ async function sanitizeToastOptions(options) {
     sanitizeHtml: true,
     pauseOnHover: undefined,
     duration: 2500,
-    position: "bottom-right",
+    position: config.defaultPosition,
     type: "info",
     borderRadius: "50px",
     backgroundColor: undefined,
@@ -440,6 +461,9 @@ const version = typeof __VERSION__ !== "undefined" ? __VERSION__ : "3.15.0";
 export {
   version,
   toastPromise,
+  setConfig,
+  getConfig,
+  shouldReduceMotion,
   resetToastManager,
   resetContainerRegistry,
   updateToastByKey,
@@ -480,6 +504,9 @@ if (typeof window !== "undefined" && typeof document !== "undefined") {
 try {
   if (typeof window !== "undefined") {
     window.customizableToast = {
+      setConfig,
+      getConfig,
+      shouldReduceMotion,
       version,
       createToast: createToastWithPriority,
       setDefaultColors,
