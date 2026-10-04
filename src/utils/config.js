@@ -19,6 +19,9 @@
  * @property {ReducedMotionMode} reducedMotion
  * @property {string} defaultPosition
  * @property {ToastTheme} theme
+ * @property {boolean} stacked
+ * @property {boolean} swipeToDismiss
+ * @property {boolean} sound
  */
 
 const globalConfig = {
@@ -29,6 +32,9 @@ const globalConfig = {
   reducedMotion: "auto",
   defaultPosition: "bottom-right",
   theme: "light",
+  stacked: false,
+  swipeToDismiss: true,
+  sound: true,
 };
 
 function isValidMountTarget(value) {
@@ -45,7 +51,7 @@ export function setConfig(options = {}) {
     return getConfig();
   }
 
-  const { maxVisible, zIndex, targetNode, disableInlineStyles, reducedMotion, defaultPosition, theme } = options;
+  const { maxVisible, zIndex, targetNode, disableInlineStyles, reducedMotion, defaultPosition, theme, stacked, swipeToDismiss, sound } = options;
 
   if (maxVisible !== undefined) {
     const v = Number(maxVisible);
@@ -92,6 +98,18 @@ export function setConfig(options = {}) {
         document.documentElement.setAttribute("data-toast-theme", t);
       }
     }
+  }
+
+  if (stacked !== undefined) {
+    globalConfig.stacked = Boolean(stacked);
+  }
+
+  if (swipeToDismiss !== undefined) {
+    globalConfig.swipeToDismiss = Boolean(swipeToDismiss);
+  }
+
+  if (sound !== undefined) {
+    globalConfig.sound = Boolean(sound);
   }
 
   return getConfig();

@@ -188,7 +188,9 @@ export async function applyRichStyling(toast, options, onClose) {
     attachSwipeToDismiss(toast, onClose);
   }
 
-  if (options?.sound) {
+  // Play audio chime if enabled (global config + per-toast override)
+  const shouldPlaySound = options?.sound !== undefined ? options.sound : config.sound;
+  if (shouldPlaySound) {
     const tone = typeof options.sound === "string" ? options.sound : options?.type || "info";
     playTone(tone);
   }
