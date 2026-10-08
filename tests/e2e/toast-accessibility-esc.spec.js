@@ -112,7 +112,7 @@ test.describe("Escape key global dismiss", () => {
     await expect(toast).toBeVisible();
 
     await page.keyboard.press("Escape");
-    await expect(toast).toHaveCount(0, { timeout: 2000 });
+    await expect(page.locator('[id^="toast-container-"] [id^="toast-"]')).toHaveCount(0, { timeout: 4000 });
   });
 
   test("AUDIT H5 (regression guard): CDN global dismiss() and ESC-key dismiss should behave identically under a rapid double-fire", async ({

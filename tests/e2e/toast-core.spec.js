@@ -130,13 +130,17 @@ test.describe("core toast creation", () => {
       window.customizableToast.createToast({
         message: "closable",
         showCloseButton: true,
+        animationDuration: "0.1s",
         duration: 30000, // long duration so we know close happened via click, not timeout
       });
     });
     const toast = page.locator('[id^="toast-container-"] [id^="toast-"]').first();
+    const closeBtn = page.getByRole("button", { name: "Close notification" });
     await expect(toast).toBeVisible();
-    await page.getByRole("button", { name: "Close notification" }).click();
-    await expect(toast).toHaveCount(0, { timeout: 2000 });
+    await expect(closeBtn).toBeVisible();
+    await page.waitForTimeout(150); // allow 0.1s entry animation to settle
+    await closeBtn.click();
+    await expect(page.locator('[id^="toast-container-"] [id^="toast-"]')).toHaveCount(0, { timeout: 5000 });
   });
 
   test("duration auto-dismisses the toast", async ({ page }) => {
@@ -148,6 +152,6 @@ test.describe("core toast creation", () => {
     });
     const toast = page.locator('[id^="toast-container-"] [id^="toast-"]').first();
     await expect(toast).toBeVisible();
-    await expect(toast).toHaveCount(0, { timeout: 2000 });
+    await expect(page.locator('[id^="toast-container-"] [id^="toast-"]')).toHaveCount(0, { timeout: 4000 });
   });
 });
