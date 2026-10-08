@@ -533,7 +533,7 @@ async function toastPromise(promiseOrFn, messages = {}, options = {}) {
   }
 }
 
-const version = typeof __VERSION__ !== "undefined" ? __VERSION__ : "3.15.0";
+const version = typeof __VERSION__ !== "undefined" ? __VERSION__ : "3.16.0";
 
 export {
   version,
