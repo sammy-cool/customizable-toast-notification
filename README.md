@@ -158,6 +158,7 @@ auto-dismissed on its own — they no-op gracefully rather than throwing.
 | `className`         | `string`           | `undefined`                     | Custom CSS class name(s) for animations / styling                              |
 | `stacked`           | `boolean`          | `false`                         | Enable iOS-style card deck stacking for multiple toasts                        |
 | `sound`             | `boolean \| string`| `false`                         | Zero-asset audio chime (`true`, `'success'`, `'error'`, `'warning'`, `'pop'`)   |
+| `soundPreset`       | `string`           | `"modern"`                      | Audio synth theme: `"modern"`, `"retro"`, `"futuristic"`, `"subtle"`, `"bell"`  |
 | `swipeToDismiss`    | `boolean`          | `true`                          | Mobile touch swipe-to-dismiss gesture with physics                             |
 | `progress`          | `number`           | `undefined`                     | Explicit progress bar percentage (0 to 100)                                    |
 | `usePool`           | `boolean`          | `false`                         | Virtual element pooling for DOM recycling in high-frequency rendering           |
@@ -443,6 +444,7 @@ if (shouldReduceMotion()) {
 | `stacked`              | `boolean`                         | `false`           | Enable iOS-style 3D card deck layout with depth scaling and hover expansion.                                     |
 | `swipeToDismiss`       | `boolean`                         | `true`            | Enable touch / mouse drag swipe gesture to dismiss toasts with spring snap-back physics.                         |
 | `sound`                | `boolean`                         | `true`            | Enable pure Web Audio API notification chimes (0KB network, zero audio assets).                                   |
+| `soundPreset`          | `"modern" \| "retro" \| "futuristic" \| "subtle" \| "bell"` | `"modern"` | Built-in sound synthesis theme for audio notifications.                                           |
 | `syncTabs`             | `boolean`                         | `false`           | Synchronize toast notifications across browser tabs using BroadcastChannel.                                      |
 | `aiPrioritization`     | `boolean`                         | `false`           | Enable offline content-aware queue priority sorting (critical alerts jump ahead of routine messages).            |
 | `priorityScorer`       | `((context) => number) \| null`   | `null`            | Custom priority scoring function for custom business logic or external AI models.                               |

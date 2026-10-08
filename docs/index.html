@@ -702,6 +702,13 @@
           <a href="#compare">Why this one</a>
           <a href="#install">Install</a>
           <button id="audioToggleBtn" class="sound-toggle-btn active" title="Toggle native Web Audio API chimes">🔊 Sound: ON</button>
+          <select id="soundPresetSelect" class="theme-select" title="Switch Sound Preset">
+            <option value="modern">🎵 Modern Synth</option>
+            <option value="retro">👾 Retro 8-Bit</option>
+            <option value="futuristic">🚀 Futuristic Sci-Fi</option>
+            <option value="subtle">📳 Subtle Haptic</option>
+            <option value="bell">🔔 Crystal Bell</option>
+          </select>
           <select id="themeSelect" class="theme-select" title="Switch Theme">
             <option value="light">☀️ Light</option>
             <option value="dark">🌙 Dark</option>
@@ -1352,6 +1359,7 @@ npm install customizable-toast-notification</pre
           stacked: false,
           swipeToDismiss: true,
           sound: "none",
+          soundPreset: "modern",
           showLoader: false,
           loaderSize: 14,
           loaderColor: "",
@@ -1441,6 +1449,9 @@ npm install customizable-toast-notification</pre
           if (s.swipeToDismiss === false) opts.swipeToDismiss = false;
           if (s.sound && s.sound !== "none") {
             opts.sound = s.sound === "default" ? true : s.sound;
+            if (s.soundPreset && s.soundPreset !== "modern") {
+              opts.soundPreset = s.soundPreset;
+            }
           }
           if (s.progress !== "" && !isNaN(Number(s.progress))) {
             opts.progress = Number(s.progress);
@@ -1595,6 +1606,12 @@ npm install customizable-toast-notification</pre
                 type: "select",
                 label: "sound (zero-asset Web Audio chime)",
                 options: ["none", "default", "success", "error", "warning", "pop"],
+              },
+              {
+                key: "soundPreset",
+                type: "select",
+                label: "soundPreset (audio synth theme)",
+                options: ["modern", "retro", "futuristic", "subtle", "bell"],
               },
             ],
           },
@@ -2359,6 +2376,18 @@ npm install customizable-toast-notification</pre
             });
           }, 500);
         });
+
+        var soundPresetSelect = document.getElementById("soundPresetSelect");
+        if (soundPresetSelect) {
+          soundPresetSelect.addEventListener("change", function (e) {
+            if (customizableToast.setConfig) {
+              customizableToast.setConfig({ soundPreset: e.target.value });
+            }
+            if (customizableToast.playTone) {
+              customizableToast.playTone("info", e.target.value);
+            }
+          });
+        }
 
         wire("soundSuccessBtn", function () {
           if (customizableToast.playTone) customizableToast.playTone("success");

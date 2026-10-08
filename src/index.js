@@ -14,12 +14,24 @@ import {
 import { getOrCreateToastContainer, resetContainerRegistry } from "./utils/containerRegistry.js";
 import { getDynamicAccessibleTextColorHex } from "./utils/dom.js";
 import { setPosition } from "./utils/position.js";
-import { setAudioEnabled, isAudioEnabled, playTone } from "./utils/audio.js";
+import {
+  setAudioEnabled,
+  isAudioEnabled,
+  playTone,
+  registerSoundPreset,
+  getSoundPresets,
+  resetSoundPresets,
+  resetAudioContext,
+} from "./utils/audio.js";
 import { getToastPool, resetToastPool } from "./utils/toast-pool.js";
 import { getToastBroadcaster, resetToastBroadcaster } from "./utils/toast-broadcast.js";
 import { calculateToastPriority, categorizeToast } from "./utils/ai-scorer.js";
 import { createGestureDetector, detectPinch, isFlick, calculateVelocity } from "./utils/multi-touch.js";
 import { generateToastId, resetToastIdCounter } from "./utils/id.js";
+
+/**
+ * @typedef {'modern' | 'retro' | 'futuristic' | 'subtle' | 'bell' | string} SoundPreset
+ */
 
 /**
  * @typedef {'info' | 'success' | 'error' | 'warning'} ToastType
@@ -81,6 +93,7 @@ import { generateToastId, resetToastIdCounter } from "./utils/id.js";
  * @property {CTAOptions} [cta]
  * @property {boolean} [stacked]
  * @property {boolean | 'success' | 'error' | 'warning' | 'info' | 'pop' | string} [sound]
+ * @property {SoundPreset} [soundPreset]
  * @property {boolean} [swipeToDismiss]
  * @property {number} [progress]
  * @property {boolean} [syncTabs]
@@ -123,6 +136,7 @@ import { generateToastId, resetToastIdCounter } from "./utils/id.js";
  * @property {boolean} [stacked]
  * @property {boolean} [swipeToDismiss]
  * @property {boolean} [sound]
+ * @property {SoundPreset} [soundPreset]
  * @property {boolean} [syncTabs]
  * @property {boolean} [aiPrioritization]
  * @property {((context: Object) => number | { score: number }) | null} [priorityScorer]
@@ -516,6 +530,10 @@ export {
   generateToastId,
   resetToastIdCounter,
   getToastMetrics,
+  registerSoundPreset,
+  getSoundPresets,
+  resetSoundPresets,
+  resetAudioContext,
 };
 
 if (typeof window !== "undefined" && typeof document !== "undefined") {
@@ -565,6 +583,10 @@ try {
       setAudioEnabled,
       isAudioEnabled,
       playTone,
+      registerSoundPreset,
+      getSoundPresets,
+      resetSoundPresets,
+      resetAudioContext,
       getToastPool,
       resetToastPool,
       getToastBroadcaster,

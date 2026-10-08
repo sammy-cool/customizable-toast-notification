@@ -1527,6 +1527,126 @@ describe("audio.js — Web Audio API notification sound synth", () => {
     playTone("warning");
     playTone("pop");
   });
+
+  function mockAudioContext() {
+    window.AudioContext = class {
+      constructor() {
+        this.currentTime = 0;
+        this.state = "running";
+        this.destination = {};
+      }
+      createOscillator() {
+        return {
+          type: "sine",
+          frequency: {
+            setValueAtTime: () => {},
+            exponentialRampToValueAtTime: () => {},
+            linearRampToValueAtTime: () => {},
+          },
+          connect: () => {},
+          start: () => {},
+          stop: () => {},
+        };
+      }
+      createGain() {
+        return {
+          gain: {
+            setValueAtTime: () => {},
+            exponentialRampToValueAtTime: () => {},
+            linearRampToValueAtTime: () => {},
+          },
+          connect: () => {},
+        };
+      }
+    };
+  }
+
+  test("built-in sound presets (modern, retro, futuristic, subtle, bell) synthesize tones safely", async () => {
+    freshDom();
+    mockAudioContext();
+    const { playTone, getSoundPresets, setAudioEnabled, resetAudioContext } = await import(
+      "../../src/utils/audio.js"
+    );
+
+    resetAudioContext();
+    setAudioEnabled(true);
+    const presets = getSoundPresets();
+    assert.ok(presets.includes("modern"));
+    assert.ok(presets.includes("retro"));
+    assert.ok(presets.includes("futuristic"));
+    assert.ok(presets.includes("subtle"));
+    assert.ok(presets.includes("bell"));
+
+    const tones = ["success", "error", "warning", "info"];
+    for (const preset of ["modern", "retro", "futuristic", "subtle", "bell"]) {
+      for (const tone of tones) {
+        assert.doesNotThrow(() => {
+          playTone(tone, preset);
+        });
+      }
+    }
+  });
+
+  test("registerSoundPreset registers custom synthesizers and resets cleanly", async () => {
+    freshDom();
+    mockAudioContext();
+    const {
+      playTone,
+      registerSoundPreset,
+      getSoundPresets,
+      resetSoundPresets,
+      resetAudioContext,
+    } = await import("../../src/utils/audio.js");
+
+    resetAudioContext();
+    assert.equal(registerSoundPreset("", () => {}), false);
+    assert.equal(registerSoundPreset("invalid", null), false);
+
+    let customCalled = false;
+    let customToneReceived = null;
+
+    const registered = registerSoundPreset("arcade", (ctx, tone) => {
+      customCalled = true;
+      customToneReceived = tone;
+    });
+    assert.equal(registered, true);
+
+    const presets = getSoundPresets();
+    assert.ok(presets.includes("arcade"));
+
+    playTone("success", "arcade");
+    assert.equal(customCalled, true);
+    assert.equal(customToneReceived, "success");
+
+    resetSoundPresets();
+    const resetList = getSoundPresets();
+    assert.equal(resetList.includes("arcade"), false);
+  });
+
+  test("global setConfig({ soundPreset }) routes default tone synthesis to active preset", async () => {
+    freshDom();
+    mockAudioContext();
+    const { playTone, registerSoundPreset, resetSoundPresets, resetAudioContext } =
+      await import("../../src/utils/audio.js");
+    const { setConfig, resetConfig } = await import("../../src/utils/config.js");
+
+    resetConfig();
+    resetAudioContext();
+    resetSoundPresets();
+
+    let customPresetInvoked = false;
+    registerSoundPreset("custom-default", () => {
+      customPresetInvoked = true;
+    });
+
+    setConfig({ soundPreset: "custom-default" });
+    playTone("info");
+
+    assert.equal(customPresetInvoked, true);
+
+    resetConfig();
+    resetSoundPresets();
+  });
 });
 
 describe("toast-utils-core.js — progress bar options and live update robustness", () => {

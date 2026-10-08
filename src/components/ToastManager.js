@@ -1026,7 +1026,12 @@ export async function updateToastByKey(key, newOptions = {}) {
       typeof newOptions.sound === "string"
         ? newOptions.sound
         : newOptions.type || data.options.type || "info";
-    playTone(tone);
+    const preset =
+      newOptions.soundPreset ||
+      data.options.soundPreset ||
+      getConfig().soundPreset ||
+      "modern";
+    playTone(tone, preset);
   }
 
   // 7. Stacked update

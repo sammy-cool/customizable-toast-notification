@@ -32,6 +32,7 @@
  * @property {boolean} stacked
  * @property {boolean} swipeToDismiss
  * @property {boolean} sound
+ * @property {'modern' | 'retro' | 'futuristic' | 'subtle' | 'bell' | string} [soundPreset]
  * @property {boolean} syncTabs
  * @property {boolean} aiPrioritization
  * @property {((context: Object) => number | { score: number }) | null} [priorityScorer]
@@ -50,6 +51,7 @@ const DEFAULT_GLOBAL_CONFIG = Object.freeze({
   stacked: false,
   swipeToDismiss: true,
   sound: true,
+  soundPreset: "modern",
   syncTabs: false,
   aiPrioritization: false,
   priorityScorer: null,
@@ -84,6 +86,7 @@ export function setConfig(options = {}) {
     stacked,
     swipeToDismiss,
     sound,
+    soundPreset,
     syncTabs,
     aiPrioritization,
     priorityScorer,
@@ -163,6 +166,13 @@ export function setConfig(options = {}) {
 
   if (sound !== undefined) {
     globalConfig.sound = Boolean(sound);
+  }
+
+  if (soundPreset !== undefined) {
+    const sp = String(soundPreset || "modern").toLowerCase().trim();
+    if (sp) {
+      globalConfig.soundPreset = sp;
+    }
   }
 
   if (syncTabs !== undefined) {

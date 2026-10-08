@@ -192,7 +192,8 @@ export async function applyRichStyling(toast, options, onClose) {
   const shouldPlaySound = options?.sound !== undefined ? options.sound : config.sound;
   if (shouldPlaySound) {
     const tone = typeof options.sound === "string" ? options.sound : options?.type || "info";
-    playTone(tone);
+    const preset = options?.soundPreset || config.soundPreset || "modern";
+    playTone(tone, preset);
   }
 
   runToastAnimation(toast);
