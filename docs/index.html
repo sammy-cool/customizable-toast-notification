@@ -797,6 +797,7 @@
               <button class="fire-btn ghost" id="pgResetBtn">
                 Reset to defaults
               </button>
+              <a href="https://stackblitz.com/edit/customizable-toast-notification-demo?file=index.html" target="_blank" rel="noopener noreferrer" class="fire-btn ghost" style="text-decoration:none; display:inline-flex; align-items:center; justify-content:center; gap:6px;">⚡ Open in StackBlitz</a>
             </div>
           </div>
         </div>
@@ -1994,19 +1995,46 @@ npm install customizable-toast-notification</pre
             renderCode();
           });
 
+        function fallbackCopy(text) {
+          var ta = document.createElement("textarea");
+          ta.value = text;
+          ta.style.position = "fixed";
+          ta.style.opacity = "0";
+          document.body.appendChild(ta);
+          ta.focus();
+          ta.select();
+          try {
+            document.execCommand("copy");
+          } catch (e) {}
+          document.body.removeChild(ta);
+        }
+
         document
           .getElementById("copyBtn")
           .addEventListener("click", function () {
             var code = document.getElementById("codeOutput").textContent;
-            navigator.clipboard.writeText(code).then(function () {
+            function markCopied() {
               var btn = document.getElementById("copyBtn");
-              btn.textContent = "Copied!";
+              btn.textContent = "✓ Copied!";
               btn.classList.add("copied");
               setTimeout(function () {
                 btn.textContent = "Copy";
                 btn.classList.remove("copied");
-              }, 1500);
-            });
+              }, 1800);
+            }
+
+            if (navigator.clipboard && navigator.clipboard.writeText) {
+              navigator.clipboard
+                .writeText(code)
+                .then(markCopied)
+                .catch(function () {
+                  fallbackCopy(code);
+                  markCopied();
+                });
+            } else {
+              fallbackCopy(code);
+              markCopied();
+            }
           });
 
         renderCode();

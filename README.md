@@ -1,13 +1,40 @@
 # 🍞 Customizable Toast Notifications
 
-![npm](https://img.shields.io/npm/v/customizable-toast-notification)
-![npm downloads](https://img.shields.io/npm/dm/customizable-toast-notification)
+[![npm](https://img.shields.io/npm/v/customizable-toast-notification)](https://www.npmjs.com/package/customizable-toast-notification)
+[![npm downloads](https://img.shields.io/npm/dm/customizable-toast-notification)](https://www.npmjs.com/package/customizable-toast-notification)
 [![License: Apache-2.0](https://img.shields.io/badge/License-Apache%202.0-blue.svg)](https://opensource.org/licenses/Apache-2.0)
+[![Zero Runtime Dependencies](https://img.shields.io/badge/dependencies-0-brightgreen.svg)](package.json)
 [![Bundle Size](https://img.shields.io/bundlephobia/minzip/customizable-toast-notification)](https://bundlephobia.com/package/customizable-toast-notification)
+[![TypeScript Strict](https://img.shields.io/badge/TypeScript-Strict%20Types-blue?logo=typescript)](dist/index.d.ts)
+[![CodeQL Security](https://img.shields.io/badge/CodeQL-Protected-success?logo=github)](.github/workflows/codeql.yml)
+[![Open in StackBlitz](https://img.shields.io/badge/StackBlitz-Live%20Sandbox-blue?logo=stackblitz)](https://stackblitz.com/edit/customizable-toast-notification-demo?file=index.html)
 
-**[▶ Try the live demo](https://sammy-cool.github.io/customizable-toast-notification/)** — click a button, watch a real toast fire, sanitized HTML included.
+**[▶ Try the interactive live playground](https://sammy-cool.github.io/customizable-toast-notification/)** — test damped spring physics, 5 zero-asset Web Audio synthesizer presets, dynamic action undo countdowns, and iOS-style card deck stacking in real time.
 
-Toast notifications that work the same everywhere — plain JavaScript, Vue, Svelte, Angular, or a plain multi-page app — not just React. Built with sanitized-by-default HTML rendering, zero runtime dependencies, and 129 real cross-browser end-to-end tests.
+```
+┌────────────────────────────────────────────────────────────────────────┐
+│                   customizable-toast-notification                       │
+│       Zero Dependencies • Universal Multi-Framework • Pure Native      │
+└────────────────────────────────────┬───────────────────────────────────┘
+                                     │
+     ┌───────────────────┬───────────┴───────────┬───────────────────┐
+     ▼                   ▼                       ▼                   ▼
+┌──────────────┐   ┌───────────────┐     ┌───────────────┐   ┌───────────────┐
+│ Web Audio    │   │ Spring Physics│     │ Action Undo   │   │ Card Deck     │
+│ 5 Synth      │   │ Damped        │     │ Dynamic Live  │   │ iOS-Style     │
+│ Presets +    │   │ Harmonic      │     │ Countdown     │   │ Pinch-to-     │
+│ Oscilloscope │   │ Oscillator    │     │ Badge (Xs)    │   │ Expand Stack  │
+└──────────────┘   └───────────────┘     └───────────────┘   └───────────────┘
+     │                   │                       │                   │
+     └───────────────────┴───────────┬───────────┴───────────────────┘
+                                     ▼
+           ┌──────────────────────────────────────────────────┐
+           │ Framework Adapters & TypeSafe AI Smart Triage    │
+           │ React • Vue • Svelte • Angular • SolidJS • Jev   │
+           └──────────────────────────────────────────────────┘
+```
+
+Toast notifications that work the same everywhere — plain JavaScript, Vue, Svelte, Angular, SolidJS, or a multi-page app. Built with sanitized-by-default HTML rendering, zero runtime dependencies, and 132 automated unit & end-to-end tests across Chromium, Firefox, and WebKit.
 
 ## ✨ Key Features
 
