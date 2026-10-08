@@ -2492,6 +2492,102 @@ describe("spring.js — Configurable Spring Physics Animation Engine", () => {
   });
 });
 
+describe("audio.js — getAudioAnalyser and oscilloscope integration", () => {
+  test("getAudioAnalyser creates and returns shared AnalyserNode when AudioContext is present", async () => {
+    const { getAudioAnalyser, resetAudioContext } = await import("../../src/utils/audio.js");
+
+    // Mock AudioContext in JSDOM environment
+    const originalAudioContext = window.AudioContext;
+    let createdAnalyser = false;
+    window.AudioContext = class MockAudioContext {
+      constructor() {
+        this.destination = {};
+      }
+      createAnalyser() {
+        createdAnalyser = true;
+        return {
+          fftSize: 128,
+          frequencyBinCount: 64,
+          connect() {},
+        };
+      }
+      close() {
+        return Promise.resolve();
+      }
+    };
+
+    try {
+      resetAudioContext();
+      const analyser = getAudioAnalyser();
+      assert.ok(analyser, "Analyser must be created");
+      assert.strictEqual(createdAnalyser, true);
+      assert.strictEqual(analyser.fftSize, 128);
+
+      // Calling again returns cached instance
+      const secondCall = getAudioAnalyser();
+      assert.strictEqual(secondCall, analyser);
+    } finally {
+      resetAudioContext();
+      window.AudioContext = originalAudioContext;
+    }
+  });
+});
+
+describe("ToastManager.js — Stacked container multi-touch gesture", () => {
+  test("updateStackedLayout initializes and cleans up gesture detector and listeners", async () => {
+    const { updateStackedLayout } = await import("../../src/components/ToastManager.js");
+
+    const container = document.createElement("div");
+    container.id = "toast-container-bottom-right";
+    container.setAttribute("data-stacked", "true");
+
+    const toast1 = document.createElement("div");
+    const toast2 = document.createElement("div");
+    container.appendChild(toast1);
+    container.appendChild(toast2);
+
+    updateStackedLayout(container);
+    assert.strictEqual(container._stackedInitialized, true);
+
+    // Verify cleanup
+    container._stackedCleanup?.();
+    assert.strictEqual(container._stackedInitialized, false);
+  });
+});
+
+describe("smart-triage.js — TypeSafe AI Smart Triage deterministic classifier", () => {
+  test("classifyEventDeterministic correctly classifies destructive action and assigns Undo", async () => {
+    const { classifyEventDeterministic } = await import("../../examples/ai-triage/smart-triage.js");
+
+    const plan = classifyEventDeterministic("Project permanently deleted from dashboard");
+    assert.strictEqual(plan.type, "warning");
+    assert.ok(plan.undo, "Destructive event must have undo configured");
+    assert.strictEqual(plan.undo.label, "Undo");
+    assert.strictEqual(plan.undo.showCountdown, true);
+    assert.strictEqual(plan.spring, "wobbly");
+  });
+
+  test("classifyEventDeterministic classifies critical errors and high priority", async () => {
+    const { classifyEventDeterministic } = await import("../../examples/ai-triage/smart-triage.js");
+
+    const plan = classifyEventDeterministic("Network timeout: database connection failed");
+    assert.strictEqual(plan.type, "error");
+    assert.strictEqual(plan.soundPreset, "retro");
+    assert.strictEqual(plan.spring, "stiff");
+    assert.strictEqual(plan.priority, 90);
+  });
+
+  test("classifyEventDeterministic classifies successes with bell preset and bouncy spring", async () => {
+    const { classifyEventDeterministic } = await import("../../examples/ai-triage/smart-triage.js");
+
+    const plan = classifyEventDeterministic("Profile saved and verified successfully");
+    assert.strictEqual(plan.type, "success");
+    assert.strictEqual(plan.soundPreset, "bell");
+    assert.strictEqual(plan.spring, "bouncy");
+  });
+});
+
+
 
 
 

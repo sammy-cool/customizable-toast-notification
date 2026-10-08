@@ -1,0 +1,52 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Angular Toast Service Demo</title>
+  <link rel="stylesheet" href="../../dist/index.css">
+  <style>
+    body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; background: #0f172a; color: white; display: flex; justify-content: center; align-items: center; min-height: 100vh; margin: 0; }
+    .card { background: #1e293b; border: 1px solid #334155; padding: 30px; border-radius: 12px; max-width: 480px; width: 100%; text-align: center; }
+    .btn-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin-top: 20px; }
+    button { padding: 12px; border-radius: 6px; font-weight: 600; cursor: pointer; border: none; }
+    .angular-btn { background: #dd0031; color: white; }
+    .outline-btn { background: transparent; border: 1px solid #dd0031; color: #dd0031; }
+  </style>
+  <script src="../../dist/index.umd.js"></script>
+</head>
+<body>
+  <div class="card">
+    <h2>🅰️ Angular ToastService Demo</h2>
+    <p style="color: #94a3b8;">Demonstrating Angular @Injectable() ToastService pattern with Signals/RxJS observables.</p>
+    <div class="btn-grid">
+      <button class="angular-btn" id="ngSuccess">Success Alert</button>
+      <button class="angular-btn" id="ngSpring">Spring Physics</button>
+      <button class="outline-btn" id="ngDismiss" style="grid-column: span 2;">Dismiss All</button>
+    </div>
+  </div>
+
+  <script>
+    // Simulating ToastService methods
+    class ToastService {
+      success(msg, opts) { return customizableToast.createToast({ type: 'success', message: msg, ...opts }); }
+      info(msg, opts) { return customizableToast.createToast({ type: 'info', message: msg, ...opts }); }
+      dismissAll() { return customizableToast.dismiss(); }
+    }
+
+    const toastService = new ToastService();
+
+    document.getElementById("ngSuccess").addEventListener("click", () => {
+      toastService.success("Angular service toast triggered!", { sound: true, soundPreset: "bell" });
+    });
+
+    document.getElementById("ngSpring").addEventListener("click", () => {
+      toastService.info("Angular spring animated notification", { spring: "bouncy", sound: true, soundPreset: "futuristic" });
+    });
+
+    document.getElementById("ngDismiss").addEventListener("click", () => {
+      toastService.dismissAll();
+    });
+  </script>
+</body>
+</html>

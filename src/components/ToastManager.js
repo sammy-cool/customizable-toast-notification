@@ -14,6 +14,7 @@ import { getConfig, shouldReduceMotion } from "../utils/config.js";
 import { getToastBroadcaster } from "../utils/toast-broadcast.js";
 import { calculateToastPriority } from "../utils/ai-scorer.js";
 import { getToastPool } from "../utils/toast-pool.js";
+import { createGestureDetector } from "../utils/multi-touch.js";
 
 
 const active = new Map();
@@ -171,11 +172,28 @@ export function updateStackedLayout(container) {
     container.addEventListener("focusin", onFocusIn);
     container.addEventListener("focusout", onFocusOut);
 
+    let detector = null;
+    if (typeof createGestureDetector === "function") {
+      detector = createGestureDetector(container, {
+        onPinch: (pinch) => {
+          if (pinch.direction === "out" && !container._isExpanded) {
+            container._isExpanded = true;
+            updateStackedLayout(container);
+          } else if (pinch.direction === "in" && container._isExpanded) {
+            container._isExpanded = false;
+            updateStackedLayout(container);
+          }
+        },
+      });
+      detector.attach();
+    }
+
     container._stackedCleanup = () => {
       container.removeEventListener("mouseenter", onMouseEnter);
       container.removeEventListener("mouseleave", onMouseLeave);
       container.removeEventListener("focusin", onFocusIn);
       container.removeEventListener("focusout", onFocusOut);
+      detector?.detach?.();
       container._stackedInitialized = false;
     };
   }

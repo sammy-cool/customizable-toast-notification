@@ -1,0 +1,44 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>SolidJS Toast Primitive Demo</title>
+  <link rel="stylesheet" href="../../dist/index.css">
+  <style>
+    body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; background: #0f172a; color: white; display: flex; justify-content: center; align-items: center; min-height: 100vh; margin: 0; }
+    .card { background: #1e293b; border: 1px solid #334155; padding: 30px; border-radius: 12px; max-width: 480px; width: 100%; text-align: center; }
+    .btn-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin-top: 20px; }
+    button { padding: 12px; border-radius: 6px; font-weight: 600; cursor: pointer; border: none; }
+    .solid-btn { background: #2c4f7c; color: white; }
+  </style>
+  <script src="../../dist/index.umd.js"></script>
+</head>
+<body>
+  <div class="card">
+    <h2>🔵 SolidJS `useToast` Primitive Demo</h2>
+    <p style="color: #94a3b8;">Demonstrating SolidJS fine-grained reactivity primitive with signal metrics.</p>
+    <div class="btn-grid">
+      <button class="solid-btn" id="solidSuccess">Solid Success</button>
+      <button class="solid-btn" id="solidUndo">Solid Undo</button>
+    </div>
+  </div>
+
+  <script type="module">
+    import { useToast } from './useToast.js';
+
+    const toast = useToast();
+
+    document.getElementById("solidSuccess").addEventListener("click", () => {
+      toast.success("SolidJS reactive notification active!", { sound: true, soundPreset: "bell", spring: "bouncy" });
+    });
+
+    document.getElementById("solidUndo").addEventListener("click", () => {
+      toast.warning("File moved to trash", {
+        duration: 5000,
+        undo: { label: "Restore", showCountdown: true, onUndo: () => console.log("Restored!") }
+      });
+    });
+  </script>
+</body>
+</html>

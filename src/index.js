@@ -22,6 +22,7 @@ import {
   getSoundPresets,
   resetSoundPresets,
   resetAudioContext,
+  getAudioAnalyser,
 } from "./utils/audio.js";
 import { getToastPool, resetToastPool } from "./utils/toast-pool.js";
 import { getToastBroadcaster, resetToastBroadcaster } from "./utils/toast-broadcast.js";
@@ -572,6 +573,7 @@ export {
   calculateSpringSettlingDuration,
   generateSpringLinearEasing,
   getSpringTransition,
+  getAudioAnalyser,
 };
 
 if (typeof window !== "undefined" && typeof document !== "undefined") {
@@ -646,6 +648,7 @@ try {
       calculateSpringSettlingDuration,
       generateSpringLinearEasing,
       getSpringTransition,
+      getAudioAnalyser,
     };
   }
 } catch (error) {

@@ -160,6 +160,14 @@
         color: var(--accent);
         border-color: var(--accent);
       }
+      .audio-oscilloscope {
+        height: 26px;
+        width: 84px;
+        border-radius: 6px;
+        background: rgba(0, 0, 0, 0.4);
+        border: 1px solid var(--border);
+        vertical-align: middle;
+      }
       .theme-select {
         font-family: var(--mono);
         font-size: 11.5px;
@@ -709,6 +717,7 @@
             <option value="subtle">📳 Subtle Haptic</option>
             <option value="bell">🔔 Crystal Bell</option>
           </select>
+          <canvas id="audioOscilloscope" width="84" height="26" class="audio-oscilloscope" title="Live Synth Waveform"></canvas>
           <select id="themeSelect" class="theme-select" title="Switch Theme">
             <option value="light">☀️ Light</option>
             <option value="dark">🌙 Dark</option>
@@ -2410,6 +2419,55 @@ npm install customizable-toast-notification</pre
             }
           });
         }
+
+        // Live Audio Oscilloscope Canvas Visualizer
+        (function initOscilloscope() {
+          var canvas = document.getElementById("audioOscilloscope");
+          if (!canvas || !canvas.getContext) return;
+          var ctx = canvas.getContext("2d");
+          var analyser = null;
+          var dataArray = null;
+
+          function render() {
+            requestAnimationFrame(render);
+            if (!analyser && window.customizableToast && window.customizableToast.getAudioAnalyser) {
+              analyser = window.customizableToast.getAudioAnalyser();
+              if (analyser) {
+                dataArray = new Uint8Array(analyser.frequencyBinCount);
+              }
+            }
+
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+            ctx.lineWidth = 1.5;
+            ctx.strokeStyle = "#38bdf8";
+
+            ctx.beginPath();
+            var count = dataArray ? dataArray.length : 32;
+            var sliceWidth = canvas.width / count;
+            var x = 0;
+
+            if (analyser && dataArray) {
+              analyser.getByteTimeDomainData(dataArray);
+              for (var i = 0; i < count; i++) {
+                var v = dataArray[i] / 128.0;
+                var y = (v * canvas.height) / 2;
+                if (i === 0) ctx.moveTo(x, y);
+                else ctx.lineTo(x, y);
+                x += sliceWidth;
+              }
+            } else {
+              var time = Date.now() * 0.003;
+              for (var j = 0; j <= 32; j++) {
+                var ry = canvas.height / 2 + Math.sin(time + j * 0.3) * 1.5;
+                if (j === 0) ctx.moveTo(x, ry);
+                else ctx.lineTo(x, ry);
+                x += sliceWidth;
+              }
+            }
+            ctx.stroke();
+          }
+          render();
+        })();
 
         wire("soundSuccessBtn", function () {
           if (customizableToast.playTone) customizableToast.playTone("success");

@@ -40,6 +40,40 @@ function getAudioContext() {
   return audioContext;
 }
 
+let audioAnalyser = null;
+
+/**
+ * Returns a shared AnalyserNode for real-time waveform visualization.
+ * @returns {AnalyserNode | null}
+ */
+export function getAudioAnalyser() {
+  const ctx = getAudioContext();
+  if (!ctx || typeof ctx.createAnalyser !== "function") return null;
+  if (!audioAnalyser) {
+    try {
+      audioAnalyser = ctx.createAnalyser();
+      audioAnalyser.fftSize = 128;
+      audioAnalyser.connect(ctx.destination);
+    } catch {
+      return null;
+    }
+  }
+  return audioAnalyser;
+}
+
+/**
+ * Route node to destination through analyser if available.
+ * @param {AudioContext} ctx
+ * @param {AudioNode} node
+ */
+function routeAudio(ctx, node) {
+  if (audioAnalyser) {
+    node.connect(audioAnalyser);
+  } else {
+    node.connect(ctx.destination);
+  }
+}
+
 /**
  * Modern preset: crisp multi-tone chords and pings.
  * @param {AudioContext} ctx
@@ -61,7 +95,7 @@ function playModernPreset(ctx, tone, now) {
       gain.gain.exponentialRampToValueAtTime(0.0001, now + idx * 0.08 + 0.35);
 
       osc.connect(gain);
-      gain.connect(ctx.destination);
+      routeAudio(ctx, gain);
 
       osc.start(now + idx * 0.08);
       osc.stop(now + idx * 0.08 + 0.36);
@@ -80,7 +114,7 @@ function playModernPreset(ctx, tone, now) {
       gain.gain.exponentialRampToValueAtTime(0.0001, now + idx * 0.1 + 0.22);
 
       osc.connect(gain);
-      gain.connect(ctx.destination);
+      routeAudio(ctx, gain);
 
       osc.start(now + idx * 0.1);
       osc.stop(now + idx * 0.1 + 0.23);
@@ -98,7 +132,7 @@ function playModernPreset(ctx, tone, now) {
     gain.gain.exponentialRampToValueAtTime(0.0001, now + 0.28);
 
     osc.connect(gain);
-    gain.connect(ctx.destination);
+    routeAudio(ctx, gain);
 
     osc.start(now);
     osc.stop(now + 0.3);
@@ -116,7 +150,7 @@ function playModernPreset(ctx, tone, now) {
     gain.gain.exponentialRampToValueAtTime(0.0001, now + 0.12);
 
     osc.connect(gain);
-    gain.connect(ctx.destination);
+    routeAudio(ctx, gain);
 
     osc.start(now);
     osc.stop(now + 0.13);
@@ -145,7 +179,7 @@ function playRetroPreset(ctx, tone, now) {
       gain.gain.exponentialRampToValueAtTime(0.0001, start + 0.042);
 
       osc.connect(gain);
-      gain.connect(ctx.destination);
+      routeAudio(ctx, gain);
 
       osc.start(start);
       osc.stop(start + 0.045);
@@ -163,7 +197,7 @@ function playRetroPreset(ctx, tone, now) {
     gain.gain.exponentialRampToValueAtTime(0.0001, now + 0.22);
 
     osc.connect(gain);
-    gain.connect(ctx.destination);
+    routeAudio(ctx, gain);
 
     osc.start(now);
     osc.stop(now + 0.23);
@@ -181,7 +215,7 @@ function playRetroPreset(ctx, tone, now) {
       gain.gain.exponentialRampToValueAtTime(0.0001, start + 0.05);
 
       osc.connect(gain);
-      gain.connect(ctx.destination);
+      routeAudio(ctx, gain);
 
       osc.start(start);
       osc.stop(start + 0.055);
@@ -201,7 +235,7 @@ function playRetroPreset(ctx, tone, now) {
       gain.gain.exponentialRampToValueAtTime(0.0001, start + 0.035);
 
       osc.connect(gain);
-      gain.connect(ctx.destination);
+      routeAudio(ctx, gain);
 
       osc.start(start);
       osc.stop(start + 0.04);
@@ -229,7 +263,7 @@ function playFuturisticPreset(ctx, tone, now) {
     gain.gain.exponentialRampToValueAtTime(0.0001, now + 0.32);
 
     osc.connect(gain);
-    gain.connect(ctx.destination);
+    routeAudio(ctx, gain);
 
     osc.start(now);
     osc.stop(now + 0.33);
@@ -246,7 +280,7 @@ function playFuturisticPreset(ctx, tone, now) {
     gain.gain.exponentialRampToValueAtTime(0.0001, now + 0.25);
 
     osc.connect(gain);
-    gain.connect(ctx.destination);
+    routeAudio(ctx, gain);
 
     osc.start(now);
     osc.stop(now + 0.26);
@@ -266,7 +300,7 @@ function playFuturisticPreset(ctx, tone, now) {
       gain.gain.exponentialRampToValueAtTime(0.0001, now + 0.25);
 
       osc.connect(gain);
-      gain.connect(ctx.destination);
+      routeAudio(ctx, gain);
 
       osc.start(now);
       osc.stop(now + 0.26);
@@ -285,7 +319,7 @@ function playFuturisticPreset(ctx, tone, now) {
     gain.gain.exponentialRampToValueAtTime(0.0001, now + 0.12);
 
     osc.connect(gain);
-    gain.connect(ctx.destination);
+    routeAudio(ctx, gain);
 
     osc.start(now);
     osc.stop(now + 0.13);
@@ -313,7 +347,7 @@ function playSubtlePreset(ctx, tone, now) {
       gain.gain.exponentialRampToValueAtTime(0.0001, start + 0.025);
 
       osc.connect(gain);
-      gain.connect(ctx.destination);
+      routeAudio(ctx, gain);
 
       osc.start(start);
       osc.stop(start + 0.03);
@@ -332,7 +366,7 @@ function playSubtlePreset(ctx, tone, now) {
       gain.gain.exponentialRampToValueAtTime(0.0001, start + 0.035);
 
       osc.connect(gain);
-      gain.connect(ctx.destination);
+      routeAudio(ctx, gain);
 
       osc.start(start);
       osc.stop(start + 0.04);
@@ -349,7 +383,7 @@ function playSubtlePreset(ctx, tone, now) {
     gain.gain.exponentialRampToValueAtTime(0.0001, now + 0.025);
 
     osc.connect(gain);
-    gain.connect(ctx.destination);
+    routeAudio(ctx, gain);
 
     osc.start(now);
     osc.stop(now + 0.03);
@@ -365,7 +399,7 @@ function playSubtlePreset(ctx, tone, now) {
     gain.gain.exponentialRampToValueAtTime(0.0001, now + 0.02);
 
     osc.connect(gain);
-    gain.connect(ctx.destination);
+    routeAudio(ctx, gain);
 
     osc.start(now);
     osc.stop(now + 0.025);
@@ -394,7 +428,7 @@ function playBellPreset(ctx, tone, now) {
       gain.gain.exponentialRampToValueAtTime(0.0001, now + 0.55);
 
       osc.connect(gain);
-      gain.connect(ctx.destination);
+      routeAudio(ctx, gain);
 
       osc.start(now);
       osc.stop(now + 0.58);
@@ -413,7 +447,7 @@ function playBellPreset(ctx, tone, now) {
       gain.gain.exponentialRampToValueAtTime(0.0001, now + 0.38);
 
       osc.connect(gain);
-      gain.connect(ctx.destination);
+      routeAudio(ctx, gain);
 
       osc.start(now);
       osc.stop(now + 0.4);
@@ -430,7 +464,7 @@ function playBellPreset(ctx, tone, now) {
     gain.gain.exponentialRampToValueAtTime(0.0001, now + 0.45);
 
     osc.connect(gain);
-    gain.connect(ctx.destination);
+    routeAudio(ctx, gain);
 
     osc.start(now);
     osc.stop(now + 0.48);
@@ -446,7 +480,7 @@ function playBellPreset(ctx, tone, now) {
     gain.gain.exponentialRampToValueAtTime(0.0001, now + 0.28);
 
     osc.connect(gain);
-    gain.connect(ctx.destination);
+    routeAudio(ctx, gain);
 
     osc.start(now);
     osc.stop(now + 0.3);
@@ -566,5 +600,11 @@ export function isAudioEnabled() {
  * @returns {void}
  */
 export function resetAudioContext() {
+  if (audioContext) {
+    try {
+      audioContext.close?.().catch?.(() => {});
+    } catch {}
+  }
   audioContext = null;
+  audioAnalyser = null;
 }
