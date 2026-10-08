@@ -5,11 +5,13 @@ on:
     branches:
       - master
       - migration-phase-v2
+      - "*"
 
   pull_request:
     branches:
       - master
       - migration-phase-v2
+      - "*"
 
 jobs:
   verify:
@@ -64,8 +66,8 @@ jobs:
       - name: Test Build Artifacts
         run: npm run test:builds
 
-      - name: Run Unit Tests
-        run: npm run ci:test
+      - name: Run Unit Tests & Coverage
+        run: npm run test:coverage
 
       - name: Upload Coverage
         if: always()

@@ -1,0 +1,61 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>React Toast Adapter Demo</title>
+  <link rel="stylesheet" href="../../dist/index.css">
+  <style>
+    body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; background: #0f172a; color: white; display: flex; justify-content: center; align-items: center; min-height: 100vh; margin: 0; }
+    .card { background: #1e293b; border: 1px solid #334155; padding: 30px; border-radius: 12px; max-width: 480px; width: 100%; text-align: center; }
+    .btn-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin-top: 20px; }
+    button { padding: 12px; border-radius: 6px; font-weight: 600; cursor: pointer; border: none; transition: transform 0.1s; }
+    button:active { transform: scale(0.98); }
+    .success { background: #10b981; color: white; }
+    .error { background: #ef4444; color: white; }
+    .warning { background: #f59e0b; color: white; }
+    .info { background: #3b82f6; color: white; }
+    .undo { background: #8b5cf6; color: white; grid-column: span 2; }
+  </style>
+  <script src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
+  <script src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
+  <script src="../../dist/index.umd.js"></script>
+</head>
+<body>
+  <div id="root"></div>
+  <script>
+    const { useState, useMemo } = React;
+
+    function useToast() {
+      return useMemo(() => ({
+        success: (msg, opts) => customizableToast.createToast({ type: 'success', message: msg, ...opts }),
+        error: (msg, opts) => customizableToast.createToast({ type: 'error', message: msg, ...opts }),
+        warning: (msg, opts) => customizableToast.createToast({ type: 'warning', message: msg, ...opts }),
+        info: (msg, opts) => customizableToast.createToast({ type: 'info', message: msg, ...opts }),
+        dismissAll: () => customizableToast.dismiss(),
+      }), []);
+    }
+
+    function App() {
+      const toast = useToast();
+
+      return React.createElement("div", { className: "card" },
+        React.createElement("h2", null, "⚛️ React `useToast` Hook Demo"),
+        React.createElement("p", { style: { color: "#94a3b8" } }, "Using customizable-toast-notification with React 18 hook."),
+        React.createElement("div", { className: "btn-grid" },
+          React.createElement("button", { className: "success", onClick: () => toast.success("Saved successfully!", { sound: true, soundPreset: "bell", spring: "bouncy" }) }, "Success (Bell)"),
+          React.createElement("button", { className: "error", onClick: () => toast.error("Network timeout!", { sound: true, soundPreset: "retro", spring: "stiff" }) }, "Error (Retro)"),
+          React.createElement("button", { className: "warning", onClick: () => toast.warning("Low disk space", { sound: true, spring: "wobbly" }) }, "Warning (Wobbly)"),
+          React.createElement("button", { className: "info", onClick: () => toast.info("New update available", { sound: true, soundPreset: "futuristic" }) }, "Info (Futuristic)"),
+          React.createElement("button", { className: "undo", onClick: () => toast.warning("Message deleted", {
+            duration: 5000,
+            undo: { label: "Undo", showCountdown: true, onUndo: () => alert("Undo clicked!") }
+          }) }, "🗑️ Delete with Undo Countdown")
+        )
+      );
+    }
+
+    ReactDOM.createRoot(document.getElementById("root")).render(React.createElement(App));
+  </script>
+</body>
+</html>

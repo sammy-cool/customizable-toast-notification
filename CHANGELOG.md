@@ -1,3 +1,24 @@
+# [3.16.0](https://github.com/sammy-cool/customizable-toast-notification/compare/v3.15.0...v3.16.0) (2026-10-04)
+
+### Features
+
+* **phase-3:** virtual scrolling with DOM element recycling for 100+ toasts ([xxx](commit))
+* **phase-3:** cross-tab toast synchronization via BroadcastChannel API ([xxx](commit))
+* **phase-3:** advanced gestures (flick detection and pinch-to-expand) ([xxx](commit))
+* **phase-3:** AI-powered priority routing with TypeSafe AI integration ([xxx](commit))
+* **testing:** expand E2E test coverage for Phase 2 features (stacked, swipe, audio) ([xxx](commit))
+* **testing:** add code coverage tracking with c8 and Codecov integration ([xxx](commit))
+* **ci/cd:** run E2E tests on all pushes (not just PRs) ([xxx](commit))
+* **ci/cd:** add automated weekly security audits workflow ([xxx](commit))
+* **docs:** add comprehensive Phase 3 features documentation to README ([xxx](commit))
+* **docs:** create 7 new documentation files (API, integration guides, troubleshooting) ([xxx](commit))
+
+### Changed
+
+* enhanced CI/CD pipeline with code coverage thresholds (80% minimum) ([xxx](commit))
+* updated E2E test infrastructure with retry logic and improved reporting ([xxx](commit))
+* improved documentation organization with separate docs directory ([xxx](commit))
+
 # [3.15.0](https://github.com/sammy-cool/customizable-toast-notification/compare/v3.14.0...v3.15.0) (2026-10-03)
 
 

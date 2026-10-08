@@ -23,7 +23,7 @@ export default defineConfig({
   // consistent, trustworthy results. Locally (more cores, less
   // contention) the default (undefined = auto-detect) is fine.
   workers: process.env.CI ? 2 : undefined,
-  reporter: [["html", { outputFolder: "playwright-report" }], ["list"]],
+  reporter: [["html", { outputFolder: "playwright-report", open: "never" }], ["list"]],
 
   use: {
     baseURL: "http://127.0.0.1:4173",
@@ -44,7 +44,7 @@ export default defineConfig({
       : "npm run zone-build && npx http-server . -p 4173 -s",
     port: 4173,
     reuseExistingServer: !process.env.CI,
-    timeout: 30_000,
+    timeout: 60_000,
   },
 
   projects: [

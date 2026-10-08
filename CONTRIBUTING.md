@@ -21,8 +21,9 @@ below for why that matters here specifically.
 ```bash
 npm run lint            # ESLint
 npm run ci:test         # fast unit & logic verification tests, no browser needed
-npm run zone-build       # full build: JS bundles + TypeScript types
-npx playwright test      # full end-to-end suite (Chromium/Firefox/WebKit)
+npm run zone-build      # full build: JS bundles + TypeScript types
+npm run test:coverage   # code coverage report (see thresholds in c8.config.json)
+npx playwright test     # full end-to-end suite (Chromium/Firefox/WebKit)
 ```
 
 Please run at least `npm run lint` and `npm run ci:test` before
@@ -62,6 +63,14 @@ you'll find out immediately if something's off.
   anything under `dist/`.** All three are generated automatically by the
   release pipeline — a manual edit will just get overwritten (or fought
   with) on the next release.
+- **Phase 3 features need browser-based verification.** Features like
+  cross-tab sync (`syncTabs`), gesture physics (flick swipe, pinch-to-expand),
+  and the AI priority queue depend on real DOM / browser APIs — unit tests
+  cover the logic, but add a Playwright spec in `tests/e2e/` for any
+  interactive behavior.
+- **Keep the core dependency-free.** New npm packages are only acceptable in
+  `examples/`, playground demos, or test tooling — never in `src/`. The UMD
+  bundle must stay under 50KB.
 
 ## Reporting bugs / requesting features
 

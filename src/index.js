@@ -1,5 +1,7 @@
 "use strict";
 
+import { setConfig, getConfig, resetConfig, shouldReduceMotion } from "./utils/config.js";
+
 import {
   showToast,
   closeToastByKey,
@@ -7,11 +9,40 @@ import {
   resetToastManager,
   dismiss,
   noop as managerNoop,
+  getToastMetrics,
 } from "./components/ToastManager.js";
 import { getOrCreateToastContainer, resetContainerRegistry } from "./utils/containerRegistry.js";
 import { getDynamicAccessibleTextColorHex } from "./utils/dom.js";
 import { setPosition } from "./utils/position.js";
-import { setAudioEnabled, isAudioEnabled, playTone } from "./utils/audio.js";
+import {
+  setAudioEnabled,
+  isAudioEnabled,
+  playTone,
+  registerSoundPreset,
+  getSoundPresets,
+  resetSoundPresets,
+  resetAudioContext,
+  getAudioAnalyser,
+} from "./utils/audio.js";
+import { getToastPool, resetToastPool } from "./utils/toast-pool.js";
+import { getToastBroadcaster, resetToastBroadcaster } from "./utils/toast-broadcast.js";
+import { calculateToastPriority, categorizeToast } from "./utils/ai-scorer.js";
+import { createGestureDetector, detectPinch, isFlick, calculateVelocity } from "./utils/multi-touch.js";
+import { generateToastId, resetToastIdCounter } from "./utils/id.js";
+import {
+  registerSpringPreset,
+  getSpringPresets,
+  resetSpringPresets,
+  resolveSpringConfig,
+  solveSpring,
+  calculateSpringSettlingDuration,
+  generateSpringLinearEasing,
+  getSpringTransition,
+} from "./utils/spring.js";
+
+/**
+ * @typedef {'modern' | 'retro' | 'futuristic' | 'subtle' | 'bell' | string} SoundPreset
+ */
 
 /**
  * @typedef {'info' | 'success' | 'error' | 'warning'} ToastType
@@ -31,6 +62,24 @@ import { setAudioEnabled, isAudioEnabled, playTone } from "./utils/audio.js";
  * @property {string} [ariaLabel]
  * @property {boolean} [autoClose]
  * @property {(e: MouseEvent) => void | Promise<void>} [onClick]
+ */
+
+/**
+ * @typedef {Object} UndoOptions
+ * @property {string} [label] - Button text label (default: 'Undo')
+ * @property {boolean} [showCountdown] - Whether to display decaying seconds counter (default: true)
+ * @property {(e: MouseEvent, toast: HTMLElement) => void | Promise<void>} [onUndo] - Callback fired when clicked
+ */
+
+/**
+ * @typedef {Object} SpringConfig
+ * @property {number} [stiffness=100] - Spring stiffness constant (k > 0)
+ * @property {number} [damping=10] - Damping friction coefficient (c > 0)
+ * @property {number} [mass=1] - Inertial mass (m > 0)
+ */
+
+/**
+ * @typedef {'default' | 'gentle' | 'wobbly' | 'stiff' | 'bouncy' | string} SpringPreset
  */
 
 /**
@@ -70,11 +119,59 @@ import { setAudioEnabled, isAudioEnabled, playTone } from "./utils/audio.js";
  * @property {'auto' | 'ltr' | 'rtl'} [fontDirection]
  * @property {string} [fontPadding]
  * @property {string} [className]
- * @property {CTAOptions} [cta]
+ * @property {CTAOptions | CTAOptions[]} [cta]
+ * @property {((e: MouseEvent, toast: HTMLElement) => void | Promise<void>) | UndoOptions} [undo]
+ * @property {boolean | SpringPreset | SpringConfig} [spring]
  * @property {boolean} [stacked]
  * @property {boolean | 'success' | 'error' | 'warning' | 'info' | 'pop' | string} [sound]
+ * @property {SoundPreset} [soundPreset]
  * @property {boolean} [swipeToDismiss]
  * @property {number} [progress]
+ * @property {boolean} [syncTabs]
+ * @property {boolean} [aiPrioritization]
+ * @property {number} [priority]
+ * @property {boolean} [usePool]
+ */
+
+/**
+ * @typedef {'auto' | 'always' | 'never'} ReducedMotionMode
+ */
+
+/**
+ * @typedef {'light' | 'dark' | 'high-contrast' | 'compact' | 'spacious' | 'glass'} ToastTheme
+ */
+
+/**
+ * @typedef {Element | DocumentFragment | ShadowRoot} ToastMountTarget
+ */
+
+/**
+ * @typedef {Object} ToastMetrics
+ * @property {number} activeCount - Currently rendered active toasts
+ * @property {number} queueDepth - Number of queued toasts waiting to be displayed
+ * @property {number} visibleCount - Count of currently visible toasts
+ * @property {number} droppedCount - Number of toasts dropped due to queue overflow
+ * @property {number} timestamp - Epoch timestamp (ms) when metrics were recorded
+ */
+
+/**
+ * @typedef {Object} ToastGlobalConfig
+ * @property {number} [maxVisible]
+ * @property {number} [maxQueueSize]
+ * @property {number} [zIndex]
+ * @property {ToastMountTarget | null} [targetNode]
+ * @property {boolean} [disableInlineStyles]
+ * @property {ReducedMotionMode} [reducedMotion]
+ * @property {ToastPosition | string} [defaultPosition]
+ * @property {ToastTheme} [theme]
+ * @property {boolean} [stacked]
+ * @property {boolean} [swipeToDismiss]
+ * @property {boolean} [sound]
+ * @property {SoundPreset} [soundPreset]
+ * @property {boolean} [syncTabs]
+ * @property {boolean} [aiPrioritization]
+ * @property {((context: Object) => number | { score: number }) | null} [priorityScorer]
+ * @property {((metrics: ToastMetrics) => void) | null} [onMetrics]
  */
 
 /**
@@ -172,12 +269,13 @@ async function createFirstToastContainer(options) {
     return await getOrCreateToastContainer(options, setPosition);
   } catch (error) {
     console.error("Failed to create toast container:", error);
-    return document.body;
+    return getConfig().targetNode || document.body;
   }
 }
 
 async function sanitizeToastOptions(options) {
-  const contPosition = options?.position?.toLowerCase()?.trim();
+  const config = getConfig();
+  const contPosition = String(options?.position ?? config.defaultPosition).toLowerCase().trim();
   const contMaxWidth =
     contPosition?.includes("top-full-width") ||
     contPosition?.includes("bottom-full-width")
@@ -189,7 +287,7 @@ async function sanitizeToastOptions(options) {
     sanitizeHtml: true,
     pauseOnHover: undefined,
     duration: 2500,
-    position: "bottom-right",
+    position: config.defaultPosition,
     type: "info",
     borderRadius: "50px",
     backgroundColor: undefined,
@@ -440,12 +538,42 @@ const version = typeof __VERSION__ !== "undefined" ? __VERSION__ : "3.15.0";
 export {
   version,
   toastPromise,
+  setConfig,
+  getConfig,
+  resetConfig,
+  shouldReduceMotion,
   resetToastManager,
   resetContainerRegistry,
   updateToastByKey,
   setAudioEnabled,
   isAudioEnabled,
   playTone,
+  getToastPool,
+  resetToastPool,
+  getToastBroadcaster,
+  resetToastBroadcaster,
+  calculateToastPriority,
+  categorizeToast,
+  createGestureDetector,
+  detectPinch,
+  isFlick,
+  calculateVelocity,
+  generateToastId,
+  resetToastIdCounter,
+  getToastMetrics,
+  registerSoundPreset,
+  getSoundPresets,
+  resetSoundPresets,
+  resetAudioContext,
+  registerSpringPreset,
+  getSpringPresets,
+  resetSpringPresets,
+  resolveSpringConfig,
+  solveSpring,
+  calculateSpringSettlingDuration,
+  generateSpringLinearEasing,
+  getSpringTransition,
+  getAudioAnalyser,
 };
 
 if (typeof window !== "undefined" && typeof document !== "undefined") {
@@ -480,6 +608,10 @@ if (typeof window !== "undefined" && typeof document !== "undefined") {
 try {
   if (typeof window !== "undefined") {
     window.customizableToast = {
+      setConfig,
+      getConfig,
+      resetConfig,
+      shouldReduceMotion,
       version,
       createToast: createToastWithPriority,
       setDefaultColors,
@@ -491,6 +623,32 @@ try {
       setAudioEnabled,
       isAudioEnabled,
       playTone,
+      registerSoundPreset,
+      getSoundPresets,
+      resetSoundPresets,
+      resetAudioContext,
+      getToastPool,
+      resetToastPool,
+      getToastBroadcaster,
+      resetToastBroadcaster,
+      calculateToastPriority,
+      categorizeToast,
+      createGestureDetector,
+      detectPinch,
+      isFlick,
+      calculateVelocity,
+      generateToastId,
+      resetToastIdCounter,
+      getToastMetrics,
+      registerSpringPreset,
+      getSpringPresets,
+      resetSpringPresets,
+      resolveSpringConfig,
+      solveSpring,
+      calculateSpringSettlingDuration,
+      generateSpringLinearEasing,
+      getSpringTransition,
+      getAudioAnalyser,
     };
   }
 } catch (error) {

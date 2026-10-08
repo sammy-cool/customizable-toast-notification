@@ -1,0 +1,217 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Network Status Auto-Toast Recipe — Customizable Toast Notification</title>
+  <link rel="stylesheet" href="../../dist/index.css">
+  <style>
+    :root {
+      --bg: #0f172a;
+      --card: #1e293b;
+      --text: #f8fafc;
+      --accent: #38bdf8;
+      --border: #334155;
+    }
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+      background: var(--bg);
+      color: var(--text);
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      min-height: 100vh;
+      margin: 0;
+      padding: 20px;
+      box-sizing: border-box;
+    }
+    .card {
+      background: var(--card);
+      border: 1px solid var(--border);
+      border-radius: 16px;
+      padding: 32px;
+      max-width: 540px;
+      width: 100%;
+      box-shadow: 0 10px 30px rgba(0,0,0,0.4);
+      text-align: center;
+    }
+    h1 {
+      font-size: 24px;
+      margin-top: 0;
+      margin-bottom: 8px;
+    }
+    p {
+      color: #94a3b8;
+      line-height: 1.5;
+      font-size: 14px;
+    }
+    .status-badge {
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      padding: 6px 16px;
+      border-radius: 50px;
+      font-weight: 700;
+      font-size: 13px;
+      margin: 16px 0;
+      background: rgba(34, 197, 94, 0.15);
+      color: #4ade80;
+      border: 1px solid rgba(34, 197, 94, 0.3);
+    }
+    .status-badge.offline {
+      background: rgba(239, 68, 68, 0.15);
+      color: #f87171;
+      border-color: rgba(239, 68, 68, 0.3);
+    }
+    .dot {
+      width: 8px;
+      height: 8px;
+      border-radius: 50%;
+      background: currentColor;
+    }
+    .btn-group {
+      display: flex;
+      gap: 12px;
+      justify-content: center;
+      margin-top: 24px;
+    }
+    button {
+      padding: 10px 18px;
+      border-radius: 8px;
+      font-weight: 600;
+      font-size: 14px;
+      cursor: pointer;
+      border: 1px solid var(--border);
+      background: #334155;
+      color: white;
+      transition: all 0.2s ease;
+    }
+    button:hover {
+      background: #475569;
+    }
+    button.primary {
+      background: var(--accent);
+      color: #0f172a;
+      border-color: var(--accent);
+    }
+    button.primary:hover {
+      background: #7dd3fc;
+    }
+  </style>
+</head>
+<body>
+
+  <div class="card">
+    <h1>🌐 Network Status Auto-Toast</h1>
+    <p>Zero-dependency recipe that automatically monitors browser connection state (`navigator.onLine`, `window.online`, `window.offline`) and manages interactive status toasts.</p>
+
+    <div id="statusBadge" class="status-badge">
+      <span class="dot"></span>
+      <span id="statusText">Connected to Internet</span>
+    </div>
+
+    <div class="btn-group">
+      <button class="primary" id="toggleSimBtn">Simulate Connection Drop</button>
+      <button id="checkStatusBtn">Manual Health Check</button>
+    </div>
+  </div>
+
+  <script src="../../dist/index.umd.js"></script>
+  <script>
+    const { createToast } = window.customizableToast;
+
+    let isSimulatedOffline = false;
+    let offlineHandle = null;
+
+    const badge = document.getElementById("statusBadge");
+    const statusText = document.getElementById("statusText");
+    const toggleBtn = document.getElementById("toggleSimBtn");
+    const checkBtn = document.getElementById("checkStatusBtn");
+
+    function updateBadge(online) {
+      if (online) {
+        badge.className = "status-badge";
+        statusText.textContent = "Connected to Internet";
+        toggleBtn.textContent = "Simulate Connection Drop";
+      } else {
+        badge.className = "status-badge offline";
+        statusText.textContent = "No Internet Connection";
+        toggleBtn.textContent = "Restore Connection";
+      }
+    }
+
+    async function handleOffline() {
+      updateBadge(false);
+      if (offlineHandle) await offlineHandle.dismiss();
+
+      offlineHandle = await createToast({
+        type: "error",
+        message: "You are currently offline. Changes will sync once reconnected.",
+        position: "top-center",
+        duration: 24 * 60 * 60 * 1000, // Persistent until reconnected
+        showProgressBar: false,
+        sound: "error",
+        soundPreset: "retro",
+        spring: "stiff",
+        cta: {
+          label: "Retry Connection",
+          autoClose: false,
+          onClick: () => {
+            if (navigator.onLine && !isSimulatedOffline) {
+              handleOnline();
+            } else {
+              createToast({
+                type: "warning",
+                message: "Still offline. Checking again...",
+                duration: 2000,
+              });
+            }
+          }
+        }
+      });
+    }
+
+    async function handleOnline() {
+      updateBadge(true);
+      if (offlineHandle) {
+        await offlineHandle.dismiss();
+        offlineHandle = null;
+      }
+
+      await createToast({
+        type: "success",
+        message: "Back online! All queued sync operations restored.",
+        position: "top-center",
+        duration: 3500,
+        sound: "success",
+        soundPreset: "modern",
+        spring: "bouncy"
+      });
+    }
+
+    // Real browser network event listeners
+    window.addEventListener("online", handleOnline);
+    window.addEventListener("offline", handleOffline);
+
+    // Interactive simulator for demo testing
+    toggleBtn.addEventListener("click", () => {
+      isSimulatedOffline = !isSimulatedOffline;
+      if (isSimulatedOffline) {
+        handleOffline();
+      } else {
+        handleOnline();
+      }
+    });
+
+    checkBtn.addEventListener("click", () => {
+      const isOnline = navigator.onLine && !isSimulatedOffline;
+      createToast({
+        type: isOnline ? "info" : "warning",
+        message: `Health check: ${isOnline ? "Network latency 24ms (OK)" : "Unreachable gateway"}`,
+        duration: 2500,
+      });
+    });
+  </script>
+</body>
+</html>

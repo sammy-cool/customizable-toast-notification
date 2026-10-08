@@ -331,16 +331,22 @@ export function getDynamicAccessibleTextColorHex(toastBg) {
     const hexMatch = value?.match(/^#([0-9a-f]{3,8})$/i);
     if (hexMatch) {
       let hex = hexMatch[1];
-      if (hex.length === 3)
+      if (hex.length === 3 || hex.length === 4) {
         hex = hex
+          .slice(0, 3)
           .split("")
           .map((c) => c + c)
           .join("");
-      return {
-        r: parseInt(hex.slice(0, 2), 16),
-        g: parseInt(hex.slice(2, 4), 16),
-        b: parseInt(hex.slice(4, 6), 16),
-      };
+      }
+      if (hex.length >= 6) {
+        const r = parseInt(hex.slice(0, 2), 16);
+        const g = parseInt(hex.slice(2, 4), 16);
+        const b = parseInt(hex.slice(4, 6), 16);
+        if (Number.isFinite(r) && Number.isFinite(g) && Number.isFinite(b)) {
+          return { r, g, b };
+        }
+      }
+      return null;
     }
 
     const rgbMatch = value?.match(

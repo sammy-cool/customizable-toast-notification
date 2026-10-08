@@ -1,13 +1,40 @@
 # 🍞 Customizable Toast Notifications
 
-![npm](https://img.shields.io/npm/v/customizable-toast-notification)
-![npm downloads](https://img.shields.io/npm/dm/customizable-toast-notification)
+[![npm](https://img.shields.io/npm/v/customizable-toast-notification)](https://www.npmjs.com/package/customizable-toast-notification)
+[![npm downloads](https://img.shields.io/npm/dm/customizable-toast-notification)](https://www.npmjs.com/package/customizable-toast-notification)
 [![License: Apache-2.0](https://img.shields.io/badge/License-Apache%202.0-blue.svg)](https://opensource.org/licenses/Apache-2.0)
+[![Zero Runtime Dependencies](https://img.shields.io/badge/dependencies-0-brightgreen.svg)](package.json)
 [![Bundle Size](https://img.shields.io/bundlephobia/minzip/customizable-toast-notification)](https://bundlephobia.com/package/customizable-toast-notification)
+[![TypeScript Strict](https://img.shields.io/badge/TypeScript-Strict%20Types-blue?logo=typescript)](dist/index.d.ts)
+[![CodeQL Security](https://img.shields.io/badge/CodeQL-Protected-success?logo=github)](.github/workflows/codeql.yml)
+[![Open in StackBlitz](https://img.shields.io/badge/StackBlitz-Live%20Sandbox-blue?logo=stackblitz)](https://stackblitz.com/edit/customizable-toast-notification-demo?file=index.html)
 
-**[▶ Try the live demo](https://sammy-cool.github.io/customizable-toast-notification/)** — click a button, watch a real toast fire, sanitized HTML included.
+**[▶ Try the interactive live playground](https://sammy-cool.github.io/customizable-toast-notification/)** — test damped spring physics, 5 zero-asset Web Audio synthesizer presets, dynamic action undo countdowns, and iOS-style card deck stacking in real time.
 
-Toast notifications that work the same everywhere — plain JavaScript, Vue, Svelte, Angular, or a plain multi-page app — not just React. Built with sanitized-by-default HTML rendering, zero runtime dependencies, and 129 real cross-browser end-to-end tests.
+```
+┌────────────────────────────────────────────────────────────────────────┐
+│                   customizable-toast-notification                       │
+│       Zero Dependencies • Universal Multi-Framework • Pure Native      │
+└────────────────────────────────────┬───────────────────────────────────┘
+                                     │
+     ┌───────────────────┬───────────┴───────────┬───────────────────┐
+     ▼                   ▼                       ▼                   ▼
+┌──────────────┐   ┌───────────────┐     ┌───────────────┐   ┌───────────────┐
+│ Web Audio    │   │ Spring Physics│     │ Action Undo   │   │ Card Deck     │
+│ 5 Synth      │   │ Damped        │     │ Dynamic Live  │   │ iOS-Style     │
+│ Presets +    │   │ Harmonic      │     │ Countdown     │   │ Pinch-to-     │
+│ Oscilloscope │   │ Oscillator    │     │ Badge (Xs)    │   │ Expand Stack  │
+└──────────────┘   └───────────────┘     └───────────────┘   └───────────────┘
+     │                   │                       │                   │
+     └───────────────────┴───────────┬───────────┴───────────────────┘
+                                     ▼
+           ┌──────────────────────────────────────────────────┐
+           │ Framework Adapters & TypeSafe AI Smart Triage    │
+           │ React • Vue • Svelte • Angular • SolidJS • Jev   │
+           └──────────────────────────────────────────────────┘
+```
+
+Toast notifications that work the same everywhere — plain JavaScript, Vue, Svelte, Angular, SolidJS, or a multi-page app. Built with sanitized-by-default HTML rendering, zero runtime dependencies, and 132 automated unit & end-to-end tests across Chromium, Firefox, and WebKit.
 
 ## ✨ Key Features
 
@@ -158,9 +185,13 @@ auto-dismissed on its own — they no-op gracefully rather than throwing.
 | `className`         | `string`           | `undefined`                     | Custom CSS class name(s) for animations / styling                              |
 | `stacked`           | `boolean`          | `false`                         | Enable iOS-style card deck stacking for multiple toasts                        |
 | `sound`             | `boolean \| string`| `false`                         | Zero-asset audio chime (`true`, `'success'`, `'error'`, `'warning'`, `'pop'`)   |
+| `soundPreset`       | `string`           | `"modern"`                      | Audio synth theme: `"modern"`, `"retro"`, `"futuristic"`, `"subtle"`, `"bell"`  |
 | `swipeToDismiss`    | `boolean`          | `true`                          | Mobile touch swipe-to-dismiss gesture with physics                             |
 | `progress`          | `number`           | `undefined`                     | Explicit progress bar percentage (0 to 100)                                    |
+| `usePool`           | `boolean`          | `false`                         | Virtual element pooling for DOM recycling in high-frequency rendering           |
 | `cta`               | `object`           | `null`                          | Call-to-action configuration (see [CTA](#call-to-action))                      |
+| `undo`              | `function \| object`| `null`                         | Action Undo button with live dynamic countdown badge (see [Undo](#️-action-undo-with-live-countdown)) |
+| `spring`            | `boolean \| string \| object`| `null`                | Configurable spring physics animations (see [Spring Physics](#-configurable-spring-physics-animation-engine)) |
 
 #### Position Options
 
@@ -220,6 +251,22 @@ createToast({
     },
   },
 });
+
+// Multi-Action CTAs (Dual actions e.g. Accept / Decline)
+createToast({
+  message: "Project invite from Priya Patel",
+  cta: [
+    {
+      label: "Accept",
+      onClick: async () => await acceptInvitation(),
+    },
+    {
+      label: "Decline",
+      autoClose: true,
+      onClick: async () => await declineInvitation(),
+    },
+  ],
+});
 ```
 
 Any toast with a `cta` automatically gets `pauseOnHover: true` unless you override it.
@@ -236,6 +283,75 @@ Any toast with a `cta` automatically gets `pauseOnHover: true` unless you overri
 | `rel`       | `string`   | `auto`                            | Link relationship — `target="_blank"` automatically gets `rel="noopener noreferrer"` unless you set your own |
 | `autoClose` | `boolean`  | `true`                            | Close toast after CTA click                                                                                  |
 | `ariaLabel` | `string`   | `label`                           | Accessibility label                                                                                          |
+
+### ↩️ Action Undo with Live Countdown
+
+Allow users to immediately reverse actions (e.g. "Item deleted", "Message archived") with a dynamic, decaying countdown badge:
+
+```js
+createToast({
+  message: "Conversation moved to trash",
+  type: "warning",
+  duration: 5000,
+  undo: {
+    label: "Undo",
+    showCountdown: true, // displays "Undo (5s)... (4s)..."
+    onUndo: async (e, toast) => {
+      await restoreConversation();
+      console.log("Restored!");
+    },
+  },
+});
+
+// Or concise callback shorthand:
+createToast({
+  message: "Draft deleted",
+  undo: () => restoreDraft(),
+});
+```
+
+| Parameter | Type | Default | Description |
+| --------- | ---- | ------- | ----------- |
+| `label` | `string` | `"Undo"` | Button text label |
+| `showCountdown` | `boolean` | `true` | Decays remaining duration in seconds in real-time |
+| `onUndo` | `function` | `undefined` | Callback fired on click; supports async promises before auto-closing toast |
+
+### 🌀 Configurable Spring Physics Animation Engine
+
+Replaces standard transitions with damped harmonic oscillator physics:
+
+```js
+// Use built-in presets: 'default', 'gentle', 'wobbly', 'stiff', 'bouncy'
+createToast({
+  message: "Synced to cloud",
+  spring: "bouncy",
+});
+
+// Or customize exact physical constants:
+createToast({
+  message: "Physics simulated notification",
+  spring: {
+    stiffness: 180, // Spring tension (k)
+    damping: 12,    // Friction resistance (c)
+    mass: 1.2,      // Inertial mass (m)
+  },
+});
+```
+
+| Preset | Stiffness ($k$) | Damping ($c$) | Mass ($m$) | Behavior |
+| ------ | --------------- | ------------- | ---------- | -------- |
+| `default` | 100 | 10 | 1 | Natural subtle bounce |
+| `gentle` | 120 | 14 | 1 | Smooth with minimal overshoot |
+| `wobbly` | 180 | 12 | 1 | Playful oscillation |
+| `stiff` | 210 | 20 | 1 | Crisp, rapid settling |
+| `bouncy` | 300 | 15 | 1.2 | High energy with dynamic bounce |
+
+Register custom global presets or resolve spring curves directly:
+```js
+import { registerSpringPreset, getSpringTransition } from "customizable-toast-notification";
+
+registerSpringPreset("snappy", { stiffness: 250, damping: 22, mass: 1 });
+```
 
 ### Loader Options
 
@@ -403,6 +519,187 @@ The loading toast doesn't use `duration` from `options` — it stays until
 the promise settles, then is replaced by a success or error toast that
 does respect the normal duration/auto-dismiss behavior.
 
+## ⚙️ Global Configuration
+
+Configure library-wide defaults using `setConfig()` and check current settings with `getConfig()`:
+
+```js
+import { setConfig, getConfig, shouldReduceMotion } from "customizable-toast-notification";
+
+// Configure global defaults
+setConfig({
+  maxVisible: 5,                    // Max simultaneously visible toasts (default: 3)
+  zIndex: 10000,                    // Base z-index for containers (default: 9999)
+  defaultPosition: "top-right",     // Default position for all toasts (default: "bottom-right")
+  disableInlineStyles: false,       // Use external CSS mode (default: false)
+  reducedMotion: "auto",            // Respect prefers-reduced-motion (default: "auto")
+  targetNode: document.getElementById("toast-root"), // Custom mount target (default: document.body)
+});
+
+// Read current config
+const config = getConfig();
+console.log(config.maxVisible); // 5
+
+// Check if animations should be reduced
+if (shouldReduceMotion()) {
+  console.log("User prefers reduced motion");
+}
+```
+
+### Global Config Options
+
+| Parameter              | Type                              | Default           | Description                                                                                                      |
+| ---------------------- | --------------------------------- | ----------------- | ---------------------------------------------------------------------------------------------------------------- |
+| `maxVisible`           | `number`                          | `3`               | Maximum simultaneously visible toasts. Additional toasts are queued.                                             |
+| `maxQueueSize`         | `number`                          | `100`             | Maximum queue capacity for high-frequency bursts. Evicts oldest items to prevent memory bloat and main-thread lock. |
+| `zIndex`               | `number`                          | `9999`            | Base z-index for toast containers and toasts. Adjust if toasts appear behind other elements.                     |
+| `defaultPosition`      | `string`                          | `"bottom-right"`  | Default position when individual toast options omit `position`.                                                   |
+| `theme`                | `"light" \| "dark" \| "high-contrast" \| "compact" \| "spacious" \| "glass"` | `"light"` | Built-in CSS theme applied via `data-toast-theme` on document root.                                  |
+| `stacked`              | `boolean`                         | `false`           | Enable iOS-style 3D card deck layout with depth scaling and hover expansion.                                     |
+| `swipeToDismiss`       | `boolean`                         | `true`            | Enable touch / mouse drag swipe gesture to dismiss toasts with spring snap-back physics.                         |
+| `sound`                | `boolean`                         | `true`            | Enable pure Web Audio API notification chimes (0KB network, zero audio assets).                                   |
+| `soundPreset`          | `"modern" \| "retro" \| "futuristic" \| "subtle" \| "bell"` | `"modern"` | Built-in sound synthesis theme for audio notifications.                                           |
+| `syncTabs`             | `boolean`                         | `false`           | Synchronize toast notifications across browser tabs using BroadcastChannel.                                      |
+| `aiPrioritization`     | `boolean`                         | `false`           | Enable offline content-aware queue priority sorting (critical alerts jump ahead of routine messages).            |
+| `priorityScorer`       | `((context) => number) \| null`   | `null`            | Custom priority scoring function for custom business logic or external AI models.                               |
+| `onMetrics`            | `((metrics: ToastMetrics) => void) \| null` | `null`  | Real-time telemetry callback emitting `{ activeCount, queueDepth, visibleCount, droppedCount, timestamp }`.      |
+| `disableInlineStyles`  | `boolean`                         | `false`           | When `true`, toasts use CSS classes instead of inline `style.*` for stricter CSP compliance.                      |
+| `reducedMotion`        | `"auto" \| "always" \| "never"`   | `"auto"`          | Control animation behavior. `"auto"` respects `prefers-reduced-motion`, `"always"` disables, `"never"` enables.  |
+| `targetNode`           | `Element \| ShadowRoot \| null`   | `null`            | Custom DOM node to mount toast containers. Defaults to `document.body` if not provided.                           |
+
+Call `resetConfig()` at any time to restore pristine defaults and clean up DOM attributes.
+
+### Enterprise Telemetry & Real-Time Metrics
+
+Inspect live queue depth, active toast count, dropped toasts, and timestamps via `getToastMetrics()` or subscribe reactively via `onMetrics`:
+
+```js
+import { getToastMetrics, setConfig } from "customizable-toast-notification";
+
+// 1. Synchronous snapshot
+const metrics = getToastMetrics();
+console.log(`Active: ${metrics.activeCount}, Queued: ${metrics.queueDepth}, Dropped: ${metrics.droppedCount}`);
+
+// 2. Real-time telemetry hook
+setConfig({
+  onMetrics: (m) => {
+    myMonitoringService.track("toast_metrics", m);
+  },
+});
+```
+
+
+### Use Cases
+
+**Strict Content Security Policy (CSP):**
+
+```js
+// Use external CSS instead of inline styles
+setConfig({ disableInlineStyles: true });
+// Don't forget to import the CSS: import "customizable-toast-notification/dist/index.css"
+```
+
+**Accessibility: Respect User Motion Preferences:**
+
+```js
+// Enable automatic animation reduction
+setConfig({ reducedMotion: "auto" });
+
+// Or force reduction for all users
+setConfig({ reducedMotion: "always" });
+```
+
+**Shadow DOM / Scoped Mounting:**
+
+```js
+const shadowHost = document.querySelector("#app");
+const shadowRoot = shadowHost.attachShadow({ mode: "open" });
+shadowRoot.innerHTML = `<style>/* your styles */</style>`;
+
+setConfig({ targetNode: shadowRoot });
+createToast({ message: "Mounted in Shadow DOM!" });
+```
+
+**Increase Visible Toasts:**
+
+```js
+// Allow up to 5 toasts instead of 3
+setConfig({ maxVisible: 5 });
+```
+
+**Adjust Z-Index:**
+
+```js
+// If toasts appear behind other elements, increase z-index
+setConfig({ zIndex: 50000 });
+```
+
+## 🚀 Phase 3: Advanced Features
+
+The following enterprise-grade features are available in v3.15.0+ and are opt-in via global config or toast options:
+
+### 🔄 Cross-Tab Toast Synchronization
+
+Broadcast toasts to other tabs of the same application using the `BroadcastChannel` API. The first tab becomes the leader and mirrors queued / active toasts to follower tabs.
+
+```js
+import { setConfig, createToast } from "customizable-toast-notification";
+
+// Enable cross-tab sync globally
+setConfig({ syncTabs: true });
+
+createToast({ message: "Shared across all open tabs!", type: "info" });
+```
+
+Graceful degradation: if `BroadcastChannel` is unavailable (e.g. Node.js or older browsers), the library simply runs in single-tab mode — no errors.
+
+### 🧠 AI-Powered Priority Queue Routing
+
+When the queue fills (more than `maxVisible` toasts), the `aiPrioritization` flag reorders the queue by urgency instead of strict FIFO. Priority is derived from `type` (error > warning > info > success) plus keyword scoring (`urgent`, `critical`, `failed`, `done`, etc.). Fully offline, zero external calls.
+
+```js
+setConfig({ aiPrioritization: true });
+
+createToast({ message: "Payment failed", type: "error" });   // Highest priority
+createToast({ message: "Background sync", type: "info" });  // Queued behind the error
+```
+
+The built-in scorer also exposes `calculateToastPriority(context)` and `categorizeToast(message)` for custom routing integrations.
+
+### 🃏 Virtual Scrolling — DOM Element Pool
+
+An internal element-pool recycles toast DOM nodes, so burst queues of 100+ toasts no longer create proportional DOM pressure or trigger layout thrashing / GC spikes. The pool size scales automatically with `MAX_VISIBLE`.
+
+No configuration required — it's transparent to callers. The queue drains in priority order (when enabled above) and reuses the same recycled elements.
+
+### 👆 Advanced Gestures: Flick Swipe & Pinch-to-Expand
+
+Swipe-to-dismiss already exists in Phase 2; Phase 3 refines the physics:
+
+- **Flick detection**: velocity ≥ 0.65 px/ms over ≥ 50 px triggers instant dismiss; anything shorter snaps back with spring easing.
+- **Pinch-to-expand**: two-finger gesture on a toast expands it to full height (useful for long error messages with stack traces); releasing collapses it back.
+
+The multi-touch math (`calculateVelocity`, `isFlick`, `detectPinch`) is exported for consumer recipes that want custom gesture behavior.
+
+### 🏗️ How It All Fits Together
+
+```js
+import { setConfig } from "customizable-toast-notification";
+
+setConfig({
+  maxVisible: 3,
+  syncTabs: true,        // mirror to other tabs
+  aiPrioritization: true,// sort the queue by urgency
+  stacked: true,         // iOS-style card deck
+  swipeToDismiss: true,  // flick physics (Phase 2)
+  sound: true,           // zero-asset Web Audio chimes (Phase 2)
+});
+
+createToast({ message: "New notification", type: "success" });
+```
+
+The library keeps its zero-runtime-dependency guarantee: `BroadcastChannel`, Web Audio, and the gesture math are all native browser APIs with immediate graceful fallbacks when unavailable.
+
 ## 💡 Examples
 
 ### Basic Toast Types
@@ -463,6 +760,145 @@ setDefaultMessages({
 createToast({ type: "success" }); // Uses your custom colors & messages
 ```
 
+### React Integration
+
+```jsx
+import { useCallback } from "react";
+import { createToast, toastPromise, dismiss, setConfig } from "customizable-toast-notification";
+
+export function useToast() {
+  const showToast = useCallback(
+    (type, message, options = {}) =>
+      createToast({ type, message, ...options }),
+    []
+  );
+
+  return {
+    success: (msg, opts) => showToast("success", msg, opts),
+    error: (msg, opts) => showToast("error", msg, opts),
+    warning: (msg, opts) => showToast("warning", msg, opts),
+    info: (msg, opts) => showToast("info", msg, opts),
+    promise: toastPromise,
+    dismiss: dismiss,
+    setConfig: setConfig,
+  };
+}
+
+// Usage in a component:
+export function MyComponent() {
+  const toast = useToast();
+
+  const handleSave = async () => {
+    try {
+      await toast.promise(saveData(), {
+        loading: "Saving...",
+        success: "Saved!",
+        error: "Failed to save",
+      });
+    } catch (err) {
+      toast.error(err.message);
+    }
+  };
+
+  return <button onClick={handleSave}>Save</button>;
+}
+```
+
+### Vue Integration
+
+```js
+// composables/useToast.js
+import { createToast, toastPromise, dismiss, setConfig } from "customizable-toast-notification";
+
+export function useToast() {
+  return {
+    success: (message, options = {}) => createToast({ type: "success", message, ...options }),
+    error: (message, options = {}) => createToast({ type: "error", message, ...options }),
+    warning: (message, options = {}) => createToast({ type: "warning", message, ...options }),
+    info: (message, options = {}) => createToast({ type: "info", message, ...options }),
+    promise: toastPromise,
+    dismiss: dismiss,
+    setConfig: setConfig,
+  };
+}
+
+// Usage in a component:
+<script setup>
+import { useToast } from "@/composables/useToast";
+
+const toast = useToast();
+
+const handleSave = async () => {
+  try {
+    await toast.promise(saveData(), {
+      loading: "Saving...",
+      success: "Saved!",
+      error: "Failed to save",
+    });
+  } catch (err) {
+    toast.error(err.message);
+  }
+};
+</script>
+```
+
+### Svelte Integration
+
+Use our ready-to-use Svelte store adapter in [`examples/svelte/toastStore.js`](examples/svelte/toastStore.js):
+
+```svelte
+<script>
+  import { toast } from "./toastStore.js";
+  const { metrics } = toast;
+
+  async function handleAction() {
+    await toast.success("Saved in Svelte!");
+  }
+</script>
+
+<button on:click={handleAction}>Save</button>
+<p>Active toasts: {$metrics.activeCount}</p>
+```
+
+### Angular Integration
+
+Injectable service in [`examples/angular/toast.service.ts`](examples/angular/toast.service.ts):
+
+```typescript
+import { Component } from '@angular/core';
+import { ToastService } from './toast.service';
+
+@Component({
+  selector: 'app-root',
+  template: `<button (click)="notify()">Notify</button>`,
+})
+export class AppComponent {
+  constructor(private toast: ToastService) {}
+
+  notify() {
+    this.toast.success('Saved with Angular DI!');
+  }
+}
+```
+
+### SolidJS Integration
+
+Reactive primitive in [`examples/solid/useToast.js`](examples/solid/useToast.js):
+
+```jsx
+import { useToast } from "./useToast";
+
+export function Counter() {
+  const toast = useToast();
+
+  return (
+    <button onClick={() => toast.info(`Current queue: ${toast.metrics().queueDepth}`)}>
+      Check Queue
+    </button>
+  );
+}
+```
+
 ### HTML content (sanitized)
 
 ```js
@@ -520,6 +956,202 @@ Identical toasts (same type, message, and position) are automatically grouped:
 - **Formats**: UMD, ES Modules, CommonJS
 - **TypeScript**: Full type definitions included — real autocomplete and type-checking, not just placeholder types
 
+### External CSS Mode (Strict CSP Compliance)
+
+For environments with strict Content Security Policies that disallow inline `style.*` assignments, import the external CSS file and enable CSS-only mode:
+
+```js
+// JavaScript
+import "customizable-toast-notification/dist/index.css";
+import { setConfig, createToast } from "customizable-toast-notification";
+
+setConfig({ disableInlineStyles: true });
+createToast({ message: "Using external CSS!" });
+```
+
+```html
+<!-- HTML (CDN) -->
+<link rel="stylesheet" href="https://unpkg.com/customizable-toast-notification@3.15.0/dist/index.css">
+<script src="https://unpkg.com/customizable-toast-notification@3.15.0/dist/index.umd.js"></script>
+<script>
+  customizableToast.setConfig({ disableInlineStyles: true });
+  customizableToast.createToast({ message: "Using external CSS!" });
+</script>
+```
+
+**Note:** Some dynamic features (stacked layout transforms, animated exit transitions) rely on computed inline styles and are not available in strict CSS-only mode. Core toast functionality (appearance, positioning, animations, progress bars) is fully supported.
+
+## 🎨 CSS Customization & Themes
+
+### CSS Variables (Custom Properties)
+
+All toast styles can be customized globally via CSS variables. Set them on `:root` for global defaults, or use `data-toast-theme` attribute for theme-specific values:
+
+```css
+:root {
+  /* Colors */
+  --toast-bg: #ffffff;
+  --toast-text: #1a1a1a;
+  --toast-border-radius: 50px;
+  --toast-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+  --toast-padding: 12px 16px;
+  --toast-min-width: 250px;
+  --toast-max-width: 400px;
+
+  /* Animations */
+  --toast-transition-duration: 0.4s;
+  --toast-transition-timing: ease;
+
+  /* Type-specific Colors */
+  --toast-success-bg: #28a745;
+  --toast-success-text: #ffffff;
+  --toast-error-bg: #dc3545;
+  --toast-error-text: #ffffff;
+  --toast-warning-bg: #ffc107;
+  --toast-warning-text: #000000;
+  --toast-info-bg: #17a2b8;
+  --toast-info-text: #ffffff;
+
+  /* Z-index Stack */
+  --toast-z-index: 9999;
+  --toast-emergency-z-index: 10099;
+
+  /* Spacing */
+  --toast-gap: 10px;
+  --toast-offset: 10px;
+}
+```
+
+**Example: Custom Dark Theme**
+
+```css
+:root {
+  --toast-bg: #1a1a1a;
+  --toast-text: #f5f5f5;
+  --toast-shadow: 0 4px 6px rgba(0, 0, 0, 0.4);
+  --toast-success-bg: #1e7e34;
+  --toast-error-bg: #a71930;
+}
+```
+
+**Example: Compact Layout**
+
+```css
+:root {
+  --toast-padding: 8px 12px;
+  --toast-min-width: 200px;
+  --toast-max-width: 300px;
+  --toast-border-radius: 6px;
+}
+```
+
+### Built-in Themes
+
+Use the global `setConfig()` API to switch between pre-built themes:
+
+```js
+import { setConfig } from 'customizable-toast-notification';
+import 'customizable-toast-notification/index.css';
+
+// Apply theme globally
+setConfig({ theme: 'dark' });
+createToast({ message: 'Dark mode enabled!' });
+```
+
+**Available Themes:**
+
+| Theme | Use Case | Example |
+|-------|----------|---------|
+| `light` (default) | Standard bright interface | Default white background |
+| `dark` | Dark mode apps | Dark background, light text |
+| `high-contrast` | WCAG AAA accessibility | High contrast borders, colors |
+| `compact` | Space-constrained UIs | Reduced padding, smaller bounds |
+| `spacious` | Relaxed, prominent toasts | Larger padding, wider bounds |
+| `glass` | Modern glassmorphism | Backdrop blur, semi-transparent |
+
+**Example: High-Contrast Theme**
+
+```js
+setConfig({ 
+  theme: 'high-contrast',
+  disableInlineStyles: true 
+});
+createToast({ 
+  message: 'Accessible toast',
+  type: 'success' 
+});
+```
+
+### TypeScript Support for CSS Classes
+
+All CSS class names are automatically typed when you import the CSS file:
+
+```ts
+import { toast, toastMessage, toastCta, toastSuccess } from 'customizable-toast-notification/index.css';
+
+// ✅ Full autocomplete and type checking
+console.log(toast); // "toast"
+console.log(toastSuccess); // "toast-success"
+```
+
+**Available CSS Classes:**
+
+- **Container:** `toast-container-base`, `toast-position-*` (13 positions)
+- **Toast:** `toast`, `toast-outer-wrapper`, `toast-inner-wrapper`
+- **Types:** `toast-success`, `toast-error`, `toast-warning`, `toast-info`
+- **Content:** `toast-message`, `toast-message-spacer`, `toast-loader`, `toast-loader-circle`
+- **UI:** `toast-cta`, `toast-close-btn`, `toast-progress-bar`, `toast-count-badge`
+- **States:** `active`, `is-truncated`
+
+### Combining Custom CSS + Global Config
+
+```js
+import { createToast, setConfig } from 'customizable-toast-notification';
+import 'customizable-toast-notification/index.css';
+
+// Set theme
+setConfig({ 
+  theme: 'dark',
+  maxVisible: 5,
+  defaultPosition: 'top-right'
+});
+
+// Override specific variables in your app CSS
+document.documentElement.style.setProperty('--toast-max-width', '600px');
+document.documentElement.style.setProperty('--toast-success-bg', '#10b981');
+```
+
+### CSS Variables Full Reference
+
+```css
+/* Core Dimensions */
+--toast-padding: 12px 16px;
+--toast-min-width: 250px;
+--toast-max-width: 400px;
+--toast-border-radius: 50px;
+
+/* Visual Effects */
+--toast-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+--toast-bg: #ffffff;
+--toast-text: #1a1a1a;
+
+/* Animations */
+--toast-transition-duration: 0.4s;
+--toast-transition-timing: ease;
+
+/* Type-Specific Colors (6 variants) */
+--toast-success-bg, --toast-success-text
+--toast-error-bg, --toast-error-text
+--toast-warning-bg, --toast-warning-text
+--toast-info-bg, --toast-info-text
+
+/* Layout & Positioning */
+--toast-gap: 10px; /* Space between toasts */
+--toast-offset: 10px; /* Distance from viewport edge */
+--toast-z-index: 9999; /* Normal toast z-index */
+--toast-emergency-z-index: 10099; /* Emergency fallback z-index */
+```
+
 ## 🤝 Contributing
 
 Exciting times ahead! Looking for sponsors and eager to explore new collaborations:) . Contributions are welcome! Please read our [Contributing Guidelines](CONTRIBUTING.md) for details.
@@ -532,6 +1164,13 @@ cd customizable-toast-notification
 npm install
 npm run zone-build
 ```
+
+## 📚 Documentation & Cookbooks
+
+- 🍳 **[Developer Cookbook](docs/COOKBOOK.md)** — Production recipes for Multi-Action CTAs, Network Status monitoring, Global Error Boundaries, and Streaming file uploads.
+- 📖 **[API Reference](docs/API.md)** — Complete API documentation for all methods, configurations, and events.
+- 🔌 **[Integration Guide](docs/INTEGRATION_GUIDE.md)** — Framework integration guides for React, Vue, Svelte, Angular, and SolidJS.
+- ⚡ **[Performance Guide](docs/PERFORMANCE.md)** — CSS containment, GPU compositor acceleration, and memory benchmarking.
 
 ## 📄 License
 

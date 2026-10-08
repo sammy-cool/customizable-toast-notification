@@ -160,6 +160,31 @@
         color: var(--accent);
         border-color: var(--accent);
       }
+      .audio-oscilloscope {
+        height: 26px;
+        width: 84px;
+        border-radius: 6px;
+        background: rgba(0, 0, 0, 0.4);
+        border: 1px solid var(--border);
+        vertical-align: middle;
+      }
+      .theme-select {
+        font-family: var(--mono);
+        font-size: 11.5px;
+        font-weight: 500;
+        color: var(--text-dim);
+        background: var(--ink-2);
+        border: 1px solid var(--line);
+        border-radius: 6px;
+        padding: 5px 8px;
+        cursor: pointer;
+        transition: all 0.2s ease;
+      }
+      .theme-select:hover, .theme-select:focus {
+        color: var(--text);
+        border-color: var(--accent);
+        outline: none;
+      }
 
       /* ---------- hero ---------- */
       .hero {
@@ -685,6 +710,22 @@
           <a href="#compare">Why this one</a>
           <a href="#install">Install</a>
           <button id="audioToggleBtn" class="sound-toggle-btn active" title="Toggle native Web Audio API chimes">🔊 Sound: ON</button>
+          <select id="soundPresetSelect" class="theme-select" title="Switch Sound Preset">
+            <option value="modern">🎵 Modern Synth</option>
+            <option value="retro">👾 Retro 8-Bit</option>
+            <option value="futuristic">🚀 Futuristic Sci-Fi</option>
+            <option value="subtle">📳 Subtle Haptic</option>
+            <option value="bell">🔔 Crystal Bell</option>
+          </select>
+          <canvas id="audioOscilloscope" width="84" height="26" class="audio-oscilloscope" title="Live Synth Waveform"></canvas>
+          <select id="themeSelect" class="theme-select" title="Switch Theme">
+            <option value="light">☀️ Light</option>
+            <option value="dark">🌙 Dark</option>
+            <option value="high-contrast">👁️ Contrast</option>
+            <option value="compact">📐 Compact</option>
+            <option value="spacious">🛋️ Spacious</option>
+            <option value="glass">🧊 Glass</option>
+          </select>
           <a
             href="https://github.com/sammy-cool/customizable-toast-notification"
             target="_blank"
@@ -756,6 +797,7 @@
               <button class="fire-btn ghost" id="pgResetBtn">
                 Reset to defaults
               </button>
+              <a href="https://stackblitz.com/edit/customizable-toast-notification-demo?file=index.html" target="_blank" rel="noopener noreferrer" class="fire-btn ghost" style="text-decoration:none; display:inline-flex; align-items:center; justify-content:center; gap:6px;">⚡ Open in StackBlitz</a>
             </div>
           </div>
         </div>
@@ -965,6 +1007,42 @@
             </button>
             <button class="try-btn secondary" id="soundPopBtn">
               ♫ Droplet Pop
+            </button>
+          </div>
+        </div>
+
+        <div class="api-demo" id="burst-simulator">
+          <h3>Stress-Test & High-Frequency Burst Simulator — <code>onMetrics & bounded queue</code></h3>
+          <p class="api-desc">
+            Simulate high-frequency notification floods (up to 100 rapid notifications) to verify bounded memory, zero main-thread freezing, queue depth dynamics, and automatic drop protection.
+          </p>
+          <div class="metrics-dashboard" style="display: flex; gap: 12px; margin: 16px 0; flex-wrap: wrap;">
+            <div class="metric-badge" style="background: var(--ink-2); border: 1px solid var(--line); border-radius: 8px; padding: 10px 16px; flex: 1; min-width: 120px; text-align: center;">
+              <div style="font-size: 11px; text-transform: uppercase; color: var(--text-dim); font-weight: 600; letter-spacing: 0.05em;">Active Count</div>
+              <div id="metricActive" style="font-size: 22px; font-weight: 700; color: var(--accent); font-family: var(--mono); margin-top: 4px;">0</div>
+            </div>
+            <div class="metric-badge" style="background: var(--ink-2); border: 1px solid var(--line); border-radius: 8px; padding: 10px 16px; flex: 1; min-width: 120px; text-align: center;">
+              <div style="font-size: 11px; text-transform: uppercase; color: var(--text-dim); font-weight: 600; letter-spacing: 0.05em;">Queue Depth</div>
+              <div id="metricQueue" style="font-size: 22px; font-weight: 700; color: #ffc107; font-family: var(--mono); margin-top: 4px;">0</div>
+            </div>
+            <div class="metric-badge" style="background: var(--ink-2); border: 1px solid var(--line); border-radius: 8px; padding: 10px 16px; flex: 1; min-width: 120px; text-align: center;">
+              <div style="font-size: 11px; text-transform: uppercase; color: var(--text-dim); font-weight: 600; letter-spacing: 0.05em;">Dropped Toasts</div>
+              <div id="metricDropped" style="font-size: 22px; font-weight: 700; color: #dc3545; font-family: var(--mono); margin-top: 4px;">0</div>
+            </div>
+            <div class="metric-badge" style="background: var(--ink-2); border: 1px solid var(--line); border-radius: 8px; padding: 10px 16px; flex: 1; min-width: 120px; text-align: center;">
+              <div style="font-size: 11px; text-transform: uppercase; color: var(--text-dim); font-weight: 600; letter-spacing: 0.05em;">Frame Rate</div>
+              <div id="metricFps" style="font-size: 22px; font-weight: 700; color: #28a745; font-family: var(--mono); margin-top: 4px;">60 fps</div>
+            </div>
+          </div>
+          <div class="try-row">
+            <button class="try-btn" id="burst50Btn">
+              ⚡ Fire 50 Toasts Burst
+            </button>
+            <button class="try-btn secondary" id="burst100Btn">
+              🔥 Fire 100 Extreme Burst
+            </button>
+            <button class="try-btn secondary" id="burstClearBtn">
+              🧹 Clear All & Reset
             </button>
           </div>
         </div>
@@ -1241,6 +1319,22 @@ npm install customizable-toast-notification</pre
           });
         }
 
+        // Theme switcher in navbar
+        var themeSelect = document.getElementById("themeSelect");
+        if (themeSelect) {
+          themeSelect.addEventListener("change", function () {
+            var val = themeSelect.value;
+            if (window.customizableToast && window.customizableToast.setConfig) {
+              window.customizableToast.setConfig({ theme: val });
+            } else {
+              document.documentElement.setAttribute("data-toast-theme", val);
+            }
+            if (window.customizableToast && window.customizableToast.playTone) {
+              window.customizableToast.playTone("pop");
+            }
+          });
+        }
+
         // ---- Real, verified defaults — pulled directly from the library's own
         // source (src/index.js's `defaults` object), not guessed or copied from
         // docs that could drift out of sync. ----
@@ -1275,6 +1369,9 @@ npm install customizable-toast-notification</pre
           stacked: false,
           swipeToDismiss: true,
           sound: "none",
+          soundPreset: "modern",
+          spring: "none",
+          enableUndo: false,
           showLoader: false,
           loaderSize: 14,
           loaderColor: "",
@@ -1364,6 +1461,18 @@ npm install customizable-toast-notification</pre
           if (s.swipeToDismiss === false) opts.swipeToDismiss = false;
           if (s.sound && s.sound !== "none") {
             opts.sound = s.sound === "default" ? true : s.sound;
+            if (s.soundPreset && s.soundPreset !== "modern") {
+              opts.soundPreset = s.soundPreset;
+            }
+          }
+          if (s.spring && s.spring !== "none") {
+            opts.spring = s.spring;
+          }
+          if (s.enableUndo) {
+            opts.undo = {
+              label: "Undo",
+              showCountdown: true,
+            };
           }
           if (s.progress !== "" && !isNaN(Number(s.progress))) {
             opts.progress = Number(s.progress);
@@ -1375,7 +1484,7 @@ npm install customizable-toast-notification</pre
           var lines = [];
           Object.keys(opts).forEach(function (key) {
             var val = opts[key];
-            if (key === "cta" || key === "loader") {
+            if (key === "cta" || key === "loader" || key === "undo") {
               var nestedLines = [];
               Object.keys(val).forEach(function (k) {
                 nestedLines.push("      " + k + ": " + JSON.stringify(val[k]));
@@ -1518,6 +1627,23 @@ npm install customizable-toast-notification</pre
                 type: "select",
                 label: "sound (zero-asset Web Audio chime)",
                 options: ["none", "default", "success", "error", "warning", "pop"],
+              },
+              {
+                key: "soundPreset",
+                type: "select",
+                label: "soundPreset (audio synth theme)",
+                options: ["modern", "retro", "futuristic", "subtle", "bell"],
+              },
+              {
+                key: "spring",
+                type: "select",
+                label: "spring (damped harmonic oscillator physics)",
+                options: ["none", "default", "gentle", "wobbly", "stiff", "bouncy"],
+              },
+              {
+                key: "enableUndo",
+                type: "checkbox",
+                label: "undo (Action Undo button with live countdown badge)",
               },
             ],
           },
@@ -1869,19 +1995,46 @@ npm install customizable-toast-notification</pre
             renderCode();
           });
 
+        function fallbackCopy(text) {
+          var ta = document.createElement("textarea");
+          ta.value = text;
+          ta.style.position = "fixed";
+          ta.style.opacity = "0";
+          document.body.appendChild(ta);
+          ta.focus();
+          ta.select();
+          try {
+            document.execCommand("copy");
+          } catch (e) {}
+          document.body.removeChild(ta);
+        }
+
         document
           .getElementById("copyBtn")
           .addEventListener("click", function () {
             var code = document.getElementById("codeOutput").textContent;
-            navigator.clipboard.writeText(code).then(function () {
+            function markCopied() {
               var btn = document.getElementById("copyBtn");
-              btn.textContent = "Copied!";
+              btn.textContent = "✓ Copied!";
               btn.classList.add("copied");
               setTimeout(function () {
                 btn.textContent = "Copy";
                 btn.classList.remove("copied");
-              }, 1500);
-            });
+              }, 1800);
+            }
+
+            if (navigator.clipboard && navigator.clipboard.writeText) {
+              navigator.clipboard
+                .writeText(code)
+                .then(markCopied)
+                .catch(function () {
+                  fallbackCopy(code);
+                  markCopied();
+                });
+            } else {
+              fallbackCopy(code);
+              markCopied();
+            }
           });
 
         renderCode();
@@ -2010,6 +2163,48 @@ npm install customizable-toast-notification</pre
               duration: 15000,
             },
           },
+          {
+            icon: "👥",
+            title: "Multi-action confirmation",
+            tag: "cta: [action1, action2]",
+            desc: "Dual action buttons (Accept / Decline) with distinct callbacks and autoClose behaviors.",
+            options: {
+              type: "info",
+              message: "Team invite from Priya Patel (Frontend Lead)",
+              position: "top-right",
+              duration: 8000,
+              spring: "gentle",
+              cta: [
+                {
+                  label: "Accept",
+                  onClick: function () {
+                    customizableToast.createToast({
+                      type: "success",
+                      message: "Invitation accepted!",
+                      sound: "success",
+                    });
+                  },
+                },
+                {
+                  label: "Decline",
+                  autoClose: true,
+                  onClick: function () {
+                    customizableToast.createToast({
+                      type: "warning",
+                      message: "Invitation declined.",
+                    });
+                  },
+                },
+              ],
+            },
+          },
+          {
+            icon: "🌐",
+            title: "Network status monitor",
+            tag: "offline / online auto-toast",
+            desc: "Simulates an offline event with retry CTA followed by back-online confirmation.",
+            isNetworkDemo: true,
+          },
         ];
 
         var presetGrid = document.getElementById("presetGrid");
@@ -2096,6 +2291,38 @@ npm install customizable-toast-notification</pre
                   duration: 12000,
                 });
               }, 500);
+              return;
+            }
+            if (p.isNetworkDemo) {
+              customizableToast.createToast({
+                type: "error",
+                message: "You are currently offline. Changes will sync once reconnected.",
+                position: "top-center",
+                duration: 5000,
+                showProgressBar: false,
+                sound: "error",
+                soundPreset: "retro",
+                spring: "stiff",
+                cta: {
+                  label: "Retry",
+                  autoClose: true,
+                  onClick: function () {
+                    setTimeout(function () {
+                      customizableToast.createToast({
+                        type: "success",
+                        message: "Back online! Connection restored.",
+                        position: "top-center",
+                        duration: 3000,
+                        sound: "success",
+                        soundPreset: "bell",
+                        spring: "bouncy",
+                      });
+                      setAccent("success");
+                    }, 400);
+                  },
+                },
+              });
+              setAccent("error");
               return;
             }
             customizableToast.createToast(p.options);
@@ -2283,6 +2510,67 @@ npm install customizable-toast-notification</pre
           }, 500);
         });
 
+        var soundPresetSelect = document.getElementById("soundPresetSelect");
+        if (soundPresetSelect) {
+          soundPresetSelect.addEventListener("change", function (e) {
+            if (customizableToast.setConfig) {
+              customizableToast.setConfig({ soundPreset: e.target.value });
+            }
+            if (customizableToast.playTone) {
+              customizableToast.playTone("info", e.target.value);
+            }
+          });
+        }
+
+        // Live Audio Oscilloscope Canvas Visualizer
+        (function initOscilloscope() {
+          var canvas = document.getElementById("audioOscilloscope");
+          if (!canvas || !canvas.getContext) return;
+          var ctx = canvas.getContext("2d");
+          var analyser = null;
+          var dataArray = null;
+
+          function render() {
+            requestAnimationFrame(render);
+            if (!analyser && window.customizableToast && window.customizableToast.getAudioAnalyser) {
+              analyser = window.customizableToast.getAudioAnalyser();
+              if (analyser) {
+                dataArray = new Uint8Array(analyser.frequencyBinCount);
+              }
+            }
+
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+            ctx.lineWidth = 1.5;
+            ctx.strokeStyle = "#38bdf8";
+
+            ctx.beginPath();
+            var count = dataArray ? dataArray.length : 32;
+            var sliceWidth = canvas.width / count;
+            var x = 0;
+
+            if (analyser && dataArray) {
+              analyser.getByteTimeDomainData(dataArray);
+              for (var i = 0; i < count; i++) {
+                var v = dataArray[i] / 128.0;
+                var y = (v * canvas.height) / 2;
+                if (i === 0) ctx.moveTo(x, y);
+                else ctx.lineTo(x, y);
+                x += sliceWidth;
+              }
+            } else {
+              var time = Date.now() * 0.003;
+              for (var j = 0; j <= 32; j++) {
+                var ry = canvas.height / 2 + Math.sin(time + j * 0.3) * 1.5;
+                if (j === 0) ctx.moveTo(x, ry);
+                else ctx.lineTo(x, ry);
+                x += sliceWidth;
+              }
+            }
+            ctx.stroke();
+          }
+          render();
+        })();
+
         wire("soundSuccessBtn", function () {
           if (customizableToast.playTone) customizableToast.playTone("success");
           customizableToast.createToast({ message: "Task completed successfully!", type: "success" });
@@ -2298,6 +2586,71 @@ npm install customizable-toast-notification</pre
         wire("soundPopBtn", function () {
           if (customizableToast.playTone) customizableToast.playTone("pop");
           customizableToast.createToast({ message: "Incoming notification ping", type: "info" });
+        });
+
+        // Stress-Test & Burst Simulator Wiring
+        var metricActiveEl = document.getElementById("metricActive");
+        var metricQueueEl = document.getElementById("metricQueue");
+        var metricDroppedEl = document.getElementById("metricDropped");
+        var metricFpsEl = document.getElementById("metricFps");
+
+        function updateMetricsDisplay(m) {
+          if (!m) return;
+          if (metricActiveEl) metricActiveEl.textContent = String(m.activeCount || 0);
+          if (metricQueueEl) metricQueueEl.textContent = String(m.queueDepth || 0);
+          if (metricDroppedEl) metricDroppedEl.textContent = String(m.droppedCount || 0);
+        }
+
+        if (window.customizableToast && window.customizableToast.setConfig) {
+          window.customizableToast.setConfig({
+            onMetrics: updateMetricsDisplay,
+          });
+        }
+
+        // Live FPS meter for responsiveness verification
+        var lastFrameTime = performance.now();
+        var frameCount = 0;
+        var currentFps = 60;
+        function trackFps(now) {
+          frameCount++;
+          if (now - lastFrameTime >= 500) {
+            currentFps = Math.round((frameCount * 1000) / (now - lastFrameTime));
+            if (metricFpsEl) {
+              metricFpsEl.textContent = currentFps + " fps";
+              metricFpsEl.style.color = currentFps >= 50 ? "#28a745" : currentFps >= 30 ? "#ffc107" : "#dc3545";
+            }
+            frameCount = 0;
+            lastFrameTime = now;
+          }
+          requestAnimationFrame(trackFps);
+        }
+        requestAnimationFrame(trackFps);
+
+        wire("burst50Btn", function () {
+          for (var i = 1; i <= 50; i++) {
+            customizableToast.createToast({
+              message: "Burst alert #" + i + " [High Frequency]",
+              type: i % 4 === 0 ? "error" : i % 3 === 0 ? "warning" : i % 2 === 0 ? "success" : "info",
+              duration: 3000,
+            });
+          }
+        });
+
+        wire("burst100Btn", function () {
+          for (var i = 1; i <= 100; i++) {
+            customizableToast.createToast({
+              message: "Extreme burst item #" + i + " (Safe Queue)",
+              type: i % 2 === 0 ? "info" : "success",
+              duration: 2500,
+            });
+          }
+        });
+
+        wire("burstClearBtn", function () {
+          customizableToast.noop();
+          if (customizableToast.getToastMetrics) {
+            updateMetricsDisplay(customizableToast.getToastMetrics());
+          }
         });
       })();
     </script>

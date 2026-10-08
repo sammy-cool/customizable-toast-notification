@@ -1,0 +1,50 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Vue 3 Toast Adapter Demo</title>
+  <link rel="stylesheet" href="../../dist/index.css">
+  <style>
+    body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; background: #0f172a; color: white; display: flex; justify-content: center; align-items: center; min-height: 100vh; margin: 0; }
+    .card { background: #1e293b; border: 1px solid #334155; padding: 30px; border-radius: 12px; max-width: 480px; width: 100%; text-align: center; }
+    .btn-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin-top: 20px; }
+    button { padding: 12px; border-radius: 6px; font-weight: 600; cursor: pointer; border: none; }
+    .success { background: #10b981; color: white; }
+    .error { background: #ef4444; color: white; }
+    .warning { background: #f59e0b; color: white; }
+    .info { background: #3b82f6; color: white; }
+  </style>
+  <script src="https://unpkg.com/vue@3/dist/vue.global.prod.js"></script>
+  <script src="../../dist/index.umd.js"></script>
+</head>
+<body>
+  <div id="app">
+    <div class="card">
+      <h2>💚 Vue 3 `useToast` Composable Demo</h2>
+      <p style="color: #94a3b8;">Testing customizable-toast-notification in Vue 3 Composition API.</p>
+      <div class="btn-grid">
+        <button class="success" @click="showSuccess">Success (Bouncy)</button>
+        <button class="error" @click="showError">Error (Stiff)</button>
+        <button class="warning" @click="showWarning">Warning (Wobbly)</button>
+        <button class="info" @click="showInfo">Info (Gentle)</button>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    const { createApp } = Vue;
+
+    createApp({
+      setup() {
+        const showSuccess = () => customizableToast.createToast({ type: 'success', message: 'Vue 3 action completed!', sound: true, soundPreset: 'bell', spring: 'bouncy' });
+        const showError = () => customizableToast.createToast({ type: 'error', message: 'Vue 3 action failed!', sound: true, soundPreset: 'retro', spring: 'stiff' });
+        const showWarning = () => customizableToast.createToast({ type: 'warning', message: 'Vue 3 warning prompt', sound: true, spring: 'wobbly' });
+        const showInfo = () => customizableToast.createToast({ type: 'info', message: 'Vue 3 information update', sound: true, soundPreset: 'futuristic' });
+
+        return { showSuccess, showError, showWarning, showInfo };
+      }
+    }).mount('#app');
+  </script>
+</body>
+</html>

@@ -1,5 +1,7 @@
 "use strict";
 
+import { getConfig } from "./config.js";
+
 const DOCUMENTED_POSITIONS = new Set([
   "top-left",
   "top-right",
@@ -15,9 +17,17 @@ const DOCUMENTED_POSITIONS = new Set([
 ]);
 
 const LEGACY_POSITIONS = new Set(["top", "bottom"]);
+const ALL_POSITIONS = [...DOCUMENTED_POSITIONS, ...LEGACY_POSITIONS];
 
 function isDocumentedPosition(pos) {
   return DOCUMENTED_POSITIONS.has(pos);
+}
+
+function resetPositionClasses(container) {
+  if (!container?.classList) return;
+  for (let i = 0; i < ALL_POSITIONS.length; i++) {
+    container.classList.remove("toast-position-" + ALL_POSITIONS[i]);
+  }
 }
 
 export async function setPosition(container, options) {
@@ -31,6 +41,13 @@ export async function setPosition(container, options) {
   if (!isDocumentedPosition(rawPos) && !LEGACY_POSITIONS.has(rawPos)) {
     console.warn(`Unknown position "${options.position}", defaulting to "bottom-right"`);
     effectivePos = "bottom-right";
+  }
+
+  resetPositionClasses(container);
+  container.classList?.add("toast-position-" + effectivePos);
+
+  if (getConfig().disableInlineStyles) {
+    return;
   }
 
   resetContainerStyles(container);
@@ -76,7 +93,7 @@ function handleFullWidthPositions(container, options, flags) {
 
   container.style.maxWidth = "100vw";
   try {
-    if (options && !options.maxWidth) {
+    if (options && !options.maxWidth && !Object.isFrozen(options)) {
       options.maxWidth = "100vw";
     }
   } catch {}

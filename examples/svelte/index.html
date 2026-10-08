@@ -1,0 +1,51 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Svelte Toast Store Demo</title>
+  <link rel="stylesheet" href="../../dist/index.css">
+  <style>
+    body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; background: #0f172a; color: white; display: flex; justify-content: center; align-items: center; min-height: 100vh; margin: 0; }
+    .card { background: #1e293b; border: 1px solid #334155; padding: 30px; border-radius: 12px; max-width: 480px; width: 100%; text-align: center; }
+    .btn-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin-top: 20px; }
+    button { padding: 12px; border-radius: 6px; font-weight: 600; cursor: pointer; border: none; }
+    .svelte-btn { background: #ff3e00; color: white; }
+    .metrics { margin-top: 20px; padding: 12px; background: #0f172a; border-radius: 8px; font-family: monospace; font-size: 13px; color: #38bdf8; }
+  </style>
+  <script src="../../dist/index.umd.js"></script>
+</head>
+<body>
+  <div class="card">
+    <h2>🔥 Svelte Toast Store Adapter Demo</h2>
+    <p style="color: #94a3b8;">Demonstrating reactive Svelte Store integration with live telemetry subscribers.</p>
+    <div class="btn-grid">
+      <button class="svelte-btn" id="fireSuccess">Success Toast</button>
+      <button class="svelte-btn" id="fireUndo">Undo Action</button>
+    </div>
+    <div class="metrics" id="metricsDisplay">Active: 0 | Queued: 0 | Dropped: 0</div>
+  </div>
+
+  <script type="module">
+    import { toast } from './toastStore.js';
+
+    const metricsEl = document.getElementById("metricsDisplay");
+
+    // Subscribe to store metrics reactively
+    toast.metrics.subscribe((m) => {
+      metricsEl.textContent = `Active: ${m.activeCount} | Queued: ${m.queueDepth} | Dropped: ${m.droppedCount}`;
+    });
+
+    document.getElementById("fireSuccess").addEventListener("click", () => {
+      toast.success("Svelte store reactive toast fired!", { sound: true, soundPreset: "bell", spring: "bouncy" });
+    });
+
+    document.getElementById("fireUndo").addEventListener("click", () => {
+      toast.warning("Svelte item deleted", {
+        duration: 5000,
+        undo: { label: "Revert", showCountdown: true, onUndo: () => console.log("Reverted!") }
+      });
+    });
+  </script>
+</body>
+</html>

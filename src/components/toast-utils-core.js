@@ -1,74 +1,219 @@
-import { getDynamicAccessibleTextColorHex, forceReflow } from "../utils/dom.js";
+import { getDynamicAccessibleTextColorHex } from "../utils/dom.js";
+import { getConfig, shouldReduceMotion } from "../utils/config.js";
 
 export function createCTA(toast, options, onClose) {
   const rawCfg = options?.cta;
-  if (!rawCfg || typeof rawCfg !== "object" || Array.isArray(rawCfg)) return;
+  if (!rawCfg || typeof rawCfg !== "object") return;
 
-  const cfg = { ...rawCfg };
+  const configs = Array.isArray(rawCfg) ? rawCfg.filter(Boolean) : [rawCfg];
+  if (configs.length === 0) return;
 
-  if (!cfg.label) {
-    cfg.label = "CTA Label Missing!";
-  }
+  const cleanups = [];
 
-  const isLink = cfg.variant === "link" || (!cfg.variant && !!cfg.href);
-  const el = document.createElement(isLink ? "a" : "button");
+  configs.forEach((raw, idx) => {
+    if (!raw || typeof raw !== "object") return;
+    const cfg = { ...raw };
 
-  if (isLink) {
-    el.href = cfg.href;
-    if (cfg.target) el.target = cfg.target;
-    el.rel = cfg.rel || (cfg.target === "_blank" ? "noopener noreferrer" : "");
-  } else {
-    el.type = "button";
-  }
+    if (!cfg.label) {
+      cfg.label = configs.length > 1 ? `Action ${idx + 1}` : "CTA Label Missing!";
+    }
 
-  el.setAttribute("aria-label", cfg.ariaLabel || cfg.label);
+    const isLink = cfg.variant === "link" || (!cfg.variant && !!cfg.href);
+    const el = document.createElement(isLink ? "a" : "button");
 
-  const ctaTextColor = options.textColor || getDynamicAccessibleTextColorHex(options.backgroundColor);
-  const ctaBgColor = options.backgroundColor
-    ? getContrastBackground(options.backgroundColor)
-    : "rgba(255,255,255,0.15)";
+    if (isLink) {
+      el.href = cfg.href;
+      if (cfg.target) el.target = cfg.target;
+      el.rel = cfg.rel || (cfg.target === "_blank" ? "noopener noreferrer" : "");
+    } else {
+      el.type = "button";
+    }
 
-  const isHex6 = typeof ctaTextColor === "string" && /^#[0-9a-fA-F]{6}$/.test(ctaTextColor.trim());
-  const ctaBorderColor = isHex6 ? `${ctaTextColor.trim()}44` : "rgba(128, 128, 128, 0.3)";
+    el.setAttribute("aria-label", cfg.ariaLabel || cfg.label);
 
-  Object.assign(el.style, {
-    marginLeft: "10px",
-    padding: "6px 10px",
-    borderRadius: "6px",
-    fontSize: "12px",
-    fontWeight: "600",
-    lineHeight: "1",
-    border: `1px solid ${ctaBorderColor}`,
-    color: ctaTextColor,
-    background: ctaBgColor,
-    cursor: "pointer",
-    whiteSpace: "nowrap",
-    flexShrink: "0",
+    const ctaTextColor = options.textColor || getDynamicAccessibleTextColorHex(options.backgroundColor);
+    const ctaBgColor = options.backgroundColor
+      ? getContrastBackground(options.backgroundColor)
+      : "rgba(255,255,255,0.15)";
+
+    const isHex6 = typeof ctaTextColor === "string" && /^#[0-9a-fA-F]{6}$/.test(ctaTextColor.trim());
+    const ctaBorderColor = isHex6 ? `${ctaTextColor.trim()}44` : "rgba(128, 128, 128, 0.3)";
+
+    el.className = "toast-cta";
+    if (!getConfig().disableInlineStyles) {
+      Object.assign(el.style, {
+        marginLeft: idx === 0 ? "10px" : "6px",
+        padding: "6px 10px",
+        borderRadius: "6px",
+        fontSize: "12px",
+        fontWeight: "600",
+        lineHeight: "1",
+        border: `1px solid ${ctaBorderColor}`,
+        color: ctaTextColor,
+        background: ctaBgColor,
+        cursor: "pointer",
+        whiteSpace: "nowrap",
+        flexShrink: "0",
+      });
+    }
+
+    el.textContent = cfg.label;
+
+    const onClick = async (e) => {
+      try {
+        if (typeof cfg.onClick === "function") {
+          const res = cfg.onClick(e);
+          if (res?.then) await res;
+        }
+      } catch (err) {
+        console.error("CTA onClick handler error:", err);
+      } finally {
+        if (cfg.autoClose !== false && typeof onClose === "function") {
+          onClose(toast);
+        }
+      }
+    };
+
+    el.addEventListener("click", onClick);
+
+    const cleanupItem = () => el.removeEventListener("click", onClick);
+    el._cleanup = cleanupItem;
+    cleanups.push(cleanupItem);
+
+    toast.appendChild(el);
   });
 
-  el.textContent = cfg.label;
+  const prevCleanup = toast._cleanupCTA;
+  toast._cleanupCTA = () => {
+    prevCleanup?.();
+    cleanups.forEach((c) => c());
+  };
+}
+
+/**
+ * Creates an Undo action button with optional live countdown decay.
+ * @param {HTMLElement} toast
+ * @param {object} options
+ * @param {Function} onClose
+ * @returns {void}
+ */
+export function createUndoAction(toast, options, onClose) {
+  const undo = options?.undo;
+  if (!undo) return;
+
+  const isFn = typeof undo === "function";
+  if (!isFn && (typeof undo !== "object" || Array.isArray(undo))) return;
+
+  const undoCfg = isFn ? { onUndo: undo } : { ...undo };
+  const baseLabel =
+    typeof undoCfg.label === "string" && undoCfg.label.trim()
+      ? undoCfg.label.trim()
+      : "Undo";
+
+  const totalDuration = Number(options?.duration);
+  const showCountdown =
+    undoCfg.showCountdown !== false &&
+    Number.isFinite(totalDuration) &&
+    totalDuration > 0;
+
+  const btn = document.createElement("button");
+  btn.type = "button";
+  btn.className = "toast-undo-btn";
+  btn.setAttribute("aria-label", `${baseLabel} action`);
+
+  const textColor =
+    options.textColor ||
+    getDynamicAccessibleTextColorHex(options.backgroundColor);
+  const bgColor = options.backgroundColor
+    ? getContrastBackground(options.backgroundColor)
+    : "rgba(255,255,255,0.18)";
+
+  const isHex6 =
+    typeof textColor === "string" &&
+    /^#[0-9a-fA-F]{6}$/.test(textColor.trim());
+  const borderColor = isHex6
+    ? `${textColor.trim()}55`
+    : "rgba(128, 128, 128, 0.35)";
+
+  if (!getConfig().disableInlineStyles) {
+    Object.assign(btn.style, {
+      marginLeft: "10px",
+      padding: "5px 10px",
+      borderRadius: "6px",
+      fontSize: "12px",
+      fontWeight: "700",
+      lineHeight: "1",
+      border: `1px solid ${borderColor}`,
+      color: textColor,
+      background: bgColor,
+      cursor: "pointer",
+      whiteSpace: "nowrap",
+      flexShrink: "0",
+      display: "inline-flex",
+      alignItems: "center",
+      gap: "4px",
+    });
+  }
+
+  let remainingSec = Math.max(1, Math.ceil((totalDuration || 2500) / 1000));
+  const updateLabel = () => {
+    btn.textContent = showCountdown
+      ? `${baseLabel} (${remainingSec}s)`
+      : baseLabel;
+  };
+  updateLabel();
+
+  let intervalId = null;
+  if (showCountdown) {
+    intervalId = setInterval(() => {
+      remainingSec = Math.max(0, remainingSec - 1);
+      updateLabel();
+      if (remainingSec <= 0 && intervalId) {
+        clearInterval(intervalId);
+        intervalId = null;
+      }
+    }, 1000);
+    if (typeof intervalId?.unref === "function") {
+      intervalId.unref();
+    }
+  }
+
+  const cleanupTimer = () => {
+    if (intervalId) {
+      clearInterval(intervalId);
+      intervalId = null;
+    }
+  };
 
   const onClick = async (e) => {
+    cleanupTimer();
+    btn.removeEventListener("click", onClick);
     try {
-      if (typeof cfg.onClick === "function") {
-        const res = cfg.onClick(e);
+      if (typeof undoCfg.onUndo === "function") {
+        const res = undoCfg.onUndo(e, toast);
         if (res?.then) await res;
       }
     } catch (err) {
-      console.error("CTA onClick handler error:", err);
+      console.error("Undo action error:", err);
     } finally {
-      if (cfg.autoClose !== false && typeof onClose === "function") {
+      if (typeof onClose === "function") {
         onClose(toast);
       }
     }
   };
 
-  el.addEventListener("click", onClick);
+  btn.addEventListener("click", onClick);
 
-  el._cleanup = () => el.removeEventListener("click", onClick);
-  toast._cleanupCTA = () => el.removeEventListener("click", onClick);
+  btn._cleanup = () => {
+    cleanupTimer();
+    btn.removeEventListener("click", onClick);
+  };
+  toast._cleanupUndo = () => {
+    cleanupTimer();
+    btn.removeEventListener("click", onClick);
+  };
 
-  toast.appendChild(el);
+  toast.appendChild(btn);
 }
 
 export function createCloseButton(toast, options, onClose) {
@@ -79,7 +224,9 @@ export function createCloseButton(toast, options, onClose) {
 
   const closeTextColor = options.textColor || getDynamicAccessibleTextColorHex(options.backgroundColor);
 
-  Object.assign(closeBtn.style, {
+  closeBtn.className = "toast-close-btn";
+  if (!getConfig().disableInlineStyles) {
+    Object.assign(closeBtn.style, {
     background: "none",
     border: "none",
     color: closeTextColor,
@@ -89,6 +236,7 @@ export function createCloseButton(toast, options, onClose) {
     lineHeight: "1",
     padding: "0 4px",
   });
+  }
 
   const onClick = () => {
     if (typeof onClose === "function") onClose(toast);
@@ -127,7 +275,8 @@ export function createProgressBar(toast, options) {
     ? `calc(100% - ${leftOffset}px)`
     : "100%";
 
-  Object.assign(progressBar.style, {
+  if (!getConfig().disableInlineStyles) {
+    Object.assign(progressBar.style, {
     position: "absolute",
     left: `${leftOffset}px`,
     height: `${progressHeightPx}px`,
@@ -138,6 +287,7 @@ export function createProgressBar(toast, options) {
     borderRadius: `${progressHeightPx / 2}px`,
     opacity: "0.8",
   });
+  }
 
   toast.appendChild(progressBar);
 
@@ -151,7 +301,9 @@ export function createProgressBar(toast, options) {
     return;
   }
 
-  if (typeof progressBar.animate === "function") {
+  if (shouldReduceMotion()) {
+    progressBar.style.display = "none";
+  } else if (typeof progressBar.animate === "function") {
     toast._progressAnimation = progressBar.animate(
       [{ width: finalWidth }, { width: "0%" }],
       {
@@ -163,22 +315,23 @@ export function createProgressBar(toast, options) {
     );
   } else {
     progressBar.style.transition = `width ${progressDuration}ms linear`;
-    setTimeout(() => {
-      forceReflow(progressBar);
+    requestAnimationFrame(() => {
       progressBar.style.width = "0%";
-    }, 50);
+    });
   }
 }
 
 export function runToastAnimation(toast) {
-  forceReflow(toast);
-  const delay = 50;
-  setTimeout(() => {
-    requestAnimationFrame(() => {
-      toast.style.opacity = "1";
-      toast.style.transform = "translateY(0)";
-    });
-  }, delay);
+  if (shouldReduceMotion()) {
+    toast.style.transition = "none";
+    toast.style.opacity = "1";
+    toast.style.transform = "translateY(0)";
+    return;
+  }
+  requestAnimationFrame(() => {
+    toast.style.opacity = "1";
+    toast.style.transform = "translateY(0)";
+  });
 }
 
 export function attachSwipeToDismiss(toast, onClose) {
@@ -187,23 +340,44 @@ export function attachSwipeToDismiss(toast, onClose) {
   let startX = 0;
   let startY = 0;
   let currentX = 0;
+  let startTime = 0;
   let isDragging = false;
   let isHorizontal = false;
 
-  const onTouchStart = (e) => {
-    if (!e || !e.touches || e.touches.length !== 1) return;
-    startX = e.touches[0].clientX;
-    startY = e.touches[0].clientY;
+  let isWindowListening = false;
+
+  const cleanupWindowListeners = () => {
+    if (isWindowListening) {
+      isWindowListening = false;
+      window.removeEventListener("mousemove", onPointerMove);
+      window.removeEventListener("mouseup", onPointerEnd);
+    }
+  };
+
+  const onPointerDown = (e) => {
+    if (!e) return;
+    const ev = e.touches ? e.touches[0] : e;
+    startX = ev.clientX;
+    startY = ev.clientY;
     currentX = startX;
+    startTime = Date.now();
     isDragging = true;
     isHorizontal = false;
     toast.style.transition = "none";
+    toast.style.userSelect = "none";
+
+    if (!isWindowListening && typeof window !== "undefined") {
+      isWindowListening = true;
+      window.addEventListener("mousemove", onPointerMove, { passive: false });
+      window.addEventListener("mouseup", onPointerEnd, { passive: true });
+    }
   };
 
-  const onTouchMove = (e) => {
-    if (!isDragging || !e || !e.touches || e.touches.length !== 1) return;
-    const x = e.touches[0].clientX;
-    const y = e.touches[0].clientY;
+  const onPointerMove = (e) => {
+    if (!isDragging || !e) return;
+    const ev = e.touches ? e.touches[0] : e;
+    const x = ev.clientX;
+    const y = ev.clientY;
     const dx = x - startX;
     const dy = y - startY;
 
@@ -212,6 +386,7 @@ export function attachSwipeToDismiss(toast, onClose) {
         isHorizontal = true;
       } else if (Math.abs(dy) > 8) {
         isDragging = false;
+        cleanupWindowListeners();
         return;
       }
     }
@@ -219,45 +394,77 @@ export function attachSwipeToDismiss(toast, onClose) {
     if (isHorizontal) {
       currentX = x;
       const opacity = Math.max(0, 1 - Math.abs(dx) / 280);
-      toast.style.transform = `translateX(${dx}px)`;
-      toast.style.opacity = String(opacity);
+      if (!getConfig().disableInlineStyles || shouldReduceMotion() === false) {
+          toast.style.transform = `translateX(${dx}px)`;
+          toast.style.opacity = String(opacity);
+      }
       if (e.cancelable) e.preventDefault();
     }
   };
 
-  const onTouchEnd = () => {
+  const onPointerEnd = () => {
+    cleanupWindowListeners();
     if (!isDragging || !isHorizontal) {
       isDragging = false;
+      toast.style.userSelect = "";
       return;
     }
     isDragging = false;
+    toast.style.userSelect = "";
+
     const dx = currentX - startX;
-    const threshold = 75;
+    const duration = Math.max(1, Date.now() - startTime);
+    const velocity = Math.abs(dx) / duration; // px/ms
+    const isFlick = velocity >= 0.65 && Math.abs(dx) >= 50;
+    const threshold = isFlick ? 50 : 75;
 
     if (Math.abs(dx) >= threshold) {
       const exitX = dx > 0 ? 320 : -320;
-      toast.style.transition = "transform 180ms ease-out, opacity 180ms ease-out";
-      toast.style.transform = `translateX(${exitX}px)`;
-      toast.style.opacity = "0";
-      setTimeout(() => {
+      const exitDuration = isFlick ? 120 : 180;
+      if (!getConfig().disableInlineStyles || shouldReduceMotion() === false) {
+          toast.style.transition = `transform ${exitDuration}ms ease-out, opacity ${exitDuration}ms ease-out`;
+          toast.style.transform = `translateX(${exitX}px)`;
+          toast.style.opacity = "0";
+      }
+      if (toast._swipeTimeout) clearTimeout(toast._swipeTimeout);
+      toast._swipeTimeout = setTimeout(() => {
+        toast._swipeTimeout = null;
         if (typeof onClose === "function") onClose(toast);
-      }, 180);
+      }, exitDuration);
+      if (typeof toast._swipeTimeout?.unref === "function") {
+        toast._swipeTimeout.unref();
+      }
     } else {
-      toast.style.transition = "transform 200ms ease, opacity 200ms ease";
-      toast.style.transform = "translateX(0)";
-      toast.style.opacity = "1";
+      if (!getConfig().disableInlineStyles || shouldReduceMotion() === false) {
+        const spring = toast._spring;
+        const snapEasing = spring?.easing || "cubic-bezier(0.34, 1.56, 0.64, 1)";
+        const snapDuration = spring?.duration ? Math.min(400, spring.duration) : 200;
+        toast.style.transition = `transform ${snapDuration}ms ${snapEasing}, opacity 200ms ease`;
+        toast.style.transform = "translateX(0)";
+        toast.style.opacity = "1";
+      }
     }
   };
 
-  toast.addEventListener("touchstart", onTouchStart, { passive: true });
-  toast.addEventListener("touchmove", onTouchMove, { passive: false });
-  toast.addEventListener("touchend", onTouchEnd, { passive: true });
-  toast.addEventListener("touchcancel", onTouchEnd, { passive: true });
+  toast.addEventListener("touchstart", onPointerDown, { passive: true });
+  toast.addEventListener("touchmove", onPointerMove, { passive: false });
+  toast.addEventListener("touchend", onPointerEnd, { passive: true });
+  toast.addEventListener("touchcancel", onPointerEnd, { passive: true });
+
+  toast.addEventListener("mousedown", onPointerDown, { passive: true });
 
   toast._cleanupSwipe = () => {
-    toast.removeEventListener("touchstart", onTouchStart);
-    toast.removeEventListener("touchmove", onTouchMove);
-    toast.removeEventListener("touchend", onTouchEnd);
-    toast.removeEventListener("touchcancel", onTouchEnd);
+    if (toast._swipeTimeout) {
+      clearTimeout(toast._swipeTimeout);
+      toast._swipeTimeout = null;
+    }
+    cleanupWindowListeners();
+
+    toast.removeEventListener("touchstart", onPointerDown);
+    toast.removeEventListener("touchmove", onPointerMove);
+    toast.removeEventListener("touchend", onPointerEnd);
+    toast.removeEventListener("touchcancel", onPointerEnd);
+    toast.removeEventListener("mousedown", onPointerDown);
   };
+
 }

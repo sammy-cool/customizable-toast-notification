@@ -3,20 +3,140 @@
 import { createToastElement } from "./Toast.js";
 import { removeElement, getDynamicAccessibleTextColorHex } from "../utils/dom.js";
 import { createEmergencyToast } from "./toast-utils.js";
-import { getOrCreateToastContainer, normalizePositionKey } from "../utils/containerRegistry.js";
+import { getOrCreateToastContainer, normalizePositionKey, unregisterContainer } from "../utils/containerRegistry.js";
 import { setPosition } from "../utils/position.js";
 import { PausableTimer } from "../utils/PausableTimer.js";
 import { sanitizeHtml } from "../utils/html-sanitizer.js";
 import { playTone } from "../utils/audio.js";
 import { createProgressBar } from "./toast-utils-core.js";
 import { createLoader } from "./loader.js";
+import { getConfig, shouldReduceMotion } from "../utils/config.js";
+import { getToastBroadcaster } from "../utils/toast-broadcast.js";
+import { calculateToastPriority } from "../utils/ai-scorer.js";
+import { getToastPool } from "../utils/toast-pool.js";
+import { createGestureDetector } from "../utils/multi-touch.js";
 
-const MAX_VISIBLE = 3;
 
 const active = new Map();
 const pending = new Map();
 const queue = [];
 let visibleCount = 0;
+let droppedCount = 0;
+
+/**
+ * Returns a real-time snapshot of toast manager telemetry metrics.
+ * @returns {import('../utils/config.js').ToastMetrics}
+ */
+export function getToastMetrics() {
+  return {
+    activeCount: active.size,
+    queueDepth: queue.length,
+    visibleCount,
+    droppedCount,
+    timestamp: Date.now(),
+  };
+}
+
+/**
+ * Emits current toast metrics to global onMetrics callback if configured.
+ */
+function emitMetrics() {
+  const config = getConfig();
+  if (typeof config.onMetrics === "function") {
+    try {
+      config.onMetrics(getToastMetrics());
+    } catch (err) {
+      console.error("onMetrics callback error:", err);
+    }
+  }
+}
+
+
+// Cross-tab toast synchronization
+const broadcaster = getToastBroadcaster();
+
+// Register getters with broadcaster for sync requests
+broadcaster.registerActiveToastsGetter(() => Array.from(active.keys()));
+broadcaster.registerQueuedToastsGetter(() => queue.map(item => ({
+  key: item.key,
+  options: item.options,
+  count: item.count
+})));
+
+// Initialize cross-tab sync listeners if supported
+if (broadcaster.isSupported() && typeof window !== 'undefined') {
+  broadcaster.on('create', ({ toastId, payload }) => {
+    if (!getConfig().syncTabs) return;
+    // Another tab created a toast - show it in this tab
+    if (toastId && payload && !active.has(toastId) && !pending.has(toastId)) {
+      showToast({ ...payload.options, fromSync: true });
+    }
+  });
+
+  broadcaster.on('update', ({ toastId, payload }) => {
+    if (!getConfig().syncTabs) return;
+    // Another tab updated a toast - update in this tab
+    if (toastId && payload && active.has(toastId)) {
+      const data = active.get(toastId);
+      if (data && data.count !== payload.count) {
+        data.count = payload.count;
+        updateBadge(data);
+      }
+    }
+  });
+
+  broadcaster.on('dismiss', ({ toastId }) => {
+    if (!getConfig().syncTabs) return;
+    // Another tab dismissed a toast - dismiss in this tab
+    if (toastId && active.has(toastId)) {
+      closeToastByKey(toastId);
+    }
+  });
+
+  broadcaster.on('sync-response', ({ payload }) => {
+    if (!getConfig().syncTabs) return;
+    // Another tab responded with its toast state
+    if (payload && Array.isArray(payload.queue)) {
+      for (const item of payload.queue) {
+        if (item?.options && !active.has(item.key) && !pending.has(item.key)) {
+          showToast({ ...item.options, fromSync: true });
+        }
+      }
+    }
+  });
+}
+
+// AI Priority Queue Manager - Initialized with default settings
+
+/**
+ * Numeric priority score for a queued toast item (higher = shown sooner).
+ * calculateToastPriority() returns { score, breakdown, keywords }, so we
+ * normalize to a plain number here for sorting/queue comparisons.
+ * @param {{options?: Object, priority?: {score?: number}}} item
+ * @returns {number}
+ */
+function getItemPriority(item) {
+  const cached = item?.priority?.score;
+  if (typeof cached === "number" && Number.isFinite(cached)) return cached;
+
+  const config = getConfig();
+  if (typeof config.priorityScorer === "function") {
+    try {
+      const res = config.priorityScorer({
+        type: item?.options?.type || "info",
+        message: item?.options?.message || "",
+        duration: item?.options?.duration,
+        options: item?.options,
+      });
+      if (typeof res === "number" && Number.isFinite(res)) return res;
+      if (res && typeof res.score === "number" && Number.isFinite(res.score)) return res.score;
+    } catch (err) {
+      console.warn("[Toast] Custom priorityScorer error, falling back to built-in:", err);
+    }
+  }
+
+  return calculateToastPriority(item?.options).score;
+}
 
 export function updateStackedLayout(container) {
   if (!container || !container.children) return;
@@ -25,26 +145,57 @@ export function updateStackedLayout(container) {
 
   if (!container._stackedInitialized && typeof container.addEventListener === "function") {
     container._stackedInitialized = true;
-    container.addEventListener("mouseenter", () => {
+    const onMouseEnter = () => {
       container._isExpanded = true;
       updateStackedLayout(container);
-    });
-    container.addEventListener("mouseleave", () => {
+    };
+    const onMouseLeave = () => {
       container._isExpanded = false;
       updateStackedLayout(container);
-    });
-    container.addEventListener("focusin", () => {
+    };
+    const onFocusIn = () => {
       container._isExpanded = true;
       updateStackedLayout(container);
-    });
-    container.addEventListener("focusout", (e) => {
+    };
+    const onFocusOut = (e) => {
       if (!container.contains(e.relatedTarget)) {
         container._isExpanded = false;
         updateStackedLayout(container);
       }
-    });
+    };
+
+    container.addEventListener("mouseenter", onMouseEnter);
+    container.addEventListener("mouseleave", onMouseLeave);
+    container.addEventListener("focusin", onFocusIn);
+    container.addEventListener("focusout", onFocusOut);
+
+    let detector = null;
+    if (typeof createGestureDetector === "function") {
+      detector = createGestureDetector(container, {
+        onPinch: (pinch) => {
+          if (pinch.direction === "out" && !container._isExpanded) {
+            container._isExpanded = true;
+            updateStackedLayout(container);
+          } else if (pinch.direction === "in" && container._isExpanded) {
+            container._isExpanded = false;
+            updateStackedLayout(container);
+          }
+        },
+      });
+      detector.attach();
+    }
+
+    container._stackedCleanup = () => {
+      container.removeEventListener("mouseenter", onMouseEnter);
+      container.removeEventListener("mouseleave", onMouseLeave);
+      container.removeEventListener("focusin", onFocusIn);
+      container.removeEventListener("focusout", onFocusOut);
+      detector?.detach?.();
+      container._stackedInitialized = false;
+    };
   }
 
+  if (!container.children || container.children.length === 0) return;
   const items = Array.from(container.children);
   const count = items.length;
   const isExpanded = Boolean(container._isExpanded);
@@ -52,48 +203,55 @@ export function updateStackedLayout(container) {
 
   items.forEach((item, index) => {
     const depthFromTop = count - 1 - index;
-    item.style.transition =
-      "transform 240ms cubic-bezier(0.16, 1, 0.3, 1), margin 240ms cubic-bezier(0.16, 1, 0.3, 1), opacity 240ms ease";
+    const depthKey = isExpanded ? "expanded" : (depthFromTop >= 3 ? "overflow" : String(depthFromTop));
+    if (typeof item.setAttribute === "function") {
+      item.setAttribute("data-stacked-depth", depthKey);
+    }
 
-    if (isExpanded) {
-      item.style.transform = "none";
-      item.style.marginTop = "0px";
-      item.style.marginBottom = "10px";
-      item.style.opacity = "1";
-      item.style.zIndex = String(100 + index);
-      item.style.pointerEvents = "auto";
-    } else {
-      if (depthFromTop === 0) {
-        item.style.transform = "scale(1)";
+    if (!getConfig().disableInlineStyles) {
+      item.style.transition =
+        "transform 240ms cubic-bezier(0.16, 1, 0.3, 1), margin 240ms cubic-bezier(0.16, 1, 0.3, 1), opacity 240ms ease";
+
+      if (isExpanded) {
+        item.style.transform = "none";
         item.style.marginTop = "0px";
-        item.style.marginBottom = "0px";
+        item.style.marginBottom = "10px";
         item.style.opacity = "1";
-        item.style.zIndex = "30";
-        item.style.pointerEvents = "auto";
-      } else if (depthFromTop === 1) {
-        const y = isTop ? 10 : -10;
-        item.style.transform = `scale(0.95) translateY(${y}px)`;
-        item.style.marginTop = "-55px";
-        item.style.marginBottom = "0px";
-        item.style.opacity = "0.9";
-        item.style.zIndex = "20";
-        item.style.pointerEvents = "auto";
-      } else if (depthFromTop === 2) {
-        const y = isTop ? 20 : -20;
-        item.style.transform = `scale(0.90) translateY(${y}px)`;
-        item.style.marginTop = "-55px";
-        item.style.marginBottom = "0px";
-        item.style.opacity = "0.75";
-        item.style.zIndex = "10";
+        item.style.zIndex = String(100 + index);
         item.style.pointerEvents = "auto";
       } else {
-        const y = isTop ? 30 : -30;
-        item.style.transform = `scale(0.85) translateY(${y}px)`;
-        item.style.marginTop = "-55px";
-        item.style.marginBottom = "0px";
-        item.style.opacity = "0";
-        item.style.zIndex = "1";
-        item.style.pointerEvents = "none";
+        if (depthFromTop === 0) {
+          item.style.transform = "scale(1)";
+          item.style.marginTop = "0px";
+          item.style.marginBottom = "0px";
+          item.style.opacity = "1";
+          item.style.zIndex = "30";
+          item.style.pointerEvents = "auto";
+        } else if (depthFromTop === 1) {
+          const y = isTop ? 10 : -10;
+          item.style.transform = `scale(0.95) translateY(${y}px)`;
+          item.style.marginTop = "-55px";
+          item.style.marginBottom = "0px";
+          item.style.opacity = "0.9";
+          item.style.zIndex = "20";
+          item.style.pointerEvents = "auto";
+        } else if (depthFromTop === 2) {
+          const y = isTop ? 20 : -20;
+          item.style.transform = `scale(0.90) translateY(${y}px)`;
+          item.style.marginTop = "-55px";
+          item.style.marginBottom = "0px";
+          item.style.opacity = "0.75";
+          item.style.zIndex = "10";
+          item.style.pointerEvents = "auto";
+        } else {
+          const y = isTop ? 30 : -30;
+          item.style.transform = `scale(0.85) translateY(${y}px)`;
+          item.style.marginTop = "-55px";
+          item.style.marginBottom = "0px";
+          item.style.opacity = "0";
+          item.style.zIndex = "1";
+          item.style.pointerEvents = "none";
+        }
       }
     }
   });
@@ -127,6 +285,12 @@ export async function showToast(options = {}) {
       data.timer = createDismissTimer(data.toast, options);
       await setupPauseOnHover(data);
       await updateBadge(data);
+      emitMetrics();
+
+      // Broadcast update to other tabs if not from sync
+      if (!options.fromSync && getConfig().syncTabs && broadcaster.isSupported()) {
+        broadcaster.broadcast('update', key, { count: data.count });
+      }
       return key;
     }
 
@@ -145,8 +309,26 @@ export async function showToast(options = {}) {
       if (!current) return;
       pending.delete(key);
 
-      if (visibleCount >= MAX_VISIBLE) {
-        queue.push({ options: current.options, key, count: current.count });
+      if (visibleCount >= getConfig().maxVisible) {
+        const item = { options: current.options, key, count: current.count };
+        const maxQ = getConfig().maxQueueSize ?? 100;
+        if (maxQ <= 0) {
+          droppedCount++;
+          emitMetrics();
+          return;
+        }
+        if (queue.length >= maxQ) {
+          queue.shift();
+          droppedCount++;
+        }
+        if (getConfig().aiPrioritization || current.options?.aiPrioritization) {
+          item.priority = calculateToastPriority(current.options);
+          queue.push(item);
+          queue.sort((a, b) => getItemPriority(b) - getItemPriority(a));
+        } else {
+          queue.push(item);
+        }
+        emitMetrics();
         await drainQueue();
         return;
       }
@@ -158,14 +340,11 @@ export async function showToast(options = {}) {
       }
     });
 
-    // AUDIT/FEATURE (toastPromise support): returns the computed key so
-    // callers can build a handle for targeted dismissal later — e.g.
-    // toastPromise() needs to dismiss THIS SPECIFIC loading toast when the
-    // promise settles, not whatever happens to be "most recent" by then.
-    // This does NOT change when showToast() resolves (still resolves
-    // right after scheduling the rAF callback, same as before) — it only
-    // adds a return VALUE where there was none. The actual toast element
-    // is still created asynchronously afterward, same as always.
+    // Broadcast creation to other tabs if not from sync
+    if (!options.fromSync && getConfig().syncTabs && broadcaster.isSupported()) {
+      broadcaster.broadcast('create', key, { options });
+    }
+
     return key;
   } catch (error) {
     console.error("showToast failed:", error);
@@ -191,7 +370,9 @@ async function createOne(options, key, initialCount) {
     }
 
     const outer = document.createElement("div");
-    Object.assign(outer.style, {
+    outer.className = "toast-outer-wrapper";
+    if (!getConfig().disableInlineStyles) {
+      Object.assign(outer.style, {
       position: "relative",
       display: "inline-block",
       overflow: "visible",
@@ -199,14 +380,18 @@ async function createOne(options, key, initialCount) {
       zIndex: "0",
       width: "100%",
       pointerEvents: "auto",
-    });
+    }); 
+    }
 
     const inner = document.createElement("div");
-    Object.assign(inner.style, {
+    inner.className = "toast-inner-wrapper";
+    if (!getConfig().disableInlineStyles) {
+      Object.assign(inner.style, {
       position: "relative",
       overflow: "hidden",
       zIndex: "1",
-    });
+    }); 
+    }
 
     inner.appendChild(toast);
     outer.appendChild(inner);
@@ -235,6 +420,8 @@ async function createOne(options, key, initialCount) {
     active.set(key, data);
     toast._key = key;
 
+    emitMetrics();
+
     if (data.count > 1) await updateBadge(data);
 
     data.timer = createDismissTimer(toast, options);
@@ -242,6 +429,7 @@ async function createOne(options, key, initialCount) {
   } catch (err) {
     console.error("Something went wrong: ", err);
     visibleCount = Math.max(0, visibleCount - 1);
+    emitMetrics();
     const el =
       document.querySelector('[id^="toast-container-"]') || document.body;
     el.appendChild(await createEmergencyToast(options, closeToast));
@@ -255,11 +443,13 @@ export async function dismissMostRecent() {
         const [pendingKey, pendingEntry] = Array.from(pending.entries()).at(-1);
         if (pendingEntry?.rafId) cancelAnimationFrame(pendingEntry.rafId);
         pending.delete(pendingKey);
+        emitMetrics();
         return;
       }
 
       if (queue.length > 0) {
         queue.pop();
+        emitMetrics();
         return;
       }
 
@@ -308,6 +498,7 @@ export async function closeAllToasts() {
     }
     pending.clear();
     queue.length = 0;
+    emitMetrics();
 
     const activeToasts = Array.from(active.values())
       .map((d) => d.toast)
@@ -338,11 +529,26 @@ export function resetToastManager() {
     data.outer?._pauseCleanup?.();
     data.toast?._cleanupCloseButton?.();
     data.toast?._cleanupCTA?.();
+    data.toast?._cleanupUndo?.();
     data.toast?._cleanupSwipe?.();
     data.toast?._cleanup?.();
+    if (data.toast?._progressAnimation) {
+      try {
+        data.toast._progressAnimation.cancel();
+      } catch {}
+      data.toast._progressAnimation = null;
+    }
+    const badge = data.outer?.querySelector(".toast-count-badge");
+    if (badge?._scaleTimer) {
+      clearTimeout(badge._scaleTimer);
+      badge._scaleTimer = null;
+    }
   }
   active.clear();
   visibleCount = 0;
+  droppedCount = 0;
+  isDraining = false;
+  emitMetrics();
 }
 
 export const dismiss = dismissMostRecent;
@@ -415,6 +621,11 @@ export async function closeToastByKey(key) {
   try {
     if (!key) return;
 
+    // Broadcast dismissal to other tabs
+    if (getConfig().syncTabs && broadcaster.isSupported()) {
+      broadcaster.broadcast('dismiss', key, {});
+    }
+
     // AUDIT/FEATURE FIX: toast creation is deferred one animation frame
     // (see showToast's rAF coalescing, used for grouping/dedup) — so a
     // caller holding a handle from createToast() can call dismiss()
@@ -433,6 +644,7 @@ export async function closeToastByKey(key) {
     if (pendingEntry) {
       cancelAnimationFrame(pendingEntry.rafId);
       pending.delete(key);
+      emitMetrics();
       return;
     }
 
@@ -443,6 +655,7 @@ export async function closeToastByKey(key) {
     const queueIndex = queue.findIndex((item) => item.key === key);
     if (queueIndex !== -1) {
       queue.splice(queueIndex, 1);
+      emitMetrics();
       return;
     }
 
@@ -453,16 +666,28 @@ export async function closeToastByKey(key) {
     data.outer?._pauseCleanup?.();
     data.toast?._cleanupCloseButton?.();
     data.toast?._cleanupCTA?.();
+    data.toast?._cleanupUndo?.();
     data.toast?._cleanupSwipe?.();
     data.toast?._cleanup?.();
+    if (data.toast?._progressAnimation) {
+      try {
+        data.toast._progressAnimation.cancel();
+      } catch {}
+      data.toast._progressAnimation = null;
+    }
+    const badge = data.outer?.querySelector(".toast-count-badge");
+    if (badge?._scaleTimer) {
+      clearTimeout(badge._scaleTimer);
+      badge._scaleTimer = null;
+    }
     // Clean up CTA click listener if present directly on button/link
     const ctaEl = data.toast?.querySelector("button, a");
     ctaEl?._cleanup?.();
 
     active.delete(key);
     visibleCount = Math.max(0, visibleCount - 1);
+    emitMetrics();
 
-    const badge = data.outer.querySelector(".toast-count-badge");
     if (badge) badge.remove();
 
     const animDuration = data.toast?._animationDuration ?? 400;
@@ -480,6 +705,8 @@ export async function closeToastByKey(key) {
       parentContainer.id?.startsWith("toast-container-")
     ) {
       try {
+        parentContainer._stackedCleanup?.();
+        unregisterContainer(parentContainer.id);
         parentContainer.remove();
       } catch {}
     } else if (parentContainer && parentContainer.getAttribute("data-stacked") === "true") {
@@ -492,16 +719,33 @@ export async function closeToastByKey(key) {
   }
 }
 
+let isDraining = false;
+
 async function drainQueue() {
-  while (visibleCount < MAX_VISIBLE && queue.length) {
-    const item = queue.shift();
-    if (active.has(item.key)) {
-      const data = active.get(item.key);
-      data.count += item.count;
-      await updateBadge(data);
-      continue;
+  if (isDraining) return;
+  isDraining = true;
+  try {
+    const config = getConfig();
+
+    // Apply AI priority sorting if enabled
+    if (config.aiPrioritization && queue.length > 1) {
+      queue.sort((a, b) => getItemPriority(b) - getItemPriority(a)); // Higher priority first
     }
-    void createOne(item.options, item.key, item.count);
+
+    while (visibleCount < config.maxVisible && queue.length) {
+      const item = queue.shift();
+      if (active.has(item.key)) {
+        const data = active.get(item.key);
+        data.count += item.count;
+        await updateBadge(data);
+        emitMetrics();
+        continue;
+      }
+      await createOne(item.options, item.key, item.count);
+    }
+    emitMetrics();
+  } finally {
+    isDraining = false;
   }
 }
 
@@ -510,25 +754,39 @@ async function removeWithTransition(el, targetEl, animationDurationMs = 400) {
 
   return new Promise((resolve) => {
     let done = false;
+    let fallbackTimer = null;
+    const animEl = targetEl || el.firstElementChild || el;
+
     const finish = () => {
       if (done) return;
       done = true;
+      if (fallbackTimer) {
+        clearTimeout(fallbackTimer);
+        fallbackTimer = null;
+      }
+      try {
+        animEl?.removeEventListener?.("transitionend", onEnd, true);
+      } catch {}
+      const toastEl = el.querySelector?.(".toast") || el;
+      if (toastEl?._pooledId) {
+        try {
+          getToastPool().release(toastEl, toastEl._pooledId);
+        } catch {}
+      }
       removeElement(el);
       resolve();
     };
 
-    const animEl = targetEl || el.firstElementChild || el;
-    if (!animEl) return resolve();
-
     const onEnd = (e) => {
       try {
         if (e.target !== animEl) return;
-        animEl.removeEventListener("transitionend", onEnd, true);
         finish();
       } catch (error) {
         console.error("removeWithTransition error:", error);
       }
     };
+
+    if (!animEl) return finish();
 
     try {
       animEl.addEventListener("transitionend", onEnd, true);
@@ -538,14 +796,10 @@ async function removeWithTransition(el, targetEl, animationDurationMs = 400) {
 
     // Use animation duration + 100ms buffer for fallback timeout
     const fallbackTimeout = animationDurationMs + 100;
-    setTimeout(() => {
-      try {
-        animEl.removeEventListener("transitionend", onEnd, true);
-        finish();
-      } catch (error) {
-        console.error("removeWithTransition error:", error);
-      }
-    }, fallbackTimeout);
+    fallbackTimer = setTimeout(finish, fallbackTimeout);
+    if (typeof fallbackTimer?.unref === "function") {
+      fallbackTimer.unref();
+    }
   });
 }
 
@@ -566,7 +820,8 @@ async function updateBadge({ outer, count }) {
     badge.className = "toast-count-badge";
     badge.setAttribute("aria-label", `${count} identical notifications`);
 
-    Object.assign(badge.style, {
+    if (!getConfig().disableInlineStyles) {
+      Object.assign(badge.style, {
       position: "absolute",
       top: "6px",
       right: "6px",
@@ -585,7 +840,8 @@ async function updateBadge({ outer, count }) {
       zIndex: "2",
       pointerEvents: "none",
       transition: "transform 150ms ease",
-    });
+    }); 
+    }
 
     outer.appendChild(badge);
   }
@@ -593,8 +849,17 @@ async function updateBadge({ outer, count }) {
   badge.textContent = count > 99 ? "99+" : String(count);
 
   try {
-    badge.style.transform = "scale(1.2)";
-    setTimeout(() => (badge.style.transform = "scale(1)"), 150);
+    if (!shouldReduceMotion()) {
+      if (badge._scaleTimer) clearTimeout(badge._scaleTimer);
+      badge.style.transform = "scale(1.2)";
+      badge._scaleTimer = setTimeout(() => {
+        badge.style.transform = "scale(1)";
+        badge._scaleTimer = null;
+      }, 150);
+      if (typeof badge._scaleTimer?.unref === "function") {
+        badge._scaleTimer.unref();
+      }
+    }
   } catch (error) {
     console.error("updateBadge animation error:", error);
   }
@@ -779,7 +1044,12 @@ export async function updateToastByKey(key, newOptions = {}) {
       typeof newOptions.sound === "string"
         ? newOptions.sound
         : newOptions.type || data.options.type || "info";
-    playTone(tone);
+    const preset =
+      newOptions.soundPreset ||
+      data.options.soundPreset ||
+      getConfig().soundPreset ||
+      "modern";
+    playTone(tone, preset);
   }
 
   // 7. Stacked update
