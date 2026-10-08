@@ -34,7 +34,21 @@ class ToastBroadcaster {
    * @returns {string}
    */
   _generateTabId() {
-    return `tab-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
+    const timestamp = Date.now().toString(36);
+    let randStr = "";
+    if (typeof crypto !== "undefined" && typeof crypto.getRandomValues === "function") {
+      try {
+        const buf = new Uint32Array(2);
+        crypto.getRandomValues(buf);
+        randStr = `${buf[0].toString(36)}${buf[1].toString(36)}`.slice(0, 9);
+      } catch {
+        // Fallback if environment restricts getRandomValues
+      }
+    }
+    if (!randStr) {
+      randStr = Math.random().toString(36).slice(2, 11);
+    }
+    return `tab-${timestamp}-${randStr}`;
   }
 
   /**

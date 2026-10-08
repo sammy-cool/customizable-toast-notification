@@ -1889,5 +1889,48 @@ describe("toast-pool.js — clean DOM removal and usePool integration", () => {
   });
 });
 
+describe("id.js — monotonic counter, collision resistance, and prefix sanitization", () => {
+  test("generates 1,000 unique IDs synchronously with 0 collisions", async () => {
+    const { generateToastId, resetToastIdCounter } = await import("../../src/utils/id.js");
+    resetToastIdCounter();
+
+    const ids = new Set();
+    const count = 1000;
+    for (let i = 0; i < count; i++) {
+      const id = generateToastId("test");
+      assert.match(id, /^test-[a-z0-9]+-[a-z0-9]+$/);
+      ids.add(id);
+    }
+    assert.equal(ids.size, count, "1,000 synchronously generated IDs must have 0 collisions");
+    resetToastIdCounter();
+  });
+
+  test("sanitizes prefixes with spaces, special characters, and edge cases", async () => {
+    const { generateToastId } = await import("../../src/utils/id.js");
+    assert.match(generateToastId("my toast #1"), /^my-toast-1-[a-z0-9]+-[a-z0-9]+$/);
+    assert.match(generateToastId("---"), /^toast-[a-z0-9]+-[a-z0-9]+$/);
+    assert.match(generateToastId("alert@popup!"), /^alert-popup-[a-z0-9]+-[a-z0-9]+$/);
+    assert.match(generateToastId(null), /^toast-[a-z0-9]+-[a-z0-9]+$/);
+  });
+});
+
+describe("toast-broadcast.js — tabId generation entropy and modern methods", () => {
+  test("_generateTabId generates valid and unique tab IDs", async () => {
+    const { getToastBroadcaster, resetToastBroadcaster } = await import("../../src/utils/toast-broadcast.js");
+    resetToastBroadcaster();
+
+    const broadcaster = getToastBroadcaster();
+    const id1 = broadcaster._generateTabId();
+    const id2 = broadcaster._generateTabId();
+
+    assert.match(id1, /^tab-[a-z0-9]+-[a-z0-9]+$/);
+    assert.match(id2, /^tab-[a-z0-9]+-[a-z0-9]+$/);
+    assert.notEqual(id1, id2);
+
+    resetToastBroadcaster();
+  });
+});
+
+
 
 

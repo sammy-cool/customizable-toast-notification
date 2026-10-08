@@ -18,6 +18,7 @@ import { getToastPool, resetToastPool } from "./utils/toast-pool.js";
 import { getToastBroadcaster, resetToastBroadcaster } from "./utils/toast-broadcast.js";
 import { calculateToastPriority, categorizeToast } from "./utils/ai-scorer.js";
 import { createGestureDetector, detectPinch, isFlick, calculateVelocity } from "./utils/multi-touch.js";
+import { generateToastId, resetToastIdCounter } from "./utils/id.js";
 
 /**
  * @typedef {'info' | 'success' | 'error' | 'warning'} ToastType
@@ -499,6 +500,8 @@ export {
   detectPinch,
   isFlick,
   calculateVelocity,
+  generateToastId,
+  resetToastIdCounter,
 };
 
 if (typeof window !== "undefined" && typeof document !== "undefined") {
@@ -558,6 +561,8 @@ try {
       detectPinch,
       isFlick,
       calculateVelocity,
+      generateToastId,
+      resetToastIdCounter,
     };
   }
 } catch (error) {
