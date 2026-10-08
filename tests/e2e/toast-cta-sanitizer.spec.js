@@ -24,6 +24,7 @@ test.describe("CTA — button variant", () => {
       window.customizableToast.createToast({
         message: "click the button",
         duration: 30000,
+        animationDuration: "0.1s",
         cta: {
           label: "Do it",
           onClick: () => {
@@ -37,12 +38,14 @@ test.describe("CTA — button variant", () => {
       .locator('[id^="toast-container-"] [id^="toast-"]')
       .first();
     const btn = page.getByRole("button", { name: "Do it" });
+    await expect(toast).toBeVisible();
     await expect(btn).toBeVisible();
+    await page.waitForTimeout(150);
     await btn.click();
 
     await page.waitForFunction(() => window.__ctaClicked === true);
     expect(await page.evaluate(() => window.__ctaClicked)).toBe(true);
-    await expect(toast).toHaveCount(0, { timeout: 4000 }); // autoClose default: true
+    await expect(page.locator('[id^="toast-container-"] [id^="toast-"]')).toHaveCount(0, { timeout: 4000 }); // autoClose default: true
   });
 
   test("autoClose: false keeps the toast open after CTA click", async ({
@@ -59,7 +62,9 @@ test.describe("CTA — button variant", () => {
       .locator('[id^="toast-container-"] [id^="toast-"]')
       .first();
     const btn = page.getByRole("button", { name: "Sync" });
+    await expect(toast).toBeVisible();
     await expect(btn).toBeVisible();
+    await page.waitForTimeout(150);
     await btn.click();
     await page.waitForTimeout(500);
     await expect(toast).toBeVisible();
@@ -67,12 +72,23 @@ test.describe("CTA — button variant", () => {
 
   test("async onClick is awaited before autoClose runs", async ({ page }) => {
     await page.evaluate(() => {
+      window.__asyncStarted = false;
+      window.__asyncDone = false;
       window.customizableToast.createToast({
         message: "async action",
         duration: 30000,
+        animationDuration: "0.1s",
         cta: {
           label: "Sync Now",
-          onClick: () => new Promise((resolve) => setTimeout(resolve, 600)),
+          onClick: () => {
+            window.__asyncStarted = true;
+            return new Promise((resolve) =>
+              setTimeout(() => {
+                window.__asyncDone = true;
+                resolve();
+              }, 600),
+            );
+          },
         },
       });
     });
@@ -80,22 +96,21 @@ test.describe("CTA — button variant", () => {
       .locator('[id^="toast-container-"] [id^="toast-"]')
       .first();
     const btn = page.getByRole("button", { name: "Sync Now" });
+    await expect(toast).toBeVisible();
     await expect(btn).toBeVisible();
+    await page.waitForTimeout(150); // wait for 0.1s entry animation to settle
     await btn.click();
 
+    // Verify onClick has actually started
+    await page.waitForFunction(() => window.__asyncStarted === true);
+
     // Should NOT have closed immediately — onClick's promise hasn't resolved yet
-    await page.waitForTimeout(200);
     await expect(toast).toBeVisible();
 
-    // TEST FIX: this was `timeout: 1500` starting from the 200ms
-    // checkpoint (~1700ms total budget for a 600ms wait + real removal
-    // overhead). Fine on a fast local Chromium run, too tight on a shared
-    // GitHub Actions runner — observed failing identically across
-    // chromium/firefox/webkit in CI, which points to generic environment
-    // slowness rather than a real per-browser bug. The test's actual
-    // intent (autoClose waits for the promise, doesn't fire early) is
-    // already proven by the toBeVisible() check above; this just needs
-    // enough room to eventually observe the close.
+    // Verify promise completes
+    await page.waitForFunction(() => window.__asyncDone === true);
+
+    // Once async action finishes, autoClose dismisses the toast
     await expect(page.locator('[id^="toast-container-"] [id^="toast-"]')).toHaveCount(0, { timeout: 8000 });
   });
 
