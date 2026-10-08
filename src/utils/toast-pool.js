@@ -10,13 +10,14 @@
  * @typedef {Object} PooledToastElement
  * @property {HTMLElement} element - The reusable toast element
  * @property {boolean} inUse - Whether element is currently allocated
- * @property {string} id - Unique toast ID
+ * @property {string | null} id - Unique toast ID
  */
 
 class ToastElementPool {
   constructor(initialSize = 5, maxSize = 50) {
     this.initialSize = Math.max(1, Math.floor(initialSize));
     this.maxSize = Math.max(this.initialSize, Math.floor(maxSize));
+    /** @type {Array<{element: HTMLElement, inUse: boolean, id: string | null}>} */
     this.pool = [];
     this.inUseCount = 0;
 
@@ -91,6 +92,7 @@ class ToastElementPool {
    * Release a toast element back to pool
    * @param {HTMLElement} element - The element to release
    * @param {string} toastId - The toast ID being released
+   * @returns {void}
    */
   release(element, toastId) {
     if (!element || !toastId) {
@@ -101,10 +103,12 @@ class ToastElementPool {
     const poolEntry = this.pool.find((entry) => entry.id === toastId);
 
     if (poolEntry && poolEntry.inUse) {
-      // Remove all event listeners and children
-      const clone = poolEntry.element.cloneNode(false);
-      poolEntry.element.parentNode?.replaceChild(clone, poolEntry.element);
-      poolEntry.element = clone;
+      // Remove cleanly from DOM if still attached
+      if (poolEntry.element.parentNode) {
+        poolEntry.element.parentNode.removeChild(poolEntry.element);
+      }
+      // Re-create a clean element template to purge all attached listeners/state
+      poolEntry.element = this._createToastElement();
 
       // Reset state
       poolEntry.inUse = false;
@@ -115,7 +119,7 @@ class ToastElementPool {
 
   /**
    * Get pool statistics for monitoring
-   * @returns {Object} - Pool stats
+   * @returns {{total: number, inUse: number, available: number, utilization: number, maxSize: number}} - Pool stats
    */
   getStats() {
     return {
@@ -129,6 +133,7 @@ class ToastElementPool {
 
   /**
    * Clear all pooled elements (for cleanup/testing)
+   * @returns {void}
    */
   clear() {
     this.pool.forEach((entry) => {
@@ -143,6 +148,7 @@ class ToastElementPool {
   /**
    * Compact pool (remove unused elements above initial size)
    * Useful for long-running apps with temporary toast spikes
+   * @returns {void}
    */
   compact() {
     if (this.pool.length > this.initialSize) {

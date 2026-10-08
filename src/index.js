@@ -1,6 +1,6 @@
 "use strict";
 
-import { setConfig, getConfig, shouldReduceMotion } from "./utils/config.js";
+import { setConfig, getConfig, resetConfig, shouldReduceMotion } from "./utils/config.js";
 
 import {
   showToast,
@@ -112,6 +112,7 @@ import { createGestureDetector, detectPinch, isFlick, calculateVelocity } from "
  * @property {boolean} [sound]
  * @property {boolean} [syncTabs]
  * @property {boolean} [aiPrioritization]
+ * @property {((context: Object) => number | { score: number }) | null} [priorityScorer]
  */
 
 /**
@@ -480,6 +481,7 @@ export {
   toastPromise,
   setConfig,
   getConfig,
+  resetConfig,
   shouldReduceMotion,
   resetToastManager,
   resetContainerRegistry,
@@ -533,6 +535,7 @@ try {
     window.customizableToast = {
       setConfig,
       getConfig,
+      resetConfig,
       shouldReduceMotion,
       version,
       createToast: createToastWithPriority,

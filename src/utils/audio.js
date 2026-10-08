@@ -34,11 +34,13 @@ function getAudioContext() {
 /**
  * Synthesizes a pleasant audio chime or tone using pure Web Audio API oscillators.
  * Zero external audio assets or network requests.
- * @param {'success' | 'error' | 'warning' | 'info' | 'pop' | string} toneType
+ * @param {'success' | 'error' | 'warning' | 'info' | 'pop' | string} [toneType="info"]
+ * @returns {void}
  */
 export function playTone(toneType = "info") {
   if (typeof window !== "undefined" && window.customizableToast && typeof window.customizableToast.playTone === "function" && window.customizableToast.playTone !== playTone) {
-    return window.customizableToast.playTone(toneType);
+    window.customizableToast.playTone(toneType);
+    return;
   }
   if (!audioEnabled) return;
   const ctx = getAudioContext();

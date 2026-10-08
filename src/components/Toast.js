@@ -3,6 +3,8 @@
 
 import { createElementWithId } from "../utils/dom.js";
 import { applyRichStyling, createEmergencyToast } from "./toast-utils.js";
+import { getToastPool } from "../utils/toast-pool.js";
+import { generateToastId } from "../utils/id.js";
 
 /**
  * Creates a multi-layer toast element with satellite-grade fallbacks
@@ -17,7 +19,13 @@ export async function createToastElement(options, onClose) {
 
   // PRIMARY: Full-featured toast
   try {
-    toast = await createElementWithId(tagName, prefix);
+    if (options?.usePool) {
+      const rawId = generateToastId(prefix);
+      toast = getToastPool().acquire(rawId);
+      toast._pooledId = rawId;
+    } else {
+      toast = await createElementWithId(tagName, prefix);
+    }
     await applyRichStyling(toast, options, onClose);
     return toast;
   } catch (error) {

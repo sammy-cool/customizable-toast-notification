@@ -1698,6 +1698,196 @@ describe("config.js — Phase 3 configuration options", () => {
     assert.equal(getConfig().syncTabs, false);
     assert.equal(getConfig().aiPrioritization, false);
   });
+
+  test("resetConfig resets all properties and cleans document attributes", async () => {
+    freshDom();
+    const { setConfig, getConfig, resetConfig, getToastRoot, shouldReduceMotion } = await import("../../src/utils/config.js");
+
+    setConfig({
+      theme: "dark",
+      maxVisible: 10,
+      zIndex: 50000,
+      reducedMotion: "always",
+      stacked: true,
+      swipeToDismiss: false,
+      priorityScorer: () => 99,
+    });
+
+    assert.equal(getConfig().theme, "dark");
+    assert.equal(getConfig().maxVisible, 10);
+    assert.equal(getConfig().zIndex, 50000);
+    assert.equal(getConfig().stacked, true);
+    assert.equal(getConfig().swipeToDismiss, false);
+    assert.equal(typeof getConfig().priorityScorer, "function");
+    assert.equal(document.documentElement.getAttribute("data-toast-theme"), "dark");
+    assert.equal(document.documentElement.getAttribute("data-toast-reduced-motion"), "always");
+    assert.equal(shouldReduceMotion(), true);
+
+    const resetSnapshot = resetConfig();
+    assert.equal(resetSnapshot.theme, "light");
+    assert.equal(resetSnapshot.maxVisible, 3);
+    assert.equal(resetSnapshot.zIndex, 9999);
+    assert.equal(resetSnapshot.stacked, false);
+    assert.equal(resetSnapshot.swipeToDismiss, true);
+    assert.equal(resetSnapshot.priorityScorer, null);
+    assert.equal(document.documentElement.getAttribute("data-toast-theme"), null);
+    assert.equal(document.documentElement.getAttribute("data-toast-reduced-motion"), null);
+
+    // Defensive input tests
+    setConfig(null);
+    setConfig([]);
+    setConfig("invalid");
+    assert.equal(getConfig().maxVisible, 3);
+
+    setConfig({ maxVisible: -5, zIndex: "invalid" });
+    assert.equal(getConfig().maxVisible, 3);
+
+    // Mount target
+    const customDiv = document.createElement("div");
+    setConfig({ targetNode: customDiv });
+    assert.equal(getToastRoot(), customDiv);
+
+    resetConfig();
+    assert.equal(getToastRoot(), document.body);
+  });
 });
+
+describe("ai-scorer.js — defensive resilience and deterministic scoring", () => {
+  test("calculateToastPriority handles null, undefined, numeric, and object messages safely", async () => {
+    const { calculateToastPriority, calculateDeterministicAIBoost } = await import("../../src/utils/ai-scorer.js");
+
+    const nullMsg = calculateToastPriority({ type: "info", message: null });
+    assert.ok(typeof nullMsg.score === "number" && !Number.isNaN(nullMsg.score));
+
+    const undefMsg = calculateToastPriority({ type: "error", message: undefined });
+    assert.ok(typeof undefMsg.score === "number");
+
+    const numMsg = calculateToastPriority({ type: "warning", message: 404 });
+    assert.ok(typeof numMsg.score === "number");
+
+    const empty = calculateToastPriority({});
+    assert.equal(empty.score, 50);
+
+    // Test deterministic boost
+    const boost1 = calculateDeterministicAIBoost({ message: "Security warning payment", options: { cta: {} } }, { keywords: ["security", "warning"] });
+    const boost2 = calculateDeterministicAIBoost({ message: "Security warning payment", options: { cta: {} } }, { keywords: ["security", "warning"] });
+    assert.equal(boost1, boost2);
+    assert.ok(boost1 >= 5 && boost1 <= 15);
+  });
+
+  test("scoreWithTypeSafeAI and prioritizeQueue behave deterministically with customScorer support", async () => {
+    const { scoreWithTypeSafeAI, prioritizeQueue, createPriorityQueueManager } = await import("../../src/utils/ai-scorer.js");
+
+    const score1 = await scoreWithTypeSafeAI({ type: "error", message: "Database failure critical" }, { useAI: true });
+    const score2 = await scoreWithTypeSafeAI({ type: "error", message: "Database failure critical" }, { useAI: true });
+    assert.equal(score1.score, score2.score);
+    assert.equal(score1.aiEnhanced, true);
+
+    // Custom scorer hook
+    const customResult = await scoreWithTypeSafeAI(
+      { type: "info", message: "VIP user arrived" },
+      { customScorer: () => 98 }
+    );
+    assert.equal(customResult.score, 98);
+
+    // Queue prioritization
+    const queue = [
+      { key: "1", options: { type: "info", message: "Routine sync" } },
+      { key: "2", options: { type: "error", message: "Critical payment outage" } },
+      { key: "3", options: { type: "warning", message: "High latency" } },
+    ];
+    const sorted = prioritizeQueue(queue);
+    assert.equal(sorted[0].key, "2"); // Critical error first
+
+    // Prioritize with custom scorer
+    const customSorted = prioritizeQueue(queue, {
+      customScorer: (ctx) => (ctx.type === "info" ? 100 : 10),
+    });
+    assert.equal(customSorted[0].key, "1"); // Info prioritized by custom scorer
+
+    // Priority queue manager
+    const manager = createPriorityQueueManager({ minScoreThreshold: 20 });
+    const resQueue = manager.addWithPriority(
+      { key: "urgent", options: { type: "error", message: "Immediate action required" } },
+      []
+    );
+    assert.equal(resQueue.length, 1);
+    const stats = manager.getStats();
+    assert.equal(stats.totalScored, 1);
+  });
+});
+
+describe("multi-touch.js — defensive coordinate math and gesture edge cases", () => {
+  test("calculateDistance, calculateVelocity, and isFlick guard against malformed inputs", async () => {
+    const { calculateDistance, calculateVelocity, isFlick } = await import("../../src/utils/multi-touch.js");
+
+    assert.equal(calculateDistance(null, null), 0);
+    assert.equal(calculateDistance({ x: 0 }, { y: 10 }), 0);
+    assert.equal(calculateDistance(undefined, { x: 5, y: 5 }), 0);
+
+    assert.equal(calculateVelocity(NaN, 100), 0);
+    assert.equal(calculateVelocity(100, -10), 0);
+    assert.equal(calculateVelocity(0, 0), 0);
+
+    assert.equal(isFlick(NaN, 100), false);
+    assert.equal(isFlick(100, NaN), false);
+  });
+});
+
+describe("toast-broadcast.js — broadcast parameter normalization", () => {
+  test("broadcast handles omitted toastId parameter gracefully", async () => {
+    freshDom();
+    const { getToastBroadcaster, resetToastBroadcaster } = await import("../../src/utils/toast-broadcast.js");
+    resetToastBroadcaster();
+
+    const broadcaster = getToastBroadcaster();
+    // Test broadcast with (type, payload) omitting toastId
+    assert.doesNotThrow(() => {
+      broadcaster.broadcast("ping", { test: true });
+    });
+    assert.doesNotThrow(() => {
+      broadcaster.broadcast("sync", "toast-123", { count: 2 });
+    });
+
+    resetToastBroadcaster();
+  });
+});
+
+describe("toast-pool.js — clean DOM removal and usePool integration", () => {
+  test("pool.release removes element from parentNode cleanly without leaving orphan clones", async () => {
+    freshDom();
+    const { ToastElementPool, resetToastPool } = await import("../../src/utils/toast-pool.js");
+    resetToastPool();
+
+    const pool = new ToastElementPool(2, 5);
+    const parent = document.createElement("div");
+    document.body.appendChild(parent);
+
+    const el = pool.acquire("leak-test");
+    parent.appendChild(el);
+    assert.equal(parent.children.length, 1);
+
+    pool.release(el, "leak-test");
+    // Verify parent has 0 children left (no orphan cloned div in DOM)
+    assert.equal(parent.children.length, 0);
+
+    resetToastPool();
+  });
+
+  test("createToastElement supports usePool: true", async () => {
+    freshDom();
+    const { createToastElement } = await import("../../src/components/Toast.js");
+    const { getToastPool, resetToastPool } = await import("../../src/utils/toast-pool.js");
+    resetToastPool();
+
+    const pooledToast = await createToastElement({ message: "Pooled toast test", usePool: true }, () => {});
+    assert.ok(pooledToast);
+    assert.ok(pooledToast._pooledId);
+    assert.equal(getToastPool().getStats().inUse, 1);
+
+    resetToastPool();
+  });
+});
+
 
 

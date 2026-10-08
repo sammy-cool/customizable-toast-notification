@@ -66,14 +66,14 @@ class ToastBroadcaster {
     if (!this.channel) return;
 
     // Request sync from existing leader
-    this.broadcast('sync-request', {});
+    this.broadcast('sync-request', '', {});
 
     // If no response within 1 second, become leader
     this.leaderTimer = setTimeout(() => {
       this.leaderTimer = null;
       if (!this.isLeadTab) {
         this.isLeadTab = true;
-        this.broadcast('leader-elected', { tabId: this.tabId });
+        this.broadcast('leader-elected', '', { tabId: this.tabId });
       }
     }, 1000);
     // Same Node event-loop-hang concern as the channel above.
@@ -83,18 +83,27 @@ class ToastBroadcaster {
   /**
    * Broadcast a toast event to other tabs
    * @param {string} type - Event type
-   * @param {string} toastId - Toast ID
+   * @param {string} [toastId=''] - Toast ID
    * @param {Object} [payload={}] - Event payload
    */
-  broadcast(type, toastId, payload = {}) {
+  broadcast(type, toastId = '', payload = {}) {
     if (!this.supportsBroadcastChannel || !this.channel) {
       return;
     }
 
+    let actualToastId = toastId;
+    let actualPayload = payload;
+
+    // Gracefully handle if caller passed (type, payload) omitting toastId
+    if (typeof toastId === 'object' && toastId !== null && Object.keys(payload).length === 0) {
+      actualPayload = toastId;
+      actualToastId = '';
+    }
+
     const message = {
       type,
-      toastId,
-      payload,
+      toastId: typeof actualToastId === 'string' ? actualToastId : String(actualToastId ?? ''),
+      payload: (actualPayload && typeof actualPayload === 'object') ? actualPayload : {},
       timestamp: Date.now(),
       tabId: this.tabId,
     };

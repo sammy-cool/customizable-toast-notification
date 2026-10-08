@@ -29,6 +29,9 @@
  * @returns {number}
  */
 export function calculateDistance(p1, p2) {
+  if (!p1 || !p2 || typeof p1.x !== 'number' || typeof p2.x !== 'number' || typeof p1.y !== 'number' || typeof p2.y !== 'number') {
+    return 0;
+  }
   const dx = p2.x - p1.x;
   const dy = p2.y - p1.y;
   return Math.sqrt(dx * dx + dy * dy);
@@ -41,20 +44,26 @@ export function calculateDistance(p1, p2) {
  * @returns {number} - Velocity in pixels/millisecond
  */
 export function calculateVelocity(distance, duration) {
-  if (duration <= 0) return Infinity;
-  return Math.abs(distance) / duration;
+  const d = Number(distance);
+  const dur = Number(duration);
+  if (!Number.isFinite(d) || !Number.isFinite(dur) || dur < 0) return 0;
+  if (dur === 0) return d === 0 ? 0 : Infinity;
+  return Math.abs(d) / dur;
 }
 
 /**
  * Detect if gesture is a flick (fast swipe with high velocity)
  * @param {number} velocity - Gesture velocity (px/ms)
  * @param {number} distance - Distance traveled (px)
- * @param {number} velocityThreshold - Minimum velocity for flick (default 0.5 px/ms)
- * @param {number} distanceThreshold - Minimum distance for flick (default 50px)
+ * @param {number} [velocityThreshold=0.5] - Minimum velocity for flick (default 0.5 px/ms)
+ * @param {number} [distanceThreshold=50] - Minimum distance for flick (default 50px)
  * @returns {boolean}
  */
 export function isFlick(velocity, distance, velocityThreshold = 0.5, distanceThreshold = 50) {
-  return velocity >= velocityThreshold && Math.abs(distance) >= distanceThreshold;
+  const v = Number(velocity);
+  const d = Number(distance);
+  if (!Number.isFinite(v) || !Number.isFinite(d)) return false;
+  return v >= velocityThreshold && Math.abs(d) >= distanceThreshold;
 }
 
 /**
@@ -261,7 +270,7 @@ export function createGestureDetector(element, options = {}) {
     attach() {
       if (!element) return;
       element.addEventListener('touchstart', handlers.onTouchStart, { passive: true });
-      element.addEventListener('touchmove', handlers.onTouchMove, { passive: false });
+      element.addEventListener('touchmove', handlers.onTouchMove, { passive: true });
       element.addEventListener('touchend', handlers.onTouchEnd, { passive: true });
       element.addEventListener('touchcancel', handlers.onTouchEnd, { passive: true });
     },

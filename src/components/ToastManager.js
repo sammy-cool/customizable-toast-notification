@@ -13,6 +13,7 @@ import { createLoader } from "./loader.js";
 import { getConfig, shouldReduceMotion } from "../utils/config.js";
 import { getToastBroadcaster } from "../utils/toast-broadcast.js";
 import { calculateToastPriority } from "../utils/ai-scorer.js";
+import { getToastPool } from "../utils/toast-pool.js";
 
 
 const active = new Map();
@@ -89,6 +90,23 @@ if (broadcaster.isSupported() && typeof window !== 'undefined') {
 function getItemPriority(item) {
   const cached = item?.priority?.score;
   if (typeof cached === "number" && Number.isFinite(cached)) return cached;
+
+  const config = getConfig();
+  if (typeof config.priorityScorer === "function") {
+    try {
+      const res = config.priorityScorer({
+        type: item?.options?.type || "info",
+        message: item?.options?.message || "",
+        duration: item?.options?.duration,
+        options: item?.options,
+      });
+      if (typeof res === "number" && Number.isFinite(res)) return res;
+      if (res && typeof res.score === "number" && Number.isFinite(res.score)) return res.score;
+    } catch (err) {
+      console.warn("[Toast] Custom priorityScorer error, falling back to built-in:", err);
+    }
+  }
+
   return calculateToastPriority(item?.options).score;
 }
 
@@ -126,48 +144,55 @@ export function updateStackedLayout(container) {
 
   items.forEach((item, index) => {
     const depthFromTop = count - 1 - index;
-    item.style.transition =
-      "transform 240ms cubic-bezier(0.16, 1, 0.3, 1), margin 240ms cubic-bezier(0.16, 1, 0.3, 1), opacity 240ms ease";
+    const depthKey = isExpanded ? "expanded" : (depthFromTop >= 3 ? "overflow" : String(depthFromTop));
+    if (typeof item.setAttribute === "function") {
+      item.setAttribute("data-stacked-depth", depthKey);
+    }
 
-    if (isExpanded) {
-      item.style.transform = "none";
-      item.style.marginTop = "0px";
-      item.style.marginBottom = "10px";
-      item.style.opacity = "1";
-      item.style.zIndex = String(100 + index);
-      item.style.pointerEvents = "auto";
-    } else {
-      if (depthFromTop === 0) {
-        item.style.transform = "scale(1)";
+    if (!getConfig().disableInlineStyles) {
+      item.style.transition =
+        "transform 240ms cubic-bezier(0.16, 1, 0.3, 1), margin 240ms cubic-bezier(0.16, 1, 0.3, 1), opacity 240ms ease";
+
+      if (isExpanded) {
+        item.style.transform = "none";
         item.style.marginTop = "0px";
-        item.style.marginBottom = "0px";
+        item.style.marginBottom = "10px";
         item.style.opacity = "1";
-        item.style.zIndex = "30";
-        item.style.pointerEvents = "auto";
-      } else if (depthFromTop === 1) {
-        const y = isTop ? 10 : -10;
-        item.style.transform = `scale(0.95) translateY(${y}px)`;
-        item.style.marginTop = "-55px";
-        item.style.marginBottom = "0px";
-        item.style.opacity = "0.9";
-        item.style.zIndex = "20";
-        item.style.pointerEvents = "auto";
-      } else if (depthFromTop === 2) {
-        const y = isTop ? 20 : -20;
-        item.style.transform = `scale(0.90) translateY(${y}px)`;
-        item.style.marginTop = "-55px";
-        item.style.marginBottom = "0px";
-        item.style.opacity = "0.75";
-        item.style.zIndex = "10";
+        item.style.zIndex = String(100 + index);
         item.style.pointerEvents = "auto";
       } else {
-        const y = isTop ? 30 : -30;
-        item.style.transform = `scale(0.85) translateY(${y}px)`;
-        item.style.marginTop = "-55px";
-        item.style.marginBottom = "0px";
-        item.style.opacity = "0";
-        item.style.zIndex = "1";
-        item.style.pointerEvents = "none";
+        if (depthFromTop === 0) {
+          item.style.transform = "scale(1)";
+          item.style.marginTop = "0px";
+          item.style.marginBottom = "0px";
+          item.style.opacity = "1";
+          item.style.zIndex = "30";
+          item.style.pointerEvents = "auto";
+        } else if (depthFromTop === 1) {
+          const y = isTop ? 10 : -10;
+          item.style.transform = `scale(0.95) translateY(${y}px)`;
+          item.style.marginTop = "-55px";
+          item.style.marginBottom = "0px";
+          item.style.opacity = "0.9";
+          item.style.zIndex = "20";
+          item.style.pointerEvents = "auto";
+        } else if (depthFromTop === 2) {
+          const y = isTop ? 20 : -20;
+          item.style.transform = `scale(0.90) translateY(${y}px)`;
+          item.style.marginTop = "-55px";
+          item.style.marginBottom = "0px";
+          item.style.opacity = "0.75";
+          item.style.zIndex = "10";
+          item.style.pointerEvents = "auto";
+        } else {
+          const y = isTop ? 30 : -30;
+          item.style.transform = `scale(0.85) translateY(${y}px)`;
+          item.style.marginTop = "-55px";
+          item.style.marginBottom = "0px";
+          item.style.opacity = "0";
+          item.style.zIndex = "1";
+          item.style.pointerEvents = "none";
+        }
       }
     }
   });
@@ -614,6 +639,12 @@ async function removeWithTransition(el, targetEl, animationDurationMs = 400) {
     const finish = () => {
       if (done) return;
       done = true;
+      const toastEl = el.querySelector?.(".toast") || el;
+      if (toastEl?._pooledId) {
+        try {
+          getToastPool().release(toastEl, toastEl._pooledId);
+        } catch {}
+      }
       removeElement(el);
       resolve();
     };

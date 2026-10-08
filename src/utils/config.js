@@ -24,9 +24,10 @@
  * @property {boolean} sound
  * @property {boolean} syncTabs
  * @property {boolean} aiPrioritization
+ * @property {((context: Object) => number | { score: number }) | null} [priorityScorer]
  */
 
-const globalConfig = {
+const DEFAULT_GLOBAL_CONFIG = Object.freeze({
   maxVisible: 3,
   zIndex: 9999,
   targetNode: null,
@@ -39,7 +40,10 @@ const globalConfig = {
   sound: true,
   syncTabs: false,
   aiPrioritization: false,
-};
+  priorityScorer: null,
+});
+
+const globalConfig = { ...DEFAULT_GLOBAL_CONFIG };
 
 function isValidMountTarget(value) {
   return value && typeof value === "object" && typeof value.appendChild === "function";
@@ -55,7 +59,21 @@ export function setConfig(options = {}) {
     return getConfig();
   }
 
-  const { maxVisible, zIndex, targetNode, disableInlineStyles, reducedMotion, defaultPosition, theme, stacked, swipeToDismiss, sound, syncTabs, aiPrioritization } = options;
+  const {
+    maxVisible,
+    zIndex,
+    targetNode,
+    disableInlineStyles,
+    reducedMotion,
+    defaultPosition,
+    theme,
+    stacked,
+    swipeToDismiss,
+    sound,
+    syncTabs,
+    aiPrioritization,
+    priorityScorer,
+  } = options;
 
   if (maxVisible !== undefined) {
     const v = Number(maxVisible);
@@ -83,6 +101,15 @@ export function setConfig(options = {}) {
     const r = String(reducedMotion || "auto").toLowerCase();
     if (["auto", "always", "never"].includes(r)) {
       globalConfig.reducedMotion = r;
+      if (typeof document !== "undefined") {
+        if (r === "always") {
+          document.documentElement.setAttribute("data-toast-reduced-motion", "always");
+        } else if (r === "never") {
+          document.documentElement.setAttribute("data-toast-reduced-motion", "never");
+        } else {
+          document.documentElement.removeAttribute("data-toast-reduced-motion");
+        }
+      }
     }
   }
 
@@ -124,6 +151,24 @@ export function setConfig(options = {}) {
     globalConfig.aiPrioritization = Boolean(aiPrioritization);
   }
 
+  if (priorityScorer !== undefined) {
+    globalConfig.priorityScorer = typeof priorityScorer === "function" ? priorityScorer : null;
+  }
+
+  return getConfig();
+}
+
+/**
+ * Resets global toast configuration back to pristine defaults.
+ * Cleans up DOM attributes attached to document.documentElement.
+ * @returns {ToastGlobalConfig}
+ */
+export function resetConfig() {
+  Object.assign(globalConfig, DEFAULT_GLOBAL_CONFIG);
+  if (typeof document !== "undefined") {
+    document.documentElement.removeAttribute("data-toast-theme");
+    document.documentElement.removeAttribute("data-toast-reduced-motion");
+  }
   return getConfig();
 }
 

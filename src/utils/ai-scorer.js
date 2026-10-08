@@ -61,7 +61,7 @@ const URGENCY_KEYWORDS = [
 /**
  * Neutral/Low priority keywords (demote score)
  */
-const LOW_PRIORITY_KEYWORTS = [
+const LOW_PRIORITY_KEYWORDS = [
   // Routine/informational
   'success', 'completed', 'finished', 'done', 'ready',
   'info', 'information', 'note', 'notice', 'reminder',
@@ -92,7 +92,8 @@ export function calculateToastPriority(context) {
   score += (typeScore - 50) * 0.6; // Weight type moderately
 
   // Factor 2: Message urgency
-  const messageLower = String(message || '').toLowerCase();
+  const safeMessage = typeof message === 'string' ? message : String(message ?? '');
+  const messageLower = safeMessage.toLowerCase();
   let urgencyScore = 0;
 
   for (const keyword of URGENCY_KEYWORDS) {
@@ -102,7 +103,7 @@ export function calculateToastPriority(context) {
     }
   }
 
-  for (const keyword of LOW_PRIORITY_KEYWORTS) {
+  for (const keyword of LOW_PRIORITY_KEYWORDS) {
     if (messageLower.includes(keyword.toLowerCase())) {
       detectedKeywords.push(keyword);
       urgencyScore -= 1; // -1 point per low-priority keyword
@@ -129,13 +130,13 @@ export function calculateToastPriority(context) {
   }
 
   // Factor 5: Exclamation marks (indicates emphasis)
-  const exclamationCount = (message.match(/!/g) || []).length;
+  const exclamationCount = (safeMessage.match(/!/g) || []).length;
   const exclamationScore = Math.min(5, exclamationCount); // Up to +5
   breakdown.emphasis = exclamationScore;
   score += exclamationScore;
 
   // Factor 6: ALL CAPS words (indicates shouting/urgency)
-  const allCapsWords = (message.match(/\b[A-Z]{3,}\b/g) || []).length;
+  const allCapsWords = (safeMessage.match(/\b[A-Z]{3,}\b/g) || []).length;
   const capsScore = Math.min(5, allCapsWords); // Up to +5
   breakdown.caps = capsScore;
   score += capsScore;
@@ -212,47 +213,90 @@ export function categorizeToast(message) {
 }
 
 /**
- * TypeSafe AI integration: Enhanced scoring with AI capabilities
+ * Computes deterministic AI priority boost without non-deterministic random numbers.
+ * Strictly offline-first, reproducible, and compliant with core library purity.
  * @param {ToastScoringContext} context
- * @param {Object} aiOptions - TypeSafe AI options
+ * @param {ScorerResult} localScore
+ * @returns {number} Boost between 5 and 15 points
+ */
+export function calculateDeterministicAIBoost(context, localScore) {
+  let boost = 5; // Base deterministic boost when AI prioritization is active
+
+  const safeMsg = String(context?.message ?? "").toLowerCase();
+  const categories = categorizeToast(safeMsg);
+
+  // 1. High-Impact Domain Boost: Security or business/payment issues
+  if (categories.includes("security") || categories.includes("business")) {
+    boost += 4;
+  }
+
+  // 2. Actionability Boost: When toast contains interactive CTA button (action required)
+  if (context?.options?.cta || context?.options?.action) {
+    boost += 3;
+  }
+
+  // 3. High Urgency Density: When 2 or more critical urgency keywords match
+  if (Array.isArray(localScore?.keywords) && localScore.keywords.length >= 2) {
+    boost += 3;
+  }
+
+  return Math.min(15, boost);
+}
+
+/**
+ * TypeSafe AI integration: Enhanced scoring with deterministic rule-based boost
+ * and customScorer hook support for user application models.
+ * @param {ToastScoringContext} context
+ * @param {Object} [aiOptions={}] - TypeSafe AI options
  * @returns {Promise<ScorerResult>}
  */
 export async function scoreWithTypeSafeAI(context, aiOptions = {}) {
-  // For TypeSafe AI integration, we would call the AI service here
-  // This is a placeholder for the actual integration
-  const { type, message } = context;
-  const { useAI = false, apiKey } = aiOptions;
+  const { useAI = false, apiKey, customScorer } = aiOptions;
 
-  if (!useAI || !apiKey) {
+  if (typeof customScorer === "function") {
+    try {
+      const customRes = await customScorer(context);
+      if (typeof customRes === "number" && Number.isFinite(customRes)) {
+        const clamped = Math.max(0, Math.min(100, Math.round(customRes)));
+        return {
+          score: clamped,
+          breakdown: { custom: clamped },
+          keywords: [],
+          aiEnhanced: true,
+        };
+      } else if (customRes && typeof customRes === "object") {
+        return {
+          score: Math.max(0, Math.min(100, Math.round(customRes.score ?? 50))),
+          breakdown: customRes.breakdown || {},
+          keywords: Array.isArray(customRes.keywords) ? customRes.keywords : [],
+          aiEnhanced: true,
+        };
+      }
+    } catch (customErr) {
+      console.warn("[Toast] Custom priority scorer threw error:", customErr);
+    }
+  }
+
+  if (!useAI && !apiKey) {
     // Fallback to local scoring if AI not configured
     return calculateToastPriority(context);
   }
 
   try {
-    // This would be the actual TypeSafe AI API call
-    // const aiResult = await fetch('https://api.typesafe.ai/score', {
-    //   method: 'POST',
-    //   headers: { 'Authorization': `Bearer ${apiKey}` },
-    //   body: JSON.stringify({ type, message })
-    // });
-
-    // For now, return enhanced local scoring with simulated AI boost
     const localScore = calculateToastPriority(context);
-
-    // Simulate AI providing additional insights
-    const aiBoost = Math.random() * 10 + 5; // 5-15 point boost
+    const aiBoost = calculateDeterministicAIBoost(context, localScore);
 
     return {
       score: Math.min(100, localScore.score + aiBoost),
       breakdown: {
         ...localScore.breakdown,
-        aiBoost: Math.round(aiBoost),
+        aiBoost,
       },
       keywords: localScore.keywords,
       aiEnhanced: true,
     };
   } catch (error) {
-    console.warn('[Toast] AI scoring failed, falling back to local:', error);
+    console.warn("[Toast] AI scoring failed, falling back to local:", error);
     return calculateToastPriority(context);
   }
 }
@@ -260,30 +304,50 @@ export async function scoreWithTypeSafeAI(context, aiOptions = {}) {
 /**
  * Sort toast queue by priority score
  * @param {Array} queue - Toast queue items
- * @param {Object} options - Scoring options
+ * @param {Object} [options={}] - Scoring options
  * @returns {Array} - Sorted queue (highest priority first)
  */
 export function prioritizeQueue(queue, options = {}) {
   if (!Array.isArray(queue) || queue.length <= 1) {
-    return queue;
+    return Array.isArray(queue) ? queue : [];
   }
 
-  const { useAI = false, aiApiKey } = options;
+  const { useAI = false, aiApiKey, customScorer } = options;
 
   // Score each item in queue
   const scoredQueue = queue.map((item, index) => {
     const context = {
-      type: item.options?.type || 'info',
-      message: item.options?.message || '',
-      duration: item.options?.duration,
-      options: item.options,
+      type: item?.options?.type || "info",
+      message: item?.options?.message || "",
+      duration: item?.options?.duration,
+      options: item?.options,
       queuePosition: index,
     };
 
-    // Use AI scoring if configured, otherwise local
-    const scoreResult = useAI && aiApiKey
-      ? calculateToastPriority(context) // In production: await scoreWithTypeSafeAI(context, { useAI, apiKey: aiApiKey })
-      : calculateToastPriority(context);
+    let scoreResult;
+    if (typeof customScorer === "function") {
+      try {
+        const customVal = customScorer(context);
+        const numVal = typeof customVal === "number" ? customVal : (customVal?.score ?? 50);
+        scoreResult = {
+          score: Math.max(0, Math.min(100, Math.round(numVal))),
+          breakdown: { custom: numVal },
+          keywords: [],
+        };
+      } catch {
+        scoreResult = calculateToastPriority(context);
+      }
+    } else if (useAI || aiApiKey) {
+      const base = calculateToastPriority(context);
+      const boost = calculateDeterministicAIBoost(context, base);
+      scoreResult = {
+        score: Math.min(100, base.score + boost),
+        breakdown: { ...base.breakdown, aiBoost: boost },
+        keywords: base.keywords,
+      };
+    } else {
+      scoreResult = calculateToastPriority(context);
+    }
 
     return {
       ...item,
@@ -297,7 +361,7 @@ export function prioritizeQueue(queue, options = {}) {
 
   // Sort by priority score (descending)
   return scoredQueue.sort((a, b) => {
-    return b._priority.score - a._priority.score;
+    return (b?._priority?.score ?? 0) - (a?._priority?.score ?? 0);
   });
 }
 

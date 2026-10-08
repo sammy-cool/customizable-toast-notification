@@ -437,9 +437,19 @@ if (shouldReduceMotion()) {
 | `maxVisible`           | `number`                          | `3`               | Maximum simultaneously visible toasts. Additional toasts are queued.                                             |
 | `zIndex`               | `number`                          | `9999`            | Base z-index for toast containers and toasts. Adjust if toasts appear behind other elements.                     |
 | `defaultPosition`      | `string`                          | `"bottom-right"`  | Default position when individual toast options omit `position`.                                                   |
+| `theme`                | `"light" \| "dark" \| "high-contrast" \| "compact" \| "spacious" \| "glass"` | `"light"` | Built-in CSS theme applied via `data-toast-theme` on document root.                                  |
+| `stacked`              | `boolean`                         | `false`           | Enable iOS-style 3D card deck layout with depth scaling and hover expansion.                                     |
+| `swipeToDismiss`       | `boolean`                         | `true`            | Enable touch / mouse drag swipe gesture to dismiss toasts with spring snap-back physics.                         |
+| `sound`                | `boolean`                         | `true`            | Enable pure Web Audio API notification chimes (0KB network, zero audio assets).                                   |
+| `syncTabs`             | `boolean`                         | `false`           | Synchronize toast notifications across browser tabs using BroadcastChannel.                                      |
+| `aiPrioritization`     | `boolean`                         | `false`           | Enable offline content-aware queue priority sorting (critical alerts jump ahead of routine messages).            |
+| `priorityScorer`       | `((context) => number) \| null`   | `null`            | Custom priority scoring function for custom business logic or external AI models.                               |
 | `disableInlineStyles`  | `boolean`                         | `false`           | When `true`, toasts use CSS classes instead of inline `style.*` for stricter CSP compliance.                      |
 | `reducedMotion`        | `"auto" \| "always" \| "never"`   | `"auto"`          | Control animation behavior. `"auto"` respects `prefers-reduced-motion`, `"always"` disables, `"never"` enables.  |
 | `targetNode`           | `Element \| ShadowRoot \| null`   | `null`            | Custom DOM node to mount toast containers. Defaults to `document.body` if not provided.                           |
+
+Call `resetConfig()` at any time to restore pristine defaults and clean up DOM attributes.
+
 
 ### Use Cases
 

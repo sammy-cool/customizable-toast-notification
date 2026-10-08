@@ -160,6 +160,23 @@
         color: var(--accent);
         border-color: var(--accent);
       }
+      .theme-select {
+        font-family: var(--mono);
+        font-size: 11.5px;
+        font-weight: 500;
+        color: var(--text-dim);
+        background: var(--ink-2);
+        border: 1px solid var(--line);
+        border-radius: 6px;
+        padding: 5px 8px;
+        cursor: pointer;
+        transition: all 0.2s ease;
+      }
+      .theme-select:hover, .theme-select:focus {
+        color: var(--text);
+        border-color: var(--accent);
+        outline: none;
+      }
 
       /* ---------- hero ---------- */
       .hero {
@@ -685,6 +702,14 @@
           <a href="#compare">Why this one</a>
           <a href="#install">Install</a>
           <button id="audioToggleBtn" class="sound-toggle-btn active" title="Toggle native Web Audio API chimes">🔊 Sound: ON</button>
+          <select id="themeSelect" class="theme-select" title="Switch Theme">
+            <option value="light">☀️ Light</option>
+            <option value="dark">🌙 Dark</option>
+            <option value="high-contrast">👁️ Contrast</option>
+            <option value="compact">📐 Compact</option>
+            <option value="spacious">🛋️ Spacious</option>
+            <option value="glass">🧊 Glass</option>
+          </select>
           <a
             href="https://github.com/sammy-cool/customizable-toast-notification"
             target="_blank"
@@ -1237,6 +1262,22 @@ npm install customizable-toast-notification</pre
             } else {
               audioBtn.classList.remove("active");
               audioBtn.textContent = "🔇 Sound: OFF";
+            }
+          });
+        }
+
+        // Theme switcher in navbar
+        var themeSelect = document.getElementById("themeSelect");
+        if (themeSelect) {
+          themeSelect.addEventListener("change", function () {
+            var val = themeSelect.value;
+            if (window.customizableToast && window.customizableToast.setConfig) {
+              window.customizableToast.setConfig({ theme: val });
+            } else {
+              document.documentElement.setAttribute("data-toast-theme", val);
+            }
+            if (window.customizableToast && window.customizableToast.playTone) {
+              window.customizableToast.playTone("pop");
             }
           });
         }
