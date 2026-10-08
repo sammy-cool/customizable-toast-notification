@@ -160,6 +160,7 @@ auto-dismissed on its own — they no-op gracefully rather than throwing.
 | `sound`             | `boolean \| string`| `false`                         | Zero-asset audio chime (`true`, `'success'`, `'error'`, `'warning'`, `'pop'`)   |
 | `swipeToDismiss`    | `boolean`          | `true`                          | Mobile touch swipe-to-dismiss gesture with physics                             |
 | `progress`          | `number`           | `undefined`                     | Explicit progress bar percentage (0 to 100)                                    |
+| `usePool`           | `boolean`          | `false`                         | Virtual element pooling for DOM recycling in high-frequency rendering           |
 | `cta`               | `object`           | `null`                          | Call-to-action configuration (see [CTA](#call-to-action))                      |
 
 #### Position Options
@@ -435,6 +436,7 @@ if (shouldReduceMotion()) {
 | Parameter              | Type                              | Default           | Description                                                                                                      |
 | ---------------------- | --------------------------------- | ----------------- | ---------------------------------------------------------------------------------------------------------------- |
 | `maxVisible`           | `number`                          | `3`               | Maximum simultaneously visible toasts. Additional toasts are queued.                                             |
+| `maxQueueSize`         | `number`                          | `100`             | Maximum queue capacity for high-frequency bursts. Evicts oldest items to prevent memory bloat and main-thread lock. |
 | `zIndex`               | `number`                          | `9999`            | Base z-index for toast containers and toasts. Adjust if toasts appear behind other elements.                     |
 | `defaultPosition`      | `string`                          | `"bottom-right"`  | Default position when individual toast options omit `position`.                                                   |
 | `theme`                | `"light" \| "dark" \| "high-contrast" \| "compact" \| "spacious" \| "glass"` | `"light"` | Built-in CSS theme applied via `data-toast-theme` on document root.                                  |

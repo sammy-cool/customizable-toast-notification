@@ -85,6 +85,7 @@ import { generateToastId, resetToastIdCounter } from "./utils/id.js";
  * @property {boolean} [syncTabs]
  * @property {boolean} [aiPrioritization]
  * @property {number} [priority]
+ * @property {boolean} [usePool]
  */
 
 /**
@@ -102,6 +103,7 @@ import { generateToastId, resetToastIdCounter } from "./utils/id.js";
 /**
  * @typedef {Object} ToastGlobalConfig
  * @property {number} [maxVisible]
+ * @property {number} [maxQueueSize]
  * @property {number} [zIndex]
  * @property {ToastMountTarget | null} [targetNode]
  * @property {boolean} [disableInlineStyles]
