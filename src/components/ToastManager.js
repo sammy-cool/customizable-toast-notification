@@ -3,7 +3,7 @@
 import { createToastElement } from "./Toast.js";
 import { removeElement, getDynamicAccessibleTextColorHex } from "../utils/dom.js";
 import { createEmergencyToast } from "./toast-utils.js";
-import { getOrCreateToastContainer, normalizePositionKey } from "../utils/containerRegistry.js";
+import { getOrCreateToastContainer, normalizePositionKey, unregisterContainer } from "../utils/containerRegistry.js";
 import { setPosition } from "../utils/position.js";
 import { PausableTimer } from "../utils/PausableTimer.js";
 import { sanitizeHtml } from "../utils/html-sanitizer.js";
@@ -117,24 +117,37 @@ export function updateStackedLayout(container) {
 
   if (!container._stackedInitialized && typeof container.addEventListener === "function") {
     container._stackedInitialized = true;
-    container.addEventListener("mouseenter", () => {
+    const onMouseEnter = () => {
       container._isExpanded = true;
       updateStackedLayout(container);
-    });
-    container.addEventListener("mouseleave", () => {
+    };
+    const onMouseLeave = () => {
       container._isExpanded = false;
       updateStackedLayout(container);
-    });
-    container.addEventListener("focusin", () => {
+    };
+    const onFocusIn = () => {
       container._isExpanded = true;
       updateStackedLayout(container);
-    });
-    container.addEventListener("focusout", (e) => {
+    };
+    const onFocusOut = (e) => {
       if (!container.contains(e.relatedTarget)) {
         container._isExpanded = false;
         updateStackedLayout(container);
       }
-    });
+    };
+
+    container.addEventListener("mouseenter", onMouseEnter);
+    container.addEventListener("mouseleave", onMouseLeave);
+    container.addEventListener("focusin", onFocusIn);
+    container.addEventListener("focusout", onFocusOut);
+
+    container._stackedCleanup = () => {
+      container.removeEventListener("mouseenter", onMouseEnter);
+      container.removeEventListener("mouseleave", onMouseLeave);
+      container.removeEventListener("focusin", onFocusIn);
+      container.removeEventListener("focusout", onFocusOut);
+      container._stackedInitialized = false;
+    };
   }
 
   const items = Array.from(container.children);
@@ -251,6 +264,10 @@ export async function showToast(options = {}) {
 
       if (visibleCount >= getConfig().maxVisible) {
         const item = { options: current.options, key, count: current.count };
+        const maxQ = getConfig().maxQueueSize ?? 100;
+        if (queue.length >= maxQ) {
+          queue.shift();
+        }
         if (getConfig().aiPrioritization || current.options?.aiPrioritization) {
           item.priority = calculateToastPriority(current.options);
           queue.push(item);
@@ -454,9 +471,21 @@ export function resetToastManager() {
     data.toast?._cleanupCTA?.();
     data.toast?._cleanupSwipe?.();
     data.toast?._cleanup?.();
+    if (data.toast?._progressAnimation) {
+      try {
+        data.toast._progressAnimation.cancel();
+      } catch {}
+      data.toast._progressAnimation = null;
+    }
+    const badge = data.outer?.querySelector(".toast-count-badge");
+    if (badge?._scaleTimer) {
+      clearTimeout(badge._scaleTimer);
+      badge._scaleTimer = null;
+    }
   }
   active.clear();
   visibleCount = 0;
+  isDraining = false;
 }
 
 export const dismiss = dismissMostRecent;
@@ -574,6 +603,17 @@ export async function closeToastByKey(key) {
     data.toast?._cleanupCTA?.();
     data.toast?._cleanupSwipe?.();
     data.toast?._cleanup?.();
+    if (data.toast?._progressAnimation) {
+      try {
+        data.toast._progressAnimation.cancel();
+      } catch {}
+      data.toast._progressAnimation = null;
+    }
+    const badge = data.outer?.querySelector(".toast-count-badge");
+    if (badge?._scaleTimer) {
+      clearTimeout(badge._scaleTimer);
+      badge._scaleTimer = null;
+    }
     // Clean up CTA click listener if present directly on button/link
     const ctaEl = data.toast?.querySelector("button, a");
     ctaEl?._cleanup?.();
@@ -581,7 +621,6 @@ export async function closeToastByKey(key) {
     active.delete(key);
     visibleCount = Math.max(0, visibleCount - 1);
 
-    const badge = data.outer.querySelector(".toast-count-badge");
     if (badge) badge.remove();
 
     const animDuration = data.toast?._animationDuration ?? 400;
@@ -599,6 +638,8 @@ export async function closeToastByKey(key) {
       parentContainer.id?.startsWith("toast-container-")
     ) {
       try {
+        parentContainer._stackedCleanup?.();
+        unregisterContainer(parentContainer.id);
         parentContainer.remove();
       } catch {}
     } else if (parentContainer && parentContainer.getAttribute("data-stacked") === "true") {
@@ -611,23 +652,31 @@ export async function closeToastByKey(key) {
   }
 }
 
+let isDraining = false;
+
 async function drainQueue() {
-  const config = getConfig();
+  if (isDraining) return;
+  isDraining = true;
+  try {
+    const config = getConfig();
 
-  // Apply AI priority sorting if enabled
-  if (config.aiPrioritization && queue.length > 1) {
-    queue.sort((a, b) => getItemPriority(b) - getItemPriority(a)); // Higher priority first
-  }
-
-  while (visibleCount < config.maxVisible && queue.length) {
-    const item = queue.shift();
-    if (active.has(item.key)) {
-      const data = active.get(item.key);
-      data.count += item.count;
-      await updateBadge(data);
-      continue;
+    // Apply AI priority sorting if enabled
+    if (config.aiPrioritization && queue.length > 1) {
+      queue.sort((a, b) => getItemPriority(b) - getItemPriority(a)); // Higher priority first
     }
-    void createOne(item.options, item.key, item.count);
+
+    while (visibleCount < config.maxVisible && queue.length) {
+      const item = queue.shift();
+      if (active.has(item.key)) {
+        const data = active.get(item.key);
+        data.count += item.count;
+        await updateBadge(data);
+        continue;
+      }
+      await createOne(item.options, item.key, item.count);
+    }
+  } finally {
+    isDraining = false;
   }
 }
 
@@ -636,9 +685,19 @@ async function removeWithTransition(el, targetEl, animationDurationMs = 400) {
 
   return new Promise((resolve) => {
     let done = false;
+    let fallbackTimer = null;
+    const animEl = targetEl || el.firstElementChild || el;
+
     const finish = () => {
       if (done) return;
       done = true;
+      if (fallbackTimer) {
+        clearTimeout(fallbackTimer);
+        fallbackTimer = null;
+      }
+      try {
+        animEl?.removeEventListener?.("transitionend", onEnd, true);
+      } catch {}
       const toastEl = el.querySelector?.(".toast") || el;
       if (toastEl?._pooledId) {
         try {
@@ -649,18 +708,16 @@ async function removeWithTransition(el, targetEl, animationDurationMs = 400) {
       resolve();
     };
 
-    const animEl = targetEl || el.firstElementChild || el;
-    if (!animEl) return resolve();
-
     const onEnd = (e) => {
       try {
         if (e.target !== animEl) return;
-        animEl.removeEventListener("transitionend", onEnd, true);
         finish();
       } catch (error) {
         console.error("removeWithTransition error:", error);
       }
     };
+
+    if (!animEl) return finish();
 
     try {
       animEl.addEventListener("transitionend", onEnd, true);
@@ -670,14 +727,10 @@ async function removeWithTransition(el, targetEl, animationDurationMs = 400) {
 
     // Use animation duration + 100ms buffer for fallback timeout
     const fallbackTimeout = animationDurationMs + 100;
-    setTimeout(() => {
-      try {
-        animEl.removeEventListener("transitionend", onEnd, true);
-        finish();
-      } catch (error) {
-        console.error("removeWithTransition error:", error);
-      }
-    }, fallbackTimeout);
+    fallbackTimer = setTimeout(finish, fallbackTimeout);
+    if (typeof fallbackTimer?.unref === "function") {
+      fallbackTimer.unref();
+    }
   });
 }
 
@@ -728,8 +781,15 @@ async function updateBadge({ outer, count }) {
 
   try {
     if (!shouldReduceMotion()) {
+      if (badge._scaleTimer) clearTimeout(badge._scaleTimer);
       badge.style.transform = "scale(1.2)";
-      setTimeout(() => (badge.style.transform = "scale(1)"), 150);
+      badge._scaleTimer = setTimeout(() => {
+        badge.style.transform = "scale(1)";
+        badge._scaleTimer = null;
+      }, 150);
+      if (typeof badge._scaleTimer?.unref === "function") {
+        badge._scaleTimer.unref();
+      }
     }
   } catch (error) {
     console.error("updateBadge animation error:", error);

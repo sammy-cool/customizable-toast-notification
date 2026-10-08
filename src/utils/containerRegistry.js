@@ -37,6 +37,18 @@ export function resetContainerRegistry() {
   containerLocks.clear();
 }
 
+/**
+ * Remove a container from the registry when pruned from the DOM
+ * @param {string} id
+ * @returns {void}
+ */
+export function unregisterContainer(id) {
+  if (id) {
+    containerRegistry.delete(id);
+    containerLocks.delete(id);
+  }
+}
+
 function getContainerRoot() {
   return getToastRoot();
 }

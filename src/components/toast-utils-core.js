@@ -208,6 +208,16 @@ export function attachSwipeToDismiss(toast, onClose) {
   let isDragging = false;
   let isHorizontal = false;
 
+  let isWindowListening = false;
+
+  const cleanupWindowListeners = () => {
+    if (isWindowListening) {
+      isWindowListening = false;
+      window.removeEventListener("mousemove", onPointerMove);
+      window.removeEventListener("mouseup", onPointerEnd);
+    }
+  };
+
   const onPointerDown = (e) => {
     if (!e) return;
     const ev = e.touches ? e.touches[0] : e;
@@ -219,6 +229,12 @@ export function attachSwipeToDismiss(toast, onClose) {
     isHorizontal = false;
     toast.style.transition = "none";
     toast.style.userSelect = "none";
+
+    if (!isWindowListening && typeof window !== "undefined") {
+      isWindowListening = true;
+      window.addEventListener("mousemove", onPointerMove, { passive: false });
+      window.addEventListener("mouseup", onPointerEnd, { passive: true });
+    }
   };
 
   const onPointerMove = (e) => {
@@ -234,6 +250,7 @@ export function attachSwipeToDismiss(toast, onClose) {
         isHorizontal = true;
       } else if (Math.abs(dy) > 8) {
         isDragging = false;
+        cleanupWindowListeners();
         return;
       }
     }
@@ -250,6 +267,7 @@ export function attachSwipeToDismiss(toast, onClose) {
   };
 
   const onPointerEnd = () => {
+    cleanupWindowListeners();
     if (!isDragging || !isHorizontal) {
       isDragging = false;
       toast.style.userSelect = "";
@@ -272,7 +290,9 @@ export function attachSwipeToDismiss(toast, onClose) {
           toast.style.transform = `translateX(${exitX}px)`;
           toast.style.opacity = "0";
       }
-      setTimeout(() => {
+      if (toast._swipeTimeout) clearTimeout(toast._swipeTimeout);
+      toast._swipeTimeout = setTimeout(() => {
+        toast._swipeTimeout = null;
         if (typeof onClose === "function") onClose(toast);
       }, exitDuration);
     } else {
@@ -290,18 +310,19 @@ export function attachSwipeToDismiss(toast, onClose) {
   toast.addEventListener("touchcancel", onPointerEnd, { passive: true });
 
   toast.addEventListener("mousedown", onPointerDown, { passive: true });
-  window.addEventListener("mousemove", onPointerMove, { passive: false });
-  window.addEventListener("mouseup", onPointerEnd, { passive: true });
 
   toast._cleanupSwipe = () => {
+    if (toast._swipeTimeout) {
+      clearTimeout(toast._swipeTimeout);
+      toast._swipeTimeout = null;
+    }
+    cleanupWindowListeners();
+
     toast.removeEventListener("touchstart", onPointerDown);
     toast.removeEventListener("touchmove", onPointerMove);
     toast.removeEventListener("touchend", onPointerEnd);
     toast.removeEventListener("touchcancel", onPointerEnd);
-
     toast.removeEventListener("mousedown", onPointerDown);
-    window.removeEventListener("mousemove", onPointerMove);
-    window.removeEventListener("mouseup", onPointerEnd);
   };
 
 }

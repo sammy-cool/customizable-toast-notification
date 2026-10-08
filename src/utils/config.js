@@ -13,6 +13,7 @@
 /**
  * @typedef {Object} ToastGlobalConfig
  * @property {number} maxVisible
+ * @property {number} maxQueueSize
  * @property {number} zIndex
  * @property {ToastMountTarget | null} targetNode
  * @property {boolean} disableInlineStyles
@@ -29,6 +30,7 @@
 
 const DEFAULT_GLOBAL_CONFIG = Object.freeze({
   maxVisible: 3,
+  maxQueueSize: 100,
   zIndex: 9999,
   targetNode: null,
   disableInlineStyles: false,
@@ -61,6 +63,7 @@ export function setConfig(options = {}) {
 
   const {
     maxVisible,
+    maxQueueSize,
     zIndex,
     targetNode,
     disableInlineStyles,
@@ -79,6 +82,13 @@ export function setConfig(options = {}) {
     const v = Number(maxVisible);
     if (Number.isFinite(v) && v > 0) {
       globalConfig.maxVisible = Math.max(1, Math.floor(v));
+    }
+  }
+
+  if (maxQueueSize !== undefined) {
+    const q = Number(maxQueueSize);
+    if (Number.isFinite(q) && q >= 0) {
+      globalConfig.maxQueueSize = Math.floor(q);
     }
   }
 

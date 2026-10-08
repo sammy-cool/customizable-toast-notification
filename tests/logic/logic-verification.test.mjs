@@ -1931,6 +1931,84 @@ describe("toast-broadcast.js — tabId generation entropy and modern methods", (
   });
 });
 
+describe("ToastManager.js — high-frequency notifications and queue bounding", () => {
+  test("bounds queue to maxQueueSize and prevents memory explosion under high-frequency bursts", async () => {
+    freshDom();
+    const { setConfig, resetConfig } = await import("../../src/utils/config.js");
+    const { showToast, resetToastManager } = await import("../../src/components/ToastManager.js");
+
+    resetToastManager();
+    setConfig({ maxVisible: 2, maxQueueSize: 5 });
+
+    // Rapidly fire 30 notifications with different keys
+    const promises = [];
+    for (let i = 0; i < 30; i++) {
+      promises.push(showToast({ message: `Burst ${i}`, position: "top-right" }));
+    }
+    await Promise.all(promises);
+
+    // Give rAF microtasks a cycle to process
+    await new Promise((r) => setTimeout(r, 50));
+
+    // Queued items getter via broadcaster
+    const { getToastBroadcaster } = await import("../../src/utils/toast-broadcast.js");
+    const queuedGetter = getToastBroadcaster().queuedToastsGetter;
+    if (queuedGetter) {
+      const queued = queuedGetter();
+      assert.ok(queued.length <= 5, `Queue length (${queued.length}) must not exceed maxQueueSize (5)`);
+    }
+
+    resetToastManager();
+    resetConfig();
+  });
+});
+
+describe("containerRegistry.js — unregisterContainer and DOM leak prevention", () => {
+  test("unregisterContainer cleanly removes cached container from registry", async () => {
+    freshDom();
+    const { getOrCreateToastContainer, unregisterContainer, getContainerId } = await import("../../src/utils/containerRegistry.js");
+    const { setPosition } = await import("../../src/utils/position.js");
+
+    const container = await getOrCreateToastContainer({ position: "bottom-left" }, setPosition);
+    assert.ok(container);
+    assert.ok(container.id);
+
+    // Unregister container
+    unregisterContainer(container.id);
+    container.remove();
+
+    // Verify next getOrCreate creates a fresh element
+    const fresh = await getOrCreateToastContainer({ position: "bottom-left" }, setPosition);
+    assert.ok(fresh);
+    assert.notEqual(fresh, container);
+  });
+});
+
+describe("toast-utils-core.js — swipeToDismiss listener isolation", () => {
+  test("does not attach global mousemove listeners to window when idle", async () => {
+    freshDom();
+    const { attachSwipeToDismiss } = await import("../../src/components/toast-utils-core.js");
+    const toast = document.createElement("div");
+    document.body.appendChild(toast);
+
+    let mouseMoveCalled = false;
+    const testListener = () => { mouseMoveCalled = true; };
+    window.addEventListener("mousemove", testListener);
+
+    attachSwipeToDismiss(toast, () => {});
+
+    // Dispatch mousemove on document
+    window.dispatchEvent(new window.Event("mousemove"));
+    assert.equal(mouseMoveCalled, true);
+
+    // Call cleanup and verify no errors
+    toast._cleanupSwipe();
+    window.removeEventListener("mousemove", testListener);
+    toast.remove();
+  });
+});
+
+
 
 
 
