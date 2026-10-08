@@ -101,3 +101,10 @@ jobs:
           NPM_TOKEN: ${{ secrets.NPM_TOKEN }}
           NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
         run: npx semantic-release
+
+      - name: Purge jsDelivr Edge CDN Cache
+        if: success()
+        run: |
+          echo "Purging jsDelivr edge cache for @latest..."
+          curl -sS -X POST "https://purge.jsdelivr.net/npm/customizable-toast-notification@latest/dist/index.umd.js" || true
+          curl -sS -X POST "https://purge.jsdelivr.net/npm/customizable-toast-notification@latest/dist/index.css" || true

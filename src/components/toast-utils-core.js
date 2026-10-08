@@ -5,7 +5,9 @@ export function createCTA(toast, options, onClose) {
   const rawCfg = options?.cta;
   if (!rawCfg || typeof rawCfg !== "object") return;
 
-  const configs = Array.isArray(rawCfg) ? rawCfg.filter(Boolean) : [rawCfg];
+  const configs = Array.isArray(rawCfg)
+    ? rawCfg.filter((item) => item && typeof item === "object")
+    : [rawCfg];
   if (configs.length === 0) return;
 
   const cleanups = [];

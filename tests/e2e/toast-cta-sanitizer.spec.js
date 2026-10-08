@@ -130,6 +130,85 @@ test.describe("CTA — button variant", () => {
   });
 });
 
+test.describe("CTA — multi-action array variant", () => {
+  test.beforeEach(async ({ page }) => {
+    await page.goto(HARNESS);
+    await page.waitForFunction(() => !!window.customizableToast);
+  });
+
+  test("renders multiple CTA buttons with distinct labels, callbacks, and independent autoClose", async ({
+    page,
+  }) => {
+    await page.evaluate(() => {
+      window.__primaryClicked = false;
+      window.__secondaryClicked = false;
+      window.customizableToast.createToast({
+        message: "Invite received from Alice",
+        duration: 30000,
+        animationDuration: "0.1s",
+        cta: [
+          {
+            label: "Accept",
+            onClick: () => {
+              window.__primaryClicked = true;
+            },
+          },
+          {
+            label: "Decline",
+            autoClose: false,
+            onClick: () => {
+              window.__secondaryClicked = true;
+            },
+          },
+        ],
+      });
+    });
+
+    const toast = page
+      .locator('[id^="toast-container-"] [id^="toast-"]')
+      .first();
+    const acceptBtn = page.getByRole("button", { name: "Accept" });
+    const declineBtn = page.getByRole("button", { name: "Decline" });
+
+    await expect(toast).toBeVisible();
+    await expect(acceptBtn).toBeVisible();
+    await expect(declineBtn).toBeVisible();
+
+    const ctaButtons = toast.locator(".toast-cta");
+    await expect(ctaButtons).toHaveCount(2);
+
+    await page.waitForTimeout(150);
+
+    // Click secondary button (autoClose: false) -> should fire handler but keep toast open
+    await declineBtn.click();
+    await page.waitForFunction(() => window.__secondaryClicked === true);
+    expect(await page.evaluate(() => window.__secondaryClicked)).toBe(true);
+    await page.waitForTimeout(300);
+    await expect(toast).toBeVisible();
+
+    // Click primary button (autoClose: true by default) -> should fire handler and auto-close
+    await acceptBtn.click();
+    await page.waitForFunction(() => window.__primaryClicked === true);
+    expect(await page.evaluate(() => window.__primaryClicked)).toBe(true);
+    await expect(page.locator('[id^="toast-container-"] [id^="toast-"]')).toHaveCount(0, { timeout: 4000 });
+  });
+
+  test("missing labels in array fall back to Action 1, Action 2 numbering", async ({
+    page,
+  }) => {
+    await page.evaluate(() => {
+      window.customizableToast.createToast({
+        message: "Multi unlabeled actions",
+        duration: 30000,
+        cta: [{ onClick: () => {} }, { onClick: () => {} }],
+      });
+    });
+
+    await expect(page.getByRole("button", { name: "Action 1" })).toBeVisible();
+    await expect(page.getByRole("button", { name: "Action 2" })).toBeVisible();
+  });
+});
+
 test.describe("CTA — link variant", () => {
   test.beforeEach(async ({ page }) => {
     await page.goto(HARNESS);

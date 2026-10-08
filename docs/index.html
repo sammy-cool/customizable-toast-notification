@@ -1484,14 +1484,42 @@ npm install customizable-toast-notification</pre
           var lines = [];
           Object.keys(opts).forEach(function (key) {
             var val = opts[key];
-            if (key === "cta" || key === "loader" || key === "undo") {
+            if (Array.isArray(val)) {
+              var arrLines = [];
+              val.forEach(function (item) {
+                if (typeof item === "object" && item !== null) {
+                  var objLines = [];
+                  Object.keys(item).forEach(function (k) {
+                    var v = item[k];
+                    var strV =
+                      typeof v === "function"
+                        ? "() => { /* action */ }"
+                        : JSON.stringify(v);
+                    objLines.push("        " + k + ": " + strV);
+                  });
+                  arrLines.push("      {\n" + objLines.join(",\n") + "\n      }");
+                } else {
+                  arrLines.push("      " + JSON.stringify(item));
+                }
+              });
+              lines.push("  " + key + ": [\n" + arrLines.join(",\n") + "\n  ]");
+            } else if (key === "cta" || key === "loader" || key === "undo") {
               var nestedLines = [];
               Object.keys(val).forEach(function (k) {
-                nestedLines.push("      " + k + ": " + JSON.stringify(val[k]));
+                var v = val[k];
+                var strV =
+                  typeof v === "function"
+                    ? "() => { /* action */ }"
+                    : JSON.stringify(v);
+                nestedLines.push("      " + k + ": " + strV);
               });
               lines.push("  " + key + ": {\n" + nestedLines.join(",\n") + "\n  }");
             } else {
-              lines.push("  " + key + ": " + JSON.stringify(val));
+              var strVal =
+                typeof val === "function"
+                  ? "() => { /* action */ }"
+                  : JSON.stringify(val);
+              lines.push("  " + key + ": " + strVal);
             }
           });
           return (
@@ -1506,13 +1534,13 @@ npm install customizable-toast-notification</pre
             .replace(/: (\d+(\.\d+)?)/g, ': <span class="tok-num">$1</span>');
         }
 
-        function renderCode() {
-          var opts = buildOptions(state);
+        function renderCode(customOpts) {
+          var opts = customOpts || buildOptions(state);
           var code = Object.keys(opts).length
             ? stringifyOptions(opts)
             : "customizableToast.createToast(); // all defaults — try changing something!";
           document.getElementById("codeOutput").innerHTML = highlightCode(code);
-          if (state.type) setAccent(state.type);
+          if (opts.type || state.type) setAccent(opts.type || state.type);
         }
 
         function fireCurrentConfig() {
@@ -2227,6 +2255,15 @@ npm install customizable-toast-notification</pre
           card.addEventListener("click", function () {
             if (typeof customizableToast === "undefined") return;
             if (p.isGroupDemo) {
+              var groupCode =
+                "// Deduplication & grouping: 3 identical toasts coalesce into 1 with dynamic count badge\n" +
+                "for (let i = 0; i < 3; i++) {\n" +
+                "  customizableToast.createToast({\n" +
+                "    type: \"info\",\n" +
+                "    message: \"New comment on your post\"\n" +
+                "  });\n" +
+                "}";
+              document.getElementById("codeOutput").innerHTML = highlightCode(groupCode);
               for (var i = 0; i < 3; i++) {
                 customizableToast.createToast({
                   type: "info",
@@ -2237,6 +2274,30 @@ npm install customizable-toast-notification</pre
               return;
             }
             if (p.isStreamingDemo) {
+              var streamCode =
+                "// Live in-place mutation / streaming updates:\n" +
+                "const handle = await customizableToast.createToast({\n" +
+                "  message: \"Exporting data... 0%\",\n" +
+                "  type: \"info\",\n" +
+                "  showLoader: true,\n" +
+                "  showProgressBar: true,\n" +
+                "  duration: 20000\n" +
+                "});\n\n" +
+                "// In-place progress update:\n" +
+                "handle.update({\n" +
+                "  message: \"Processing rows... 50%\",\n" +
+                "  progress: 50\n" +
+                "});\n\n" +
+                "// Final state transition:\n" +
+                "handle.update({\n" +
+                "  type: \"success\",\n" +
+                "  message: \"Export ready: 10,000 rows processed!\",\n" +
+                "  progress: 100,\n" +
+                "  showLoader: false,\n" +
+                "  duration: 4000,\n" +
+                "  sound: \"success\"\n" +
+                "});";
+              document.getElementById("codeOutput").innerHTML = highlightCode(streamCode);
               customizableToast
                 .createToast({
                   message: "Exporting data... 0%",
@@ -2268,6 +2329,28 @@ npm install customizable-toast-notification</pre
               return;
             }
             if (p.isStackedDemo) {
+              var stackCode =
+                "// iOS-style 3D Card Deck Stacked Mode:\n" +
+                "customizableToast.createToast({\n" +
+                "  message: \"Deploying build...\",\n" +
+                "  type: \"info\",\n" +
+                "  stacked: true,\n" +
+                "  duration: 12000\n" +
+                "});\n" +
+                "customizableToast.createToast({\n" +
+                "  message: \"47 suites running...\",\n" +
+                "  type: \"warning\",\n" +
+                "  stacked: true,\n" +
+                "  duration: 12000\n" +
+                "});\n" +
+                "customizableToast.createToast({\n" +
+                "  message: \"All 88 tests verified cleanly!\",\n" +
+                "  type: \"success\",\n" +
+                "  stacked: true,\n" +
+                "  sound: \"success\",\n" +
+                "  duration: 12000\n" +
+                "});";
+              document.getElementById("codeOutput").innerHTML = highlightCode(stackCode);
               customizableToast.createToast({
                 message: "Deploying build...",
                 type: "info",
@@ -2294,6 +2377,24 @@ npm install customizable-toast-notification</pre
               return;
             }
             if (p.isNetworkDemo) {
+              var netCode =
+                "// Network status monitor with retry CTA:\n" +
+                "customizableToast.createToast({\n" +
+                "  type: \"error\",\n" +
+                "  message: \"You are currently offline. Changes will sync once reconnected.\",\n" +
+                "  position: \"top-center\",\n" +
+                "  duration: 5000,\n" +
+                "  showProgressBar: false,\n" +
+                "  sound: \"error\",\n" +
+                "  soundPreset: \"retro\",\n" +
+                "  spring: \"stiff\",\n" +
+                "  cta: {\n" +
+                "    label: \"Retry\",\n" +
+                "    autoClose: true,\n" +
+                "    onClick: () => reconnect()\n" +
+                "  }\n" +
+                "});";
+              document.getElementById("codeOutput").innerHTML = highlightCode(netCode);
               customizableToast.createToast({
                 type: "error",
                 message: "You are currently offline. Changes will sync once reconnected.",
@@ -2325,8 +2426,32 @@ npm install customizable-toast-notification</pre
               setAccent("error");
               return;
             }
-            customizableToast.createToast(p.options);
-            setAccent(p.options.type || "info");
+            if (p.options) {
+              renderCode(p.options);
+              if (p.options.type) state.type = p.options.type;
+              if (p.options.message) state.message = p.options.message;
+              if (p.options.position) state.position = p.options.position;
+              if (p.options.duration) state.duration = p.options.duration;
+              if (p.options.sound) state.sound = p.options.sound;
+              if (p.options.soundPreset) state.soundPreset = p.options.soundPreset;
+              if (p.options.spring) state.spring = p.options.spring;
+              if (p.options.showLoader !== undefined) state.showLoader = !!p.options.showLoader;
+              if (p.options.stacked !== undefined) state.stacked = !!p.options.stacked;
+              if (p.options.swipeToDismiss !== undefined) state.swipeToDismiss = p.options.swipeToDismiss !== false;
+              if (p.options.cta) {
+                state.ctaEnabled = true;
+                if (!Array.isArray(p.options.cta)) {
+                  state.ctaLabel = p.options.cta.label || "Action";
+                  state.ctaVariant = p.options.cta.variant || "button";
+                  state.ctaHref = p.options.cta.href || "";
+                  state.ctaAutoClose = p.options.cta.autoClose !== false;
+                }
+              }
+              buildControls();
+              customizableToast.createToast(p.options);
+              setAccent(p.options.type || "info");
+              return;
+            }
           });
           presetGrid.appendChild(card);
         });
