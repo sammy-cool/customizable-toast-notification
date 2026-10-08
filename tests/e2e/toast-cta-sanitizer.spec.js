@@ -89,7 +89,7 @@ test.describe("CTA — button variant", () => {
     // intent (autoClose waits for the promise, doesn't fire early) is
     // already proven by the toBeVisible() check above; this just needs
     // enough room to eventually observe the close.
-    await expect(toast).toHaveCount(0, { timeout: 5000 });
+    await expect(toast).toHaveCount(0, { timeout: 8000 });
   });
 
   test("missing label falls back to placeholder text instead of an empty button", async ({

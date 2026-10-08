@@ -46,8 +46,8 @@ test.describe('Phase 2: Stacked Layout Mode', () => {
     await expect(container).toBeVisible();
 
     // Verify scale transforms applied
+    await expect(page.locator('.toast-outer-wrapper')).toHaveCount(3);
     const toasts = await page.locator('.toast-outer-wrapper').all();
-    expect(toasts.length).toBeGreaterThanOrEqual(3);
 
     // Each toast should have transform applied
     for (const toast of toasts.slice(0, 3)) {
@@ -83,8 +83,8 @@ test.describe('Phase 2: Stacked Layout Mode', () => {
   });
 
   test('stacked mode exit animation works', async ({ page }) => {
-    const handle = await page.evaluate(() => {
-      return window.customizableToast.createToast({
+    await page.evaluate(async () => {
+      window.__stackedHandle = await window.customizableToast.createToast({
         message: 'Stacked Exit Test',
         stacked: true,
         position: 'bottom-right',
@@ -94,8 +94,8 @@ test.describe('Phase 2: Stacked Layout Mode', () => {
 
     await page.waitForTimeout(500);
 
-    // Dismiss the toast
-    await page.evaluate((h) => h.dismiss(), handle);
+    // Dismiss the toast via stashed handle
+    await page.evaluate(() => window.__stackedHandle?.dismiss());
     await page.waitForTimeout(800);
 
     // Toast should be gone
@@ -126,27 +126,16 @@ test.describe('Phase 2: Swipe-to-Dismiss Gesture', () => {
     const toast = await page.locator('.toast').first();
     await expect(toast).toBeVisible();
 
-    // Simulate fast swipe past threshold (touch events)
-    await page.evaluate(() => {
-      const el = document.querySelector('.toast');
-      const startX = 100;
-      const startY = 100;
-      const endX = 350; // deltaX = 250px (well above 75px threshold)
+    const box = await toast.boundingBox();
+    const startX = box.x + box.width / 2;
+    const startY = box.y + box.height / 2;
 
-      const createTouch = (x, y) => {
-        if (typeof Touch !== 'undefined') {
-          return new Touch({ identifier: 1, target: el, clientX: x, clientY: y });
-        }
-        return { identifier: 1, target: el, clientX: x, clientY: y };
-      };
-
-      const t1 = createTouch(startX, startY);
-      el.dispatchEvent(new TouchEvent('touchstart', { touches: [t1], changedTouches: [t1], bubbles: true }));
-
-      const t2 = createTouch(endX, startY);
-      el.dispatchEvent(new TouchEvent('touchmove', { touches: [t2], changedTouches: [t2], bubbles: true, cancelable: true }));
-      el.dispatchEvent(new TouchEvent('touchend', { touches: [], changedTouches: [t2], bubbles: true }));
-    });
+    // Simulate fast swipe past threshold using mouse drag
+    await page.mouse.move(startX, startY);
+    await page.mouse.down();
+    // Fast swipe right by 250px (well above 75px threshold)
+    await page.mouse.move(startX + 250, startY);
+    await page.mouse.up();
 
     await page.waitForTimeout(800);
 
@@ -168,28 +157,15 @@ test.describe('Phase 2: Swipe-to-Dismiss Gesture', () => {
 
     const toast = await page.locator('.toast').first();
     const box = await toast.boundingBox();
+    const startX = box.x + box.width / 2;
+    const startY = box.y + box.height / 2;
 
-    // Simulate small swipe below threshold (touch events: deltaX = 20px < 50px/75px)
-    await page.evaluate(() => {
-      const el = document.querySelector('.toast');
-      const startX = 100;
-      const startY = 100;
-      const endX = 120; // deltaX = 20px
-
-      const createTouch = (x, y) => {
-        if (typeof Touch !== 'undefined') {
-          return new Touch({ identifier: 1, target: el, clientX: x, clientY: y });
-        }
-        return { identifier: 1, target: el, clientX: x, clientY: y };
-      };
-
-      const t1 = createTouch(startX, startY);
-      el.dispatchEvent(new TouchEvent('touchstart', { touches: [t1], changedTouches: [t1], bubbles: true }));
-
-      const t2 = createTouch(endX, startY);
-      el.dispatchEvent(new TouchEvent('touchmove', { touches: [t2], changedTouches: [t2], bubbles: true, cancelable: true }));
-      el.dispatchEvent(new TouchEvent('touchend', { touches: [], changedTouches: [t2], bubbles: true }));
-    });
+    // Simulate small swipe below threshold (15px < 50px/75px threshold)
+    await page.mouse.move(startX, startY);
+    await page.mouse.down();
+    await page.mouse.move(startX + 15, startY);
+    await page.waitForTimeout(100);
+    await page.mouse.up();
 
     await page.waitForTimeout(800);
 

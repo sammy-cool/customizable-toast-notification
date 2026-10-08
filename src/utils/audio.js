@@ -37,6 +37,9 @@ function getAudioContext() {
  * @param {'success' | 'error' | 'warning' | 'info' | 'pop' | string} toneType
  */
 export function playTone(toneType = "info") {
+  if (typeof window !== "undefined" && window.customizableToast && typeof window.customizableToast.playTone === "function" && window.customizableToast.playTone !== playTone) {
+    return window.customizableToast.playTone(toneType);
+  }
   if (!audioEnabled) return;
   const ctx = getAudioContext();
   if (!ctx) return;
