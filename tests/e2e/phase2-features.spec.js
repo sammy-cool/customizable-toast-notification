@@ -1,8 +1,11 @@
 import { test, expect } from '@playwright/test';
 
+const HARNESS = '/tests/e2e/fixtures/harness.html';
+
 test.describe('Phase 2: Stacked Layout Mode', () => {
   test.beforeEach(async ({ page }) => {
-    await page.goto('http://localhost:3000');
+    await page.goto(HARNESS);
+    await page.waitForFunction(() => !!window.customizableToast);
   });
 
   test('stacked mode applies correct scale transforms', async ({ page }) => {
@@ -103,7 +106,8 @@ test.describe('Phase 2: Stacked Layout Mode', () => {
 
 test.describe('Phase 2: Swipe-to-Dismiss Gesture', () => {
   test.beforeEach(async ({ page }) => {
-    await page.goto('http://localhost:3000');
+    await page.goto(HARNESS);
+    await page.waitForFunction(() => !!window.customizableToast);
     // Set viewport to simulate touch device
     await page.setViewportSize({ width: 375, height: 812 });
   });
@@ -209,7 +213,8 @@ test.describe('Phase 2: Swipe-to-Dismiss Gesture', () => {
 
 test.describe('Phase 2: Web Audio API Chimes', () => {
   test.beforeEach(async ({ page }) => {
-    await page.goto('http://localhost:3000');
+    await page.goto(HARNESS);
+    await page.waitForFunction(() => !!window.customizableToast);
   });
 
   test('audio plays on success toast creation', async ({ page }) => {
