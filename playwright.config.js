@@ -44,7 +44,7 @@ export default defineConfig({
       : "npm run zone-build && npx http-server . -p 4173 -s",
     port: 4173,
     reuseExistingServer: !process.env.CI,
-    timeout: 30_000,
+    timeout: 60_000,
   },
 
   projects: [

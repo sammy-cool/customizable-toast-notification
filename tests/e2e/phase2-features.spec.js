@@ -126,17 +126,27 @@ test.describe('Phase 2: Swipe-to-Dismiss Gesture', () => {
     const toast = await page.locator('.toast').first();
     await expect(toast).toBeVisible();
 
-    // Simulate fast swipe (high velocity)
-    const box = await toast.boundingBox();
-    await page.touchscreen.tap(box.x + box.width / 2, box.y + box.height / 2);
+    // Simulate fast swipe past threshold (touch events)
+    await page.evaluate(() => {
+      const el = document.querySelector('.toast');
+      const startX = 100;
+      const startY = 100;
+      const endX = 350; // deltaX = 250px (well above 75px threshold)
 
-    await page.touchscreen.swipe(
-      box.x + box.width / 2,
-      box.y + box.height / 2,
-      box.x + box.width + 200, // Fast swipe right
-      box.y + box.height / 2,
-      100 // 100ms for high velocity
-    );
+      const createTouch = (x, y) => {
+        if (typeof Touch !== 'undefined') {
+          return new Touch({ identifier: 1, target: el, clientX: x, clientY: y });
+        }
+        return { identifier: 1, target: el, clientX: x, clientY: y };
+      };
+
+      const t1 = createTouch(startX, startY);
+      el.dispatchEvent(new TouchEvent('touchstart', { touches: [t1], changedTouches: [t1], bubbles: true }));
+
+      const t2 = createTouch(endX, startY);
+      el.dispatchEvent(new TouchEvent('touchmove', { touches: [t2], changedTouches: [t2], bubbles: true, cancelable: true }));
+      el.dispatchEvent(new TouchEvent('touchend', { touches: [], changedTouches: [t2], bubbles: true }));
+    });
 
     await page.waitForTimeout(800);
 
@@ -159,16 +169,27 @@ test.describe('Phase 2: Swipe-to-Dismiss Gesture', () => {
     const toast = await page.locator('.toast').first();
     const box = await toast.boundingBox();
 
-    // Simulate slow swipe (low velocity)
-    await page.touchscreen.tap(box.x + box.width / 2, box.y + box.height / 2);
+    // Simulate small swipe below threshold (touch events: deltaX = 20px < 50px/75px)
+    await page.evaluate(() => {
+      const el = document.querySelector('.toast');
+      const startX = 100;
+      const startY = 100;
+      const endX = 120; // deltaX = 20px
 
-    await page.touchscreen.swipe(
-      box.x + box.width / 2,
-      box.y + box.height / 2,
-      box.x + box.width / 2 + 30, // Slow swipe
-      box.y + box.height / 2,
-      500 // 500ms for low velocity
-    );
+      const createTouch = (x, y) => {
+        if (typeof Touch !== 'undefined') {
+          return new Touch({ identifier: 1, target: el, clientX: x, clientY: y });
+        }
+        return { identifier: 1, target: el, clientX: x, clientY: y };
+      };
+
+      const t1 = createTouch(startX, startY);
+      el.dispatchEvent(new TouchEvent('touchstart', { touches: [t1], changedTouches: [t1], bubbles: true }));
+
+      const t2 = createTouch(endX, startY);
+      el.dispatchEvent(new TouchEvent('touchmove', { touches: [t2], changedTouches: [t2], bubbles: true, cancelable: true }));
+      el.dispatchEvent(new TouchEvent('touchend', { touches: [], changedTouches: [t2], bubbles: true }));
+    });
 
     await page.waitForTimeout(800);
 
