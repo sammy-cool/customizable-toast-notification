@@ -6,8 +6,6 @@
 
 "use strict";
 
-import { generateToastId } from "./id.js";
-
 /**
  * @typedef {Object} ToastSyncMessage
  * @property {string} type - Message type: 'create', 'update', 'dismiss', 'sync-request', 'sync-response'
@@ -31,12 +29,36 @@ class ToastBroadcaster {
   }
 
   /**
-   * Generate unique tab identifier using unified smart ID generator
+   * Generate unique tab identifier with high cross-tab entropy.
+   * Unlike DOM element IDs (which rely on monotonic counters within a single thread),
+   * tab IDs must guarantee uniqueness across independent browser processes/tabs
+   * that do not share memory even if opened in the exact same millisecond.
+   *
    * @private
-   * @returns {string}
+   * @returns {string} Unique tab ID matching /^tab-[a-z0-9]+-[a-z0-9]+$/
    */
   _generateTabId() {
-    return generateToastId("tab");
+    const timestamp = Date.now().toString(36);
+    let entropy = "";
+
+    if (typeof crypto !== "undefined" && typeof crypto.getRandomValues === "function") {
+      try {
+        const buf = new Uint32Array(2);
+        crypto.getRandomValues(buf);
+        entropy = `${buf[0].toString(36)}${buf[1].toString(36)}`.slice(0, 9);
+      } catch {
+        // Fallback if environment restricts getRandomValues
+      }
+    }
+
+    if (!entropy) {
+      // 53-bit safe integer entropy fallback
+      entropy = Math.floor(Math.random() * 0x1fffffffffffff)
+        .toString(36)
+        .slice(0, 9);
+    }
+
+    return `tab-${timestamp}-${entropy}`;
   }
 
   /**
