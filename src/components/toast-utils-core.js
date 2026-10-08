@@ -1,4 +1,4 @@
-import { getDynamicAccessibleTextColorHex, forceReflow } from "../utils/dom.js";
+import { getDynamicAccessibleTextColorHex } from "../utils/dom.js";
 import { getConfig, shouldReduceMotion } from "../utils/config.js";
 
 export function createCTA(toast, options, onClose) {
@@ -300,10 +300,9 @@ export function createProgressBar(toast, options) {
     );
   } else {
     progressBar.style.transition = `width ${progressDuration}ms linear`;
-    setTimeout(() => {
-      forceReflow(progressBar);
+    requestAnimationFrame(() => {
       progressBar.style.width = "0%";
-    }, 50);
+    });
   }
 }
 
@@ -314,14 +313,10 @@ export function runToastAnimation(toast) {
     toast.style.transform = "translateY(0)";
     return;
   }
-  forceReflow(toast);
-  const delay = 50;
-  setTimeout(() => {
-    requestAnimationFrame(() => {
-      toast.style.opacity = "1";
-      toast.style.transform = "translateY(0)";
-    });
-  }, delay);
+  requestAnimationFrame(() => {
+    toast.style.opacity = "1";
+    toast.style.transform = "translateY(0)";
+  });
 }
 
 export function attachSwipeToDismiss(toast, onClose) {

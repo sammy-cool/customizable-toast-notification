@@ -96,13 +96,10 @@ if (broadcaster.isSupported() && typeof window !== 'undefined') {
   broadcaster.on('sync-response', ({ payload }) => {
     if (!getConfig().syncTabs) return;
     // Another tab responded with its toast state
-    if (payload && payload.active && payload.queue) {
-      // Merge active toasts from other tab
-      const existingKeys = new Set(active.keys());
-      for (const activeKey of payload.active) {
-        if (!existingKeys.has(activeKey) && broadcaster.isLeadingTab()) {
-          // Request full toast details from leader if needed
-          // This is a simplified sync - in production, full options would be transmitted
+    if (payload && Array.isArray(payload.queue)) {
+      for (const item of payload.queue) {
+        if (item?.options && !active.has(item.key) && !pending.has(item.key)) {
+          showToast({ ...item.options, fromSync: true });
         }
       }
     }
@@ -198,6 +195,7 @@ export function updateStackedLayout(container) {
     };
   }
 
+  if (!container.children || container.children.length === 0) return;
   const items = Array.from(container.children);
   const count = items.length;
   const isExpanded = Boolean(container._isExpanded);

@@ -93,7 +93,7 @@ function handleFullWidthPositions(container, options, flags) {
 
   container.style.maxWidth = "100vw";
   try {
-    if (options && !options.maxWidth) {
+    if (options && !options.maxWidth && !Object.isFrozen(options)) {
       options.maxWidth = "100vw";
     }
   } catch {}

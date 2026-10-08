@@ -141,6 +141,7 @@
   flex-direction: column;
   overflow: hidden;
   inset: auto 10px 10px auto;
+  contain: layout style;
 }
 
 /* ========== POSITIONING CLASSES ========== */
@@ -271,6 +272,8 @@
   box-sizing: border-box;
   user-select: text;
   pointer-events: auto;
+  contain: layout style;
+  will-change: transform, opacity;
   transition: opacity var(--toast-transition-duration, 0.4s) var(--toast-transition-timing, ease),
               transform var(--toast-transition-duration, 0.4s) var(--toast-transition-timing, ease);
   transform: translateY(20px);
@@ -420,6 +423,7 @@
   border-radius: 2px;
   background: currentColor;
   opacity: 0.8;
+  will-change: width;
   transition: width var(--toast-transition-duration, 0.4s) linear;
 }
 
