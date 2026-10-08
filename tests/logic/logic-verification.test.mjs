@@ -271,6 +271,22 @@ describe("dom.js — getDynamicAccessibleTextColorHex", () => {
       "different unparseable input still resolves via the same deterministic fallback",
     );
   });
+
+  test("FIXED (BUG-82): 4-digit and 8-digit CSS hex colors correctly parse RGB without returning NaN", async () => {
+    freshDom();
+    const { getDynamicAccessibleTextColorHex } =
+      await import("../../src/utils/dom.js");
+    const fourDigitLight = getDynamicAccessibleTextColorHex("#ffff");
+    const sixDigitLight = getDynamicAccessibleTextColorHex("#ffffff");
+    assert.equal(fourDigitLight, sixDigitLight);
+
+    const fourDigitDark = getDynamicAccessibleTextColorHex("#000f");
+    const sixDigitDark = getDynamicAccessibleTextColorHex("#000000");
+    assert.equal(fourDigitDark, sixDigitDark);
+
+    const eightDigitDark = getDynamicAccessibleTextColorHex("#000000ff");
+    assert.equal(eightDigitDark, sixDigitDark);
+  });
 });
 
 describe("PausableTimer.js — pause/resume math", () => {
@@ -1192,6 +1208,22 @@ describe("toast-utils.js — createEmergencyToast purity", () => {
     assert.ok(el);
     assert.equal(document.body.children.length, bodyChildrenBefore, "Should not attach directly to body");
   });
+
+  test("createEmergencyToast close button triggers dismissal and cleans up timer", async () => {
+    freshDom();
+    const { createEmergencyToast } = await import(
+      "../../src/components/toast-utils.js?fresh=" + Date.now() + Math.random()
+    );
+    let closed = false;
+    const el = await createEmergencyToast({ message: "Emergency Click Test", duration: 10000 }, () => {
+      closed = true;
+    });
+    assert.ok(el);
+    const closeBtn = el.querySelector(".toast-emergency-close");
+    assert.ok(closeBtn);
+    closeBtn.click();
+    assert.equal(closed, true);
+  });
 });
 
 describe("toast-utils.js — animation & custom className across all toast types", () => {
@@ -2026,7 +2058,9 @@ describe("ToastManager.js & config.js — Telemetry and getToastMetrics()", () =
     // Create a toast
     await createToast({ message: "Metrics test toast 1", duration: 5000 });
     // Let rAF coalesce
-    await new Promise((r) => setTimeout(r, 50));
+    for (let i = 0; i < 15 && getToastMetrics().activeCount === 0; i++) {
+      await new Promise((r) => setTimeout(r, 20));
+    }
 
     const updated = getToastMetrics();
     assert.equal(updated.activeCount, 1);
@@ -2056,7 +2090,9 @@ describe("ToastManager.js & config.js — Telemetry and getToastMetrics()", () =
 
     // Toast creation should not throw even though onMetrics throws
     await createToast({ message: "Telemetry boundary test", duration: 5000 });
-    await new Promise((r) => setTimeout(r, 50));
+    for (let i = 0; i < 15 && recorded.length === 0; i++) {
+      await new Promise((r) => setTimeout(r, 20));
+    }
 
     assert.ok(recorded.length > 0);
     const lastMetrics = recorded.at(-1);

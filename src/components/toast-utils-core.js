@@ -295,6 +295,9 @@ export function attachSwipeToDismiss(toast, onClose) {
         toast._swipeTimeout = null;
         if (typeof onClose === "function") onClose(toast);
       }, exitDuration);
+      if (typeof toast._swipeTimeout?.unref === "function") {
+        toast._swipeTimeout.unref();
+      }
     } else {
       if (!getConfig().disableInlineStyles || shouldReduceMotion() === false) {
           toast.style.transition = "transform 200ms cubic-bezier(0.34, 1.56, 0.64, 1), opacity 200ms ease";

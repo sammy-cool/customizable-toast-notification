@@ -278,13 +278,19 @@ export async function createEmergencyToast(options = {}, onClose) {
 
     while (emergency.firstChild) emergency.removeChild(emergency.firstChild);
     emergency.appendChild(innerWrapper);
-    closeSpan.addEventListener("click", () => {
+
+    let timer = null;
+    const onClick = () => {
+      if (timer) clearTimeout(timer);
+      closeSpan.removeEventListener("click", onClick);
       emergency.remove();
       if (typeof onClose === "function") onClose(emergency);
-    });
+    };
+    closeSpan.addEventListener("click", onClick);
 
     const duration = Number(options?.duration) || 2500;
-    const timer = setTimeout(() => {
+    timer = setTimeout(() => {
+      closeSpan.removeEventListener("click", onClick);
       emergency.remove();
       if (typeof onClose === "function") onClose(emergency);
     }, duration);
