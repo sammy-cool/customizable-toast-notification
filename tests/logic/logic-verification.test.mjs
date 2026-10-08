@@ -2587,11 +2587,61 @@ describe("smart-triage.js — TypeSafe AI Smart Triage deterministic classifier"
   });
 });
 
+describe("toast-utils-core.js — multi-action CTA array support", () => {
+  test("createCTA renders multiple action buttons when cta is an array", async () => {
+    freshDom();
+    const { createCTA } = await import("../../src/components/toast-utils-core.js");
+    const toast = document.createElement("div");
 
+    let primaryClicked = false;
+    let secondaryClicked = false;
+    let closedCount = 0;
 
+    createCTA(
+      toast,
+      {
+        cta: [
+          {
+            label: "Confirm",
+            onClick: () => {
+              primaryClicked = true;
+            },
+          },
+          {
+            label: "Decline",
+            autoClose: false,
+            onClick: () => {
+              secondaryClicked = true;
+            },
+          },
+        ],
+      },
+      () => {
+        closedCount++;
+      },
+    );
 
+    const buttons = toast.querySelectorAll(".toast-cta");
+    assert.strictEqual(buttons.length, 2);
+    assert.strictEqual(buttons[0].textContent, "Confirm");
+    assert.strictEqual(buttons[1].textContent, "Decline");
 
+    // Click secondary button with autoClose: false
+    buttons[1].click();
+    assert.strictEqual(secondaryClicked, true);
+    assert.strictEqual(closedCount, 0);
 
+    // Click primary button with autoClose: true (default)
+    buttons[0].click();
+    assert.strictEqual(primaryClicked, true);
+    assert.strictEqual(closedCount, 1);
 
-
+    // Test listener cleanup
+    assert.strictEqual(typeof toast._cleanupCTA, "function");
+    toast._cleanupCTA();
+    buttons[0].click();
+    // closedCount should not increment again after cleanup
+    assert.strictEqual(closedCount, 1);
+  });
+});
 

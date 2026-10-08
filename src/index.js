@@ -119,7 +119,7 @@ import {
  * @property {'auto' | 'ltr' | 'rtl'} [fontDirection]
  * @property {string} [fontPadding]
  * @property {string} [className]
- * @property {CTAOptions} [cta]
+ * @property {CTAOptions | CTAOptions[]} [cta]
  * @property {((e: MouseEvent, toast: HTMLElement) => void | Promise<void>) | UndoOptions} [undo]
  * @property {boolean | SpringPreset | SpringConfig} [spring]
  * @property {boolean} [stacked]

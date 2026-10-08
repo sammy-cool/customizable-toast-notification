@@ -40,3 +40,8 @@ Zero-bloat, drop-in adapters with 100% strict TypeScript types:
 - **Angular**: [`toast.service.ts`](./angular/toast.service.ts) & [`toast.service.d.ts`](./angular/toast.service.d.ts) — `@Injectable({ providedIn: 'root' })` service with full DI support.
 - **SolidJS**: [`useToast.js`](./solid/useToast.js) & [`useToast.d.ts`](./solid/useToast.d.ts) — fine-grained reactive primitive with live signal metrics.
 
+## 🛠️ Production Recipes
+
+- **Network Status Monitor**: [`examples/network-status/index.html`](./network-status/index.html) — online/offline connection state tracking with retry CTA.
+- **Global Error Boundary**: [`examples/error-boundary/index.html`](./error-boundary/index.html) — window uncaught exception & rejection auto-toast with copy stack trace CTA.
+- **Developer Cookbook**: Full production recipes guide in [`docs/COOKBOOK.md`](../docs/COOKBOOK.md).

@@ -3,76 +3,91 @@ import { getConfig, shouldReduceMotion } from "../utils/config.js";
 
 export function createCTA(toast, options, onClose) {
   const rawCfg = options?.cta;
-  if (!rawCfg || typeof rawCfg !== "object" || Array.isArray(rawCfg)) return;
+  if (!rawCfg || typeof rawCfg !== "object") return;
 
-  const cfg = { ...rawCfg };
+  const configs = Array.isArray(rawCfg) ? rawCfg.filter(Boolean) : [rawCfg];
+  if (configs.length === 0) return;
 
-  if (!cfg.label) {
-    cfg.label = "CTA Label Missing!";
-  }
+  const cleanups = [];
 
-  const isLink = cfg.variant === "link" || (!cfg.variant && !!cfg.href);
-  const el = document.createElement(isLink ? "a" : "button");
+  configs.forEach((raw, idx) => {
+    if (!raw || typeof raw !== "object") return;
+    const cfg = { ...raw };
 
-  if (isLink) {
-    el.href = cfg.href;
-    if (cfg.target) el.target = cfg.target;
-    el.rel = cfg.rel || (cfg.target === "_blank" ? "noopener noreferrer" : "");
-  } else {
-    el.type = "button";
-  }
-
-  el.setAttribute("aria-label", cfg.ariaLabel || cfg.label);
-
-  const ctaTextColor = options.textColor || getDynamicAccessibleTextColorHex(options.backgroundColor);
-  const ctaBgColor = options.backgroundColor
-    ? getContrastBackground(options.backgroundColor)
-    : "rgba(255,255,255,0.15)";
-
-  const isHex6 = typeof ctaTextColor === "string" && /^#[0-9a-fA-F]{6}$/.test(ctaTextColor.trim());
-  const ctaBorderColor = isHex6 ? `${ctaTextColor.trim()}44` : "rgba(128, 128, 128, 0.3)";
-
-  el.className = "toast-cta";
-  if (!getConfig().disableInlineStyles) {
-    Object.assign(el.style, {
-    marginLeft: "10px",
-    padding: "6px 10px",
-    borderRadius: "6px",
-    fontSize: "12px",
-    fontWeight: "600",
-    lineHeight: "1",
-    border: `1px solid ${ctaBorderColor}`,
-    color: ctaTextColor,
-    background: ctaBgColor,
-    cursor: "pointer",
-    whiteSpace: "nowrap",
-    flexShrink: "0",
-  });
-  }
-
-  el.textContent = cfg.label;
-
-  const onClick = async (e) => {
-    try {
-      if (typeof cfg.onClick === "function") {
-        const res = cfg.onClick(e);
-        if (res?.then) await res;
-      }
-    } catch (err) {
-      console.error("CTA onClick handler error:", err);
-    } finally {
-      if (cfg.autoClose !== false && typeof onClose === "function") {
-        onClose(toast);
-      }
+    if (!cfg.label) {
+      cfg.label = configs.length > 1 ? `Action ${idx + 1}` : "CTA Label Missing!";
     }
+
+    const isLink = cfg.variant === "link" || (!cfg.variant && !!cfg.href);
+    const el = document.createElement(isLink ? "a" : "button");
+
+    if (isLink) {
+      el.href = cfg.href;
+      if (cfg.target) el.target = cfg.target;
+      el.rel = cfg.rel || (cfg.target === "_blank" ? "noopener noreferrer" : "");
+    } else {
+      el.type = "button";
+    }
+
+    el.setAttribute("aria-label", cfg.ariaLabel || cfg.label);
+
+    const ctaTextColor = options.textColor || getDynamicAccessibleTextColorHex(options.backgroundColor);
+    const ctaBgColor = options.backgroundColor
+      ? getContrastBackground(options.backgroundColor)
+      : "rgba(255,255,255,0.15)";
+
+    const isHex6 = typeof ctaTextColor === "string" && /^#[0-9a-fA-F]{6}$/.test(ctaTextColor.trim());
+    const ctaBorderColor = isHex6 ? `${ctaTextColor.trim()}44` : "rgba(128, 128, 128, 0.3)";
+
+    el.className = "toast-cta";
+    if (!getConfig().disableInlineStyles) {
+      Object.assign(el.style, {
+        marginLeft: idx === 0 ? "10px" : "6px",
+        padding: "6px 10px",
+        borderRadius: "6px",
+        fontSize: "12px",
+        fontWeight: "600",
+        lineHeight: "1",
+        border: `1px solid ${ctaBorderColor}`,
+        color: ctaTextColor,
+        background: ctaBgColor,
+        cursor: "pointer",
+        whiteSpace: "nowrap",
+        flexShrink: "0",
+      });
+    }
+
+    el.textContent = cfg.label;
+
+    const onClick = async (e) => {
+      try {
+        if (typeof cfg.onClick === "function") {
+          const res = cfg.onClick(e);
+          if (res?.then) await res;
+        }
+      } catch (err) {
+        console.error("CTA onClick handler error:", err);
+      } finally {
+        if (cfg.autoClose !== false && typeof onClose === "function") {
+          onClose(toast);
+        }
+      }
+    };
+
+    el.addEventListener("click", onClick);
+
+    const cleanupItem = () => el.removeEventListener("click", onClick);
+    el._cleanup = cleanupItem;
+    cleanups.push(cleanupItem);
+
+    toast.appendChild(el);
+  });
+
+  const prevCleanup = toast._cleanupCTA;
+  toast._cleanupCTA = () => {
+    prevCleanup?.();
+    cleanups.forEach((c) => c());
   };
-
-  el.addEventListener("click", onClick);
-
-  el._cleanup = () => el.removeEventListener("click", onClick);
-  toast._cleanupCTA = () => el.removeEventListener("click", onClick);
-
-  toast.appendChild(el);
 }
 
 /**

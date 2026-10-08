@@ -251,6 +251,22 @@ createToast({
     },
   },
 });
+
+// Multi-Action CTAs (Dual actions e.g. Accept / Decline)
+createToast({
+  message: "Project invite from Priya Patel",
+  cta: [
+    {
+      label: "Accept",
+      onClick: async () => await acceptInvitation(),
+    },
+    {
+      label: "Decline",
+      autoClose: true,
+      onClick: async () => await declineInvitation(),
+    },
+  ],
+});
 ```
 
 Any toast with a `cta` automatically gets `pauseOnHover: true` unless you override it.
@@ -1148,6 +1164,13 @@ cd customizable-toast-notification
 npm install
 npm run zone-build
 ```
+
+## 📚 Documentation & Cookbooks
+
+- 🍳 **[Developer Cookbook](docs/COOKBOOK.md)** — Production recipes for Multi-Action CTAs, Network Status monitoring, Global Error Boundaries, and Streaming file uploads.
+- 📖 **[API Reference](docs/API.md)** — Complete API documentation for all methods, configurations, and events.
+- 🔌 **[Integration Guide](docs/INTEGRATION_GUIDE.md)** — Framework integration guides for React, Vue, Svelte, Angular, and SolidJS.
+- ⚡ **[Performance Guide](docs/PERFORMANCE.md)** — CSS containment, GPU compositor acceleration, and memory benchmarking.
 
 ## 📄 License
 

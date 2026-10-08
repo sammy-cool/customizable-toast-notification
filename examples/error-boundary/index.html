@@ -1,0 +1,183 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Global Error Boundary Auto-Toast Recipe — Customizable Toast Notification</title>
+  <link rel="stylesheet" href="../../dist/index.css">
+  <style>
+    :root {
+      --bg: #0f172a;
+      --card: #1e293b;
+      --text: #f8fafc;
+      --accent: #f43f5e;
+      --border: #334155;
+    }
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+      background: var(--bg);
+      color: var(--text);
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      min-height: 100vh;
+      margin: 0;
+      padding: 20px;
+      box-sizing: border-box;
+    }
+    .card {
+      background: var(--card);
+      border: 1px solid var(--border);
+      border-radius: 16px;
+      padding: 32px;
+      max-width: 580px;
+      width: 100%;
+      box-shadow: 0 10px 30px rgba(0,0,0,0.4);
+      text-align: center;
+    }
+    h1 {
+      font-size: 24px;
+      margin-top: 0;
+      margin-bottom: 8px;
+    }
+    p {
+      color: #94a3b8;
+      line-height: 1.5;
+      font-size: 14px;
+    }
+    .btn-group {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 12px;
+      justify-content: center;
+      margin-top: 24px;
+    }
+    button {
+      padding: 10px 18px;
+      border-radius: 8px;
+      font-weight: 600;
+      font-size: 14px;
+      cursor: pointer;
+      border: 1px solid var(--border);
+      background: #334155;
+      color: white;
+      transition: all 0.2s ease;
+    }
+    button:hover {
+      background: #475569;
+    }
+    button.danger {
+      background: var(--accent);
+      color: white;
+      border-color: var(--accent);
+    }
+    button.danger:hover {
+      background: #e11d48;
+    }
+    pre {
+      background: #020617;
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      padding: 12px;
+      text-align: left;
+      font-size: 12px;
+      color: #cbd5e1;
+      overflow-x: auto;
+      margin-top: 20px;
+    }
+  </style>
+</head>
+<body>
+
+  <div class="card">
+    <h1>🛡️ Global Error Boundary Auto-Toast</h1>
+    <p>Zero-dependency error boundary that listens for unhandled JavaScript exceptions and unhandled promise rejections, displaying non-intrusive toasts with multi-action CTAs (Copy Stack & Report).</p>
+
+    <div class="btn-group">
+      <button class="danger" id="throwSyncBtn">Throw Synchronous Error</button>
+      <button class="danger" id="rejectPromiseBtn">Reject Unhandled Promise</button>
+      <button id="safeActionBtn">Run Safe Operation</button>
+    </div>
+
+    <pre><code>// Wire up in your index.js / main.js entry point:
+window.addEventListener('error', (e) => notifyError(e.error || e.message));
+window.addEventListener('unhandledrejection', (e) => notifyError(e.reason));</code></pre>
+  </div>
+
+  <script src="../../dist/index.umd.js"></script>
+  <script>
+    const { createToast } = window.customizableToast;
+
+    function notifyError(error) {
+      const errMessage = error?.message || String(error || "Unknown exception occurred");
+      const errStack = error?.stack || errMessage;
+
+      createToast({
+        type: "error",
+        message: `Unhandled Error: ${errMessage.slice(0, 80)}`,
+        position: "top-right",
+        duration: 8000,
+        sound: "error",
+        soundPreset: "retro",
+        spring: "stiff",
+        cta: [
+          {
+            label: "Copy Stack",
+            autoClose: false,
+            onClick: async () => {
+              try {
+                await navigator.clipboard.writeText(errStack);
+                createToast({
+                  type: "success",
+                  message: "Error stack copied to clipboard!",
+                  duration: 2000,
+                  position: "top-right",
+                });
+              } catch {
+                console.error("Clipboard write failed:", errStack);
+              }
+            }
+          },
+          {
+            label: "Report Issue",
+            variant: "link",
+            href: "https://github.com/sammy-cool/customizable-toast-notification/issues",
+            target: "_blank"
+          }
+        ]
+      });
+    }
+
+    // Attach global window error handlers
+    window.addEventListener("error", (event) => {
+      event.preventDefault();
+      notifyError(event.error || event.message);
+    });
+
+    window.addEventListener("unhandledrejection", (event) => {
+      event.preventDefault();
+      notifyError(event.reason);
+    });
+
+    // Test triggers
+    document.getElementById("throwSyncBtn").addEventListener("click", () => {
+      throw new ReferenceError("Cannot access 'billingAccount' before initialization in CheckoutModal.jsx:42");
+    });
+
+    document.getElementById("rejectPromiseBtn").addEventListener("click", () => {
+      Promise.reject(new Error("HTTP 502 Bad Gateway: Payment service endpoint unreachable"));
+    });
+
+    document.getElementById("safeActionBtn").addEventListener("click", () => {
+      createToast({
+        type: "success",
+        message: "Safe operation succeeded without errors.",
+        duration: 2500,
+        sound: "success",
+        soundPreset: "modern"
+      });
+    });
+  </script>
+</body>
+</html>

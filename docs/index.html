@@ -2163,6 +2163,48 @@ npm install customizable-toast-notification</pre
               duration: 15000,
             },
           },
+          {
+            icon: "👥",
+            title: "Multi-action confirmation",
+            tag: "cta: [action1, action2]",
+            desc: "Dual action buttons (Accept / Decline) with distinct callbacks and autoClose behaviors.",
+            options: {
+              type: "info",
+              message: "Team invite from Priya Patel (Frontend Lead)",
+              position: "top-right",
+              duration: 8000,
+              spring: "gentle",
+              cta: [
+                {
+                  label: "Accept",
+                  onClick: function () {
+                    customizableToast.createToast({
+                      type: "success",
+                      message: "Invitation accepted!",
+                      sound: "success",
+                    });
+                  },
+                },
+                {
+                  label: "Decline",
+                  autoClose: true,
+                  onClick: function () {
+                    customizableToast.createToast({
+                      type: "warning",
+                      message: "Invitation declined.",
+                    });
+                  },
+                },
+              ],
+            },
+          },
+          {
+            icon: "🌐",
+            title: "Network status monitor",
+            tag: "offline / online auto-toast",
+            desc: "Simulates an offline event with retry CTA followed by back-online confirmation.",
+            isNetworkDemo: true,
+          },
         ];
 
         var presetGrid = document.getElementById("presetGrid");
@@ -2249,6 +2291,38 @@ npm install customizable-toast-notification</pre
                   duration: 12000,
                 });
               }, 500);
+              return;
+            }
+            if (p.isNetworkDemo) {
+              customizableToast.createToast({
+                type: "error",
+                message: "You are currently offline. Changes will sync once reconnected.",
+                position: "top-center",
+                duration: 5000,
+                showProgressBar: false,
+                sound: "error",
+                soundPreset: "retro",
+                spring: "stiff",
+                cta: {
+                  label: "Retry",
+                  autoClose: true,
+                  onClick: function () {
+                    setTimeout(function () {
+                      customizableToast.createToast({
+                        type: "success",
+                        message: "Back online! Connection restored.",
+                        position: "top-center",
+                        duration: 3000,
+                        sound: "success",
+                        soundPreset: "bell",
+                        spring: "bouncy",
+                      });
+                      setAccent("success");
+                    }, 400);
+                  },
+                },
+              });
+              setAccent("error");
               return;
             }
             customizableToast.createToast(p.options);
