@@ -119,6 +119,7 @@
     "dist/index.cjs.map",
     "dist/index.d.ts",
     "dist/index.css",
+    "dist/index.css.d.ts",
     "README.md",
     "LICENSE",
     "CHANGELOG.md"
