@@ -14,6 +14,10 @@ import { getOrCreateToastContainer, resetContainerRegistry } from "./utils/conta
 import { getDynamicAccessibleTextColorHex } from "./utils/dom.js";
 import { setPosition } from "./utils/position.js";
 import { setAudioEnabled, isAudioEnabled, playTone } from "./utils/audio.js";
+import { getToastPool, resetToastPool } from "./utils/toast-pool.js";
+import { getToastBroadcaster, resetToastBroadcaster } from "./utils/toast-broadcast.js";
+import { calculateToastPriority, categorizeToast } from "./utils/ai-scorer.js";
+import { createGestureDetector, detectPinch, isFlick, calculateVelocity } from "./utils/multi-touch.js";
 
 /**
  * @typedef {'info' | 'success' | 'error' | 'warning'} ToastType
@@ -77,10 +81,17 @@ import { setAudioEnabled, isAudioEnabled, playTone } from "./utils/audio.js";
  * @property {boolean | 'success' | 'error' | 'warning' | 'info' | 'pop' | string} [sound]
  * @property {boolean} [swipeToDismiss]
  * @property {number} [progress]
+ * @property {boolean} [syncTabs]
+ * @property {boolean} [aiPrioritization]
+ * @property {number} [priority]
  */
 
 /**
  * @typedef {'auto' | 'always' | 'never'} ReducedMotionMode
+ */
+
+/**
+ * @typedef {'light' | 'dark' | 'high-contrast' | 'compact' | 'spacious' | 'glass'} ToastTheme
  */
 
 /**
@@ -95,6 +106,12 @@ import { setAudioEnabled, isAudioEnabled, playTone } from "./utils/audio.js";
  * @property {boolean} [disableInlineStyles]
  * @property {ReducedMotionMode} [reducedMotion]
  * @property {ToastPosition | string} [defaultPosition]
+ * @property {ToastTheme} [theme]
+ * @property {boolean} [stacked]
+ * @property {boolean} [swipeToDismiss]
+ * @property {boolean} [sound]
+ * @property {boolean} [syncTabs]
+ * @property {boolean} [aiPrioritization]
  */
 
 /**
@@ -470,6 +487,16 @@ export {
   setAudioEnabled,
   isAudioEnabled,
   playTone,
+  getToastPool,
+  resetToastPool,
+  getToastBroadcaster,
+  resetToastBroadcaster,
+  calculateToastPriority,
+  categorizeToast,
+  createGestureDetector,
+  detectPinch,
+  isFlick,
+  calculateVelocity,
 };
 
 if (typeof window !== "undefined" && typeof document !== "undefined") {
@@ -518,6 +545,16 @@ try {
       setAudioEnabled,
       isAudioEnabled,
       playTone,
+      getToastPool,
+      resetToastPool,
+      getToastBroadcaster,
+      resetToastBroadcaster,
+      calculateToastPriority,
+      categorizeToast,
+      createGestureDetector,
+      detectPinch,
+      isFlick,
+      calculateVelocity,
     };
   }
 } catch (error) {

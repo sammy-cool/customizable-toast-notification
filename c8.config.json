@@ -1,0 +1,12 @@
+{
+  "exclude": ["node_modules", "dist", "tests", "scripts", "coverage", "**/*.test.mjs"],
+  "extension": [".js", ".mjs"],
+  "include": ["src/**"],
+  "reporter": ["text", "lcov", "html"],
+  "report-dir": "coverage",
+  "check-coverage": true,
+  "branches": 60,
+  "functions": 75,
+  "lines": 75,
+  "statements": 75
+}

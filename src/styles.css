@@ -491,6 +491,34 @@
   border: 1px solid rgba(255, 255, 255, 0.18);
 }
 
+/* ========== PINCH & FLICK GESTURES ========== */
+.toast.pinched {
+  transform: scale(1.1);
+  z-index: 1000;
+}
+
+.toast.flicked {
+  transition: transform 200ms ease-out, opacity 200ms ease-out;
+}
+
+@keyframes pinch-expand {
+  from {
+    transform: scale(1);
+  }
+  to {
+    transform: scale(1.15);
+  }
+}
+
+@keyframes pinch-contract {
+  from {
+    transform: scale(1.15);
+  }
+  to {
+    transform: scale(1);
+  }
+}
+
 /* ========== ACCESSIBILITY: REDUCED MOTION ========== */
 @media (prefers-reduced-motion: reduce) {
   .toast,

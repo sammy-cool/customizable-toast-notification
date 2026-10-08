@@ -5,11 +5,13 @@ on:
     branches:
       - master
       - migration-phase-v2
+      - "*"
 
   pull_request:
     branches:
       - master
       - migration-phase-v2
+      - "*"
 
 jobs:
   verify:

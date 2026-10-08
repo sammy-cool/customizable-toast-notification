@@ -204,16 +204,17 @@ export function attachSwipeToDismiss(toast, onClose) {
   let startX = 0;
   let startY = 0;
   let currentX = 0;
+  let startTime = 0;
   let isDragging = false;
   let isHorizontal = false;
 
-  
   const onPointerDown = (e) => {
     if (!e) return;
     const ev = e.touches ? e.touches[0] : e;
     startX = ev.clientX;
     startY = ev.clientY;
     currentX = startX;
+    startTime = Date.now();
     isDragging = true;
     isHorizontal = false;
     toast.style.transition = "none";
@@ -256,24 +257,27 @@ export function attachSwipeToDismiss(toast, onClose) {
     }
     isDragging = false;
     toast.style.userSelect = "";
-    
-    // Desktop generally needs less threshold, but 75 is okay
+
     const dx = currentX - startX;
-    const threshold = 75;
+    const duration = Math.max(1, Date.now() - startTime);
+    const velocity = Math.abs(dx) / duration; // px/ms
+    const isFlick = velocity >= 0.65 && Math.abs(dx) >= 50;
+    const threshold = isFlick ? 50 : 75;
 
     if (Math.abs(dx) >= threshold) {
       const exitX = dx > 0 ? 320 : -320;
+      const exitDuration = isFlick ? 120 : 180;
       if (!getConfig().disableInlineStyles || shouldReduceMotion() === false) {
-          toast.style.transition = "transform 180ms ease-out, opacity 180ms ease-out";
+          toast.style.transition = `transform ${exitDuration}ms ease-out, opacity ${exitDuration}ms ease-out`;
           toast.style.transform = `translateX(${exitX}px)`;
           toast.style.opacity = "0";
       }
       setTimeout(() => {
         if (typeof onClose === "function") onClose(toast);
-      }, 180);
+      }, exitDuration);
     } else {
       if (!getConfig().disableInlineStyles || shouldReduceMotion() === false) {
-          toast.style.transition = "transform 200ms ease, opacity 200ms ease";
+          toast.style.transition = "transform 200ms cubic-bezier(0.34, 1.56, 0.64, 1), opacity 200ms ease";
           toast.style.transform = "translateX(0)";
           toast.style.opacity = "1";
       }

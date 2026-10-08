@@ -1525,3 +1525,179 @@ describe("toast-utils-core.js — progress bar options and live update robustnes
   });
 });
 
+describe("toast-pool.js — Phase 3 Virtual Scrolling Element Pool", () => {
+  test("ToastElementPool acquires and releases elements correctly", async () => {
+    freshDom();
+    const { ToastElementPool, resetToastPool } = await import("../../src/utils/toast-pool.js");
+    resetToastPool();
+
+    const pool = new ToastElementPool(3, 10);
+    const stats1 = pool.getStats();
+    assert.equal(stats1.total, 3);
+    assert.equal(stats1.inUse, 0);
+
+    const el1 = pool.acquire("toast-1");
+    assert.ok(el1);
+    assert.equal(el1.id, "toast-toast-1");
+    assert.equal(pool.getStats().inUse, 1);
+
+    const el2 = pool.acquire("toast-2");
+    assert.equal(pool.getStats().inUse, 2);
+
+    pool.release(el1, "toast-1");
+    assert.equal(pool.getStats().inUse, 1);
+
+    pool.compact();
+    pool.clear();
+    assert.equal(pool.getStats().inUse, 0);
+    assert.equal(pool.getStats().total, 0);
+    resetToastPool();
+  });
+
+  test("ToastElementPool handles maximum pool limit and recycling", async () => {
+    freshDom();
+    const { getToastPool, resetToastPool } = await import("../../src/utils/toast-pool.js");
+    resetToastPool();
+
+    const pool = getToastPool(2, 4);
+    const elements = [];
+    for (let i = 0; i < 5; i++) {
+      elements.push(pool.acquire(`t-${i}`));
+    }
+    assert.ok(elements.length === 5);
+    assert.equal(pool.getStats().maxSize, 4);
+
+    resetToastPool();
+  });
+});
+
+describe("toast-broadcast.js — Phase 3 Cross-tab Synchronization", () => {
+  test("ToastBroadcaster handles listener registration and message dispatch", async () => {
+    freshDom();
+    const { getToastBroadcaster, resetToastBroadcaster } = await import("../../src/utils/toast-broadcast.js");
+    resetToastBroadcaster();
+
+    const broadcaster = getToastBroadcaster();
+    assert.ok(broadcaster);
+    assert.equal(typeof broadcaster.getTabId(), "string");
+    assert.equal(typeof broadcaster.broadcast, "function");
+
+    let received = null;
+    const unsubscribe = broadcaster.on("custom-event", (data) => {
+      received = data;
+    });
+
+    assert.equal(typeof unsubscribe, "function");
+    unsubscribe();
+    resetToastBroadcaster();
+  });
+});
+
+describe("multi-touch.js — Phase 3 Advanced Multi-touch Gesture Mathematics", () => {
+  test("calculateDistance, calculateVelocity, and isFlick behave accurately", async () => {
+    const {
+      calculateDistance,
+      calculateVelocity,
+      isFlick,
+      detectPinch,
+      calculateSwipe,
+      calculateSnapBack,
+    } = await import("../../src/utils/multi-touch.js");
+
+    const p1 = { x: 0, y: 0, id: 1, time: 100 };
+    const p2 = { x: 3, y: 4, id: 2, time: 100 };
+    assert.equal(calculateDistance(p1, p2), 5);
+
+    const velocity = calculateVelocity(150, 100);
+    assert.equal(velocity, 1.5);
+    assert.equal(calculateVelocity(100, 0), Infinity);
+
+    assert.equal(isFlick(0.6, 60, 0.5, 50), true);
+    assert.equal(isFlick(0.3, 60, 0.5, 50), false);
+    assert.equal(isFlick(0.6, 20, 0.5, 50), false);
+
+    const pinch = detectPinch({ startDistance: 100, currentDistance: 150 });
+    assert.equal(pinch.isPinch, true);
+    assert.equal(pinch.direction, "out");
+    assert.equal(pinch.scale, 1.5);
+
+    const swipe = calculateSwipe({
+      startTouches: [{ x: 50, y: 50 }],
+      touches: [{ x: 150, y: 50 }],
+      startTime: Date.now() - 100,
+    });
+    assert.equal(swipe.direction, "right");
+    assert.equal(swipe.distance, 100);
+
+    const snap = calculateSnapBack(30, 400);
+    assert.equal(snap.targetOffset, 0);
+    assert.ok(snap.duration > 0);
+  });
+
+  test("createGestureDetector attaches and detaches touch listeners cleanly", async () => {
+    freshDom();
+    const { createGestureDetector } = await import("../../src/utils/multi-touch.js");
+    const div = document.createElement("div");
+
+    let flickFired = false;
+    const detector = createGestureDetector(div, {
+      onFlick: () => {
+        flickFired = true;
+      },
+      flickVelocityThreshold: 0.1,
+    });
+
+    assert.equal(typeof detector.attach, "function");
+    assert.equal(typeof detector.detach, "function");
+
+    detector.attach();
+    detector.detach();
+    assert.equal(flickFired, false);
+  });
+});
+
+describe("ai-scorer.js — Phase 3 AI Priority Routing Scorer", () => {
+  test("calculateToastPriority computes appropriate scores across types and keywords", async () => {
+    const { calculateToastPriority, categorizeToast } = await import("../../src/utils/ai-scorer.js");
+
+    const errorPriority = calculateToastPriority({
+      type: "error",
+      message: "Critical database connection failure",
+      duration: 3000,
+    });
+    const infoPriority = calculateToastPriority({
+      type: "info",
+      message: "Weekly sample update finished",
+      duration: 10000,
+    });
+
+    assert.ok(errorPriority.score > infoPriority.score);
+    assert.ok(errorPriority.keywords.includes("critical") || errorPriority.keywords.includes("failure"));
+
+    const neutralPriority = calculateToastPriority(null);
+    assert.equal(neutralPriority.score, 50);
+
+    const categories = categorizeToast("Security alert: Unauthorized password access attempt");
+    assert.ok(categories.includes("security"));
+
+    const perfCategories = categorizeToast("System latency warning: Request timeout slow response");
+    assert.ok(perfCategories.includes("performance"));
+  });
+});
+
+describe("config.js — Phase 3 configuration options", () => {
+  test("setConfig handles syncTabs and aiPrioritization with strict type safety", async () => {
+    freshDom();
+    const { setConfig, getConfig } = await import("../../src/utils/config.js");
+
+    setConfig({ syncTabs: true, aiPrioritization: true });
+    assert.equal(getConfig().syncTabs, true);
+    assert.equal(getConfig().aiPrioritization, true);
+
+    setConfig({ syncTabs: false, aiPrioritization: false });
+    assert.equal(getConfig().syncTabs, false);
+    assert.equal(getConfig().aiPrioritization, false);
+  });
+});
+
+

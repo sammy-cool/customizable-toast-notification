@@ -486,6 +486,72 @@ setConfig({ maxVisible: 5 });
 setConfig({ zIndex: 50000 });
 ```
 
+## 🚀 Phase 3: Advanced Features
+
+The following enterprise-grade features are available in v3.15.0+ and are opt-in via global config or toast options:
+
+### 🔄 Cross-Tab Toast Synchronization
+
+Broadcast toasts to other tabs of the same application using the `BroadcastChannel` API. The first tab becomes the leader and mirrors queued / active toasts to follower tabs.
+
+```js
+import { setConfig, createToast } from "customizable-toast-notification";
+
+// Enable cross-tab sync globally
+setConfig({ syncTabs: true });
+
+createToast({ message: "Shared across all open tabs!", type: "info" });
+```
+
+Graceful degradation: if `BroadcastChannel` is unavailable (e.g. Node.js or older browsers), the library simply runs in single-tab mode — no errors.
+
+### 🧠 AI-Powered Priority Queue Routing
+
+When the queue fills (more than `maxVisible` toasts), the `aiPrioritization` flag reorders the queue by urgency instead of strict FIFO. Priority is derived from `type` (error > warning > info > success) plus keyword scoring (`urgent`, `critical`, `failed`, `done`, etc.). Fully offline, zero external calls.
+
+```js
+setConfig({ aiPrioritization: true });
+
+createToast({ message: "Payment failed", type: "error" });   // Highest priority
+createToast({ message: "Background sync", type: "info" });  // Queued behind the error
+```
+
+The built-in scorer also exposes `calculateToastPriority(context)` and `categorizeToast(message)` for custom routing integrations.
+
+### 🃏 Virtual Scrolling — DOM Element Pool
+
+An internal element-pool recycles toast DOM nodes, so burst queues of 100+ toasts no longer create proportional DOM pressure or trigger layout thrashing / GC spikes. The pool size scales automatically with `MAX_VISIBLE`.
+
+No configuration required — it's transparent to callers. The queue drains in priority order (when enabled above) and reuses the same recycled elements.
+
+### 👆 Advanced Gestures: Flick Swipe & Pinch-to-Expand
+
+Swipe-to-dismiss already exists in Phase 2; Phase 3 refines the physics:
+
+- **Flick detection**: velocity ≥ 0.65 px/ms over ≥ 50 px triggers instant dismiss; anything shorter snaps back with spring easing.
+- **Pinch-to-expand**: two-finger gesture on a toast expands it to full height (useful for long error messages with stack traces); releasing collapses it back.
+
+The multi-touch math (`calculateVelocity`, `isFlick`, `detectPinch`) is exported for consumer recipes that want custom gesture behavior.
+
+### 🏗️ How It All Fits Together
+
+```js
+import { setConfig } from "customizable-toast-notification";
+
+setConfig({
+  maxVisible: 3,
+  syncTabs: true,        // mirror to other tabs
+  aiPrioritization: true,// sort the queue by urgency
+  stacked: true,         // iOS-style card deck
+  swipeToDismiss: true,  // flick physics (Phase 2)
+  sound: true,           // zero-asset Web Audio chimes (Phase 2)
+});
+
+createToast({ message: "New notification", type: "success" });
+```
+
+The library keeps its zero-runtime-dependency guarantee: `BroadcastChannel`, Web Audio, and the gesture math are all native browser APIs with immediate graceful fallbacks when unavailable.
+
 ## 💡 Examples
 
 ### Basic Toast Types

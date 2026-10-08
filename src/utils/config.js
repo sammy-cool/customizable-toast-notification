@@ -22,6 +22,8 @@
  * @property {boolean} stacked
  * @property {boolean} swipeToDismiss
  * @property {boolean} sound
+ * @property {boolean} syncTabs
+ * @property {boolean} aiPrioritization
  */
 
 const globalConfig = {
@@ -35,6 +37,8 @@ const globalConfig = {
   stacked: false,
   swipeToDismiss: true,
   sound: true,
+  syncTabs: false,
+  aiPrioritization: false,
 };
 
 function isValidMountTarget(value) {
@@ -51,7 +55,7 @@ export function setConfig(options = {}) {
     return getConfig();
   }
 
-  const { maxVisible, zIndex, targetNode, disableInlineStyles, reducedMotion, defaultPosition, theme, stacked, swipeToDismiss, sound } = options;
+  const { maxVisible, zIndex, targetNode, disableInlineStyles, reducedMotion, defaultPosition, theme, stacked, swipeToDismiss, sound, syncTabs, aiPrioritization } = options;
 
   if (maxVisible !== undefined) {
     const v = Number(maxVisible);
@@ -110,6 +114,14 @@ export function setConfig(options = {}) {
 
   if (sound !== undefined) {
     globalConfig.sound = Boolean(sound);
+  }
+
+  if (syncTabs !== undefined) {
+    globalConfig.syncTabs = Boolean(syncTabs);
+  }
+
+  if (aiPrioritization !== undefined) {
+    globalConfig.aiPrioritization = Boolean(aiPrioritization);
   }
 
   return getConfig();

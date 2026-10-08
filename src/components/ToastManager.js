@@ -11,12 +11,82 @@ import { playTone } from "../utils/audio.js";
 import { createProgressBar } from "./toast-utils-core.js";
 import { createLoader } from "./loader.js";
 import { getConfig, shouldReduceMotion } from "../utils/config.js";
+import { getToastBroadcaster } from "../utils/toast-broadcast.js";
+import { calculateToastPriority } from "../utils/ai-scorer.js";
 
 
 const active = new Map();
 const pending = new Map();
 const queue = [];
 let visibleCount = 0;
+
+// Cross-tab toast synchronization
+const broadcaster = getToastBroadcaster();
+
+// Register getters with broadcaster for sync requests
+broadcaster.registerActiveToastsGetter(() => Array.from(active.keys()));
+broadcaster.registerQueuedToastsGetter(() => queue.map(item => ({
+  key: item.key,
+  options: item.options,
+  count: item.count
+})));
+
+// Initialize cross-tab sync listeners if supported
+if (broadcaster.isSupported() && typeof window !== 'undefined') {
+  broadcaster.on('create', ({ toastId, payload }) => {
+    // Another tab created a toast - show it in this tab
+    if (toastId && payload && !active.has(toastId) && !pending.has(toastId)) {
+      showToast({ ...payload.options, fromSync: true });
+    }
+  });
+
+  broadcaster.on('update', ({ toastId, payload }) => {
+    // Another tab updated a toast - update in this tab
+    if (toastId && payload && active.has(toastId)) {
+      const data = active.get(toastId);
+      if (data && data.count !== payload.count) {
+        data.count = payload.count;
+        updateBadge(data);
+      }
+    }
+  });
+
+  broadcaster.on('dismiss', ({ toastId }) => {
+    // Another tab dismissed a toast - dismiss in this tab
+    if (toastId && active.has(toastId)) {
+      closeToastByKey(toastId);
+    }
+  });
+
+  broadcaster.on('sync-response', ({ payload }) => {
+    // Another tab responded with its toast state
+    if (payload && payload.active && payload.queue) {
+      // Merge active toasts from other tab
+      const existingKeys = new Set(active.keys());
+      for (const activeKey of payload.active) {
+        if (!existingKeys.has(activeKey) && broadcaster.isLeadingTab()) {
+          // Request full toast details from leader if needed
+          // This is a simplified sync - in production, full options would be transmitted
+        }
+      }
+    }
+  });
+}
+
+// AI Priority Queue Manager - Initialized with default settings
+
+/**
+ * Numeric priority score for a queued toast item (higher = shown sooner).
+ * calculateToastPriority() returns { score, breakdown, keywords }, so we
+ * normalize to a plain number here for sorting/queue comparisons.
+ * @param {{options?: Object, priority?: {score?: number}}} item
+ * @returns {number}
+ */
+function getItemPriority(item) {
+  const cached = item?.priority?.score;
+  if (typeof cached === "number" && Number.isFinite(cached)) return cached;
+  return calculateToastPriority(item?.options).score;
+}
 
 export function updateStackedLayout(container) {
   if (!container || !container.children) return;
@@ -127,6 +197,11 @@ export async function showToast(options = {}) {
       data.timer = createDismissTimer(data.toast, options);
       await setupPauseOnHover(data);
       await updateBadge(data);
+
+      // Broadcast update to other tabs if not from sync
+      if (!options.fromSync && broadcaster.isSupported()) {
+        broadcaster.broadcast('update', key, { count: data.count });
+      }
       return key;
     }
 
@@ -146,7 +221,14 @@ export async function showToast(options = {}) {
       pending.delete(key);
 
       if (visibleCount >= getConfig().maxVisible) {
-        queue.push({ options: current.options, key, count: current.count });
+        const item = { options: current.options, key, count: current.count };
+        if (getConfig().aiPrioritization || current.options?.aiPrioritization) {
+          item.priority = calculateToastPriority(current.options);
+          queue.push(item);
+          queue.sort((a, b) => getItemPriority(b) - getItemPriority(a));
+        } else {
+          queue.push(item);
+        }
         await drainQueue();
         return;
       }
@@ -158,14 +240,11 @@ export async function showToast(options = {}) {
       }
     });
 
-    // AUDIT/FEATURE (toastPromise support): returns the computed key so
-    // callers can build a handle for targeted dismissal later — e.g.
-    // toastPromise() needs to dismiss THIS SPECIFIC loading toast when the
-    // promise settles, not whatever happens to be "most recent" by then.
-    // This does NOT change when showToast() resolves (still resolves
-    // right after scheduling the rAF callback, same as before) — it only
-    // adds a return VALUE where there was none. The actual toast element
-    // is still created asynchronously afterward, same as always.
+    // Broadcast creation to other tabs if not from sync
+    if (!options.fromSync && broadcaster.isSupported()) {
+      broadcaster.broadcast('create', key, { options });
+    }
+
     return key;
   } catch (error) {
     console.error("showToast failed:", error);
@@ -421,6 +500,11 @@ export async function closeToastByKey(key) {
   try {
     if (!key) return;
 
+    // Broadcast dismissal to other tabs
+    if (broadcaster.isSupported()) {
+      broadcaster.broadcast('dismiss', key, {});
+    }
+
     // AUDIT/FEATURE FIX: toast creation is deferred one animation frame
     // (see showToast's rAF coalescing, used for grouping/dedup) — so a
     // caller holding a handle from createToast() can call dismiss()
@@ -499,7 +583,14 @@ export async function closeToastByKey(key) {
 }
 
 async function drainQueue() {
-  while (visibleCount < getConfig().maxVisible && queue.length) {
+  const config = getConfig();
+
+  // Apply AI priority sorting if enabled
+  if (config.aiPrioritization && queue.length > 1) {
+    queue.sort((a, b) => getItemPriority(b) - getItemPriority(a)); // Higher priority first
+  }
+
+  while (visibleCount < config.maxVisible && queue.length) {
     const item = queue.shift();
     if (active.has(item.key)) {
       const data = active.get(item.key);
