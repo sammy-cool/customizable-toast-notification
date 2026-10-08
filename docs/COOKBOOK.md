@@ -11,6 +11,8 @@ A collection of battle-tested, zero-dependency recipes for common real-world not
 4. [File Upload with Live Streaming Progress & Abort](#4-file-upload-with-live-streaming-progress--abort)
 5. [Action Undo with Live Dynamic Countdown Badge](#5-action-undo-with-live-dynamic-countdown-badge)
 6. [High-Frequency Burst Stream with Card Deck Stacking & Sound](#6-high-frequency-burst-stream-with-card-deck-stacking--sound)
+7. [Inactive Tab Attention Alerting (tabTitleAlert)](#7-inactive-tab-attention-alerting-tabtitlealert)
+8. [Persistent Notification Center History Drawer](#8-persistent-notification-center-history-drawer)
 
 ---
 
@@ -295,3 +297,59 @@ export async function onIncomingMessage(message) {
   });
 }
 ```
+
+---
+
+## 7. Inactive Tab Attention Alerting (`tabTitleAlert`)
+
+When a user is multitasking on another browser tab, pulse the document title so critical alerts aren't missed, restoring the original title once the tab is focused.
+
+```javascript
+import { createToast } from "customizable-toast-notification";
+
+export async function notifyWithTabAlert(options) {
+  const originalTitle = document.title;
+  let intervalId = null;
+
+  if (document.hidden) {
+    let toggle = false;
+    intervalId = setInterval(() => {
+      document.title = toggle
+        ? `🔔 (1) ${options.message.slice(0, 30)}...`
+        : originalTitle;
+      toggle = !toggle;
+    }, 1000);
+
+    const onFocus = () => {
+      clearInterval(intervalId);
+      document.title = originalTitle;
+      window.removeEventListener("focus", onFocus);
+    };
+    window.addEventListener("focus", onFocus);
+  }
+
+  return await createToast(options);
+}
+```
+
+---
+
+## 8. Persistent Notification Center History Drawer
+
+Archive toasts into a slide-over history drawer so users can review dismissed notifications. See the full runnable demo in [`examples/notification-center/index.html`](../examples/notification-center/index.html).
+
+```javascript
+import { createToast } from "customizable-toast-notification";
+
+const notificationHistory = [];
+
+export async function dispatchAndArchive(options) {
+  notificationHistory.push({
+    options,
+    timestamp: new Date().toLocaleTimeString(),
+  });
+
+  return await createToast(options);
+}
+```
+
