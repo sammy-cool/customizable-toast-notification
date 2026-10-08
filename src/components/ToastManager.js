@@ -513,6 +513,7 @@ export function resetToastManager() {
     data.outer?._pauseCleanup?.();
     data.toast?._cleanupCloseButton?.();
     data.toast?._cleanupCTA?.();
+    data.toast?._cleanupUndo?.();
     data.toast?._cleanupSwipe?.();
     data.toast?._cleanup?.();
     if (data.toast?._progressAnimation) {
@@ -649,6 +650,7 @@ export async function closeToastByKey(key) {
     data.outer?._pauseCleanup?.();
     data.toast?._cleanupCloseButton?.();
     data.toast?._cleanupCTA?.();
+    data.toast?._cleanupUndo?.();
     data.toast?._cleanupSwipe?.();
     data.toast?._cleanup?.();
     if (data.toast?._progressAnimation) {

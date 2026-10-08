@@ -2281,6 +2281,103 @@ describe("Framework Adapters — Structure & Contract Integrity", () => {
   });
 });
 
+describe("toast-utils-core.js — Action Undo and live countdown badge", () => {
+  test("createUndoAction creates undo button with initial countdown and triggers onUndo and onClose", async () => {
+    const { createUndoAction } = await import("../../src/components/toast-utils-core.js");
+    const toast = document.createElement("div");
+    let undoTriggered = false;
+    let closeTriggered = false;
+
+    const options = {
+      duration: 3000,
+      undo: {
+        label: "Revert",
+        onUndo: () => {
+          undoTriggered = true;
+        },
+      },
+    };
+
+    createUndoAction(toast, options, () => {
+      closeTriggered = true;
+    });
+
+    const btn = toast.querySelector(".toast-undo-btn");
+    assert.ok(btn, "Undo button must be created in toast");
+    assert.ok(btn.textContent.includes("Revert (3s)"), `Text should include countdown: ${btn.textContent}`);
+
+    btn.click();
+    assert.strictEqual(undoTriggered, true, "onUndo callback must be called on click");
+    assert.strictEqual(closeTriggered, true, "onClose callback must be called on click");
+    toast._cleanupUndo?.();
+  });
+
+  test("createUndoAction supports function shorthand for undo option", async () => {
+    const { createUndoAction } = await import("../../src/components/toast-utils-core.js");
+    const toast = document.createElement("div");
+    let called = false;
+
+    createUndoAction(toast, { duration: 2500, undo: () => { called = true; } }, () => {});
+    const btn = toast.querySelector(".toast-undo-btn");
+    assert.ok(btn);
+    assert.ok(btn.textContent.includes("Undo (3s)"));
+    btn.click();
+    assert.strictEqual(called, true);
+    toast._cleanupUndo?.();
+  });
+
+  test("createUndoAction respects showCountdown: false", async () => {
+    const { createUndoAction } = await import("../../src/components/toast-utils-core.js");
+    const toast = document.createElement("div");
+
+    createUndoAction(toast, {
+      duration: 4000,
+      undo: { label: "Dismiss Action", showCountdown: false, onUndo: () => {} },
+    }, () => {});
+
+    const btn = toast.querySelector(".toast-undo-btn");
+    assert.ok(btn);
+    assert.strictEqual(btn.textContent, "Dismiss Action");
+    toast._cleanupUndo?.();
+  });
+
+  test("createUndoAction cleans up interval without leaks when toast._cleanupUndo is called", async () => {
+    const { createUndoAction } = await import("../../src/components/toast-utils-core.js");
+    const toast = document.createElement("div");
+
+    createUndoAction(toast, { duration: 5000, undo: { onUndo: () => {} } }, () => {});
+    assert.strictEqual(typeof toast._cleanupUndo, "function");
+    // Verify calling cleanup does not throw and safely clears state
+    toast._cleanupUndo();
+  });
+
+  test("createUndoAction handles async onUndo errors gracefully without unhandled rejection", async () => {
+    const { createUndoAction } = await import("../../src/components/toast-utils-core.js");
+    const toast = document.createElement("div");
+    let closed = false;
+
+    createUndoAction(toast, {
+      duration: 2000,
+      undo: {
+        onUndo: async () => {
+          throw new Error("Simulated undo failure");
+        },
+      },
+    }, () => {
+      closed = true;
+    });
+
+    const btn = toast.querySelector(".toast-undo-btn");
+    assert.ok(btn);
+    btn.click();
+    // Allow microtask to resolve
+    await new Promise((r) => setTimeout(r, 10));
+    assert.strictEqual(closed, true, "onClose should still execute even if onUndo rejects");
+    toast._cleanupUndo?.();
+  });
+});
+
+
 
 
 

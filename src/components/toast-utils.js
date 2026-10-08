@@ -6,6 +6,7 @@ import { sanitizeHtml } from "../utils/html-sanitizer.js";
 import { createLoader } from "./loader.js";
 import {
   createCTA,
+  createUndoAction,
   createCloseButton,
   createProgressBar,
   runToastAnimation,
@@ -174,6 +175,10 @@ export async function applyRichStyling(toast, options, onClose) {
 
   if (options?.cta && Object.keys(options.cta).length !== 0) {
     createCTA(toast, options, onClose);
+  }
+
+  if (options?.undo) {
+    createUndoAction(toast, options, onClose);
   }
 
   if (options?.showCloseButton) {

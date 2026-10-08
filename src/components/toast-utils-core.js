@@ -75,6 +75,132 @@ export function createCTA(toast, options, onClose) {
   toast.appendChild(el);
 }
 
+/**
+ * Creates an Undo action button with optional live countdown decay.
+ * @param {HTMLElement} toast
+ * @param {object} options
+ * @param {Function} onClose
+ * @returns {void}
+ */
+export function createUndoAction(toast, options, onClose) {
+  const undo = options?.undo;
+  if (!undo) return;
+
+  const isFn = typeof undo === "function";
+  if (!isFn && (typeof undo !== "object" || Array.isArray(undo))) return;
+
+  const undoCfg = isFn ? { onUndo: undo } : { ...undo };
+  const baseLabel =
+    typeof undoCfg.label === "string" && undoCfg.label.trim()
+      ? undoCfg.label.trim()
+      : "Undo";
+
+  const totalDuration = Number(options?.duration);
+  const showCountdown =
+    undoCfg.showCountdown !== false &&
+    Number.isFinite(totalDuration) &&
+    totalDuration > 0;
+
+  const btn = document.createElement("button");
+  btn.type = "button";
+  btn.className = "toast-undo-btn";
+  btn.setAttribute("aria-label", `${baseLabel} action`);
+
+  const textColor =
+    options.textColor ||
+    getDynamicAccessibleTextColorHex(options.backgroundColor);
+  const bgColor = options.backgroundColor
+    ? getContrastBackground(options.backgroundColor)
+    : "rgba(255,255,255,0.18)";
+
+  const isHex6 =
+    typeof textColor === "string" &&
+    /^#[0-9a-fA-F]{6}$/.test(textColor.trim());
+  const borderColor = isHex6
+    ? `${textColor.trim()}55`
+    : "rgba(128, 128, 128, 0.35)";
+
+  if (!getConfig().disableInlineStyles) {
+    Object.assign(btn.style, {
+      marginLeft: "10px",
+      padding: "5px 10px",
+      borderRadius: "6px",
+      fontSize: "12px",
+      fontWeight: "700",
+      lineHeight: "1",
+      border: `1px solid ${borderColor}`,
+      color: textColor,
+      background: bgColor,
+      cursor: "pointer",
+      whiteSpace: "nowrap",
+      flexShrink: "0",
+      display: "inline-flex",
+      alignItems: "center",
+      gap: "4px",
+    });
+  }
+
+  let remainingSec = Math.max(1, Math.ceil((totalDuration || 2500) / 1000));
+  const updateLabel = () => {
+    btn.textContent = showCountdown
+      ? `${baseLabel} (${remainingSec}s)`
+      : baseLabel;
+  };
+  updateLabel();
+
+  let intervalId = null;
+  if (showCountdown) {
+    intervalId = setInterval(() => {
+      remainingSec = Math.max(0, remainingSec - 1);
+      updateLabel();
+      if (remainingSec <= 0 && intervalId) {
+        clearInterval(intervalId);
+        intervalId = null;
+      }
+    }, 1000);
+    if (typeof intervalId?.unref === "function") {
+      intervalId.unref();
+    }
+  }
+
+  const cleanupTimer = () => {
+    if (intervalId) {
+      clearInterval(intervalId);
+      intervalId = null;
+    }
+  };
+
+  const onClick = async (e) => {
+    cleanupTimer();
+    btn.removeEventListener("click", onClick);
+    try {
+      if (typeof undoCfg.onUndo === "function") {
+        const res = undoCfg.onUndo(e, toast);
+        if (res?.then) await res;
+      }
+    } catch (err) {
+      console.error("Undo action error:", err);
+    } finally {
+      if (typeof onClose === "function") {
+        onClose(toast);
+      }
+    }
+  };
+
+  btn.addEventListener("click", onClick);
+
+  btn._cleanup = () => {
+    cleanupTimer();
+    btn.removeEventListener("click", onClick);
+  };
+  toast._cleanupUndo = () => {
+    cleanupTimer();
+    btn.removeEventListener("click", onClick);
+  };
+
+  toast.appendChild(btn);
+}
+
 export function createCloseButton(toast, options, onClose) {
   const closeBtn = document.createElement("button");
   closeBtn.setAttribute("aria-label", "Close notification");

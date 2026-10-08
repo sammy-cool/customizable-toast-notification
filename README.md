@@ -163,6 +163,7 @@ auto-dismissed on its own — they no-op gracefully rather than throwing.
 | `progress`          | `number`           | `undefined`                     | Explicit progress bar percentage (0 to 100)                                    |
 | `usePool`           | `boolean`          | `false`                         | Virtual element pooling for DOM recycling in high-frequency rendering           |
 | `cta`               | `object`           | `null`                          | Call-to-action configuration (see [CTA](#call-to-action))                      |
+| `undo`              | `function \| object`| `null`                         | Action Undo button with live dynamic countdown badge (see [Undo](#️-action-undo-with-live-countdown)) |
 
 #### Position Options
 
@@ -238,6 +239,38 @@ Any toast with a `cta` automatically gets `pauseOnHover: true` unless you overri
 | `rel`       | `string`   | `auto`                            | Link relationship — `target="_blank"` automatically gets `rel="noopener noreferrer"` unless you set your own |
 | `autoClose` | `boolean`  | `true`                            | Close toast after CTA click                                                                                  |
 | `ariaLabel` | `string`   | `label`                           | Accessibility label                                                                                          |
+
+### ↩️ Action Undo with Live Countdown
+
+Allow users to immediately reverse actions (e.g. "Item deleted", "Message archived") with a dynamic, decaying countdown badge:
+
+```js
+createToast({
+  message: "Conversation moved to trash",
+  type: "warning",
+  duration: 5000,
+  undo: {
+    label: "Undo",
+    showCountdown: true, // displays "Undo (5s)... (4s)..."
+    onUndo: async (e, toast) => {
+      await restoreConversation();
+      console.log("Restored!");
+    },
+  },
+});
+
+// Or concise callback shorthand:
+createToast({
+  message: "Draft deleted",
+  undo: () => restoreDraft(),
+});
+```
+
+| Parameter | Type | Default | Description |
+| --------- | ---- | ------- | ----------- |
+| `label` | `string` | `"Undo"` | Button text label |
+| `showCountdown` | `boolean` | `true` | Decays remaining duration in seconds in real-time |
+| `onUndo` | `function` | `undefined` | Callback fired on click; supports async promises before auto-closing toast |
 
 ### Loader Options
 

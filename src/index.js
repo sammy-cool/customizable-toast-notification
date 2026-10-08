@@ -54,6 +54,13 @@ import { generateToastId, resetToastIdCounter } from "./utils/id.js";
  */
 
 /**
+ * @typedef {Object} UndoOptions
+ * @property {string} [label] - Button text label (default: 'Undo')
+ * @property {boolean} [showCountdown] - Whether to display decaying seconds counter (default: true)
+ * @property {(e: MouseEvent, toast: HTMLElement) => void | Promise<void>} [onUndo] - Callback fired when clicked
+ */
+
+/**
  * @typedef {Object} ToastLoaderOptions
  * @property {number} [size] - Spinner size in pixels (default 14)
  * @property {string} [color] - Spinner SVG stroke color (default 'currentColor')
@@ -91,6 +98,7 @@ import { generateToastId, resetToastIdCounter } from "./utils/id.js";
  * @property {string} [fontPadding]
  * @property {string} [className]
  * @property {CTAOptions} [cta]
+ * @property {((e: MouseEvent, toast: HTMLElement) => void | Promise<void>) | UndoOptions} [undo]
  * @property {boolean} [stacked]
  * @property {boolean | 'success' | 'error' | 'warning' | 'info' | 'pop' | string} [sound]
  * @property {SoundPreset} [soundPreset]

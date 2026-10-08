@@ -367,6 +367,33 @@
   background: rgba(0, 0, 0, 0.25);
 }
 
+.toast-undo-btn {
+  margin-left: 10px;
+  padding: 5px 10px;
+  border-radius: 6px;
+  font-size: 12px;
+  font-weight: 700;
+  line-height: 1;
+  border: 1px solid rgba(255, 255, 255, 0.3);
+  background: rgba(255, 255, 255, 0.18);
+  color: inherit;
+  cursor: pointer;
+  white-space: nowrap;
+  flex-shrink: 0;
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  transition: background 0.2s ease, transform 0.1s ease;
+}
+
+.toast-undo-btn:hover {
+  background: rgba(255, 255, 255, 0.28);
+}
+
+.toast-undo-btn:active {
+  transform: scale(0.96);
+}
+
 .toast-close-btn {
   background: none;
   border: none;
@@ -587,6 +614,7 @@
   .toast-loader-circle,
   .toast-count-badge,
   .toast-cta,
+  .toast-undo-btn,
   .toast-close-btn,
   .toast-outer-wrapper {
     transition: none !important;
@@ -599,6 +627,7 @@
 [data-toast-reduced-motion="always"] .toast-loader-circle,
 [data-toast-reduced-motion="always"] .toast-count-badge,
 [data-toast-reduced-motion="always"] .toast-cta,
+[data-toast-reduced-motion="always"] .toast-undo-btn,
 [data-toast-reduced-motion="always"] .toast-close-btn,
 [data-toast-reduced-motion="always"] .toast-outer-wrapper {
   transition: none !important;
