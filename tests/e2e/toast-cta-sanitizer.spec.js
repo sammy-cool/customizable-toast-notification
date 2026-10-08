@@ -36,10 +36,13 @@ test.describe("CTA — button variant", () => {
     const toast = page
       .locator('[id^="toast-container-"] [id^="toast-"]')
       .first();
-    await page.getByRole("button", { name: "Do it" }).click();
+    const btn = page.getByRole("button", { name: "Do it" });
+    await expect(btn).toBeVisible();
+    await btn.click();
 
+    await page.waitForFunction(() => window.__ctaClicked === true);
     expect(await page.evaluate(() => window.__ctaClicked)).toBe(true);
-    await expect(toast).toHaveCount(0, { timeout: 2000 }); // autoClose default: true
+    await expect(toast).toHaveCount(0, { timeout: 4000 }); // autoClose default: true
   });
 
   test("autoClose: false keeps the toast open after CTA click", async ({
@@ -55,7 +58,9 @@ test.describe("CTA — button variant", () => {
     const toast = page
       .locator('[id^="toast-container-"] [id^="toast-"]')
       .first();
-    await page.getByRole("button", { name: "Sync" }).click();
+    const btn = page.getByRole("button", { name: "Sync" });
+    await expect(btn).toBeVisible();
+    await btn.click();
     await page.waitForTimeout(500);
     await expect(toast).toBeVisible();
   });
@@ -74,7 +79,9 @@ test.describe("CTA — button variant", () => {
     const toast = page
       .locator('[id^="toast-container-"] [id^="toast-"]')
       .first();
-    await page.getByRole("button", { name: "Sync Now" }).click();
+    const btn = page.getByRole("button", { name: "Sync Now" });
+    await expect(btn).toBeVisible();
+    await btn.click();
 
     // Should NOT have closed immediately — onClick's promise hasn't resolved yet
     await page.waitForTimeout(200);

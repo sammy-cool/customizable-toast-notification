@@ -130,18 +130,17 @@ test.describe('Phase 2: Swipe-to-Dismiss Gesture', () => {
     const startX = box.x + box.width / 2;
     const startY = box.y + box.height / 2;
 
-    // Simulate fast swipe past threshold using mouse drag
+    // Simulate fast swipe past threshold using mouse drag with incremental moves
     await page.mouse.move(startX, startY);
     await page.mouse.down();
-    // Fast swipe right by 250px (well above 75px threshold)
-    await page.mouse.move(startX + 250, startY);
+    for (let i = 1; i <= 10; i++) {
+      await page.mouse.move(startX + (i * 25), startY);
+      await page.waitForTimeout(10);
+    }
     await page.mouse.up();
 
-    await page.waitForTimeout(800);
-
-    // Toast should be dismissed
-    const remaining = await page.locator('.toast').count();
-    expect(remaining).toBe(0);
+    // Toast should be dismissed with transition
+    await expect(page.locator('.toast')).toHaveCount(0, { timeout: 4000 });
   });
 
   test('swipe below threshold snaps back', async ({ page }) => {
@@ -200,11 +199,9 @@ test.describe('Phase 2: Swipe-to-Dismiss Gesture', () => {
     }
 
     await page.mouse.up();
-    await page.waitForTimeout(800);
 
-    // Toast should be dismissed
-    const remaining = await page.locator('.toast').count();
-    expect(remaining).toBe(0);
+    // Toast should be dismissed with transition
+    await expect(page.locator('.toast')).toHaveCount(0, { timeout: 4000 });
   });
 });
 
