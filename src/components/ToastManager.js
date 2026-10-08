@@ -20,6 +20,36 @@ const active = new Map();
 const pending = new Map();
 const queue = [];
 let visibleCount = 0;
+let droppedCount = 0;
+
+/**
+ * Returns a real-time snapshot of toast manager telemetry metrics.
+ * @returns {import('../utils/config.js').ToastMetrics}
+ */
+export function getToastMetrics() {
+  return {
+    activeCount: active.size,
+    queueDepth: queue.length,
+    visibleCount,
+    droppedCount,
+    timestamp: Date.now(),
+  };
+}
+
+/**
+ * Emits current toast metrics to global onMetrics callback if configured.
+ */
+function emitMetrics() {
+  const config = getConfig();
+  if (typeof config.onMetrics === "function") {
+    try {
+      config.onMetrics(getToastMetrics());
+    } catch (err) {
+      console.error("onMetrics callback error:", err);
+    }
+  }
+}
+
 
 // Cross-tab toast synchronization
 const broadcaster = getToastBroadcaster();
@@ -239,6 +269,7 @@ export async function showToast(options = {}) {
       data.timer = createDismissTimer(data.toast, options);
       await setupPauseOnHover(data);
       await updateBadge(data);
+      emitMetrics();
 
       // Broadcast update to other tabs if not from sync
       if (!options.fromSync && getConfig().syncTabs && broadcaster.isSupported()) {
@@ -265,8 +296,14 @@ export async function showToast(options = {}) {
       if (visibleCount >= getConfig().maxVisible) {
         const item = { options: current.options, key, count: current.count };
         const maxQ = getConfig().maxQueueSize ?? 100;
+        if (maxQ <= 0) {
+          droppedCount++;
+          emitMetrics();
+          return;
+        }
         if (queue.length >= maxQ) {
           queue.shift();
+          droppedCount++;
         }
         if (getConfig().aiPrioritization || current.options?.aiPrioritization) {
           item.priority = calculateToastPriority(current.options);
@@ -275,6 +312,7 @@ export async function showToast(options = {}) {
         } else {
           queue.push(item);
         }
+        emitMetrics();
         await drainQueue();
         return;
       }
@@ -366,6 +404,8 @@ async function createOne(options, key, initialCount) {
     active.set(key, data);
     toast._key = key;
 
+    emitMetrics();
+
     if (data.count > 1) await updateBadge(data);
 
     data.timer = createDismissTimer(toast, options);
@@ -373,6 +413,7 @@ async function createOne(options, key, initialCount) {
   } catch (err) {
     console.error("Something went wrong: ", err);
     visibleCount = Math.max(0, visibleCount - 1);
+    emitMetrics();
     const el =
       document.querySelector('[id^="toast-container-"]') || document.body;
     el.appendChild(await createEmergencyToast(options, closeToast));
@@ -386,11 +427,13 @@ export async function dismissMostRecent() {
         const [pendingKey, pendingEntry] = Array.from(pending.entries()).at(-1);
         if (pendingEntry?.rafId) cancelAnimationFrame(pendingEntry.rafId);
         pending.delete(pendingKey);
+        emitMetrics();
         return;
       }
 
       if (queue.length > 0) {
         queue.pop();
+        emitMetrics();
         return;
       }
 
@@ -439,6 +482,7 @@ export async function closeAllToasts() {
     }
     pending.clear();
     queue.length = 0;
+    emitMetrics();
 
     const activeToasts = Array.from(active.values())
       .map((d) => d.toast)
@@ -485,7 +529,9 @@ export function resetToastManager() {
   }
   active.clear();
   visibleCount = 0;
+  droppedCount = 0;
   isDraining = false;
+  emitMetrics();
 }
 
 export const dismiss = dismissMostRecent;
@@ -581,6 +627,7 @@ export async function closeToastByKey(key) {
     if (pendingEntry) {
       cancelAnimationFrame(pendingEntry.rafId);
       pending.delete(key);
+      emitMetrics();
       return;
     }
 
@@ -591,6 +638,7 @@ export async function closeToastByKey(key) {
     const queueIndex = queue.findIndex((item) => item.key === key);
     if (queueIndex !== -1) {
       queue.splice(queueIndex, 1);
+      emitMetrics();
       return;
     }
 
@@ -620,6 +668,7 @@ export async function closeToastByKey(key) {
 
     active.delete(key);
     visibleCount = Math.max(0, visibleCount - 1);
+    emitMetrics();
 
     if (badge) badge.remove();
 
@@ -671,10 +720,12 @@ async function drainQueue() {
         const data = active.get(item.key);
         data.count += item.count;
         await updateBadge(data);
+        emitMetrics();
         continue;
       }
       await createOne(item.options, item.key, item.count);
     }
+    emitMetrics();
   } finally {
     isDraining = false;
   }

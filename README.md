@@ -446,11 +446,31 @@ if (shouldReduceMotion()) {
 | `syncTabs`             | `boolean`                         | `false`           | Synchronize toast notifications across browser tabs using BroadcastChannel.                                      |
 | `aiPrioritization`     | `boolean`                         | `false`           | Enable offline content-aware queue priority sorting (critical alerts jump ahead of routine messages).            |
 | `priorityScorer`       | `((context) => number) \| null`   | `null`            | Custom priority scoring function for custom business logic or external AI models.                               |
+| `onMetrics`            | `((metrics: ToastMetrics) => void) \| null` | `null`  | Real-time telemetry callback emitting `{ activeCount, queueDepth, visibleCount, droppedCount, timestamp }`.      |
 | `disableInlineStyles`  | `boolean`                         | `false`           | When `true`, toasts use CSS classes instead of inline `style.*` for stricter CSP compliance.                      |
 | `reducedMotion`        | `"auto" \| "always" \| "never"`   | `"auto"`          | Control animation behavior. `"auto"` respects `prefers-reduced-motion`, `"always"` disables, `"never"` enables.  |
 | `targetNode`           | `Element \| ShadowRoot \| null`   | `null`            | Custom DOM node to mount toast containers. Defaults to `document.body` if not provided.                           |
 
 Call `resetConfig()` at any time to restore pristine defaults and clean up DOM attributes.
+
+### Enterprise Telemetry & Real-Time Metrics
+
+Inspect live queue depth, active toast count, dropped toasts, and timestamps via `getToastMetrics()` or subscribe reactively via `onMetrics`:
+
+```js
+import { getToastMetrics, setConfig } from "customizable-toast-notification";
+
+// 1. Synchronous snapshot
+const metrics = getToastMetrics();
+console.log(`Active: ${metrics.activeCount}, Queued: ${metrics.queueDepth}, Dropped: ${metrics.droppedCount}`);
+
+// 2. Real-time telemetry hook
+setConfig({
+  onMetrics: (m) => {
+    myMonitoringService.track("toast_metrics", m);
+  },
+});
+```
 
 
 ### Use Cases
@@ -706,6 +726,62 @@ const handleSave = async () => {
 </script>
 ```
 
+### Svelte Integration
+
+Use our ready-to-use Svelte store adapter in [`examples/svelte/toastStore.js`](examples/svelte/toastStore.js):
+
+```svelte
+<script>
+  import { toast } from "./toastStore.js";
+  const { metrics } = toast;
+
+  async function handleAction() {
+    await toast.success("Saved in Svelte!");
+  }
+</script>
+
+<button on:click={handleAction}>Save</button>
+<p>Active toasts: {$metrics.activeCount}</p>
+```
+
+### Angular Integration
+
+Injectable service in [`examples/angular/toast.service.ts`](examples/angular/toast.service.ts):
+
+```typescript
+import { Component } from '@angular/core';
+import { ToastService } from './toast.service';
+
+@Component({
+  selector: 'app-root',
+  template: `<button (click)="notify()">Notify</button>`,
+})
+export class AppComponent {
+  constructor(private toast: ToastService) {}
+
+  notify() {
+    this.toast.success('Saved with Angular DI!');
+  }
+}
+```
+
+### SolidJS Integration
+
+Reactive primitive in [`examples/solid/useToast.js`](examples/solid/useToast.js):
+
+```jsx
+import { useToast } from "./useToast";
+
+export function Counter() {
+  const toast = useToast();
+
+  return (
+    <button onClick={() => toast.info(`Current queue: ${toast.metrics().queueDepth}`)}>
+      Check Queue
+    </button>
+  );
+}
+```
 
 ### HTML content (sanitized)
 

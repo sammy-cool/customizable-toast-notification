@@ -2008,6 +2008,124 @@ describe("toast-utils-core.js — swipeToDismiss listener isolation", () => {
   });
 });
 
+describe("ToastManager.js & config.js — Telemetry and getToastMetrics()", () => {
+  test("getToastMetrics returns accurate snapshot and tracks active count", async () => {
+    freshDom();
+    const { createToast, getToastMetrics, resetToastManager, setConfig, resetConfig } =
+      await import("../../src/index.js");
+
+    resetConfig();
+    resetToastManager();
+
+    const initial = getToastMetrics();
+    assert.equal(initial.activeCount, 0);
+    assert.equal(initial.queueDepth, 0);
+    assert.equal(initial.droppedCount, 0);
+    assert.ok(typeof initial.timestamp === "number");
+
+    // Create a toast
+    await createToast({ message: "Metrics test toast 1", duration: 5000 });
+    // Let rAF coalesce
+    await new Promise((r) => setTimeout(r, 50));
+
+    const updated = getToastMetrics();
+    assert.equal(updated.activeCount, 1);
+    assert.equal(updated.queueDepth, 0);
+    assert.equal(updated.droppedCount, 0);
+
+    resetToastManager();
+    resetConfig();
+  });
+
+  test("onMetrics callback receives telemetry updates and survives thrown errors gracefully", async () => {
+    freshDom();
+    const { createToast, dismiss, setConfig, resetConfig, resetToastManager, getToastMetrics } =
+      await import("../../src/index.js");
+
+    resetConfig();
+    resetToastManager();
+
+    const recorded = [];
+    setConfig({
+      onMetrics: (metrics) => {
+        recorded.push(metrics);
+        // Deliberately throw an error to test boundary resilience
+        throw new Error("Consumer telemetry monitoring error");
+      },
+    });
+
+    // Toast creation should not throw even though onMetrics throws
+    await createToast({ message: "Telemetry boundary test", duration: 5000 });
+    await new Promise((r) => setTimeout(r, 50));
+
+    assert.ok(recorded.length > 0);
+    const lastMetrics = recorded.at(-1);
+    assert.equal(lastMetrics.activeCount, 1);
+
+    await dismiss();
+    await new Promise((r) => setTimeout(r, 450));
+
+    assert.ok(recorded.length >= 2);
+
+    resetToastManager();
+    resetConfig();
+  });
+
+  test("droppedCount increments when queue bounds are exceeded during high-frequency burst", async () => {
+    freshDom();
+    const { createToast, setConfig, resetConfig, resetToastManager, getToastMetrics } =
+      await import("../../src/index.js");
+
+    resetConfig();
+    resetToastManager();
+
+    setConfig({ maxVisible: 1, maxQueueSize: 2 });
+
+    // 1 visible + 2 queue slots = 3 capacity total. 5 toasts means 2 dropped.
+    for (let i = 0; i < 5; i++) {
+      await createToast({ message: `Burst item ${i}`, duration: 10000 });
+      await new Promise((r) => setTimeout(r, 20));
+    }
+
+    const metrics = getToastMetrics();
+    assert.equal(metrics.droppedCount, 2);
+    assert.equal(metrics.queueDepth, 2);
+    assert.equal(metrics.activeCount, 1);
+
+    resetToastManager();
+    const resetMetrics = getToastMetrics();
+    assert.equal(resetMetrics.droppedCount, 0);
+
+    resetConfig();
+  });
+});
+
+describe("Framework Adapters — Structure & Contract Integrity", () => {
+  test("Svelte, Angular, and SolidJS adapter files exist and have valid exports", async () => {
+    const fs = await import("node:fs");
+    const path = await import("node:path");
+
+    const svelteJs = fs.readFileSync(path.resolve("examples/svelte/toastStore.js"), "utf8");
+    const svelteDts = fs.readFileSync(path.resolve("examples/svelte/toastStore.d.ts"), "utf8");
+    assert.ok(svelteJs.includes("export function createToastStore"));
+    assert.ok(svelteJs.includes("export const toast"));
+    assert.ok(svelteDts.includes("interface ToastStoreAPI"));
+
+    const angularTs = fs.readFileSync(path.resolve("examples/angular/toast.service.ts"), "utf8");
+    const angularDts = fs.readFileSync(path.resolve("examples/angular/toast.service.d.ts"), "utf8");
+    assert.ok(angularTs.includes("export class ToastService"));
+    assert.ok(angularTs.includes("getMetrics"));
+    assert.ok(angularDts.includes("export declare class ToastService"));
+
+    const solidJs = fs.readFileSync(path.resolve("examples/solid/useToast.js"), "utf8");
+    const solidDts = fs.readFileSync(path.resolve("examples/solid/useToast.d.ts"), "utf8");
+    assert.ok(solidJs.includes("export function useToast"));
+    assert.ok(solidJs.includes("getMetrics"));
+    assert.ok(solidDts.includes("interface UseSolidToastAPI"));
+  });
+});
+
+
 
 
 

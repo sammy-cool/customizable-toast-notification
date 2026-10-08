@@ -93,6 +93,42 @@ test.describe("accessibility semantics", () => {
     }
     expect(reached).toBe(true);
   });
+
+  test("focus navigates into CTA action button and close button in natural order", async ({
+    page,
+  }) => {
+    await page.evaluate(() => {
+      window.customizableToast.createToast({
+        message: "CTA navigation test",
+        showCloseButton: true,
+        cta: {
+          label: "Review changes",
+          onClick: () => {},
+        },
+        duration: 10000,
+      });
+    });
+
+    const ctaBtn = page.getByRole("button", { name: "Review changes" });
+    const closeBtn = page.getByRole("button", { name: "Close notification" });
+
+    await expect(ctaBtn).toBeVisible();
+    await expect(closeBtn).toBeVisible();
+
+    await page.locator("h1").focus();
+
+    let interactiveFocused = false;
+    for (let i = 0; i < 6; i++) {
+      await page.keyboard.press("Tab");
+      const isCta = await ctaBtn.evaluate((el) => document.activeElement === el).catch(() => false);
+      const isClose = await closeBtn.evaluate((el) => document.activeElement === el).catch(() => false);
+      if (isCta || isClose) {
+        interactiveFocused = true;
+        break;
+      }
+    }
+    expect(interactiveFocused).toBe(true);
+  });
 });
 
 test.describe("Escape key global dismiss", () => {

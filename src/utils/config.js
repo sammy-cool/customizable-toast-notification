@@ -11,6 +11,15 @@
  */
 
 /**
+ * @typedef {Object} ToastMetrics
+ * @property {number} activeCount - Currently rendered active toasts
+ * @property {number} queueDepth - Number of queued toasts waiting to be displayed
+ * @property {number} visibleCount - Count of currently visible toasts
+ * @property {number} droppedCount - Number of toasts dropped due to queue overflow
+ * @property {number} timestamp - Epoch timestamp (ms) when metrics were recorded
+ */
+
+/**
  * @typedef {Object} ToastGlobalConfig
  * @property {number} maxVisible
  * @property {number} maxQueueSize
@@ -26,6 +35,7 @@
  * @property {boolean} syncTabs
  * @property {boolean} aiPrioritization
  * @property {((context: Object) => number | { score: number }) | null} [priorityScorer]
+ * @property {((metrics: ToastMetrics) => void) | null} [onMetrics]
  */
 
 const DEFAULT_GLOBAL_CONFIG = Object.freeze({
@@ -43,6 +53,7 @@ const DEFAULT_GLOBAL_CONFIG = Object.freeze({
   syncTabs: false,
   aiPrioritization: false,
   priorityScorer: null,
+  onMetrics: null,
 });
 
 const globalConfig = { ...DEFAULT_GLOBAL_CONFIG };
@@ -76,6 +87,7 @@ export function setConfig(options = {}) {
     syncTabs,
     aiPrioritization,
     priorityScorer,
+    onMetrics,
   } = options;
 
   if (maxVisible !== undefined) {
@@ -163,6 +175,10 @@ export function setConfig(options = {}) {
 
   if (priorityScorer !== undefined) {
     globalConfig.priorityScorer = typeof priorityScorer === "function" ? priorityScorer : null;
+  }
+
+  if (onMetrics !== undefined) {
+    globalConfig.onMetrics = typeof onMetrics === "function" ? onMetrics : null;
   }
 
   return getConfig();

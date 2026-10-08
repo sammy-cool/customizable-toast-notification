@@ -993,6 +993,42 @@
             </button>
           </div>
         </div>
+
+        <div class="api-demo" id="burst-simulator">
+          <h3>Stress-Test & High-Frequency Burst Simulator — <code>onMetrics & bounded queue</code></h3>
+          <p class="api-desc">
+            Simulate high-frequency notification floods (up to 100 rapid notifications) to verify bounded memory, zero main-thread freezing, queue depth dynamics, and automatic drop protection.
+          </p>
+          <div class="metrics-dashboard" style="display: flex; gap: 12px; margin: 16px 0; flex-wrap: wrap;">
+            <div class="metric-badge" style="background: var(--ink-2); border: 1px solid var(--line); border-radius: 8px; padding: 10px 16px; flex: 1; min-width: 120px; text-align: center;">
+              <div style="font-size: 11px; text-transform: uppercase; color: var(--text-dim); font-weight: 600; letter-spacing: 0.05em;">Active Count</div>
+              <div id="metricActive" style="font-size: 22px; font-weight: 700; color: var(--accent); font-family: var(--mono); margin-top: 4px;">0</div>
+            </div>
+            <div class="metric-badge" style="background: var(--ink-2); border: 1px solid var(--line); border-radius: 8px; padding: 10px 16px; flex: 1; min-width: 120px; text-align: center;">
+              <div style="font-size: 11px; text-transform: uppercase; color: var(--text-dim); font-weight: 600; letter-spacing: 0.05em;">Queue Depth</div>
+              <div id="metricQueue" style="font-size: 22px; font-weight: 700; color: #ffc107; font-family: var(--mono); margin-top: 4px;">0</div>
+            </div>
+            <div class="metric-badge" style="background: var(--ink-2); border: 1px solid var(--line); border-radius: 8px; padding: 10px 16px; flex: 1; min-width: 120px; text-align: center;">
+              <div style="font-size: 11px; text-transform: uppercase; color: var(--text-dim); font-weight: 600; letter-spacing: 0.05em;">Dropped Toasts</div>
+              <div id="metricDropped" style="font-size: 22px; font-weight: 700; color: #dc3545; font-family: var(--mono); margin-top: 4px;">0</div>
+            </div>
+            <div class="metric-badge" style="background: var(--ink-2); border: 1px solid var(--line); border-radius: 8px; padding: 10px 16px; flex: 1; min-width: 120px; text-align: center;">
+              <div style="font-size: 11px; text-transform: uppercase; color: var(--text-dim); font-weight: 600; letter-spacing: 0.05em;">Frame Rate</div>
+              <div id="metricFps" style="font-size: 22px; font-weight: 700; color: #28a745; font-family: var(--mono); margin-top: 4px;">60 fps</div>
+            </div>
+          </div>
+          <div class="try-row">
+            <button class="try-btn" id="burst50Btn">
+              ⚡ Fire 50 Toasts Burst
+            </button>
+            <button class="try-btn secondary" id="burst100Btn">
+              🔥 Fire 100 Extreme Burst
+            </button>
+            <button class="try-btn secondary" id="burstClearBtn">
+              🧹 Clear All & Reset
+            </button>
+          </div>
+        </div>
       </div>
     </section>
 
@@ -2339,6 +2375,71 @@ npm install customizable-toast-notification</pre
         wire("soundPopBtn", function () {
           if (customizableToast.playTone) customizableToast.playTone("pop");
           customizableToast.createToast({ message: "Incoming notification ping", type: "info" });
+        });
+
+        // Stress-Test & Burst Simulator Wiring
+        var metricActiveEl = document.getElementById("metricActive");
+        var metricQueueEl = document.getElementById("metricQueue");
+        var metricDroppedEl = document.getElementById("metricDropped");
+        var metricFpsEl = document.getElementById("metricFps");
+
+        function updateMetricsDisplay(m) {
+          if (!m) return;
+          if (metricActiveEl) metricActiveEl.textContent = String(m.activeCount || 0);
+          if (metricQueueEl) metricQueueEl.textContent = String(m.queueDepth || 0);
+          if (metricDroppedEl) metricDroppedEl.textContent = String(m.droppedCount || 0);
+        }
+
+        if (window.customizableToast && window.customizableToast.setConfig) {
+          window.customizableToast.setConfig({
+            onMetrics: updateMetricsDisplay,
+          });
+        }
+
+        // Live FPS meter for responsiveness verification
+        var lastFrameTime = performance.now();
+        var frameCount = 0;
+        var currentFps = 60;
+        function trackFps(now) {
+          frameCount++;
+          if (now - lastFrameTime >= 500) {
+            currentFps = Math.round((frameCount * 1000) / (now - lastFrameTime));
+            if (metricFpsEl) {
+              metricFpsEl.textContent = currentFps + " fps";
+              metricFpsEl.style.color = currentFps >= 50 ? "#28a745" : currentFps >= 30 ? "#ffc107" : "#dc3545";
+            }
+            frameCount = 0;
+            lastFrameTime = now;
+          }
+          requestAnimationFrame(trackFps);
+        }
+        requestAnimationFrame(trackFps);
+
+        wire("burst50Btn", function () {
+          for (var i = 1; i <= 50; i++) {
+            customizableToast.createToast({
+              message: "Burst alert #" + i + " [High Frequency]",
+              type: i % 4 === 0 ? "error" : i % 3 === 0 ? "warning" : i % 2 === 0 ? "success" : "info",
+              duration: 3000,
+            });
+          }
+        });
+
+        wire("burst100Btn", function () {
+          for (var i = 1; i <= 100; i++) {
+            customizableToast.createToast({
+              message: "Extreme burst item #" + i + " (Safe Queue)",
+              type: i % 2 === 0 ? "info" : "success",
+              duration: 2500,
+            });
+          }
+        });
+
+        wire("burstClearBtn", function () {
+          customizableToast.noop();
+          if (customizableToast.getToastMetrics) {
+            updateMetricsDisplay(customizableToast.getToastMetrics());
+          }
         });
       })();
     </script>

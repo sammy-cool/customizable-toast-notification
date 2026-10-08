@@ -9,6 +9,7 @@ import {
   resetToastManager,
   dismiss,
   noop as managerNoop,
+  getToastMetrics,
 } from "./components/ToastManager.js";
 import { getOrCreateToastContainer, resetContainerRegistry } from "./utils/containerRegistry.js";
 import { getDynamicAccessibleTextColorHex } from "./utils/dom.js";
@@ -101,6 +102,15 @@ import { generateToastId, resetToastIdCounter } from "./utils/id.js";
  */
 
 /**
+ * @typedef {Object} ToastMetrics
+ * @property {number} activeCount - Currently rendered active toasts
+ * @property {number} queueDepth - Number of queued toasts waiting to be displayed
+ * @property {number} visibleCount - Count of currently visible toasts
+ * @property {number} droppedCount - Number of toasts dropped due to queue overflow
+ * @property {number} timestamp - Epoch timestamp (ms) when metrics were recorded
+ */
+
+/**
  * @typedef {Object} ToastGlobalConfig
  * @property {number} [maxVisible]
  * @property {number} [maxQueueSize]
@@ -116,6 +126,7 @@ import { generateToastId, resetToastIdCounter } from "./utils/id.js";
  * @property {boolean} [syncTabs]
  * @property {boolean} [aiPrioritization]
  * @property {((context: Object) => number | { score: number }) | null} [priorityScorer]
+ * @property {((metrics: ToastMetrics) => void) | null} [onMetrics]
  */
 
 /**
@@ -504,6 +515,7 @@ export {
   calculateVelocity,
   generateToastId,
   resetToastIdCounter,
+  getToastMetrics,
 };
 
 if (typeof window !== "undefined" && typeof document !== "undefined") {
@@ -565,6 +577,7 @@ try {
       calculateVelocity,
       generateToastId,
       resetToastIdCounter,
+      getToastMetrics,
     };
   }
 } catch (error) {

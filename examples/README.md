@@ -29,3 +29,14 @@ node examples/typesafe-ai-smart-toast.mjs
 # Run with live TypeSafe API key:
 TYPESAFE_API_KEY="your_api_key" node examples/typesafe-ai-smart-toast.mjs
 ```
+
+## 🧩 Native Framework Adapters
+
+Zero-bloat, drop-in adapters with 100% strict TypeScript types:
+
+- **React**: [`useToast.js`](./react/useToast.js) & [`useToast.d.ts`](./react/useToast.d.ts) — memoized hook with automatic cleanup.
+- **Vue**: [`useToast.js`](./vue/useToast.js) & [`useToast.d.ts`](./vue/useToast.d.ts) — Vue 3 Composition API composable.
+- **Svelte**: [`toastStore.js`](./svelte/toastStore.js) & [`toastStore.d.ts`](./svelte/toastStore.d.ts) — reactive Svelte store with real-time `metrics` telemetry subscriber.
+- **Angular**: [`toast.service.ts`](./angular/toast.service.ts) & [`toast.service.d.ts`](./angular/toast.service.d.ts) — `@Injectable({ providedIn: 'root' })` service with full DI support.
+- **SolidJS**: [`useToast.js`](./solid/useToast.js) & [`useToast.d.ts`](./solid/useToast.d.ts) — fine-grained reactive primitive with live signal metrics.
+
