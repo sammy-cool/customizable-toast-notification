@@ -6,6 +6,8 @@
 
 "use strict";
 
+import { generateToastId } from "./id.js";
+
 /**
  * @typedef {Object} ToastSyncMessage
  * @property {string} type - Message type: 'create', 'update', 'dismiss', 'sync-request', 'sync-response'
@@ -29,26 +31,12 @@ class ToastBroadcaster {
   }
 
   /**
-   * Generate unique tab identifier
+   * Generate unique tab identifier using unified smart ID generator
    * @private
    * @returns {string}
    */
   _generateTabId() {
-    const timestamp = Date.now().toString(36);
-    let randStr = "";
-    if (typeof crypto !== "undefined" && typeof crypto.getRandomValues === "function") {
-      try {
-        const buf = new Uint32Array(2);
-        crypto.getRandomValues(buf);
-        randStr = `${buf[0].toString(36)}${buf[1].toString(36)}`.slice(0, 9);
-      } catch {
-        // Fallback if environment restricts getRandomValues
-      }
-    }
-    if (!randStr) {
-      randStr = Math.random().toString(36).slice(2, 11);
-    }
-    return `tab-${timestamp}-${randStr}`;
+    return generateToastId("tab");
   }
 
   /**
