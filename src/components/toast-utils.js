@@ -13,6 +13,7 @@ import {
   attachSwipeToDismiss,
 } from "./toast-utils-core.js";
 import { playTone } from "../utils/audio.js";
+import { getSpringTransition } from "../utils/spring.js";
 import { getConfig } from "../utils/config.js";
 
 /**
@@ -23,11 +24,20 @@ import { getConfig } from "../utils/config.js";
  */
 export async function applyRichStyling(toast, options, onClose) {
   const config = getConfig();
-  const durationMs = await parseAnimationDuration(options?.animationDuration);
+  const springTransition = options?.spring ? getSpringTransition(options.spring) : null;
+  const durationMs = springTransition
+    ? springTransition.duration
+    : await parseAnimationDuration(options?.animationDuration);
   const validAnimationDuration = `${durationMs}ms`;
-  const easing = typeof options?.animationEasing === "string" && options.animationEasing.trim()
-    ? options.animationEasing.trim()
-    : "ease";
+  const easing = springTransition
+    ? springTransition.easing
+    : typeof options?.animationEasing === "string" && options.animationEasing.trim()
+      ? options.animationEasing.trim()
+      : "ease";
+
+  if (springTransition) {
+    toast._spring = springTransition;
+  }
 
   const customClass = typeof options?.className === "string" && options.className.trim()
     ? ` ${options.className.trim()}`
@@ -43,6 +53,9 @@ export async function applyRichStyling(toast, options, onClose) {
     typeof options?.maxWidth === "number"
       ? `${options.maxWidth}px`
       : options?.maxWidth;
+
+  const opacityDuration = springTransition ? `${Math.min(300, durationMs)}ms` : validAnimationDuration;
+  const opacityEasing = springTransition ? "ease" : easing;
 
   if (!config.disableInlineStyles) {
     Object.assign(toast.style, {
@@ -63,7 +76,7 @@ export async function applyRichStyling(toast, options, onClose) {
       boxSizing: "border-box",
       userSelect: "text",
       pointerEvents: "auto",
-      transition: `opacity ${validAnimationDuration} ${easing}, transform ${validAnimationDuration} ${easing}`,
+      transition: `opacity ${opacityDuration} ${opacityEasing}, transform ${validAnimationDuration} ${easing}`,
       transform: "translateY(20px)",
       zIndex: String(config.zIndex),
     });

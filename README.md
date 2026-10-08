@@ -164,6 +164,7 @@ auto-dismissed on its own — they no-op gracefully rather than throwing.
 | `usePool`           | `boolean`          | `false`                         | Virtual element pooling for DOM recycling in high-frequency rendering           |
 | `cta`               | `object`           | `null`                          | Call-to-action configuration (see [CTA](#call-to-action))                      |
 | `undo`              | `function \| object`| `null`                         | Action Undo button with live dynamic countdown badge (see [Undo](#️-action-undo-with-live-countdown)) |
+| `spring`            | `boolean \| string \| object`| `null`                | Configurable spring physics animations (see [Spring Physics](#-configurable-spring-physics-animation-engine)) |
 
 #### Position Options
 
@@ -271,6 +272,43 @@ createToast({
 | `label` | `string` | `"Undo"` | Button text label |
 | `showCountdown` | `boolean` | `true` | Decays remaining duration in seconds in real-time |
 | `onUndo` | `function` | `undefined` | Callback fired on click; supports async promises before auto-closing toast |
+
+### 🌀 Configurable Spring Physics Animation Engine
+
+Replaces standard transitions with damped harmonic oscillator physics:
+
+```js
+// Use built-in presets: 'default', 'gentle', 'wobbly', 'stiff', 'bouncy'
+createToast({
+  message: "Synced to cloud",
+  spring: "bouncy",
+});
+
+// Or customize exact physical constants:
+createToast({
+  message: "Physics simulated notification",
+  spring: {
+    stiffness: 180, // Spring tension (k)
+    damping: 12,    // Friction resistance (c)
+    mass: 1.2,      // Inertial mass (m)
+  },
+});
+```
+
+| Preset | Stiffness ($k$) | Damping ($c$) | Mass ($m$) | Behavior |
+| ------ | --------------- | ------------- | ---------- | -------- |
+| `default` | 100 | 10 | 1 | Natural subtle bounce |
+| `gentle` | 120 | 14 | 1 | Smooth with minimal overshoot |
+| `wobbly` | 180 | 12 | 1 | Playful oscillation |
+| `stiff` | 210 | 20 | 1 | Crisp, rapid settling |
+| `bouncy` | 300 | 15 | 1.2 | High energy with dynamic bounce |
+
+Register custom global presets or resolve spring curves directly:
+```js
+import { registerSpringPreset, getSpringTransition } from "customizable-toast-notification";
+
+registerSpringPreset("snappy", { stiffness: 250, damping: 22, mass: 1 });
+```
 
 ### Loader Options
 

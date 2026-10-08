@@ -2377,6 +2377,122 @@ describe("toast-utils-core.js — Action Undo and live countdown badge", () => {
   });
 });
 
+describe("spring.js — Configurable Spring Physics Animation Engine", () => {
+  test("resolveSpringConfig resolves presets, booleans, and custom objects correctly", async () => {
+    const { resolveSpringConfig, SPRING_PRESETS } = await import("../../src/utils/spring.js");
+
+    assert.strictEqual(resolveSpringConfig(null), null);
+    assert.strictEqual(resolveSpringConfig(false), null);
+
+    const defaultPreset = resolveSpringConfig(true);
+    assert.deepStrictEqual(defaultPreset, SPRING_PRESETS.default);
+
+    const gentle = resolveSpringConfig("gentle");
+    assert.deepStrictEqual(gentle, SPRING_PRESETS.gentle);
+
+    const bouncy = resolveSpringConfig("bouncy");
+    assert.deepStrictEqual(bouncy, SPRING_PRESETS.bouncy);
+
+    // Case insensitivity
+    const wobbly = resolveSpringConfig("  WOBBLY  ");
+    assert.deepStrictEqual(wobbly, SPRING_PRESETS.wobbly);
+
+    // Custom object
+    const custom = resolveSpringConfig({ stiffness: 150, damping: 18, mass: 1.5 });
+    assert.strictEqual(custom.stiffness, 150);
+    assert.strictEqual(custom.damping, 18);
+    assert.strictEqual(custom.mass, 1.5);
+    assert.ok(custom.bezierFallback.includes("cubic-bezier"));
+
+    // Defensive NaN/invalid fallbacks
+    const fallback = resolveSpringConfig({ stiffness: -10, damping: "invalid", mass: 0 });
+    assert.strictEqual(fallback.stiffness, 100);
+    assert.strictEqual(fallback.damping, 10);
+    assert.strictEqual(fallback.mass, 1);
+  });
+
+  test("registerSpringPreset and resetSpringPresets manage custom registries cleanly", async () => {
+    const {
+      registerSpringPreset,
+      getSpringPresets,
+      resolveSpringConfig,
+      resetSpringPresets,
+    } = await import("../../src/utils/spring.js");
+
+    registerSpringPreset("snappy", { stiffness: 280, damping: 22, mass: 0.9 });
+    assert.ok(getSpringPresets().includes("snappy"));
+
+    const resolved = resolveSpringConfig("snappy");
+    assert.strictEqual(resolved.stiffness, 280);
+    assert.strictEqual(resolved.damping, 22);
+
+    resetSpringPresets();
+    assert.strictEqual(getSpringPresets().includes("snappy"), false);
+  });
+
+  test("solveSpring calculates damped harmonic motion step response accurately", async () => {
+    const { solveSpring } = await import("../../src/utils/spring.js");
+
+    // t <= 0 must be 0
+    assert.strictEqual(solveSpring(0, { stiffness: 100, damping: 10, mass: 1 }), 0);
+    assert.strictEqual(solveSpring(-0.5, { stiffness: 100, damping: 10, mass: 1 }), 0);
+
+    // Underdamped system oscillates and converges towards 1
+    const yMid = solveSpring(0.3, { stiffness: 100, damping: 10, mass: 1 });
+    assert.ok(yMid > 0.5, `Step response at 0.3s should have advanced: ${yMid}`);
+
+    const yLate = solveSpring(1.5, { stiffness: 100, damping: 10, mass: 1 });
+    assert.ok(Math.abs(yLate - 1) < 0.05, `Late response should converge close to 1: ${yLate}`);
+
+    // Critically damped system (zeta = 1, e.g. k=100, m=1 => c=20)
+    const yCritical = solveSpring(0.5, { stiffness: 100, damping: 20, mass: 1 });
+    assert.ok(yCritical > 0 && yCritical <= 1, `Critically damped must not overshoot: ${yCritical}`);
+
+    // Overdamped system (zeta > 1, e.g. k=100, m=1 => c=30)
+    const yOver = solveSpring(0.5, { stiffness: 100, damping: 30, mass: 1 });
+    assert.ok(yOver > 0 && yOver <= 1, `Overdamped must not overshoot: ${yOver}`);
+  });
+
+  test("calculateSpringSettlingDuration and generateSpringLinearEasing output valid timings and CSS", async () => {
+    const {
+      calculateSpringSettlingDuration,
+      generateSpringLinearEasing,
+      getSpringTransition,
+    } = await import("../../src/utils/spring.js");
+
+    const duration = calculateSpringSettlingDuration({ stiffness: 100, damping: 10, mass: 1 });
+    assert.ok(Number.isFinite(duration), "Duration must be a finite number");
+    assert.ok(duration >= 150 && duration <= 2500, `Duration should be bounded: ${duration}`);
+
+    const linearCss = generateSpringLinearEasing({ stiffness: 100, damping: 10, mass: 1 }, 16);
+    assert.ok(linearCss.startsWith("linear("), "Easing string must start with linear(");
+    assert.ok(linearCss.includes("0 0%"), "Easing must start at 0 0%");
+    assert.ok(linearCss.includes("100%"), "Easing must end at 100%");
+
+    const transition = getSpringTransition("bouncy");
+    assert.ok(transition, "getSpringTransition must return valid object");
+    assert.strictEqual(transition.isSpring, true);
+    assert.ok(transition.duration > 0);
+    assert.ok(typeof transition.easing === "string");
+  });
+
+  test("applyRichStyling attaches spring physics transition when options.spring is provided", async () => {
+    const { applyRichStyling } = await import("../../src/components/toast-utils.js");
+    const toast = document.createElement("div");
+
+    await applyRichStyling(toast, {
+      message: "Spring Toast",
+      spring: "bouncy",
+    }, () => {});
+
+    assert.ok(toast._spring, "toast._spring metadata must be populated");
+    assert.strictEqual(toast._spring.isSpring, true);
+    assert.strictEqual(toast._animationDuration, toast._spring.duration);
+    assert.ok(toast.style.transition.includes(`${toast._spring.duration}ms`), "transition must contain spring duration");
+  });
+});
+
+
 
 
 

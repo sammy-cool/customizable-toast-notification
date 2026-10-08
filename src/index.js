@@ -28,6 +28,16 @@ import { getToastBroadcaster, resetToastBroadcaster } from "./utils/toast-broadc
 import { calculateToastPriority, categorizeToast } from "./utils/ai-scorer.js";
 import { createGestureDetector, detectPinch, isFlick, calculateVelocity } from "./utils/multi-touch.js";
 import { generateToastId, resetToastIdCounter } from "./utils/id.js";
+import {
+  registerSpringPreset,
+  getSpringPresets,
+  resetSpringPresets,
+  resolveSpringConfig,
+  solveSpring,
+  calculateSpringSettlingDuration,
+  generateSpringLinearEasing,
+  getSpringTransition,
+} from "./utils/spring.js";
 
 /**
  * @typedef {'modern' | 'retro' | 'futuristic' | 'subtle' | 'bell' | string} SoundPreset
@@ -58,6 +68,17 @@ import { generateToastId, resetToastIdCounter } from "./utils/id.js";
  * @property {string} [label] - Button text label (default: 'Undo')
  * @property {boolean} [showCountdown] - Whether to display decaying seconds counter (default: true)
  * @property {(e: MouseEvent, toast: HTMLElement) => void | Promise<void>} [onUndo] - Callback fired when clicked
+ */
+
+/**
+ * @typedef {Object} SpringConfig
+ * @property {number} [stiffness=100] - Spring stiffness constant (k > 0)
+ * @property {number} [damping=10] - Damping friction coefficient (c > 0)
+ * @property {number} [mass=1] - Inertial mass (m > 0)
+ */
+
+/**
+ * @typedef {'default' | 'gentle' | 'wobbly' | 'stiff' | 'bouncy' | string} SpringPreset
  */
 
 /**
@@ -99,6 +120,7 @@ import { generateToastId, resetToastIdCounter } from "./utils/id.js";
  * @property {string} [className]
  * @property {CTAOptions} [cta]
  * @property {((e: MouseEvent, toast: HTMLElement) => void | Promise<void>) | UndoOptions} [undo]
+ * @property {boolean | SpringPreset | SpringConfig} [spring]
  * @property {boolean} [stacked]
  * @property {boolean | 'success' | 'error' | 'warning' | 'info' | 'pop' | string} [sound]
  * @property {SoundPreset} [soundPreset]
@@ -542,6 +564,14 @@ export {
   getSoundPresets,
   resetSoundPresets,
   resetAudioContext,
+  registerSpringPreset,
+  getSpringPresets,
+  resetSpringPresets,
+  resolveSpringConfig,
+  solveSpring,
+  calculateSpringSettlingDuration,
+  generateSpringLinearEasing,
+  getSpringTransition,
 };
 
 if (typeof window !== "undefined" && typeof document !== "undefined") {
@@ -608,6 +638,14 @@ try {
       generateToastId,
       resetToastIdCounter,
       getToastMetrics,
+      registerSpringPreset,
+      getSpringPresets,
+      resetSpringPresets,
+      resolveSpringConfig,
+      solveSpring,
+      calculateSpringSettlingDuration,
+      generateSpringLinearEasing,
+      getSpringTransition,
     };
   }
 } catch (error) {

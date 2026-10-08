@@ -1360,6 +1360,8 @@ npm install customizable-toast-notification</pre
           swipeToDismiss: true,
           sound: "none",
           soundPreset: "modern",
+          spring: "none",
+          enableUndo: false,
           showLoader: false,
           loaderSize: 14,
           loaderColor: "",
@@ -1453,6 +1455,15 @@ npm install customizable-toast-notification</pre
               opts.soundPreset = s.soundPreset;
             }
           }
+          if (s.spring && s.spring !== "none") {
+            opts.spring = s.spring;
+          }
+          if (s.enableUndo) {
+            opts.undo = {
+              label: "Undo",
+              showCountdown: true,
+            };
+          }
           if (s.progress !== "" && !isNaN(Number(s.progress))) {
             opts.progress = Number(s.progress);
           }
@@ -1463,7 +1474,7 @@ npm install customizable-toast-notification</pre
           var lines = [];
           Object.keys(opts).forEach(function (key) {
             var val = opts[key];
-            if (key === "cta" || key === "loader") {
+            if (key === "cta" || key === "loader" || key === "undo") {
               var nestedLines = [];
               Object.keys(val).forEach(function (k) {
                 nestedLines.push("      " + k + ": " + JSON.stringify(val[k]));
@@ -1612,6 +1623,17 @@ npm install customizable-toast-notification</pre
                 type: "select",
                 label: "soundPreset (audio synth theme)",
                 options: ["modern", "retro", "futuristic", "subtle", "bell"],
+              },
+              {
+                key: "spring",
+                type: "select",
+                label: "spring (damped harmonic oscillator physics)",
+                options: ["none", "default", "gentle", "wobbly", "stiff", "bouncy"],
+              },
+              {
+                key: "enableUndo",
+                type: "checkbox",
+                label: "undo (Action Undo button with live countdown badge)",
               },
             ],
           },
