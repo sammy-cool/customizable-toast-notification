@@ -34,6 +34,7 @@ broadcaster.registerQueuedToastsGetter(() => queue.map(item => ({
 // Initialize cross-tab sync listeners if supported
 if (broadcaster.isSupported() && typeof window !== 'undefined') {
   broadcaster.on('create', ({ toastId, payload }) => {
+    if (!getConfig().syncTabs) return;
     // Another tab created a toast - show it in this tab
     if (toastId && payload && !active.has(toastId) && !pending.has(toastId)) {
       showToast({ ...payload.options, fromSync: true });
@@ -41,6 +42,7 @@ if (broadcaster.isSupported() && typeof window !== 'undefined') {
   });
 
   broadcaster.on('update', ({ toastId, payload }) => {
+    if (!getConfig().syncTabs) return;
     // Another tab updated a toast - update in this tab
     if (toastId && payload && active.has(toastId)) {
       const data = active.get(toastId);
@@ -52,6 +54,7 @@ if (broadcaster.isSupported() && typeof window !== 'undefined') {
   });
 
   broadcaster.on('dismiss', ({ toastId }) => {
+    if (!getConfig().syncTabs) return;
     // Another tab dismissed a toast - dismiss in this tab
     if (toastId && active.has(toastId)) {
       closeToastByKey(toastId);
@@ -59,6 +62,7 @@ if (broadcaster.isSupported() && typeof window !== 'undefined') {
   });
 
   broadcaster.on('sync-response', ({ payload }) => {
+    if (!getConfig().syncTabs) return;
     // Another tab responded with its toast state
     if (payload && payload.active && payload.queue) {
       // Merge active toasts from other tab
@@ -199,7 +203,7 @@ export async function showToast(options = {}) {
       await updateBadge(data);
 
       // Broadcast update to other tabs if not from sync
-      if (!options.fromSync && broadcaster.isSupported()) {
+      if (!options.fromSync && getConfig().syncTabs && broadcaster.isSupported()) {
         broadcaster.broadcast('update', key, { count: data.count });
       }
       return key;
@@ -241,7 +245,7 @@ export async function showToast(options = {}) {
     });
 
     // Broadcast creation to other tabs if not from sync
-    if (!options.fromSync && broadcaster.isSupported()) {
+    if (!options.fromSync && getConfig().syncTabs && broadcaster.isSupported()) {
       broadcaster.broadcast('create', key, { options });
     }
 
@@ -501,7 +505,7 @@ export async function closeToastByKey(key) {
     if (!key) return;
 
     // Broadcast dismissal to other tabs
-    if (broadcaster.isSupported()) {
+    if (getConfig().syncTabs && broadcaster.isSupported()) {
       broadcaster.broadcast('dismiss', key, {});
     }
 

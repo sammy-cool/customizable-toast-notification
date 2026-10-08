@@ -130,11 +130,11 @@ test.describe('Phase 2: Swipe-to-Dismiss Gesture', () => {
     const startX = box.x + box.width / 2;
     const startY = box.y + box.height / 2;
 
-    // Simulate fast swipe past threshold using mouse drag with incremental moves
+    // Simulate fast swipe past threshold using mouse drag with incremental moves (within 375px viewport)
     await page.mouse.move(startX, startY);
     await page.mouse.down();
     for (let i = 1; i <= 10; i++) {
-      await page.mouse.move(startX + (i * 25), startY);
+      await page.mouse.move(startX - (i * 10), startY);
       await page.waitForTimeout(10);
     }
     await page.mouse.up();
