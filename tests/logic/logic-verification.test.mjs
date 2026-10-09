@@ -2757,5 +2757,41 @@ describe("toast-utils-core.js — multi-action CTA array support", () => {
 
     await handle.dismiss();
   });
+
+  test("attachSwipeToDismiss does not initiate drag when pointerdown originates from interactive buttons or links", async () => {
+    freshDom();
+    const { createToast, resetToastManager } = await import("../../src/index.js");
+    resetToastManager();
+
+    const handle = await createToast({
+      message: "Swipe test with actions",
+      swipeToDismiss: true,
+      cta: {
+        label: "Click Me",
+        onClick: () => {},
+      },
+    });
+    await new Promise((r) => setTimeout(r, 60));
+
+    const toast = document.querySelector(".toast");
+    assert.ok(toast);
+
+    const ctaBtn = toast.querySelector(".toast-cta");
+    assert.ok(ctaBtn);
+
+    // Simulate pointerdown on button
+    const event = new window.MouseEvent("mousedown", {
+      bubbles: true,
+      cancelable: true,
+      clientX: 100,
+      clientY: 100,
+    });
+    ctaBtn.dispatchEvent(event);
+
+    // Verify toast userSelect was NOT altered to "none" because drag was aborted
+    assert.notStrictEqual(toast.style.userSelect, "none");
+
+    await handle.dismiss();
+  });
 });
 

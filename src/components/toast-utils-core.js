@@ -373,6 +373,14 @@ export function attachSwipeToDismiss(toast, onClose) {
 
   const onPointerDown = (e) => {
     if (!e) return;
+    const target = e.target;
+    if (
+      target &&
+      typeof target.closest === "function" &&
+      target.closest("button, a, input, textarea, select, label")
+    ) {
+      return;
+    }
     const ev = e.touches ? e.touches[0] : e;
     startX = ev.clientX;
     startY = ev.clientY;
