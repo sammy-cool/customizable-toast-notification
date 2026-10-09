@@ -1384,6 +1384,14 @@ npm install customizable-toast-notification</pre
           ctaRel: "",
           ctaAutoClose: true,
           ctaAriaLabel: "",
+          cta2Enabled: false,
+          cta2Label: "Decline",
+          cta2Variant: "button",
+          cta2Href: "",
+          cta2Target: "",
+          cta2Rel: "",
+          cta2AutoClose: true,
+          cta2AriaLabel: "",
         };
 
         var state = Object.assign({}, DEFAULTS);
@@ -1445,17 +1453,32 @@ npm install customizable-toast-notification</pre
             }
           }
           if (s.ctaEnabled) {
-            var cta = { label: s.ctaLabel || "Undo" };
+            var cta1 = { label: s.ctaLabel || "Undo" };
             if (s.ctaVariant === "link" && s.ctaHref) {
-              cta.href = s.ctaHref;
-              cta.variant = "link";
-              if (s.ctaTarget) cta.target = s.ctaTarget;
-              if (s.ctaRel) cta.rel = s.ctaRel;
+              cta1.href = s.ctaHref;
+              cta1.variant = "link";
+              if (s.ctaTarget) cta1.target = s.ctaTarget;
+              if (s.ctaRel) cta1.rel = s.ctaRel;
             }
             if (s.ctaAutoClose !== DEFAULTS.ctaAutoClose)
-              cta.autoClose = s.ctaAutoClose;
-            if (s.ctaAriaLabel) cta.ariaLabel = s.ctaAriaLabel;
-            opts.cta = cta;
+              cta1.autoClose = s.ctaAutoClose;
+            if (s.ctaAriaLabel) cta1.ariaLabel = s.ctaAriaLabel;
+
+            if (s.cta2Enabled) {
+              var cta2 = { label: s.cta2Label || "Decline" };
+              if (s.cta2Variant === "link" && s.cta2Href) {
+                cta2.href = s.cta2Href;
+                cta2.variant = "link";
+                if (s.cta2Target) cta2.target = s.cta2Target;
+                if (s.cta2Rel) cta2.rel = s.cta2Rel;
+              }
+              if (s.cta2AutoClose !== DEFAULTS.cta2AutoClose)
+                cta2.autoClose = s.cta2AutoClose;
+              if (s.cta2AriaLabel) cta2.ariaLabel = s.cta2AriaLabel;
+              opts.cta = [cta1, cta2];
+            } else {
+              opts.cta = cta1;
+            }
           }
           if (s.stacked) opts.stacked = true;
           if (s.swipeToDismiss === false) opts.swipeToDismiss = false;
@@ -1553,8 +1576,16 @@ npm install customizable-toast-notification</pre
               warning: "Please double-check that.",
               info: "Here's something worth knowing.",
             }[state.type || "info"];
-          if (opts.cta && !Array.isArray(opts.cta) && !opts.cta.onClick && !opts.cta.href) {
-            opts.cta.onClick = function () {};
+          if (opts.cta) {
+            if (Array.isArray(opts.cta)) {
+              opts.cta.forEach(function (c) {
+                if (c && !c.onClick && !c.href) {
+                  c.onClick = function () {};
+                }
+              });
+            } else if (!opts.cta.onClick && !opts.cta.href) {
+              opts.cta.onClick = function () {};
+            }
           }
           customizableToast.createToast(opts);
         }
@@ -1817,6 +1848,26 @@ npm install customizable-toast-notification</pre
                 key: "ctaAriaLabel",
                 type: "text",
                 label: "cta.ariaLabel (accessibility)",
+              },
+              { key: "cta2Enabled", type: "checkbox", label: "add secondary action (cta[1])" },
+              { key: "cta2Label", type: "text", label: "secondary cta.label" },
+              {
+                key: "cta2Variant",
+                type: "radio",
+                label: "secondary cta.variant",
+                options: ["button", "link"],
+              },
+              {
+                key: "cta2Href",
+                type: "text",
+                label: "secondary cta.href",
+                placeholder: "https:// or mailto:",
+              },
+              { key: "cta2AutoClose", type: "checkbox", label: "secondary cta.autoClose" },
+              {
+                key: "cta2AriaLabel",
+                type: "text",
+                label: "secondary cta.ariaLabel",
               },
             ],
           },
@@ -2440,12 +2491,29 @@ npm install customizable-toast-notification</pre
               if (p.options.swipeToDismiss !== undefined) state.swipeToDismiss = p.options.swipeToDismiss !== false;
               if (p.options.cta) {
                 state.ctaEnabled = true;
-                if (!Array.isArray(p.options.cta)) {
+                if (Array.isArray(p.options.cta)) {
+                  var c1 = p.options.cta[0] || {};
+                  var c2 = p.options.cta[1] || {};
+                  state.ctaLabel = c1.label || "Action";
+                  state.ctaVariant = c1.variant || "button";
+                  state.ctaHref = c1.href || "";
+                  state.ctaAutoClose = c1.autoClose !== false;
+
+                  state.cta2Enabled = true;
+                  state.cta2Label = c2.label || "Decline";
+                  state.cta2Variant = c2.variant || "button";
+                  state.cta2Href = c2.href || "";
+                  state.cta2AutoClose = c2.autoClose !== false;
+                } else {
                   state.ctaLabel = p.options.cta.label || "Action";
                   state.ctaVariant = p.options.cta.variant || "button";
                   state.ctaHref = p.options.cta.href || "";
                   state.ctaAutoClose = p.options.cta.autoClose !== false;
+                  state.cta2Enabled = false;
                 }
+              } else {
+                state.ctaEnabled = false;
+                state.cta2Enabled = false;
               }
               buildControls();
               customizableToast.createToast(p.options);

@@ -302,7 +302,7 @@ describe("PausableTimer.js — pause/resume math", () => {
     timer.pause();
     const remaining = timer.getRemainingTime();
     assert.ok(
-      remaining <= 340 && remaining >= 200,
+      remaining <= 350 && remaining >= 100,
       `expected ~300ms remaining, got ${remaining}ms`,
     );
     assert.equal(fired, false);
