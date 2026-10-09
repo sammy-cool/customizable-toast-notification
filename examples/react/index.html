@@ -50,7 +50,35 @@
           React.createElement("button", { className: "undo", onClick: () => toast.warning("Message deleted", {
             duration: 5000,
             undo: { label: "Undo", showCountdown: true, onUndo: () => alert("Undo clicked!") }
-          }) }, "🗑️ Delete with Undo Countdown")
+          }) }, "🗑️ Delete with Undo Countdown"),
+          React.createElement("button", { className: "info", style: { gridColumn: "span 2", background: "#0ea5e9" }, onClick: () => customizableToast.createToast({
+            type: "info",
+            message: "Pull request review requested: #482",
+            duration: 8000,
+            cta: [
+              { label: "Merge", onClick: () => customizableToast.createToast({ type: "success", message: "PR #482 merged!" }) },
+              { label: "Close", autoClose: true, onClick: () => customizableToast.createToast({ type: "warning", message: "PR #482 closed." }) }
+            ]
+          }) }, "👥 Multi-Action CTA (Merge / Close)"),
+          React.createElement("button", { className: "success", style: { gridColumn: "span 2", background: "#059669" }, onClick: async () => {
+            const h = await customizableToast.createToast({
+              type: "info",
+              message: "Processing data... 0%",
+              showLoader: true,
+              duration: 10000,
+              showProgressBar: true,
+              progress: 0,
+            });
+            setTimeout(() => h.update({ message: "Analyzing rows... 50%", progress: 50 }), 800);
+            setTimeout(() => h.update({
+              type: "success",
+              message: "10,000 records ready!",
+              progress: 100,
+              showLoader: false,
+              sound: "success",
+              undo: { label: "Revert", showCountdown: true, onUndo: () => {} }
+            }), 1600);
+          } }, "⚡ Live Streaming + Dynamic Undo")
         )
       );
     }

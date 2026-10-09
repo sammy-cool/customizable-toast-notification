@@ -22,6 +22,8 @@
     <div class="btn-grid">
       <button class="angular-btn" id="ngSuccess">Success Alert</button>
       <button class="angular-btn" id="ngSpring">Spring Physics</button>
+      <button class="angular-btn" id="ngUndo" style="grid-column: span 2; background: #9333ea;">🗑️ Delete with Undo Countdown</button>
+      <button class="angular-btn" id="ngMultiCTA" style="grid-column: span 2; background: #0284c7;">👥 Multi-Action CTA (Deploy / Abort)</button>
       <button class="outline-btn" id="ngDismiss" style="grid-column: span 2;">Dismiss All</button>
     </div>
   </div>
@@ -31,6 +33,7 @@
     class ToastService {
       success(msg, opts) { return customizableToast.createToast({ type: 'success', message: msg, ...opts }); }
       info(msg, opts) { return customizableToast.createToast({ type: 'info', message: msg, ...opts }); }
+      warning(msg, opts) { return customizableToast.createToast({ type: 'warning', message: msg, ...opts }); }
       dismissAll() { return customizableToast.dismiss(); }
     }
 
@@ -42,6 +45,23 @@
 
     document.getElementById("ngSpring").addEventListener("click", () => {
       toastService.info("Angular spring animated notification", { spring: "bouncy", sound: true, soundPreset: "futuristic" });
+    });
+
+    document.getElementById("ngUndo").addEventListener("click", () => {
+      toastService.warning("Angular record deleted", {
+        duration: 6000,
+        undo: { label: "Restore", showCountdown: true, onUndo: () => console.log("Restored!") }
+      });
+    });
+
+    document.getElementById("ngMultiCTA").addEventListener("click", () => {
+      toastService.info("Production release pending", {
+        duration: 8000,
+        cta: [
+          { label: "Deploy", onClick: () => toastService.success("Deployment started!") },
+          { label: "Abort", autoClose: true, onClick: () => toastService.warning("Deployment aborted.") }
+        ]
+      });
     });
 
     document.getElementById("ngDismiss").addEventListener("click", () => {

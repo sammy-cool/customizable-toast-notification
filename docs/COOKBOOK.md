@@ -9,6 +9,7 @@ A collection of battle-tested, zero-dependency recipes for common real-world not
 2. [Global Uncaught Exception & Promise Rejection Catcher](#2-global-uncaught-exception--promise-rejection-catcher)
 3. [Network Online / Offline Connectivity Monitor](#3-network-online--offline-connectivity-monitor)
 4. [File Upload with Live Streaming Progress & Abort](#4-file-upload-with-live-streaming-progress--abort)
+   - [4.1 In-Place Multi-CTA and Dynamic Undo Streaming (`handle.update({ cta, undo })`)](#41-in-place-multi-cta-and-dynamic-undo-streaming-handleupdate-cta-undo-)
 5. [Action Undo with Live Dynamic Countdown Badge](#5-action-undo-with-live-dynamic-countdown-badge)
 6. [High-Frequency Burst Stream with Card Deck Stacking & Sound](#6-high-frequency-burst-stream-with-card-deck-stacking--sound)
 7. [Inactive Tab Attention Alerting (tabTitleAlert)](#7-inactive-tab-attention-alerting-tabtitlealert)
@@ -232,6 +233,73 @@ export async function uploadFileWithProgress(file) {
       duration: 4000,
     });
   }
+}
+```
+
+---
+
+## 4.1 In-Place Multi-CTA and Dynamic Undo Streaming (`handle.update({ cta, undo })`)
+
+Dynamically add, replace, or strip action buttons and countdown undo triggers mid-flight on any active toast without flickering or recreation.
+
+```javascript
+import { createToast } from "customizable-toast-notification";
+
+export async function runWorkflowWithDynamicActions() {
+  // Step 1: Initial state — spinner with no actions
+  const handle = await createToast({
+    type: "info",
+    message: "Analyzing git branch changes...",
+    showLoader: true,
+    duration: 30000,
+  });
+
+  // Step 2: Stream prompt with multi-action buttons (Approve / Reject)
+  setTimeout(async () => {
+    await handle.update({
+      message: "Build ready for staging deployment. Review changes?",
+      showLoader: false,
+      cta: [
+        {
+          label: "Deploy",
+          onClick: async () => {
+            // Step 3: Transition to deploying state
+            await handle.update({
+              type: "warning",
+              message: "Deploying build v2.4...",
+              cta: null, // cleanly strip CTA buttons
+              showLoader: true,
+            });
+
+            // Step 4: Add live countdown Undo badge mid-flight
+            setTimeout(async () => {
+              await handle.update({
+                type: "success",
+                message: "Deployment live on staging!",
+                showLoader: false,
+                sound: "success",
+                duration: 8000,
+                undo: {
+                  label: "Rollback",
+                  showCountdown: true, // "Rollback (8s... 1s)"
+                  onUndo: async () => {
+                    createToast({ type: "info", message: "Deployment rolled back to previous commit." });
+                  },
+                },
+              });
+            }, 2000);
+          },
+        },
+        {
+          label: "Discard",
+          autoClose: true,
+          onClick: () => {
+            createToast({ type: "info", message: "Build discarded." });
+          },
+        },
+      ],
+    });
+  }, 1500);
 }
 ```
 

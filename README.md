@@ -135,13 +135,28 @@ const handle = await createToast({
 // Update progress in-place:
 await handle.update({ progress: 65, message: "Uploading assets... 65%" });
 
-// Transition state seamlessly:
+// Stream multi-action CTA buttons dynamically:
+await handle.update({
+  message: "Upload requires authorization:",
+  cta: [
+    { label: "Approve", onClick: () => console.log("Approved!") },
+    { label: "Cancel", autoClose: true, onClick: () => console.log("Cancelled") },
+  ],
+});
+
+// Transition to completion with dynamic countdown Undo badge:
 await handle.update({
   type: "success",
   message: "Upload complete!",
   showLoader: false,
-  duration: 3000,
+  cta: null, // cleanly strip CTA buttons
+  duration: 6000,
   sound: "success",
+  undo: {
+    label: "Undo",
+    showCountdown: true, // "Undo (6s... 1s)"
+    onUndo: () => console.log("Undone!"),
+  },
 });
 
 // Or dismiss manually at any point:
@@ -149,7 +164,8 @@ await handle.dismiss();
 ```
 
 `handle.dismiss()` and `handle.update()` are always safe to call, even if the toast already
-auto-dismissed on its own — they no-op gracefully rather than throwing.
+auto-dismissed on its own — they no-op gracefully rather than throwing. You can update `message`,
+`progress`, `type`, `showLoader`, `loader`, `cta` (single object, array, or `null`), and `undo` in-place.
 
 #### Options
 

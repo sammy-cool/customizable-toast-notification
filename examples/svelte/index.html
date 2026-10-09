@@ -22,6 +22,7 @@
     <div class="btn-grid">
       <button class="svelte-btn" id="fireSuccess">Success Toast</button>
       <button class="svelte-btn" id="fireUndo">Undo Action</button>
+      <button class="svelte-btn" id="fireMultiCTA" style="grid-column: span 2; background: #ea580c;">👥 Multi-Action CTA (Confirm / Deny)</button>
     </div>
     <div class="metrics" id="metricsDisplay">Active: 0 | Queued: 0 | Dropped: 0</div>
   </div>
@@ -44,6 +45,16 @@
       toast.warning("Svelte item deleted", {
         duration: 5000,
         undo: { label: "Revert", showCountdown: true, onUndo: () => console.log("Reverted!") }
+      });
+    });
+
+    document.getElementById("fireMultiCTA").addEventListener("click", () => {
+      toast.info("Collaborator access requested", {
+        duration: 8000,
+        cta: [
+          { label: "Confirm", onClick: () => toast.success("Access confirmed!") },
+          { label: "Deny", autoClose: true, onClick: () => toast.warning("Access denied.") }
+        ]
       });
     });
   </script>
