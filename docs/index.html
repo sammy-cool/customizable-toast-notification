@@ -1587,6 +1587,9 @@ npm install customizable-toast-notification</pre
               opts.cta.onClick = function () {};
             }
           }
+          if (opts.undo && typeof opts.undo === "object" && !opts.undo.onUndo) {
+            opts.undo.onUndo = function () {};
+          }
           customizableToast.createToast(opts);
         }
 
