@@ -418,17 +418,43 @@
       history.slice().reverse().forEach((item) => {
         const div = document.createElement("div");
         div.className = "history-item";
-        div.innerHTML = `
-          <div class="item-header">
-            <span class="type-badge ${item.options.type || 'info'}">${item.options.type || 'info'}</span>
-            <span class="item-time">${item.time}</span>
-          </div>
-          <div class="item-body">${item.options.message}</div>
-          <div class="item-actions">
-            <button class="item-btn replay-btn">Replay</button>
-            <button class="item-btn delete-btn">Dismiss</button>
-          </div>
-        `;
+
+        const header = document.createElement("div");
+        header.className = "item-header";
+
+        const badge = document.createElement("span");
+        const itemType = item.options.type || "info";
+        badge.className = `type-badge ${itemType}`;
+        badge.textContent = itemType;
+
+        const time = document.createElement("span");
+        time.className = "item-time";
+        time.textContent = item.time;
+
+        header.appendChild(badge);
+        header.appendChild(time);
+
+        const body = document.createElement("div");
+        body.className = "item-body";
+        body.textContent = String(item.options.message || "");
+
+        const actions = document.createElement("div");
+        actions.className = "item-actions";
+
+        const replayBtn = document.createElement("button");
+        replayBtn.className = "item-btn replay-btn";
+        replayBtn.textContent = "Replay";
+
+        const deleteBtn = document.createElement("button");
+        deleteBtn.className = "item-btn delete-btn";
+        deleteBtn.textContent = "Dismiss";
+
+        actions.appendChild(replayBtn);
+        actions.appendChild(deleteBtn);
+
+        div.appendChild(header);
+        div.appendChild(body);
+        div.appendChild(actions);
 
         div.querySelector(".replay-btn").addEventListener("click", () => {
           createToast(item.options);

@@ -274,9 +274,22 @@ export async function createEmergencyToast(options = {}, onClose) {
     msgEl.className = "toast-emergency-message";
     if (!config.disableInlineStyles) msgEl.style.display = "inline-block";
     if (options.allowHtml) {
-      msgEl.innerHTML = sanitizeHtml(
-        String(options.message || "Emergency Toast Showing!")
-      );
+      try {
+        const sanitized = sanitizeHtml(
+          String(options.message || "Emergency Toast Showing!")
+        );
+        const tmp = document.createElement("div");
+        tmp.innerHTML = sanitized;
+        while (tmp.firstChild) {
+          msgEl.appendChild(tmp.firstChild);
+        }
+      } catch {
+        msgEl.appendChild(
+          document.createTextNode(
+            String(options.message || "Emergency Toast Showing!")
+          )
+        );
+      }
     } else {
       msgEl.textContent = String(
         options.message || "Emergency Toast Creation Showing!"

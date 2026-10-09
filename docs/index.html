@@ -1267,13 +1267,17 @@ npm install customizable-toast-notification</pre
         var scriptSrc = isLocal
           ? "../dist/index.umd.js"
           : "https://cdn.jsdelivr.net/npm/customizable-toast-notification@latest/dist/index.umd.js";
-        document.write('<script src="' + scriptSrc + '"><\/script>');
+        var script = document.createElement("script");
+        script.src = scriptSrc;
+        script.onerror = function () {
+          if (!window.customizableToast && !isLocal) {
+            var fallback = document.createElement("script");
+            fallback.src = "../dist/index.umd.js";
+            document.head.appendChild(fallback);
+          }
+        };
+        document.head.appendChild(script);
       })();
-    </script>
-    <script>
-      if (!window.customizableToast) {
-        document.write('<script src="../dist/index.umd.js"><\/script>');
-      }
     </script>
     <script>
       (function () {
@@ -1563,8 +1567,18 @@ npm install customizable-toast-notification</pre
           );
         }
 
+        function escapeHtml(str) {
+          return String(str)
+            .replace(/&/g, "&amp;")
+            .replace(/</g, "&lt;")
+            .replace(/>/g, "&gt;")
+            .replace(/"/g, "&quot;")
+            .replace(/'/g, "&#39;");
+        }
+
         function highlightCode(code) {
-          return code
+          var safe = escapeHtml(code);
+          return safe
             .replace(/"([^"]*)"/g, '<span class="tok-str">"$1"</span>')
             .replace(/\b(true|false|null)\b/g, '<span class="tok-kw">$1</span>')
             .replace(/: (\d+(\.\d+)?)/g, ': <span class="tok-num">$1</span>');
