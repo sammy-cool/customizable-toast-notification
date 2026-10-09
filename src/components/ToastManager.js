@@ -8,7 +8,7 @@ import { setPosition } from "../utils/position.js";
 import { PausableTimer } from "../utils/PausableTimer.js";
 import { sanitizeHtml } from "../utils/html-sanitizer.js";
 import { playTone } from "../utils/audio.js";
-import { createProgressBar } from "./toast-utils-core.js";
+import { createProgressBar, createCTA } from "./toast-utils-core.js";
 import { createLoader } from "./loader.js";
 import { getConfig, shouldReduceMotion } from "../utils/config.js";
 import { getToastBroadcaster } from "../utils/toast-broadcast.js";
@@ -1035,6 +1035,20 @@ export async function updateToastByKey(key, newOptions = {}) {
     const raw = Number(newOptions.duration);
     if (Number.isFinite(raw) && raw > 0) {
       data.timer = createDismissTimer(toast, { duration: raw });
+    }
+  }
+
+  // 5.1 Update CTA
+  if (newOptions.cta !== undefined) {
+    if (toast._cleanupCTA) {
+      toast._cleanupCTA();
+      toast._cleanupCTA = null;
+    }
+    toast.querySelectorAll(".toast-cta").forEach((el) => el.remove());
+
+    if (newOptions.cta && typeof newOptions.cta === "object") {
+      const mergedOpts = { ...data.options, ...newOptions };
+      createCTA(toast, mergedOpts, closeToast);
     }
   }
 

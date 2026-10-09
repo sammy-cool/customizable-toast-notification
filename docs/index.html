@@ -1553,7 +1553,7 @@ npm install customizable-toast-notification</pre
               warning: "Please double-check that.",
               info: "Here's something worth knowing.",
             }[state.type || "info"];
-          if (opts.cta && !opts.cta.onClick && !opts.cta.href) {
+          if (opts.cta && !Array.isArray(opts.cta) && !opts.cta.onClick && !opts.cta.href) {
             opts.cta.onClick = function () {};
           }
           customizableToast.createToast(opts);

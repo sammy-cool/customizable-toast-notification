@@ -2643,5 +2643,68 @@ describe("toast-utils-core.js — multi-action CTA array support", () => {
     // closedCount should not increment again after cleanup
     assert.strictEqual(closedCount, 1);
   });
+
+  test("createCTA cleanly ignores empty array cta: []", async () => {
+    freshDom();
+    const { createCTA } = await import("../../src/components/toast-utils-core.js");
+    const toast = document.createElement("div");
+    createCTA(toast, { cta: [] }, () => {});
+    assert.strictEqual(toast.querySelectorAll(".toast-cta").length, 0);
+  });
+
+  test("updateToastByKey dynamically updates and removes CTA buttons", async () => {
+    freshDom();
+    const { createToast, resetToastManager } = await import("../../src/index.js");
+    resetToastManager();
+
+    const handle = await createToast({
+      message: "Processing file...",
+      duration: 10000,
+    });
+    await new Promise((r) => setTimeout(r, 60));
+
+    let toast = document.querySelector(".toast");
+    assert.ok(toast);
+    assert.strictEqual(toast.querySelectorAll(".toast-cta").length, 0);
+
+    // 1. Add CTA in-place
+    let clicked = false;
+    await handle.update({
+      cta: {
+        label: "View Report",
+        autoClose: false,
+        onClick: () => {
+          clicked = true;
+        },
+      },
+    });
+
+    let ctaBtns = toast.querySelectorAll(".toast-cta");
+    assert.strictEqual(ctaBtns.length, 1);
+    assert.strictEqual(ctaBtns[0].textContent, "View Report");
+
+    // Click it
+    ctaBtns[0].click();
+    assert.strictEqual(clicked, true);
+
+    // 2. Update to multi-action CTA array in-place
+    await handle.update({
+      cta: [
+        { label: "Approve", onClick: () => {} },
+        { label: "Reject", onClick: () => {} },
+      ],
+    });
+
+    ctaBtns = toast.querySelectorAll(".toast-cta");
+    assert.strictEqual(ctaBtns.length, 2);
+    assert.strictEqual(ctaBtns[0].textContent, "Approve");
+    assert.strictEqual(ctaBtns[1].textContent, "Reject");
+
+    // 3. Remove CTA in-place
+    await handle.update({ cta: null });
+    assert.strictEqual(toast.querySelectorAll(".toast-cta").length, 0);
+
+    await handle.dismiss();
+  });
 });
 

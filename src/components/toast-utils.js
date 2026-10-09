@@ -186,7 +186,7 @@ export async function applyRichStyling(toast, options, onClose) {
   );
   toast.appendChild(messageSpan);
 
-  if (options?.cta && Object.keys(options.cta).length !== 0) {
+  if (options?.cta && typeof options.cta === "object") {
     createCTA(toast, options, onClose);
   }
 

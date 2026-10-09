@@ -82,7 +82,15 @@ export function createCTA(toast, options, onClose) {
     el._cleanup = cleanupItem;
     cleanups.push(cleanupItem);
 
-    toast.appendChild(el);
+    const insertTarget =
+      toast.querySelector(".toast-undo-btn") ||
+      toast.querySelector(".toast-close-btn") ||
+      toast.querySelector(".toast-progress-bar");
+    if (insertTarget) {
+      toast.insertBefore(el, insertTarget);
+    } else {
+      toast.appendChild(el);
+    }
   });
 
   const prevCleanup = toast._cleanupCTA;

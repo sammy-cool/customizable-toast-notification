@@ -189,7 +189,7 @@ auto-dismissed on its own — they no-op gracefully rather than throwing.
 | `swipeToDismiss`    | `boolean`          | `true`                          | Mobile touch swipe-to-dismiss gesture with physics                             |
 | `progress`          | `number`           | `undefined`                     | Explicit progress bar percentage (0 to 100)                                    |
 | `usePool`           | `boolean`          | `false`                         | Virtual element pooling for DOM recycling in high-frequency rendering           |
-| `cta`               | `object`           | `null`                          | Call-to-action configuration (see [CTA](#call-to-action))                      |
+| `cta`               | `object \| array`   | `null`                          | Call-to-action configuration (see [CTA](#call-to-action))                      |
 | `undo`              | `function \| object`| `null`                         | Action Undo button with live dynamic countdown badge (see [Undo](#️-action-undo-with-live-countdown)) |
 | `spring`            | `boolean \| string \| object`| `null`                | Configurable spring physics animations (see [Spring Physics](#-configurable-spring-physics-animation-engine)) |
 
