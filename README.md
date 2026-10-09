@@ -72,21 +72,29 @@ yarn add customizable-toast-notification
 ### ES Modules
 
 ```js
-import {
-  createToast,
-  setDefaultColors,
-  setDefaultMessages,
-} from "customizable-toast-notification";
+import { createToast } from "customizable-toast-notification";
 
-// Simple usage
+// 1. Shorthand methods (Quickest & cleanest)
+createToast.success("Saved successfully!");
+createToast.error("Failed to connect to server");
+createToast.warning("Unsaved changes detected");
+createToast.info("Tip: Press Esc to dismiss anytime");
+
+// 2. Direct message string
+createToast("Simple notification");
+
+// 3. Full configuration options
 createToast({
-  message: "Hello World!",
+  message: "Customized toast!",
   type: "success",
   duration: 3000,
+  position: "bottom-right",
+  spring: "gentle",
+  sound: true,
 });
 ```
 
-### CDN/Browser (UMD Build) / Quick Try with jsDelivr
+### CDN / Browser (UMD Build) / Quick Try with jsDelivr
 
 Global Variable Name: `customizableToast`
 
@@ -94,8 +102,8 @@ Global Variable Name: `customizableToast`
 <!-- Always latest version -->
 <script src="https://cdn.jsdelivr.net/npm/customizable-toast-notification/dist/index.umd.js"></script>
 
-<!-- OR pin to a specific version (recommended for stability) -->
-<script src="https://cdn.jsdelivr.net/npm/customizable-toast-notification@3.12.3/dist/index.umd.js"></script>
+<!-- OR pin to a specific version -->
+<script src="https://cdn.jsdelivr.net/npm/customizable-toast-notification@3.16.0/dist/index.umd.js"></script>
 
 <script>
   // Access the global UMD export

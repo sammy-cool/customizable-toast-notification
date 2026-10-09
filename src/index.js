@@ -274,7 +274,25 @@ async function createFirstToastContainer(options) {
   }
 }
 
-async function sanitizeToastOptions(options) {
+function normalizeToastOptions(messageOrOptions, maybeOptions) {
+  if (typeof messageOrOptions === "string") {
+    const extra =
+      typeof maybeOptions === "object" && maybeOptions !== null && !Array.isArray(maybeOptions)
+        ? maybeOptions
+        : {};
+    return {
+      ...extra,
+      message: messageOrOptions,
+    };
+  }
+  if (typeof messageOrOptions === "object" && messageOrOptions !== null && !Array.isArray(messageOrOptions)) {
+    return messageOrOptions;
+  }
+  return {};
+}
+
+async function sanitizeToastOptions(rawOptions) {
+  const options = normalizeToastOptions(rawOptions);
   const config = getConfig();
   const contPosition = String(options?.position ?? config.defaultPosition).toLowerCase().trim();
   const contMaxWidth =
@@ -312,7 +330,7 @@ async function sanitizeToastOptions(options) {
 
   const final = {
     ...defaults,
-    ...(typeof options === "object" && !Array.isArray(options) ? options : {}),
+    ...options,
   };
 
   final.message = options?.message ?? final.message;
@@ -428,17 +446,33 @@ const originalCreateToast = createToast;
 
 /**
  * Creates and displays a toast notification.
- * @param {ToastOptions} [options]
+ * Supports string shorthand: `createToast("Message")` or full options `createToast({ message: "..." })`.
+ * Also provides ergonomic shorthand methods: `createToast.success(...)`, `createToast.error(...)`, etc.
+ * @param {string | ToastOptions} [messageOrOptions]
+ * @param {Partial<ToastOptions>} [maybeOptions]
  * @returns {Promise<ToastHandle>}
  */
-async function createToastWithPriority(options = {}) {
-  const key = await runWithClosePriority(() => originalCreateToast(options));
+async function createToastWithPriority(messageOrOptions = {}, maybeOptions) {
+  const normalized = normalizeToastOptions(messageOrOptions, maybeOptions);
+  const key = await runWithClosePriority(() => originalCreateToast(normalized));
   return {
     dismiss: () => (key ? closeToastByKey(key) : Promise.resolve()),
     update: (newOptions) =>
       key ? updateToastByKey(key, newOptions) : Promise.resolve(),
   };
 }
+
+createToastWithPriority.success = (messageOrOptions, options) =>
+  createToastWithPriority(normalizeToastOptions(messageOrOptions, { ...options, type: "success" }));
+
+createToastWithPriority.error = (messageOrOptions, options) =>
+  createToastWithPriority(normalizeToastOptions(messageOrOptions, { ...options, type: "error" }));
+
+createToastWithPriority.warning = (messageOrOptions, options) =>
+  createToastWithPriority(normalizeToastOptions(messageOrOptions, { ...options, type: "warning" }));
+
+createToastWithPriority.info = (messageOrOptions, options) =>
+  createToastWithPriority(normalizeToastOptions(messageOrOptions, { ...options, type: "info" }));
 
 export { createToastWithPriority as createToast };
 
@@ -533,6 +567,10 @@ async function toastPromise(promiseOrFn, messages = {}, options = {}) {
     throw err;
   }
 }
+
+createToastWithPriority.promise = toastPromise;
+createToastWithPriority.dismiss = dismissToast;
+createToastWithPriority.clear = noopAll;
 
 const version = typeof __VERSION__ !== "undefined" ? __VERSION__ : "3.16.0";
 

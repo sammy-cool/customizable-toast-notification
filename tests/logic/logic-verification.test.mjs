@@ -2795,3 +2795,104 @@ describe("toast-utils-core.js — multi-action CTA array support", () => {
   });
 });
 
+describe("createToast — Ergonomic shorthands and string message normalization", () => {
+  test("createToast accepts plain string message and renders correctly", async () => {
+    freshDom();
+    const { createToast, resetToastManager } = await import("../../src/index.js");
+    resetToastManager();
+
+    const handle = await createToast("Direct string message!");
+    await new Promise((r) => setTimeout(r, 60));
+
+    const toast = document.querySelector(".toast");
+    assert.ok(toast);
+    const msg = toast.querySelector(".toast-message");
+    assert.strictEqual(msg.textContent, "Direct string message!");
+
+    await handle.dismiss();
+  });
+
+  test("createToast accepts string message and options object as second argument", async () => {
+    freshDom();
+    const { createToast, resetToastManager } = await import("../../src/index.js");
+    resetToastManager();
+
+    const handle = await createToast("Merged string message", { type: "warning", duration: 5000 });
+    await new Promise((r) => setTimeout(r, 60));
+
+    const toast = document.querySelector(".toast");
+    assert.ok(toast);
+    assert.ok(toast.classList.contains("toast-warning"));
+    const msg = toast.querySelector(".toast-message");
+    assert.strictEqual(msg.textContent, "Merged string message");
+
+    await handle.dismiss();
+  });
+
+  test("createToast.success, .error, .warning, .info shorthands assign correct types", async () => {
+    freshDom();
+    const { createToast, resetToastManager } = await import("../../src/index.js");
+    resetToastManager();
+
+    // 1. Success shorthand
+    const h1 = await createToast.success("Saved successfully!");
+    await new Promise((r) => setTimeout(r, 60));
+    let toast = document.querySelector(".toast-success");
+    assert.ok(toast);
+    assert.strictEqual(toast.querySelector(".toast-message").textContent, "Saved successfully!");
+    await h1.dismiss();
+    resetToastManager();
+    freshDom();
+
+    // 2. Error shorthand
+    const h2 = await createToast.error("Failed to connect!");
+    await new Promise((r) => setTimeout(r, 60));
+    toast = document.querySelector(".toast-error");
+    assert.ok(toast);
+    assert.strictEqual(toast.querySelector(".toast-message").textContent, "Failed to connect!");
+    await h2.dismiss();
+    resetToastManager();
+    freshDom();
+
+    // 3. Warning shorthand
+    const h3 = await createToast.warning("Low disk space!");
+    await new Promise((r) => setTimeout(r, 60));
+    toast = document.querySelector(".toast-warning");
+    assert.ok(toast);
+    assert.strictEqual(toast.querySelector(".toast-message").textContent, "Low disk space!");
+    await h3.dismiss();
+    resetToastManager();
+    freshDom();
+
+    // 4. Info shorthand
+    const h4 = await createToast.info("A new version is available");
+    await new Promise((r) => setTimeout(r, 60));
+    toast = document.querySelector(".toast-info");
+    assert.ok(toast);
+    assert.strictEqual(toast.querySelector(".toast-message").textContent, "A new version is available");
+    await h4.dismiss();
+  });
+
+  test("createToast.promise, .dismiss, and .clear helper methods are attached and functional", async () => {
+    freshDom();
+    const { createToast, resetToastManager } = await import("../../src/index.js");
+    resetToastManager();
+
+    assert.strictEqual(typeof createToast.promise, "function");
+    assert.strictEqual(typeof createToast.dismiss, "function");
+    assert.strictEqual(typeof createToast.clear, "function");
+
+    // Test createToast.promise
+    const result = await createToast.promise(
+      Promise.resolve("data-payload"),
+      {
+        loading: "Loading payload...",
+        success: "Payload loaded!",
+      }
+    );
+    assert.strictEqual(result, "data-payload");
+
+    await createToast.dismiss();
+  });
+});
+
