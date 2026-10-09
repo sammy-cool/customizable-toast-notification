@@ -72,19 +72,29 @@ yarn add customizable-toast-notification
 ### ES Modules
 
 ```js
-import { createToast } from "customizable-toast-notification";
+// Default import (recommended) or named import:
+import toast, { createToast } from "customizable-toast-notification";
 
 // 1. Shorthand methods (Quickest & cleanest)
-createToast.success("Saved successfully!");
-createToast.error("Failed to connect to server");
-createToast.warning("Unsaved changes detected");
-createToast.info("Tip: Press Esc to dismiss anytime");
+toast.success("Saved successfully!");
+toast.error("Failed to connect to server");
+toast.warning("Unsaved changes detected");
+toast.info("Tip: Press Esc to dismiss anytime");
 
-// 2. Direct message string
-createToast("Simple notification");
+// 2. Persistent loading state
+const loading = await toast.loading("Uploading files...");
+// ... later update in-place
+await loading.update({ type: "success", message: "Files uploaded!", showLoader: false });
 
-// 3. Full configuration options
-createToast({
+// 3. Direct message string
+toast("Simple notification");
+
+// 4. Programmatic dismiss
+toast.dismiss(loading.id); // dismiss by ID or handle
+toast.dismissAll();        // dismiss all notifications
+
+// 5. Full configuration options
+toast({
   message: "Customized toast!",
   type: "success",
   duration: 3000,

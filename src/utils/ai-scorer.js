@@ -14,13 +14,13 @@
  * @property {string} type - Toast type (success, error, warning, info)
  * @property {string} message - Toast message content
  * @property {number} duration - Duration in milliseconds
- * @property {Object} options - Full toast options
+ * @property {Record<string, unknown>} options - Full toast options
  */
 
 /**
  * @typedef {Object} ScorerResult
  * @property {number} score - Priority score (0-100)
- * @property {Object} breakdown - Score breakdown by factor
+ * @property {Record<string, number>} breakdown - Score breakdown by factor
  * @property {string[]} keywords - Detected keywords affecting score
  */
 

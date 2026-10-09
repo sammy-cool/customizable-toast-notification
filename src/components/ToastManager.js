@@ -281,7 +281,7 @@ export async function showToast(options = {}) {
       if (!data) throw new Error(`Active toast with key ${key} not found`);
       data.count++;
 
-      data.timer.clear();
+      data.timer?.clear();
       data.timer = createDismissTimer(data.toast, options);
       await setupPauseOnHover(data);
       await updateBadge(data);
@@ -558,6 +558,9 @@ export const noop = closeAllToasts;
 
 function createDismissTimer(toast, options) {
   const raw = Number(options?.duration);
+  if (options?.duration === Infinity || (typeof options?.duration === "number" && options?.duration <= 0)) {
+    return null;
+  }
   const duration = Number.isFinite(raw) && raw > 0 ? raw : 2500;
   const delay = duration + 5;
   const timer = new PausableTimer(async () => await closeToast(toast), delay);

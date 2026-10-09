@@ -23,6 +23,47 @@
  */
 
 /**
+ * @typedef {Object} PinchResult
+ * @property {boolean} isPinch
+ * @property {number} scale
+ * @property {'none' | 'in' | 'out'} direction
+ * @property {number} [distanceChange]
+ */
+
+/**
+ * @typedef {Object} SwipeResult
+ * @property {number} distance
+ * @property {number} velocity
+ * @property {'none' | 'left' | 'right'} direction
+ * @property {number} duration
+ */
+
+/**
+ * @typedef {Object} SnapBackResult
+ * @property {number} targetOffset
+ * @property {number} duration
+ * @property {string} easing
+ */
+
+/**
+ * @typedef {Object} GestureDetectorOptions
+ * @property {((swipe: SwipeResult) => void)} [onFlick]
+ * @property {((pinch: PinchResult) => void)} [onPinch]
+ * @property {((swipe: SwipeResult) => void)} [onSwipe]
+ * @property {number} [flickVelocityThreshold]
+ * @property {number} [swipeVelocityThreshold]
+ * @property {number} [swipeDistanceThreshold]
+ * @property {number} [pinchSensitivity]
+ */
+
+/**
+ * @typedef {Object} GestureDetector
+ * @property {() => void} attach
+ * @property {() => void} detach
+ * @property {() => GestureState | null} getState
+ */
+
+/**
  * Calculate distance between two touch points
  * @param {TouchPoint} p1
  * @param {TouchPoint} p2
@@ -137,8 +178,8 @@ export function updateGestureState(state, event) {
 /**
  * Detect pinch gesture (two-finger distance change)
  * @param {GestureState} state
- * @param {number} sensitivityThreshold - Minimum distance change for pinch (default 20px)
- * @returns {Object} - Pinch info { isPinch, scale, direction }
+ * @param {number} [sensitivityThreshold=20] - Minimum distance change for pinch (default 20px)
+ * @returns {PinchResult} - Pinch info { isPinch, scale, direction, distanceChange }
  */
 export function detectPinch(state, sensitivityThreshold = 20) {
   if (state.startDistance === 0 || state.currentDistance === 0) {
@@ -157,11 +198,11 @@ export function detectPinch(state, sensitivityThreshold = 20) {
 /**
  * Calculate horizontal swipe information
  * @param {GestureState} state
- * @returns {Object} - Swipe info { distance, velocity, direction }
+ * @returns {SwipeResult} - Swipe info { distance, velocity, direction, duration }
  */
 export function calculateSwipe(state) {
   if (state.startTouches.length === 0 || state.touches.length === 0) {
-    return { distance: 0, velocity: 0, direction: 'none' };
+    return { distance: 0, velocity: 0, direction: 'none', duration: 0 };
   }
 
   const startTouch = state.startTouches[0];
@@ -177,9 +218,9 @@ export function calculateSwipe(state) {
 
 /**
  * Detect if swipe should dismiss (high velocity or large distance)
- * @param {Object} swipe - Swipe info from calculateSwipe
- * @param {number} velocityThreshold - Velocity threshold (default 0.3 px/ms)
- * @param {number} distanceThreshold - Distance threshold (default 50px or 50% of width)
+ * @param {SwipeResult} swipe - Swipe info from calculateSwipe
+ * @param {number} [velocityThreshold=0.3] - Velocity threshold (default 0.3 px/ms)
+ * @param {number} [distanceThreshold=50] - Distance threshold (default 50px or 50% of width)
  * @returns {boolean}
  */
 export function shouldDismissOnSwipe(swipe, velocityThreshold = 0.3, distanceThreshold = 50) {
@@ -189,8 +230,8 @@ export function shouldDismissOnSwipe(swipe, velocityThreshold = 0.3, distanceThr
 /**
  * Calculate snap-back animation values
  * @param {number} currentOffset - Current offset in pixels
- * @param {number} containerWidth - Width of container in pixels
- * @returns {Object} - Animation { targetOffset, duration, easing }
+ * @param {number} [containerWidth=400] - Width of container in pixels
+ * @returns {SnapBackResult} - Animation { targetOffset, duration, easing }
  */
 export function calculateSnapBack(currentOffset, containerWidth = 400) {
   const targetOffset = 0;
@@ -211,8 +252,8 @@ export function calculateSnapBack(currentOffset, containerWidth = 400) {
 /**
  * Create gesture detector function for element
  * @param {HTMLElement} element
- * @param {Object} options
- * @returns {Object} - Detector with attach/detach methods
+ * @param {GestureDetectorOptions} [options]
+ * @returns {GestureDetector} - Detector with attach/detach methods
  */
 export function createGestureDetector(element, options = {}) {
   const {

@@ -35,7 +35,8 @@
  * @property {'modern' | 'retro' | 'futuristic' | 'subtle' | 'bell' | string} [soundPreset]
  * @property {boolean} syncTabs
  * @property {boolean} aiPrioritization
- * @property {((context: Object) => number | { score: number }) | null} [priorityScorer]
+ * @property {boolean} [debug]
+ * @property {((context: { type: string, message: string, duration?: number, options?: Record<string, unknown> }) => number | { score: number }) | null} [priorityScorer]
  * @property {((metrics: ToastMetrics) => void) | null} [onMetrics]
  */
 
@@ -56,6 +57,7 @@ const DEFAULT_GLOBAL_CONFIG = Object.freeze({
   aiPrioritization: false,
   priorityScorer: null,
   onMetrics: null,
+  debug: false,
 });
 
 const globalConfig = { ...DEFAULT_GLOBAL_CONFIG };

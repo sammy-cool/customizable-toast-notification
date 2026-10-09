@@ -83,6 +83,7 @@ export default [
       file: "dist/index.umd.js",
       format: "umd",
       name: "customizableToast",
+      exports: "named",
       sourcemap: true,
       banner,
     },

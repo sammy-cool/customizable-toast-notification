@@ -2894,5 +2894,112 @@ describe("createToast — Ergonomic shorthands and string message normalization"
 
     await createToast.dismiss();
   });
+
+  test("createToast.loading creates persistent loading toast and allows updating in-place", async () => {
+    freshDom();
+    const { createToast, resetToastManager } = await import("../../src/index.js");
+    resetToastManager();
+
+    const handle = await createToast.loading("Uploading files...");
+    assert.ok(handle);
+    assert.ok(typeof handle.id === "string");
+    assert.strictEqual(typeof handle.dismiss, "function");
+    assert.strictEqual(typeof handle.update, "function");
+
+    await new Promise((r) => setTimeout(r, 60));
+
+    let toast = document.querySelector(".toast");
+    assert.ok(toast);
+    assert.ok(toast.classList.contains("toast-info"));
+    assert.strictEqual(toast.querySelector(".toast-message").textContent, "Uploading files...");
+    // Loader spinner must be present
+    assert.ok(toast.querySelector(".toast-loader") || toast.querySelector("svg"));
+
+    // Update in-place to success
+    await handle.update({
+      type: "success",
+      message: "Upload completed!",
+      showLoader: false,
+    });
+    await new Promise((r) => setTimeout(r, 60));
+
+    toast = document.querySelector(".toast");
+    assert.ok(toast.classList.contains("toast-success"));
+    assert.strictEqual(toast.querySelector(".toast-message").textContent, "Upload completed!");
+    assert.strictEqual(toast.querySelector(".toast-loader"), null);
+
+    await handle.dismiss();
+  });
+
+  test("createToast.dismiss supports target ID, handle, and dismissAll", async () => {
+    freshDom();
+    const { createToast, resetToastManager } = await import("../../src/index.js");
+    resetToastManager();
+
+    const h1 = await createToast({ message: "First Toast", duration: 10000 });
+    const h2 = await createToast({ message: "Second Toast", duration: 10000 });
+    await new Promise((r) => setTimeout(r, 60));
+
+    let toasts = document.querySelectorAll(".toast");
+    assert.strictEqual(toasts.length, 2);
+
+    // Dismiss first toast specifically by string ID
+    await createToast.dismiss(h1.id);
+    await new Promise((r) => setTimeout(r, 400));
+
+    toasts = document.querySelectorAll(".toast");
+    assert.strictEqual(toasts.length, 1);
+    assert.strictEqual(toasts[0].querySelector(".toast-message").textContent, "Second Toast");
+
+    // Dismiss second toast by handle object
+    await createToast.dismiss(h2);
+    await new Promise((r) => setTimeout(r, 400));
+
+    toasts = document.querySelectorAll(".toast");
+    assert.strictEqual(toasts.length, 0);
+
+    // Test dismissAll
+    await createToast({ message: "A", duration: 10000 });
+    await createToast({ message: "B", duration: 10000 });
+    await new Promise((r) => setTimeout(r, 60));
+
+    assert.strictEqual(document.querySelectorAll(".toast").length, 2);
+    await createToast.dismissAll();
+    await new Promise((r) => setTimeout(r, 400));
+
+    assert.strictEqual(document.querySelectorAll(".toast").length, 0);
+  });
+
+  test("default export interop works cleanly for ESM consumers", async () => {
+    freshDom();
+    const defaultExport = (await import("../../src/index.js")).default;
+    const { createToast } = await import("../../src/index.js");
+
+    assert.strictEqual(defaultExport, createToast);
+    assert.strictEqual(typeof defaultExport.success, "function");
+    assert.strictEqual(typeof defaultExport.error, "function");
+    assert.strictEqual(typeof defaultExport.warning, "function");
+    assert.strictEqual(typeof defaultExport.info, "function");
+    assert.strictEqual(typeof defaultExport.loading, "function");
+    assert.strictEqual(typeof defaultExport.promise, "function");
+    assert.strictEqual(typeof defaultExport.dismiss, "function");
+    assert.strictEqual(typeof defaultExport.dismissAll, "function");
+  });
+
+  test("duration: 0 and duration: Infinity disable dismiss timer for persistent manual toasts", async () => {
+    freshDom();
+    const { createToast, resetToastManager } = await import("../../src/index.js");
+    resetToastManager();
+
+    const hZero = await createToast({ message: "Zero duration toast", duration: 0 });
+    const hInf = await createToast({ message: "Infinity duration toast", duration: Infinity });
+    await new Promise((r) => setTimeout(r, 60));
+
+    const toasts = document.querySelectorAll(".toast");
+    assert.strictEqual(toasts.length, 2);
+
+    await hZero.dismiss();
+    await hInf.dismiss();
+  });
 });
 

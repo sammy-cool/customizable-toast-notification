@@ -171,12 +171,14 @@ import {
  * @property {SoundPreset} [soundPreset]
  * @property {boolean} [syncTabs]
  * @property {boolean} [aiPrioritization]
- * @property {((context: Object) => number | { score: number }) | null} [priorityScorer]
+ * @property {boolean} [debug]
+ * @property {((context: { type: string, message: string, duration?: number, options?: Record<string, unknown> }) => number | { score: number }) | null} [priorityScorer]
  * @property {((metrics: ToastMetrics) => void) | null} [onMetrics]
  */
 
 /**
  * @typedef {Object} ToastHandle
+ * @property {string} [id] - The unique identifier/key of the toast notification.
  * @property {() => Promise<void>} dismiss
  * @property {(newOptions: Partial<ToastOptions>) => Promise<void>} update
  */
@@ -456,32 +458,95 @@ async function createToastWithPriority(messageOrOptions = {}, maybeOptions) {
   const normalized = normalizeToastOptions(messageOrOptions, maybeOptions);
   const key = await runWithClosePriority(() => originalCreateToast(normalized));
   return {
+    id: key,
     dismiss: () => (key ? closeToastByKey(key) : Promise.resolve()),
     update: (newOptions) =>
       key ? updateToastByKey(key, newOptions) : Promise.resolve(),
   };
 }
 
+/**
+ * Displays a success toast notification.
+ * @param {string | ToastOptions} [messageOrOptions]
+ * @param {Partial<ToastOptions>} [options]
+ * @returns {Promise<ToastHandle>}
+ */
 createToastWithPriority.success = (messageOrOptions, options) =>
   createToastWithPriority(normalizeToastOptions(messageOrOptions, { ...options, type: "success" }));
 
+/**
+ * Displays an error toast notification.
+ * @param {string | ToastOptions} [messageOrOptions]
+ * @param {Partial<ToastOptions>} [options]
+ * @returns {Promise<ToastHandle>}
+ */
 createToastWithPriority.error = (messageOrOptions, options) =>
   createToastWithPriority(normalizeToastOptions(messageOrOptions, { ...options, type: "error" }));
 
+/**
+ * Displays a warning toast notification.
+ * @param {string | ToastOptions} [messageOrOptions]
+ * @param {Partial<ToastOptions>} [options]
+ * @returns {Promise<ToastHandle>}
+ */
 createToastWithPriority.warning = (messageOrOptions, options) =>
   createToastWithPriority(normalizeToastOptions(messageOrOptions, { ...options, type: "warning" }));
 
+/**
+ * Displays an informational toast notification.
+ * @param {string | ToastOptions} [messageOrOptions]
+ * @param {Partial<ToastOptions>} [options]
+ * @returns {Promise<ToastHandle>}
+ */
 createToastWithPriority.info = (messageOrOptions, options) =>
   createToastWithPriority(normalizeToastOptions(messageOrOptions, { ...options, type: "info" }));
+
+/**
+ * Displays a persistent loading toast with an animated spinner.
+ * @param {string | ToastOptions} [messageOrOptions]
+ * @param {Partial<ToastOptions>} [options]
+ * @returns {Promise<ToastHandle>}
+ */
+createToastWithPriority.loading = (messageOrOptions, options) =>
+  createToastWithPriority(
+    normalizeToastOptions(messageOrOptions, {
+      type: "info",
+      showLoader: true,
+      duration: 0,
+      showProgressBar: false,
+      pauseOnHover: false,
+      ...options,
+    })
+  );
 
 export { createToastWithPriority as createToast };
 
 export { setDefaultColors, setDefaultMessages };
-const dismissToast = async () => {
+
+/**
+ * Dismisses a toast by its key/id, handle, element, or dismisses the most recent toast if target is omitted.
+ * @param {string | ToastHandle | HTMLElement} [target]
+ * @returns {Promise<void>}
+ */
+const dismissToast = async (target) => {
   closeInProgress = true;
   closePromise = (async () => {
     try {
-      await dismiss();
+      if (typeof target === "string" && target.length > 0) {
+        await closeToastByKey(target);
+      } else if (target && typeof target === "object") {
+        if (typeof target.dismiss === "function") {
+          await target.dismiss();
+        } else if (target.id && typeof target.id === "string") {
+          await closeToastByKey(target.id);
+        } else if (target._key && typeof target._key === "string") {
+          await closeToastByKey(target._key);
+        } else {
+          await dismiss();
+        }
+      } else {
+        await dismiss();
+      }
     } finally {
       closeInProgress = false;
       closePromise = null;
@@ -570,8 +635,10 @@ async function toastPromise(promiseOrFn, messages = {}, options = {}) {
 
 createToastWithPriority.promise = toastPromise;
 createToastWithPriority.dismiss = dismissToast;
+createToastWithPriority.dismissAll = noopAll;
 createToastWithPriority.clear = noopAll;
 
+/** @type {string} */
 const version = typeof __VERSION__ !== "undefined" ? __VERSION__ : "3.16.0";
 
 export {
@@ -658,6 +725,7 @@ try {
       setDefaultMessages,
       noop: noopAll,
       dismiss: dismissToast,
+      dismissAll: noopAll,
       toastPromise,
       updateToastByKey,
       setAudioEnabled,
@@ -695,3 +763,5 @@ try {
 } catch (error) {
   console.error("Global assignment failed:", error);
 }
+
+export default createToastWithPriority;
