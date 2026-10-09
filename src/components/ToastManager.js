@@ -8,7 +8,7 @@ import { setPosition } from "../utils/position.js";
 import { PausableTimer } from "../utils/PausableTimer.js";
 import { sanitizeHtml } from "../utils/html-sanitizer.js";
 import { playTone } from "../utils/audio.js";
-import { createProgressBar, createCTA } from "./toast-utils-core.js";
+import { createProgressBar, createCTA, createUndoAction } from "./toast-utils-core.js";
 import { createLoader } from "./loader.js";
 import { getConfig, shouldReduceMotion } from "../utils/config.js";
 import { getToastBroadcaster } from "../utils/toast-broadcast.js";
@@ -1049,6 +1049,20 @@ export async function updateToastByKey(key, newOptions = {}) {
     if (newOptions.cta && typeof newOptions.cta === "object") {
       const mergedOpts = { ...data.options, ...newOptions };
       createCTA(toast, mergedOpts, closeToast);
+    }
+  }
+
+  // 5.2 Update Undo Action
+  if (newOptions.undo !== undefined) {
+    if (toast._cleanupUndo) {
+      toast._cleanupUndo();
+      toast._cleanupUndo = null;
+    }
+    toast.querySelectorAll(".toast-undo-btn").forEach((el) => el.remove());
+
+    if (newOptions.undo) {
+      const mergedOpts = { ...data.options, ...newOptions };
+      createUndoAction(toast, mergedOpts, closeToast);
     }
   }
 

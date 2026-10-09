@@ -223,7 +223,14 @@ export function createUndoAction(toast, options, onClose) {
     btn.removeEventListener("click", onClick);
   };
 
-  toast.appendChild(btn);
+  const insertTarget =
+    toast.querySelector(".toast-close-btn") ||
+    toast.querySelector(".toast-progress-bar");
+  if (insertTarget) {
+    toast.insertBefore(btn, insertTarget);
+  } else {
+    toast.appendChild(btn);
+  }
 }
 
 export function createCloseButton(toast, options, onClose) {

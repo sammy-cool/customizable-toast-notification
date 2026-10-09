@@ -2706,5 +2706,56 @@ describe("toast-utils-core.js — multi-action CTA array support", () => {
 
     await handle.dismiss();
   });
+
+  test("updateToastByKey dynamically adds, modifies, and removes undo action in-place", async () => {
+    freshDom();
+    const { createToast, resetToastManager } = await import("../../src/index.js");
+    resetToastManager();
+
+    const handle = await createToast({
+      message: "Row item deleted",
+      duration: 10000,
+    });
+    await new Promise((r) => setTimeout(r, 60));
+
+    const toast = document.querySelector(".toast");
+    assert.ok(toast);
+    assert.strictEqual(toast.querySelectorAll(".toast-undo-btn").length, 0);
+
+    // 1. Add undo dynamically
+    let undid = false;
+    await handle.update({
+      undo: {
+        label: "Restore",
+        showCountdown: false,
+        onUndo: () => {
+          undid = true;
+        },
+      },
+    });
+
+    let undoBtns = toast.querySelectorAll(".toast-undo-btn");
+    assert.strictEqual(undoBtns.length, 1);
+    assert.strictEqual(undoBtns[0].textContent, "Restore");
+
+    // 2. Remove undo dynamically
+    await handle.update({ undo: null });
+    assert.strictEqual(toast.querySelectorAll(".toast-undo-btn").length, 0);
+
+    // 3. Add undo again and click it
+    await handle.update({
+      undo: () => {
+        undid = true;
+      },
+    });
+
+    undoBtns = toast.querySelectorAll(".toast-undo-btn");
+    assert.strictEqual(undoBtns.length, 1);
+    assert.ok(undoBtns[0].textContent.includes("Undo"));
+    undoBtns[0].click();
+    assert.strictEqual(undid, true);
+
+    await handle.dismiss();
+  });
 });
 
