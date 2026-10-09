@@ -683,6 +683,19 @@
         }
       }
 
+      @keyframes toast-bounce-gentle {
+        0%, 100% {
+          transform: translateY(0);
+        }
+        50% {
+          transform: translateY(-8px);
+        }
+      }
+
+      .custom-animation-bounce {
+        animation: toast-bounce-gentle 0.6s ease-in-out;
+      }
+
       @media (prefers-reduced-motion: reduce) {
         html {
           scroll-behavior: auto;
@@ -2725,10 +2738,23 @@ npm install customizable-toast-notification</pre
           var ctx = canvas.getContext("2d");
           var analyser = null;
           var dataArray = null;
+          var hasGesture = false;
+
+          function onGesture() {
+            hasGesture = true;
+            try {
+              window.removeEventListener("pointerdown", onGesture, true);
+              window.removeEventListener("keydown", onGesture, true);
+              window.removeEventListener("touchstart", onGesture, true);
+            } catch (e) {}
+          }
+          window.addEventListener("pointerdown", onGesture, { capture: true, once: true, passive: true });
+          window.addEventListener("keydown", onGesture, { capture: true, once: true, passive: true });
+          window.addEventListener("touchstart", onGesture, { capture: true, once: true, passive: true });
 
           function render() {
             requestAnimationFrame(render);
-            if (!analyser && window.customizableToast && window.customizableToast.getAudioAnalyser) {
+            if (!analyser && hasGesture && window.customizableToast && window.customizableToast.getAudioAnalyser) {
               analyser = window.customizableToast.getAudioAnalyser();
               if (analyser) {
                 dataArray = new Uint8Array(analyser.frequencyBinCount);

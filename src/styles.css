@@ -514,10 +514,29 @@
   }
 }
 
+/* ========== POSITION-SPECIFIC INITIAL TRANSFORMS ========== */
+[class*="toast-position-top"] .toast:not(.active) {
+  transform: translateY(-20px);
+}
+
 /* ========== ACTIVE STATE ========== */
 .toast.active {
   opacity: 1;
   transform: translateY(0);
+}
+
+/* ========== CUSTOM ANIMATION UTILITIES ========== */
+@keyframes toast-bounce-gentle {
+  0%, 100% {
+    transform: translateY(0);
+  }
+  50% {
+    transform: translateY(-8px);
+  }
+}
+
+.custom-animation-bounce {
+  animation: toast-bounce-gentle 0.6s ease-in-out;
 }
 
 /* ========== GLASSMORPHISM SUPPORT ========== */

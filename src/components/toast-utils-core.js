@@ -339,16 +339,47 @@ export function createProgressBar(toast, options) {
 }
 
 export function runToastAnimation(toast) {
+  if (!toast) return;
+  if (toast._hasAnimated) return;
+
   if (shouldReduceMotion()) {
+    toast._hasAnimated = true;
     toast.style.transition = "none";
     toast.style.opacity = "1";
     toast.style.transform = "translateY(0)";
+    toast.classList.add("active");
     return;
   }
-  requestAnimationFrame(() => {
-    toast.style.opacity = "1";
-    toast.style.transform = "translateY(0)";
-  });
+
+  const trigger = () => {
+    if (toast._hasAnimated) return;
+    toast._hasAnimated = true;
+    // Force browser layout/reflow so initial styles (opacity: 0, translateY) are committed to render tree
+    try {
+      void toast.offsetHeight;
+    } catch {}
+
+    requestAnimationFrame(() => {
+      toast.style.opacity = "1";
+      toast.style.transform = "translateY(0)";
+      toast.classList.add("active");
+    });
+  };
+
+  if (toast.isConnected) {
+    trigger();
+  } else {
+    // If not yet connected to the DOM, defer to next frame when container.appendChild has occurred
+    requestAnimationFrame(() => {
+      if (toast.isConnected) {
+        trigger();
+      } else {
+        requestAnimationFrame(() => {
+          trigger();
+        });
+      }
+    });
+  }
 }
 
 export function attachSwipeToDismiss(toast, onClose) {

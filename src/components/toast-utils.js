@@ -77,7 +77,9 @@ export async function applyRichStyling(toast, options, onClose) {
       userSelect: "text",
       pointerEvents: "auto",
       transition: `opacity ${opacityDuration} ${opacityEasing}, transform ${validAnimationDuration} ${easing}`,
-      transform: "translateY(20px)",
+      transform: options?.position && String(options.position).toLowerCase().includes("top")
+        ? "translateY(-20px)"
+        : "translateY(20px)",
       zIndex: String(config.zIndex),
     });
   }

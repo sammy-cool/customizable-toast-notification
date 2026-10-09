@@ -8,7 +8,7 @@ import { setPosition } from "../utils/position.js";
 import { PausableTimer } from "../utils/PausableTimer.js";
 import { sanitizeHtml } from "../utils/html-sanitizer.js";
 import { playTone } from "../utils/audio.js";
-import { createProgressBar, createCTA, createUndoAction } from "./toast-utils-core.js";
+import { createProgressBar, createCTA, createUndoAction, runToastAnimation } from "./toast-utils-core.js";
 import { createLoader } from "./loader.js";
 import { getConfig, shouldReduceMotion } from "../utils/config.js";
 import { getToastBroadcaster } from "../utils/toast-broadcast.js";
@@ -406,6 +406,8 @@ async function createOne(options, key, initialCount) {
       }
     }
 
+    runToastAnimation(toast);
+
     const shouldPauseOnHover =
       options.pauseOnHover !== false &&
       (options.pauseOnHover === true || !!options.cta);
@@ -691,13 +693,19 @@ export async function closeToastByKey(key) {
     if (badge) badge.remove();
 
     const animDuration = data.toast?._animationDuration ?? 400;
+    const exitDuration = Math.min(animDuration, 300);
+
     if (data.toast) {
-      data.toast.style.opacity = "0";
-      data.toast.style.transform = "translateY(20px)";
+      if (!getConfig().disableInlineStyles) {
+        data.toast.style.transition = `opacity ${exitDuration}ms ease-in, transform ${exitDuration}ms ease-in`;
+        data.toast.style.opacity = "0";
+        data.toast.style.transform = "translateY(20px)";
+      }
+      data.toast.classList.remove("active");
     }
 
     const parentContainer = data.outer?.parentElement;
-    await removeWithTransition(data.outer, data.toast, animDuration);
+    await removeWithTransition(data.outer, data.toast, exitDuration);
 
     if (
       parentContainer &&
@@ -780,7 +788,12 @@ async function removeWithTransition(el, targetEl, animationDurationMs = 400) {
     const onEnd = (e) => {
       try {
         if (e.target !== animEl) return;
-        finish();
+        if (
+          e.propertyName === "transform" ||
+          (!animEl.style.transform && e.propertyName === "opacity")
+        ) {
+          finish();
+        }
       } catch (error) {
         console.error("removeWithTransition error:", error);
       }
