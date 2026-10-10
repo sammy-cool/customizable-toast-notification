@@ -3298,6 +3298,55 @@ describe("Hardenings — ai-scorer, broadcast, pool, multi-touch, and global pau
     resetConfig();
     resetToastManager();
   });
+
+  test("position.js: center-left, center-right, center-top, center-bottom aliases position cleanly", async () => {
+    freshDom();
+    const { setPosition } = await import("../../src/utils/position.js");
+
+    const containerLeft = document.createElement("div");
+    await setPosition(containerLeft, { position: "center-left" });
+    assert.strictEqual(containerLeft.classList.contains("toast-position-center-left"), true);
+    assert.strictEqual(containerLeft.style.left, "10px");
+    assert.strictEqual(containerLeft.style.top, "50%");
+
+    const containerRight = document.createElement("div");
+    await setPosition(containerRight, { position: "center-right" });
+    assert.strictEqual(containerRight.classList.contains("toast-position-center-right"), true);
+    assert.strictEqual(containerRight.style.right, "10px");
+    assert.strictEqual(containerRight.style.top, "50%");
+  });
+
+  test("toast-utils.js: fontDirection 'rtl' applies direction to toast element and config.swipeToDismiss is respected", async () => {
+    freshDom();
+    const { createToast, resetToastManager, setConfig, resetConfig } = await import("../../src/index.js");
+    resetToastManager();
+    resetConfig();
+
+    // 1. RTL direction
+    const handleRtl = await createToast({
+      message: "مرحبا بالعالم",
+      fontDirection: "rtl",
+    });
+    await new Promise((r) => setTimeout(r, 60));
+    const toastRtl = document.querySelector(".toast");
+    assert.ok(toastRtl);
+    assert.strictEqual(toastRtl.style.direction, "rtl");
+    await handleRtl.dismiss();
+
+    // 2. Global swipeToDismiss: false
+    setConfig({ swipeToDismiss: false });
+    const handleNoSwipe = await createToast({
+      message: "Swipe disabled globally",
+    });
+    await new Promise((r) => setTimeout(r, 60));
+    const toastNoSwipe = document.querySelector(".toast");
+    assert.ok(toastNoSwipe);
+    assert.strictEqual(toastNoSwipe._cleanupSwipe, undefined, "Swipe should not be attached when disabled globally");
+    await handleNoSwipe.dismiss();
+
+    resetConfig();
+    resetToastManager();
+  });
 });
 
 

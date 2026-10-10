@@ -82,6 +82,10 @@ export async function applyRichStyling(toast, options, onClose) {
         ? "translateY(-20px)"
         : "translateY(20px)",
       zIndex: String(config.zIndex),
+      direction:
+        options?.fontDirection && options.fontDirection !== "auto"
+          ? options.fontDirection
+          : undefined,
     });
   }
 
@@ -206,7 +210,9 @@ export async function applyRichStyling(toast, options, onClose) {
     createProgressBar(toast, options);
   }
 
-  if (options?.swipeToDismiss !== false) {
+  const shouldSwipe =
+    options?.swipeToDismiss !== undefined ? options.swipeToDismiss : config.swipeToDismiss;
+  if (shouldSwipe !== false) {
     attachSwipeToDismiss(toast, onClose);
   }
 

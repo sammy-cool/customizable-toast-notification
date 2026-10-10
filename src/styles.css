@@ -179,6 +179,7 @@
 }
 
 .toast-position-top-center,
+.toast-position-center-top,
 .toast-position-top {
   top: var(--toast-offset, 10px);
   right: auto;
@@ -187,7 +188,8 @@
   transform: translateX(-50%);
 }
 
-.toast-position-bottom-center {
+.toast-position-bottom-center,
+.toast-position-center-bottom {
   top: auto;
   right: auto;
   bottom: var(--toast-offset, 10px);
@@ -195,7 +197,8 @@
   transform: translateX(-50%);
 }
 
-.toast-position-left-center {
+.toast-position-left-center,
+.toast-position-center-left {
   top: 50%;
   right: auto;
   bottom: auto;
@@ -203,7 +206,8 @@
   transform: translateY(-50%);
 }
 
-.toast-position-right-center {
+.toast-position-right-center,
+.toast-position-center-right {
   top: 50%;
   right: var(--toast-offset, 10px);
   bottom: auto;
@@ -637,7 +641,14 @@
   justify-content: center;
   flex-shrink: 0;
   margin-right: 8px;
+  margin-inline-end: 8px;
   line-height: 1;
+}
+
+[dir="rtl"] .toast-icon,
+.toast[style*="direction: rtl"] .toast-icon {
+  margin-right: 0;
+  margin-left: 8px;
 }
 
 .toast-icon svg {
