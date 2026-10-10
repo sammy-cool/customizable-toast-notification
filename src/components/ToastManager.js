@@ -1065,6 +1065,7 @@ export async function updateToastByKey(key, newOptions = {}) {
     const raw = Number(newOptions.duration);
     if (Number.isFinite(raw) && raw > 0) {
       data.timer = createDismissTimer(toast, { duration: raw });
+      await setupPauseOnHover(data);
     }
   } else if (
     (data.options.duration === 0 || !data.timer) &&
@@ -1077,6 +1078,7 @@ export async function updateToastByKey(key, newOptions = {}) {
     // without an explicit duration, start a standard auto-dismiss timer so it doesn't stay permanently stuck on screen.
     data.timer?.clear();
     data.timer = createDismissTimer(toast, { duration: 2500 });
+    await setupPauseOnHover(data);
   }
 
   // 5.1 Update CTA
