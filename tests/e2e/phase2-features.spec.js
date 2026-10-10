@@ -189,12 +189,14 @@ test.describe('Phase 2: Swipe-to-Dismiss Gesture', () => {
     const toast = await page.locator('.toast').first();
     const box = await toast.boundingBox();
 
-    // Simulate mouse drag (fast movement = dismiss)
-    await page.mouse.move(box.x + box.width / 2, box.y + box.height / 2);
+    // Simulate mouse drag leftwards within viewport bounds (fast movement = dismiss)
+    const startX = box.x + box.width / 2;
+    const startY = box.y + box.height / 2;
+    await page.mouse.move(startX, startY);
     await page.mouse.down();
 
-    for (let i = 0; i < 10; i++) {
-      await page.mouse.move(box.x + box.width / 2 + (i * 20), box.y + box.height / 2);
+    for (let i = 1; i <= 10; i++) {
+      await page.mouse.move(startX - (i * 15), startY);
       await page.waitForTimeout(10);
     }
 

@@ -504,11 +504,40 @@
         display: flex;
         align-items: center;
         justify-content: space-between;
-        padding: 9px 14px;
+        padding: 8px 12px;
         border-bottom: 1px solid var(--line);
         font-family: var(--mono);
         font-size: 11.5px;
         color: var(--text-faint);
+        gap: 8px;
+        flex-wrap: wrap;
+      }
+      .code-framework-tabs {
+        display: flex;
+        align-items: center;
+        gap: 4px;
+        flex-wrap: wrap;
+      }
+      .fw-tab {
+        font-family: var(--mono);
+        font-size: 11px;
+        padding: 3px 8px;
+        background: transparent;
+        color: var(--text-dim);
+        border: 1px solid transparent;
+        border-radius: 5px;
+        cursor: pointer;
+        transition: all 0.15s ease;
+      }
+      .fw-tab:hover {
+        color: var(--text);
+        background: var(--ink-2);
+      }
+      .fw-tab.active {
+        color: var(--accent);
+        background: var(--ink-2);
+        border-color: var(--line);
+        font-weight: 600;
       }
       .copy-btn {
         font-family: var(--mono);
@@ -800,8 +829,14 @@
           <div class="pg-main">
             <div class="code-panel">
               <div class="code-bar">
-                <span>generated code</span>
-                <button class="copy-btn" id="copyBtn">Copy</button>
+                <div class="code-framework-tabs" id="frameworkTabs">
+                  <button class="fw-tab active" data-fw="js" type="button">Vanilla JS</button>
+                  <button class="fw-tab" data-fw="react" type="button">React</button>
+                  <button class="fw-tab" data-fw="vue" type="button">Vue 3</button>
+                  <button class="fw-tab" data-fw="svelte" type="button">Svelte</button>
+                  <button class="fw-tab" data-fw="ts" type="button">TypeScript</button>
+                </div>
+                <button class="copy-btn" id="copyBtn" type="button">Copy</button>
               </div>
               <pre id="codeOutput"></pre>
             </div>
@@ -824,6 +859,38 @@
           Every function this package exports, each with a working example you
           can actually run.
         </p>
+
+        <div class="api-demo">
+          <h3>Shorthands: <code>createToast.success()</code>, <code>error()</code>, <code>loading()</code>, etc.</h3>
+          <p class="api-desc">
+            Ultra-fast, zero-boilerplate syntax. Pass a message string directly or a full options object.
+          </p>
+          <div class="code-block">
+            <span class="tok-cm">// One-liner convenience methods:</span>
+            createToast.success(<span class="tok-str">"Changes published!"</span>);
+            createToast.error(<span class="tok-str">"Connection timed out."</span>);
+            createToast.warning(<span class="tok-str">"Unsaved draft will be lost."</span>);
+            createToast.loading(<span class="tok-str">"Syncing database..."</span>);
+            createToast.custom(<span class="tok-str">"&lt;b&gt;Custom HTML&lt;/b&gt; with sanitization!"</span>);
+          </div>
+          <div class="try-row">
+            <button class="try-btn" id="shorthandSuccessBtn">
+              .success()
+            </button>
+            <button class="try-btn secondary" id="shorthandErrorBtn">
+              .error()
+            </button>
+            <button class="try-btn secondary" id="shorthandWarnBtn">
+              .warning()
+            </button>
+            <button class="try-btn secondary" id="shorthandLoadingBtn">
+              .loading()
+            </button>
+            <button class="try-btn secondary" id="shorthandCustomBtn">
+              .custom()
+            </button>
+          </div>
+        </div>
 
         <div class="api-demo">
           <h3>createToast(options) → Promise&lt;ToastHandle&gt;</h3>
@@ -1232,7 +1299,7 @@ npm install customizable-toast-notification</pre
     <footer>
       <div class="wrap">
         <span class="made"
-          >Built and tested in the open — 129+ real e2e tests, 0 known
+          >Built and tested in the open — 169+ unit &amp; logic tests, 0 known
           vulnerabilities.</span
         >
         <div class="f-links">
@@ -1388,6 +1455,7 @@ npm install customizable-toast-notification</pre
           sound: "none",
           soundPreset: "modern",
           spring: "none",
+          icon: "auto",
           enableUndo: false,
           showLoader: false,
           loaderSize: 14,
@@ -1508,6 +1576,15 @@ npm install customizable-toast-notification</pre
           if (s.spring && s.spring !== "none") {
             opts.spring = s.spring;
           }
+          if (s.icon && s.icon !== "auto") {
+            if (s.icon === "false") {
+              opts.icon = false;
+            } else if (s.icon === "true") {
+              opts.icon = true;
+            } else {
+              opts.icon = s.icon;
+            }
+          }
           if (s.enableUndo) {
             opts.undo = {
               label: "Undo",
@@ -1567,6 +1644,89 @@ npm install customizable-toast-notification</pre
           );
         }
 
+        var activeFramework = "js";
+
+        function generateFrameworkCode(opts, fw) {
+          var jsCode = Object.keys(opts).length
+            ? stringifyOptions(opts)
+            : "customizableToast.createToast();";
+
+          if (fw === "react") {
+            var indentCode = jsCode
+              .replace(/^customizableToast\./, "")
+              .split("\n")
+              .map(function (line) {
+                return "    " + line;
+              })
+              .join("\n");
+            return (
+              "// React Component or Hook\n" +
+              'import { createToast } from "customizable-toast-notification";\n\n' +
+              "export function NotificationDemo() {\n" +
+              "  const handleNotify = () => {\n" +
+              indentCode + "\n" +
+              "  };\n\n" +
+              "  return (\n" +
+              '    <button onClick={handleNotify} className="btn">\n' +
+              "      Show Notification\n" +
+              "    </button>\n" +
+              "  );\n" +
+              "}"
+            );
+          } else if (fw === "vue") {
+            var indentCodeVue = jsCode
+              .replace(/^customizableToast\./, "")
+              .split("\n")
+              .map(function (line) {
+                return "  " + line;
+              })
+              .join("\n");
+            return (
+              "<!-- Vue 3 (Composition API) -->\n" +
+              "<script setup>\n" +
+              'import { createToast } from "customizable-toast-notification";\n\n' +
+              "function showNotification() {\n" +
+              indentCodeVue + "\n" +
+              "}\n" +
+              "<\/script>\n\n" +
+              "<template>\n" +
+              '  <button @click="showNotification">Show Notification</button>\n' +
+              "</template>"
+            );
+          } else if (fw === "svelte") {
+            var indentCodeSvelte = jsCode
+              .replace(/^customizableToast\./, "")
+              .split("\n")
+              .map(function (line) {
+                return "    " + line;
+              })
+              .join("\n");
+            return (
+              "<!-- Svelte -->\n" +
+              "<script>\n" +
+              '  import { createToast } from "customizable-toast-notification";\n\n' +
+              "  function showNotification() {\n" +
+              indentCodeSvelte + "\n" +
+              "  }\n" +
+              "<\/script>\n\n" +
+              "<button on:click={showNotification}>Show Notification</button>"
+            );
+          } else if (fw === "ts") {
+            var rawOpts = jsCode
+              .replace(/^customizableToast\.createToast\(/, "")
+              .replace(/\);$/, "");
+            return (
+              "// TypeScript (Strict Type-Safe Contract)\n" +
+              'import { createToast, type ToastOptions, type ToastHandle } from "customizable-toast-notification";\n\n' +
+              "const options: ToastOptions = " +
+              rawOpts +
+              ";\n\n" +
+              "const handle: ToastHandle = await createToast(options);"
+            );
+          }
+          return jsCode;
+        }
+
         function escapeHtml(str) {
           return String(str)
             .replace(/&/g, "&amp;")
@@ -1579,16 +1739,20 @@ npm install customizable-toast-notification</pre
         function highlightCode(code) {
           var safe = escapeHtml(code);
           return safe
+            .replace(/(\/\/[^\n]*|&lt;!--[\s\S]*?--&gt;)/g, '<span class="tok-cm">$1</span>')
             .replace(/"([^"]*)"/g, '<span class="tok-str">"$1"</span>')
-            .replace(/\b(true|false|null)\b/g, '<span class="tok-kw">$1</span>')
+            .replace(/\b(import|export|from|function|const|let|var|return|async|await|type|script|setup|template)\b/g, '<span class="tok-kw">$1</span>')
+            .replace(/\b(true|false|null|undefined)\b/g, '<span class="tok-kw">$1</span>')
             .replace(/: (\d+(\.\d+)?)/g, ': <span class="tok-num">$1</span>');
         }
 
         function renderCode(customOpts) {
           var opts = customOpts || buildOptions(state);
           var code = Object.keys(opts).length
-            ? stringifyOptions(opts)
-            : "customizableToast.createToast(); // all defaults — try changing something!";
+            ? generateFrameworkCode(opts, activeFramework)
+            : (activeFramework === "ts"
+                ? '// TypeScript\nimport { createToast } from "customizable-toast-notification";\n\nawait createToast(); // all defaults'
+                : "customizableToast.createToast(); // all defaults — try changing something!");
           document.getElementById("codeOutput").innerHTML = highlightCode(code);
           if (opts.type || state.type) setAccent(opts.type || state.type);
         }
@@ -1637,6 +1801,12 @@ npm install customizable-toast-notification</pre
                 type: "radio",
                 label: "type",
                 options: ["info", "success", "warning", "error"],
+              },
+              {
+                key: "icon",
+                type: "select",
+                label: "icon (built-in SVG, emoji, or false)",
+                options: ["auto", "false", "🎉", "🔥", "🚀", "⚡", "bell", "true"],
               },
               {
                 key: "allowHtml",
@@ -2126,6 +2296,14 @@ npm install customizable-toast-notification</pre
               var btn = document.getElementById("copyBtn");
               btn.textContent = "✓ Copied!";
               btn.classList.add("copied");
+              if (window.customizableToast && window.customizableToast.createToast) {
+                window.customizableToast.createToast({
+                  type: "success",
+                  message: "Code snippet copied to clipboard!",
+                  duration: 1800,
+                  sound: "pop",
+                });
+              }
               setTimeout(function () {
                 btn.textContent = "Copy";
                 btn.classList.remove("copied");
@@ -2146,10 +2324,50 @@ npm install customizable-toast-notification</pre
             }
           });
 
+        var fwTabs = document.querySelectorAll("#frameworkTabs .fw-tab");
+        fwTabs.forEach(function (tab) {
+          tab.addEventListener("click", function () {
+            var fw = tab.getAttribute("data-fw");
+            if (!fw) return;
+            activeFramework = fw;
+            fwTabs.forEach(function (t) {
+              t.classList.toggle("active", t === tab);
+            });
+            renderCode();
+          });
+        });
+
         renderCode();
 
         // ---------------- Preset gallery ----------------
         var presets = [
+          {
+            icon: "🎨",
+            title: "Custom HTML & rich markup",
+            tag: "createToast.custom()",
+            desc: "Render rich formatted HTML with automatic SVG/DOMPurify sanitization.",
+            options: {
+              type: "info",
+              message: "<strong>Order #8294</strong> placed! Delivery in <em>2 days</em> 📦",
+              allowHtml: true,
+              sanitizeHtml: true,
+              duration: 5000,
+              sound: "pop",
+            },
+          },
+          {
+            icon: "⏳",
+            title: "Action undo countdown",
+            tag: "undo: { showCountdown }",
+            desc: "Destructive action confirmation with decaying dynamic timer badge on the undo button.",
+            options: {
+              type: "warning",
+              message: "Document moved to trash.",
+              duration: 7000,
+              enableUndo: true,
+              sound: "warning",
+            },
+          },
           {
             icon: "✅",
             title: "Success confirmation",
@@ -2519,6 +2737,10 @@ npm install customizable-toast-notification</pre
               if (p.options.showLoader !== undefined) state.showLoader = !!p.options.showLoader;
               if (p.options.stacked !== undefined) state.stacked = !!p.options.stacked;
               if (p.options.swipeToDismiss !== undefined) state.swipeToDismiss = p.options.swipeToDismiss !== false;
+              if (p.options.allowHtml !== undefined) state.allowHtml = !!p.options.allowHtml;
+              if (p.options.sanitizeHtml !== undefined) state.sanitizeHtml = !!p.options.sanitizeHtml;
+              if (p.options.icon !== undefined) state.icon = String(p.options.icon);
+              if (p.options.enableUndo !== undefined) state.enableUndo = !!p.options.enableUndo;
               if (p.options.cta) {
                 state.ctaEnabled = true;
                 if (Array.isArray(p.options.cta)) {
@@ -2559,6 +2781,47 @@ npm install customizable-toast-notification</pre
           var el = document.getElementById(id);
           if (el) el.addEventListener("click", fn);
         }
+
+        wire("shorthandSuccessBtn", function () {
+          if (customizableToast.createToast && customizableToast.createToast.success) {
+            customizableToast.createToast.success("Changes published!");
+          } else {
+            customizableToast.createToast({ type: "success", message: "Changes published!" });
+          }
+          setAccent("success");
+        });
+        wire("shorthandErrorBtn", function () {
+          if (customizableToast.createToast && customizableToast.createToast.error) {
+            customizableToast.createToast.error("Connection timed out.");
+          } else {
+            customizableToast.createToast({ type: "error", message: "Connection timed out." });
+          }
+          setAccent("error");
+        });
+        wire("shorthandWarnBtn", function () {
+          if (customizableToast.createToast && customizableToast.createToast.warning) {
+            customizableToast.createToast.warning("Unsaved draft will be lost.");
+          } else {
+            customizableToast.createToast({ type: "warning", message: "Unsaved draft will be lost." });
+          }
+          setAccent("warning");
+        });
+        wire("shorthandLoadingBtn", function () {
+          if (customizableToast.createToast && customizableToast.createToast.loading) {
+            customizableToast.createToast.loading("Syncing database... (auto closes in 3s)", { duration: 3000 });
+          } else {
+            customizableToast.createToast({ type: "info", showLoader: true, message: "Syncing database...", duration: 3000 });
+          }
+          setAccent("info");
+        });
+        wire("shorthandCustomBtn", function () {
+          if (customizableToast.createToast && customizableToast.createToast.custom) {
+            customizableToast.createToast.custom("<b>Custom HTML</b> with sanitization!", { duration: 3500 });
+          } else {
+            customizableToast.createToast({ allowHtml: true, message: "<b>Custom HTML</b> with sanitization!", duration: 3500 });
+          }
+          setAccent("info");
+        });
 
         var storedHandle = null;
         wire("handleCreateBtn", function () {
