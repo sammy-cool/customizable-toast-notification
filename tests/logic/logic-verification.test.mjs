@@ -196,9 +196,10 @@ describe("html-sanitizer.js — security boundary", () => {
     freshDom();
     const { fallbackSanitize } =
       await import("../../src/utils/html-sanitizer.js");
-    // data: in href must be dropped
+    // data: in href must be neutralized (must not contain data:)
     const linkClean = fallbackSanitize('<a href="data:text/html;base64,PHNjcmlwdD5hbGVydCgxKTwvc2NyaXB0Pg==">bad link</a>');
-    assert.doesNotMatch(linkClean, /href=/i);
+    assert.doesNotMatch(linkClean, /data:/i);
+    assert.match(linkClean, /href="#"/i);
 
     // SVG data URI in src must be dropped (XSS vector)
     const svgDataClean = fallbackSanitize('<img src="data:image/svg+xml;utf8,<svg onload=alert(1)>">');

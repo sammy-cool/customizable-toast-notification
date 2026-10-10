@@ -95,11 +95,19 @@ function sanitizeAttributes(el, allowedAttrs) {
         ) {
           // Allowed raster image data URI for <img> tags
         } else {
+          if (name === "href") {
+            el.setAttribute("href", "#");
+            return;
+          }
           attrsToRemove.push(attr.name);
           return;
         }
       }
       if (!ALLOWED_URI_REGEX.test(val)) {
+        if (name === "href") {
+          el.setAttribute("href", "#");
+          return;
+        }
         attrsToRemove.push(attr.name);
         return;
       }
