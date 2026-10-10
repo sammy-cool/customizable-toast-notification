@@ -34,13 +34,13 @@
            └──────────────────────────────────────────────────┘
 ```
 
-Toast notifications that work the same everywhere — plain JavaScript, Vue, Svelte, Angular, SolidJS, or a multi-page app. Built with sanitized-by-default HTML rendering, zero runtime dependencies, and 132 automated unit & end-to-end tests across Chromium, Firefox, and WebKit.
+Toast notifications that work the same everywhere — plain JavaScript, Vue, Svelte, Angular, SolidJS, or a multi-page app. Built with sanitized-by-default HTML rendering, zero runtime dependencies, and 169 automated unit & logic tests plus Playwright cross-browser specifications.
 
 ## ✨ Key Features
 
 - 🌐 **Actually Framework Agnostic** - Not a React library with "vanilla JS support" bolted on — the same API works identically in React, Vue, Angular, Svelte, htmx, or plain HTML with no build step at all
 - 🛡️ **Sanitized by Default** - `allowHtml` content is sanitized before render (DOMPurify if it's on the page, a verified-equivalent fallback if not) — safe to use with content you don't fully control
-- ✅ **Rigorously Tested** - 129 real Playwright end-to-end tests across Chromium, Firefox, and WebKit, plus a fast unit suite — not just "it worked on my machine"
+- ✅ **Rigorously Tested** - 169 real logic & unit tests plus Playwright end-to-end specifications across Chromium, Firefox, and WebKit — not just "it worked on my machine"
 - 🚫 **Zero Runtime Dependencies** - Nothing pulled in when your users load your app
 - 🔧 **Real TypeScript Types** - Full type definitions with real autocomplete and type-checking, not a placeholder `any`
 - 🎨 **Highly Customizable** - Colors, positions, animations, progress bars, and styling
@@ -80,6 +80,7 @@ toast.success("Saved successfully!");
 toast.error("Failed to connect to server");
 toast.warning("Unsaved changes detected");
 toast.info("Tip: Press Esc to dismiss anytime");
+toast.custom("<b>Formatted</b> notification with HTML!");
 
 // 2. Persistent loading state
 const loading = await toast.loading("Uploading files...");
@@ -214,6 +215,7 @@ auto-dismissed on its own — they no-op gracefully rather than throwing. You ca
 | `fontLineHeight`    | `string`           | `"1.4"`                         | Font line height                                                               |
 | `showLoader`        | `boolean`          | `false`                         | Show spinner loader before the message                                         |
 | `loader`            | `object`           | `null`                          | Custom loader config (`size`, `color`, `text`)                                 |
+| `icon`              | `boolean \| string \| HTMLElement` | `true` for typed, `null` | Status icon: `true` (built-in SVG), `false` (hide), emoji (`"🎉"`), SVG string, or DOM node |
 | `fontDirection`     | `string`           | `"auto"`                        | Font direction: `"auto"`, `"ltr"`, `"rtl"`                                     |
 | `fontPadding`       | `string`           | `undefined`                     | Custom padding for message container (e.g. `"4px 8px"`)                         |
 | `className`         | `string`           | `undefined`                     | Custom CSS class name(s) for animations / styling                              |
