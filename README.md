@@ -233,8 +233,9 @@ auto-dismissed on its own — they no-op gracefully rather than throwing. You ca
 // Corner positions
 - "top-left", "top-right", "bottom-left", "bottom-right"
 
-// Edge positions
+// Edge positions & center aliases
 - "top-center", "bottom-center", "left-center", "right-center"
+- "center-top", "center-bottom", "center-left", "center-right"
 
 // Full width
 - "top-full-width", "bottom-full-width"
@@ -593,6 +594,7 @@ if (shouldReduceMotion()) {
 | `swipeToDismiss`       | `boolean`                         | `true`            | Enable touch / mouse drag swipe gesture to dismiss toasts with spring snap-back physics.                         |
 | `sound`                | `boolean`                         | `true`            | Enable pure Web Audio API notification chimes (0KB network, zero audio assets).                                   |
 | `soundPreset`          | `"modern" \| "retro" \| "futuristic" \| "subtle" \| "bell"` | `"modern"` | Built-in sound synthesis theme for audio notifications.                                           |
+| `pauseOnHover`         | `boolean`                         | `false`           | When `true`, automatically pauses countdown timers for all toasts on mouse hover or keyboard focus.               |
 | `syncTabs`             | `boolean`                         | `false`           | Synchronize toast notifications across browser tabs using BroadcastChannel.                                      |
 | `aiPrioritization`     | `boolean`                         | `false`           | Enable offline content-aware queue priority sorting (critical alerts jump ahead of routine messages).            |
 | `priorityScorer`       | `((context) => number) \| null`   | `null`            | Custom priority scoring function for custom business logic or external AI models.                               |
