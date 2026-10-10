@@ -15,6 +15,7 @@ import {
 import { playTone } from "../utils/audio.js";
 import { getSpringTransition } from "../utils/spring.js";
 import { getConfig } from "../utils/config.js";
+import { createToastIcon } from "./icons.js";
 
 /**
  * Applies rich styling and content to a toast element.
@@ -144,6 +145,12 @@ export async function applyRichStyling(toast, options, onClose) {
 
   const allowHtml = !!options.allowHtml;
   const rawMessage = options.message ?? "";
+
+  // Render icon if provided or enabled for type
+  const iconEl = createToastIcon(options);
+  if (iconEl) {
+    toast.appendChild(iconEl);
+  }
 
   if (options.loader || options.showLoader) {
     const loaderEl = createLoader(options.loader || {});

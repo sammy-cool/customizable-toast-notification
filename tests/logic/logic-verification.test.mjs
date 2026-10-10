@@ -3098,3 +3098,65 @@ describe("createToast — Ergonomic shorthands and string message normalization"
   });
 });
 
+describe("icons.js & UI/UX enhancements — Toast status icons and hotkey navigation", () => {
+  test("createToastIcon renders built-in SVGs for success, error, warning, info", async () => {
+    freshDom();
+    const { createToastIcon } = await import("../../src/components/icons.js");
+
+    const successIcon = createToastIcon({ type: "success" });
+    assert.ok(successIcon, "Success icon must exist");
+    assert.ok(successIcon.querySelector("svg"), "Must contain svg element");
+    assert.strictEqual(successIcon.className, "toast-icon");
+
+    const errorIcon = createToastIcon({ type: "error" });
+    assert.ok(errorIcon.querySelector("svg"));
+
+    const warningIcon = createToastIcon({ type: "warning" });
+    assert.ok(warningIcon.querySelector("svg"));
+
+    const infoIcon = createToastIcon({ type: "info" });
+    assert.ok(infoIcon.querySelector("svg"));
+
+    const disabledIcon = createToastIcon({ type: "success", icon: false });
+    assert.strictEqual(disabledIcon, null, "icon: false must suppress icon");
+  });
+
+  test("createToastIcon renders custom emoji, svg string, or element", async () => {
+    freshDom();
+    const { createToastIcon } = await import("../../src/components/icons.js");
+
+    const emojiIcon = createToastIcon({ icon: "🚀" });
+    assert.strictEqual(emojiIcon.textContent, "🚀");
+
+    const customSvg = createToastIcon({ icon: '<svg width="20" height="20"><circle cx="10" cy="10" r="5"/></svg>' });
+    assert.ok(customSvg.querySelector("svg"));
+
+    const customEl = document.createElement("span");
+    customEl.className = "my-custom-badge";
+    const elementIcon = createToastIcon({ icon: customEl });
+    assert.ok(elementIcon.querySelector(".my-custom-badge"));
+  });
+
+  test("createToast renders icon inside messageSpan and updates icon on handle.update", async () => {
+    freshDom();
+    const { createToast, resetToastManager } = await import("../../src/index.js");
+    resetToastManager();
+
+    const handle = await createToast.success("Profile saved!");
+    await new Promise((r) => setTimeout(r, 60));
+
+    const toast = document.querySelector(".toast");
+    assert.ok(toast);
+    const icon = toast.querySelector(".toast-icon");
+    assert.ok(icon, "Toast must contain icon element");
+
+    // Dynamic in-place icon update
+    await handle.update({ type: "error", icon: "⚠️" });
+    const updatedIcon = toast.querySelector(".toast-icon");
+    assert.strictEqual(updatedIcon.textContent, "⚠️");
+
+    await handle.dismiss();
+  });
+});
+
+

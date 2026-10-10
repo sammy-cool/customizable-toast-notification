@@ -10,6 +10,7 @@ import { sanitizeHtml } from "../utils/html-sanitizer.js";
 import { playTone } from "../utils/audio.js";
 import { createProgressBar, createCTA, createUndoAction, runToastAnimation } from "./toast-utils-core.js";
 import { createLoader } from "./loader.js";
+import { createToastIcon } from "./icons.js";
 import { getConfig, shouldReduceMotion } from "../utils/config.js";
 import { getToastBroadcaster } from "../utils/toast-broadcast.js";
 import { calculateToastPriority } from "../utils/ai-scorer.js";
@@ -577,11 +578,13 @@ async function setupPauseOnHover(data) {
     timer.pause();
     toast?._progressAnimation?.pause();
     toast?._pauseUndo?.();
+    toast?.classList.add("toast-paused");
   };
   const onMouseLeave = () => {
     timer.resume();
     toast?._progressAnimation?.play();
     toast?._resumeUndo?.();
+    toast?.classList.remove("toast-paused");
   };
 
   const onFocusIn = (e) => {
@@ -589,6 +592,7 @@ async function setupPauseOnHover(data) {
       timer.pause();
       toast?._progressAnimation?.pause();
       toast?._pauseUndo?.();
+      toast?.classList.add("toast-paused");
     }
   };
 
@@ -597,6 +601,7 @@ async function setupPauseOnHover(data) {
       timer.resume();
       toast?._progressAnimation?.play();
       toast?._resumeUndo?.();
+      toast?.classList.remove("toast-paused");
     }
   };
 
@@ -1009,6 +1014,21 @@ export async function updateToastByKey(key, newOptions = {}) {
       };
       if (typeColors[newType]) {
         toast.style.background = typeColors[newType];
+      }
+    }
+  }
+
+  // 3.1 Update icon
+  if (newOptions.icon !== undefined || newOptions.type !== undefined) {
+    const existingIcon = toast?.querySelector(".toast-icon");
+    if (existingIcon) existingIcon.remove();
+    const mergedForIcon = { ...data.options, ...newOptions };
+    const newIconEl = createToastIcon(mergedForIcon);
+    if (newIconEl) {
+      if (messageSpan) {
+        toast.insertBefore(newIconEl, messageSpan);
+      } else {
+        toast.appendChild(newIconEl);
       }
     }
   }

@@ -126,6 +126,7 @@ import {
  * @property {boolean} [stacked]
  * @property {boolean | 'success' | 'error' | 'warning' | 'info' | 'pop' | string} [sound]
  * @property {SoundPreset} [soundPreset]
+ * @property {boolean | string | HTMLElement} [icon]
  * @property {boolean} [swipeToDismiss]
  * @property {number} [progress]
  * @property {boolean} [syncTabs]
@@ -706,6 +707,19 @@ if (typeof window !== "undefined" && typeof document !== "undefined") {
             closePromise = null;
           }
         })();
+      } else if (e.key === "F6" || ((e.altKey || e.metaKey) && (e.key === "t" || e.key === "T"))) {
+        // Accessible landmark navigation: focus the most recent active toast
+        const activeToasts = document.querySelectorAll('[id^="toast-container-"] [id^="toast-"]');
+        if (activeToasts.length > 0) {
+          const targetToast = activeToasts[activeToasts.length - 1];
+          // Try focusing the interactive CTA, undo, or close button inside the toast first
+          const interactive = targetToast.querySelector("button, a, [tabindex='0']");
+          if (interactive && typeof interactive.focus === "function") {
+            interactive.focus();
+          } else if (typeof targetToast.focus === "function") {
+            targetToast.focus();
+          }
+        }
       }
     };
     window.addEventListener("keydown", onKeyDown, { passive: true });
