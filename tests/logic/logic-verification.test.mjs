@@ -191,6 +191,24 @@ describe("html-sanitizer.js — security boundary", () => {
     assert.doesNotMatch(clean, /onload/i);
     assert.match(clean, /<i>Italic<\/i>/);
   });
+
+  test("GOOD: data: scheme is thoroughly checked (drops dangerous data URIs, permits safe raster image src)", async () => {
+    freshDom();
+    const { fallbackSanitize } =
+      await import("../../src/utils/html-sanitizer.js");
+    // data: in href must be dropped
+    const linkClean = fallbackSanitize('<a href="data:text/html;base64,PHNjcmlwdD5hbGVydCgxKTwvc2NyaXB0Pg==">bad link</a>');
+    assert.doesNotMatch(linkClean, /href=/i);
+
+    // SVG data URI in src must be dropped (XSS vector)
+    const svgDataClean = fallbackSanitize('<img src="data:image/svg+xml;utf8,<svg onload=alert(1)>">');
+    assert.doesNotMatch(svgDataClean, /src=/i);
+
+    // Safe PNG raster image data URI must be permitted
+    const pngDataClean = fallbackSanitize('<img src="data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mNk+A8AAQUBAScY42YAAAAASUVORK5CYII=" alt="dot">');
+    assert.match(pngDataClean, /src="data:image\/png;base64,/i);
+    assert.match(pngDataClean, /alt="dot"/i);
+  });
 });
 
 describe("dom.js — CSS custom property parsing and contrast", () => {

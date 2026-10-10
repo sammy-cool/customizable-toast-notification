@@ -63,7 +63,7 @@ const DISCARDED_TAGS = new Set([
   "TEMPLATE",
 ]);
 
-const ALLOWED_URI_REGEX = /^\s*(?:https?:|mailto:|data:image\/|\/|\.\/|\.\.\/|#)/i;
+const ALLOWED_URI_REGEX = /^\s*(?:https?:|mailto:|data:image\/(?:png|jpe?g|gif|webp|avif|bmp|ico);|\/|\.\/|\.\.\/|#)/i;
 
 export function hasDOMPurify() {
   try {
@@ -86,10 +86,20 @@ function sanitizeAttributes(el, allowedAttrs) {
       if (
         trimmedVal.startsWith("javascript:") ||
         trimmedVal.startsWith("vbscript:") ||
-        trimmedVal.startsWith("data:text") ||
-        trimmedVal.startsWith("data:application") ||
-        !ALLOWED_URI_REGEX.test(val)
+        trimmedVal.startsWith("data:")
       ) {
+        if (
+          name === "src" &&
+          trimmedVal.startsWith("data:image/") &&
+          !trimmedVal.startsWith("data:image/svg+xml")
+        ) {
+          // Allowed raster image data URI for <img> tags
+        } else {
+          attrsToRemove.push(attr.name);
+          return;
+        }
+      }
+      if (!ALLOWED_URI_REGEX.test(val)) {
         attrsToRemove.push(attr.name);
         return;
       }
