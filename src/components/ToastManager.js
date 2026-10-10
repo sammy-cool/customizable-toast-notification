@@ -576,16 +576,19 @@ async function setupPauseOnHover(data) {
   const onMouseEnter = () => {
     timer.pause();
     toast?._progressAnimation?.pause();
+    toast?._pauseUndo?.();
   };
   const onMouseLeave = () => {
     timer.resume();
     toast?._progressAnimation?.play();
+    toast?._resumeUndo?.();
   };
 
   const onFocusIn = (e) => {
     if (e.target.matches("[tabindex], div, span, button, a")) {
       timer.pause();
       toast?._progressAnimation?.pause();
+      toast?._pauseUndo?.();
     }
   };
 
@@ -593,6 +596,7 @@ async function setupPauseOnHover(data) {
     if (!outer.contains(e.relatedTarget)) {
       timer.resume();
       toast?._progressAnimation?.play();
+      toast?._resumeUndo?.();
     }
   };
 

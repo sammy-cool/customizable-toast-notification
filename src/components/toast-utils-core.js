@@ -174,8 +174,10 @@ export function createUndoAction(toast, options, onClose) {
   updateLabel();
 
   let intervalId = null;
+  let isPaused = false;
   if (showCountdown) {
     intervalId = setInterval(() => {
+      if (isPaused) return;
       remainingSec = Math.max(0, remainingSec - 1);
       updateLabel();
       if (remainingSec <= 0 && intervalId) {
@@ -188,11 +190,20 @@ export function createUndoAction(toast, options, onClose) {
     }
   }
 
+  toast._pauseUndo = () => {
+    isPaused = true;
+  };
+  toast._resumeUndo = () => {
+    isPaused = false;
+  };
+
   const cleanupTimer = () => {
     if (intervalId) {
       clearInterval(intervalId);
       intervalId = null;
     }
+    toast._pauseUndo = null;
+    toast._resumeUndo = null;
   };
 
   const onClick = async (e) => {

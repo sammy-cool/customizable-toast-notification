@@ -2430,6 +2430,23 @@ describe("toast-utils-core.js — Action Undo and live countdown badge", () => {
     assert.strictEqual(closed, true, "onClose should still execute even if onUndo rejects");
     toast._cleanupUndo?.();
   });
+
+  test("createUndoAction attaches _pauseUndo and _resumeUndo for synchronized pause-on-hover", async () => {
+    const { createUndoAction } = await import("../../src/components/toast-utils-core.js");
+    const toast = document.createElement("div");
+
+    createUndoAction(toast, { duration: 5000, undo: { label: "Undo", onUndo: () => {} } }, () => {});
+    const btn = toast.querySelector(".toast-undo-btn");
+    assert.ok(btn);
+    assert.strictEqual(typeof toast._pauseUndo, "function");
+    assert.strictEqual(typeof toast._resumeUndo, "function");
+
+    toast._pauseUndo();
+    toast._resumeUndo();
+    toast._cleanupUndo();
+    assert.strictEqual(toast._pauseUndo, null);
+    assert.strictEqual(toast._resumeUndo, null);
+  });
 });
 
 describe("spring.js — Configurable Spring Physics Animation Engine", () => {
