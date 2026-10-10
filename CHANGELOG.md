@@ -1,3 +1,37 @@
+# [3.17.0](https://github.com/sammy-cool/customizable-toast-notification/compare/v3.16.0...v3.17.0) (2026-10-10)
+
+
+### Bug Fixes
+
+* **a11y:** preserve default role=alert while supporting custom role and live region updates ([fc5108c](https://github.com/sammy-cool/customizable-toast-notification/commit/fc5108ca487a14fae2277bb040579bced5b83a40))
+* **arch:** fortify aria-live transitions, per-cta styling, and shorthand exports ([accce90](https://github.com/sammy-cool/customizable-toast-notification/commit/accce901d656250365b5a9fac7a5a95aa1fa132a))
+* **dx:** sync preset clicks, format multi-CTA code, and automate CDN purge ([579cede](https://github.com/sammy-cool/customizable-toast-notification/commit/579cede1df912ca9ee8bcfa44e0c1bf342f44fba))
+* **e2e:** fix desktop swipe boundary in Firefox and enhance playground ([a37d61a](https://github.com/sammy-cool/customizable-toast-notification/commit/a37d61ac9e4e66dfc2f1d41f743565527b362321))
+* harden priority routing, leader sync, element pool, and touch tracking ([a9c45d1](https://github.com/sammy-cool/customizable-toast-notification/commit/a9c45d189448c885a9c791ef611ba2ad8956ba74))
+* **playground:** attach fallback onUndo callback in fireCurrentConfig ([fcb9040](https://github.com/sammy-cool/customizable-toast-notification/commit/fcb9040408f36a00d8bf3155caba526b15322621))
+* resolve 50+ bugs across shorthands, gestures, accessibility, and styling ([6059bab](https://github.com/sammy-cool/customizable-toast-notification/commit/6059babef3e89ac5a9079ac07d9f0da4806fed9a))
+* **security:** handle data: scheme in URL check and synchronize lockfile ([62ac7da](https://github.com/sammy-cool/customizable-toast-notification/commit/62ac7da21e2d2054ca4aaaabcb50ee7596a9f6ee))
+* **security:** neutralize invalid link href to safe hash instead of removing attribute ([3f934c5](https://github.com/sammy-cool/customizable-toast-notification/commit/3f934c5f8bc36f927a50eb4214fe1a222bb3d4e5))
+* **security:** resolve CodeQL DOM XSS alerts and harden workflow scanner configuration ([70dc0ba](https://github.com/sammy-cool/customizable-toast-notification/commit/70dc0ba2a1dc30f77b9455c924388472fdc2c1a2))
+* **security:** resolve CodeQL polynomial regex alerts and upgrade vulnerable dev dependencies ([a3570c3](https://github.com/sammy-cool/customizable-toast-notification/commit/a3570c3056261659f3fca4565cf7b6d539d5f6a7))
+* support center position aliases, global swipeToDismiss, and full RTL layout ([1960564](https://github.com/sammy-cool/customizable-toast-notification/commit/196056457dab55b4e990b4817990f7835c9d1ae4))
+* **touch:** prevent swipe-to-dismiss gesture when clicking interactive elements ([e17c293](https://github.com/sammy-cool/customizable-toast-notification/commit/e17c29378631e9a6e9dd4b4de774d369c0b36f47))
+* **ux:** auto-dismiss resolved loading toasts and synchronize options state in update ([43c1252](https://github.com/sammy-cool/customizable-toast-notification/commit/43c1252b2270f0f85728aee4e819a8eec9705fd3))
+* **ux:** fix animation timing reflow and audio autoplay browser warning ([28d8e80](https://github.com/sammy-cool/customizable-toast-notification/commit/28d8e805979f740ced660316a11482228f502f10))
+* **ux:** synchronize undo countdown badge with pauseOnHover and keyboard focus ([4eaeee2](https://github.com/sammy-cool/customizable-toast-notification/commit/4eaeee2fda37e0a44e29a91fdbd32c9e16beb42a))
+
+
+### Features
+
+* **cta:** support in-place CTA streaming updates and harden insertion order ([062bb37](https://github.com/sammy-cool/customizable-toast-notification/commit/062bb3711877e9f13de6fc808c95aebbbd3c6d64))
+* **dx:** add ergonomic shorthand methods and direct string message support ([7cc7669](https://github.com/sammy-cool/customizable-toast-notification/commit/7cc7669e0432d214ace48066bba2e6295717e2f3))
+* **dx:** support default ESM export, persistent loading shorthand, and programmatic dismiss ([a9e13cc](https://github.com/sammy-cool/customizable-toast-notification/commit/a9e13cc95661459fb3974e41d9d4e956f8d02040))
+* **dx:** wire shorthands into framework guides and fix update pause ([df070ae](https://github.com/sammy-cool/customizable-toast-notification/commit/df070aefb4ff0d1c50645ad5ba2d75f16cb9bce3))
+* **playground:** add interactive secondary CTA controls and harden timer test bounds ([c23c032](https://github.com/sammy-cool/customizable-toast-notification/commit/c23c032f32a675300ee870ae8d72f744593efd12))
+* **recipes:** add SaaS notification center history tray and tab alerting recipes ([6b80c55](https://github.com/sammy-cool/customizable-toast-notification/commit/6b80c550fbf53848d8299fd7a1fbbf544c525489))
+* **ui,ux,dx:** add built-in SVG icons, pause shimmer, hotkeys, and adapters ([cab6096](https://github.com/sammy-cool/customizable-toast-notification/commit/cab609652c7c639e75778e39fedd40de3f56fe81))
+* **undo:** support in-place undo action streaming and ordered DOM insertion ([bcdb168](https://github.com/sammy-cool/customizable-toast-notification/commit/bcdb16839e1465e4d42ec47b831ca913f4dbe858))
+
 # [3.16.0](https://github.com/sammy-cool/customizable-toast-notification/compare/v3.15.0...v3.16.0) (2026-10-08)
 
 
