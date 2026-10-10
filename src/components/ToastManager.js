@@ -8,7 +8,7 @@ import { setPosition } from "../utils/position.js";
 import { PausableTimer } from "../utils/PausableTimer.js";
 import { sanitizeHtml } from "../utils/html-sanitizer.js";
 import { playTone } from "../utils/audio.js";
-import { createProgressBar, createCTA, createUndoAction, runToastAnimation } from "./toast-utils-core.js";
+import { createProgressBar, createCTA, createUndoAction, createCloseButton, runToastAnimation } from "./toast-utils-core.js";
 import { createLoader } from "./loader.js";
 import { createToastIcon } from "./icons.js";
 import { getConfig, shouldReduceMotion } from "../utils/config.js";
@@ -1006,6 +1006,10 @@ export async function updateToastByKey(key, newOptions = {}) {
       /\btoast-(info|success|error|warning)\b/g,
       `toast-${newType}`,
     );
+    const isErr = newType === "error";
+    toast.setAttribute("role", isErr ? "alert" : "status");
+    toast.setAttribute("aria-live", isErr ? "assertive" : "polite");
+
     if (!newOptions.backgroundColor) {
       const typeColors = {
         success: "#28a745",
@@ -1064,6 +1068,28 @@ export async function updateToastByKey(key, newOptions = {}) {
     const dir = newOptions.fontDirection !== "auto" ? newOptions.fontDirection : "";
     toast.style.direction = dir;
     if (messageSpan) messageSpan.style.direction = dir;
+  }
+
+  if (newOptions.fontSize !== undefined) {
+    const fs = typeof newOptions.fontSize === "number" ? `${newOptions.fontSize}px` : newOptions.fontSize;
+    toast.style.fontSize = fs;
+    if (messageSpan) messageSpan.style.fontSize = fs;
+  }
+
+  if (newOptions.fontFamily !== undefined) {
+    toast.style.fontFamily = newOptions.fontFamily;
+    if (messageSpan) messageSpan.style.fontFamily = newOptions.fontFamily;
+  }
+
+  if (newOptions.fontWeight !== undefined) {
+    const fw = typeof newOptions.fontWeight === "number" ? String(newOptions.fontWeight) : newOptions.fontWeight;
+    toast.style.fontWeight = fw;
+    if (messageSpan) messageSpan.style.fontWeight = fw;
+  }
+
+  if (newOptions.fontLineHeight !== undefined) {
+    toast.style.lineHeight = newOptions.fontLineHeight;
+    if (messageSpan) messageSpan.style.lineHeight = newOptions.fontLineHeight;
   }
 
   if (newOptions.className !== undefined) {
@@ -1153,6 +1179,20 @@ export async function updateToastByKey(key, newOptions = {}) {
     if (newOptions.undo) {
       const mergedOpts = { ...data.options, ...newOptions };
       createUndoAction(toast, mergedOpts, closeToast);
+    }
+  }
+
+  // 5.3 Update Close Button
+  if (newOptions.showCloseButton !== undefined) {
+    const existingCloseBtn = toast.querySelector(".toast-close-btn");
+    if (newOptions.showCloseButton === false) {
+      if (toast._cleanupCloseButton) {
+        toast._cleanupCloseButton();
+        toast._cleanupCloseButton = null;
+      }
+      if (existingCloseBtn) existingCloseBtn.remove();
+    } else if (newOptions.showCloseButton === true && !existingCloseBtn) {
+      createCloseButton(toast, data.options, closeToast);
     }
   }
 

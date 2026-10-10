@@ -1,4 +1,4 @@
-import { test, describe } from "node:test";
+import { test, describe, beforeEach } from "node:test";
 import assert from "node:assert/strict";
 import { JSDOM } from "jsdom";
 import { resetToastManager } from "../../src/components/ToastManager.js";
@@ -3535,6 +3535,192 @@ describe("Comprehensive 50+ Bug & Edge Case Verification Suite", () => {
       playTone(440);
       playTone("880Hz");
     });
+  });
+});
+
+describe("Phase 3 Architecture & Contract Verification: ARIA Live, Per-CTA Colors, Shorthands, and Immutability", () => {
+  beforeEach(() => {
+    freshDom();
+  });
+
+  test("ARIA role and aria-live properly update on initial render and on type changes via handle.update", async () => {
+    freshDom();
+    const { createToast } = await import("../../src/index.js");
+
+    const handle = await createToast({ message: "Task running", type: "info" });
+    await new Promise((r) => setTimeout(r, 60));
+    const toast = document.querySelector(".toast");
+    assert.ok(toast);
+    assert.strictEqual(toast.getAttribute("role"), "status");
+    assert.strictEqual(toast.getAttribute("aria-live"), "polite");
+
+    // Transition in-place to error: role becomes alert, aria-live becomes assertive
+    await handle.update({ type: "error", message: "Task failed" });
+    await new Promise((r) => setTimeout(r, 60));
+    assert.strictEqual(toast.getAttribute("role"), "alert");
+    assert.strictEqual(toast.getAttribute("aria-live"), "assertive");
+
+    // Transition back to success: role becomes status, aria-live becomes polite
+    await handle.update({ type: "success", message: "Task recovered" });
+    await new Promise((r) => setTimeout(r, 60));
+    assert.strictEqual(toast.getAttribute("role"), "status");
+    assert.strictEqual(toast.getAttribute("aria-live"), "polite");
+
+    await handle.dismiss();
+  });
+
+  test("handle.update dynamically updates fontSize, fontFamily, fontWeight, and lineHeight", async () => {
+    freshDom();
+    const { createToast } = await import("../../src/index.js");
+
+    const handle = await createToast({ message: "Styled toast" });
+    await new Promise((r) => setTimeout(r, 60));
+    const toast = document.querySelector(".toast");
+    assert.ok(toast);
+
+    await handle.update({
+      fontSize: "18px",
+      fontFamily: "monospace",
+      fontWeight: "700",
+      fontLineHeight: "1.8",
+    });
+    await new Promise((r) => setTimeout(r, 60));
+
+    assert.strictEqual(toast.style.fontSize, "18px");
+    assert.strictEqual(toast.style.fontFamily, "monospace");
+    assert.strictEqual(toast.style.fontWeight, "700");
+    assert.strictEqual(toast.style.lineHeight, "1.8");
+
+    await handle.dismiss();
+  });
+
+  test("handle.update toggles showCloseButton on and off dynamically", async () => {
+    freshDom();
+    const { createToast } = await import("../../src/index.js");
+
+    const handle = await createToast({ message: "Toggle close button", showCloseButton: true });
+    await new Promise((r) => setTimeout(r, 60));
+    const toast = document.querySelector(".toast");
+    assert.ok(toast.querySelector(".toast-close-btn"));
+
+    // Turn off
+    await handle.update({ showCloseButton: false });
+    await new Promise((r) => setTimeout(r, 60));
+    assert.strictEqual(toast.querySelector(".toast-close-btn"), null);
+
+    // Turn back on
+    await handle.update({ showCloseButton: true });
+    await new Promise((r) => setTimeout(r, 60));
+    assert.ok(toast.querySelector(".toast-close-btn"));
+
+    await handle.dismiss();
+  });
+
+  test("createCTA respects individual action textColor, color, backgroundColor, and background", async () => {
+    freshDom();
+    const { createCTA } = await import("../../src/components/toast-utils-core.js");
+
+    const toast = document.createElement("div");
+    createCTA(
+      toast,
+      {
+        cta: [
+          { label: "Delete", color: "#ff4d4f", backgroundColor: "rgba(255, 0, 0, 0.1)" },
+          { label: "Keep", textColor: "#52c41a", background: "rgba(0, 255, 0, 0.1)" },
+        ],
+      },
+      () => {},
+    );
+
+    const buttons = toast.querySelectorAll(".toast-cta");
+    assert.strictEqual(buttons.length, 2);
+    assert.strictEqual(buttons[0].style.color, "rgb(255, 77, 79)");
+    assert.strictEqual(buttons[0].style.background, "rgba(255, 0, 0, 0.1)");
+    assert.strictEqual(buttons[1].style.color, "rgb(82, 196, 26)");
+    assert.strictEqual(buttons[1].style.background, "rgba(0, 255, 0, 0.1)");
+  });
+
+  test("createToastIcon supports function icon resolver and string preset aliases", async () => {
+    freshDom();
+    const { createToastIcon } = await import("../../src/components/icons.js");
+
+    // Functional icon resolver
+    const fnIcon = createToastIcon({ icon: ({ type }) => `[custom-${type}]`, type: "warning" });
+    assert.ok(fnIcon);
+    assert.strictEqual(fnIcon.textContent, "[custom-warning]");
+
+    // String alias 'check'
+    const checkIcon = createToastIcon({ icon: "check" });
+    assert.ok(checkIcon);
+    assert.ok(checkIcon.innerHTML.includes("<svg"));
+
+    // String alias 'alert'
+    const alertIcon = createToastIcon({ icon: "alert" });
+    assert.ok(alertIcon);
+    assert.ok(alertIcon.innerHTML.includes("<svg"));
+  });
+
+  test("toastPromise supports options objects for success and error paths", async () => {
+    freshDom();
+    const { toastPromise } = await import("../../src/index.js");
+
+    // Success with options object
+    const res = await toastPromise(
+      Promise.resolve("data_123"),
+      {
+        loading: "Loading...",
+        success: (data) => ({ message: `Fetched: ${data}`, duration: 3000, sound: "pop" }),
+      },
+    );
+    assert.strictEqual(res, "data_123");
+
+    // Error with options object
+    await assert.rejects(
+      async () => {
+        await toastPromise(
+          Promise.reject(new Error("Network fail")),
+          {
+            loading: "Connecting...",
+            error: (err) => ({ message: `Error: ${err.message}`, duration: 6000 }),
+          },
+        );
+      },
+      /Network fail/,
+    );
+  });
+
+  test("top-level named exports and window.customizableToast shortcuts work identically", async () => {
+    freshDom();
+    const pkg = await import("../../src/index.js");
+
+    assert.strictEqual(typeof pkg.success, "function");
+    assert.strictEqual(typeof pkg.error, "function");
+    assert.strictEqual(typeof pkg.warning, "function");
+    assert.strictEqual(typeof pkg.info, "function");
+    assert.strictEqual(typeof pkg.loading, "function");
+    assert.strictEqual(typeof pkg.custom, "function");
+    assert.strictEqual(typeof pkg.dismissAll, "function");
+    assert.strictEqual(typeof pkg.clear, "function");
+
+    const handle = await pkg.success("Top-level success export");
+    await new Promise((r) => setTimeout(r, 60));
+    const toast = document.querySelector(".toast");
+    assert.ok(toast);
+    assert.ok(toast.className.includes("toast-success"));
+    await handle.dismiss();
+  });
+
+  test("handleFullWidthPositions never mutates frozen options object", async () => {
+    freshDom();
+    const { setPosition } = await import("../../src/utils/position.js");
+
+    const container = document.createElement("div");
+    const frozenOptions = Object.freeze({ position: "top-full-width" });
+
+    assert.doesNotThrow(async () => {
+      await setPosition(container, frozenOptions);
+    });
+    assert.strictEqual(container.style.maxWidth, "100vw");
   });
 });
 

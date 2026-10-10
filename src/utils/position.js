@@ -99,7 +99,9 @@ function handleFullWidthPositions(container, options, flags) {
     if (options && !options.maxWidth && !Object.isFrozen(options)) {
       options.maxWidth = "100vw";
     }
-  } catch {}
+  } catch {
+    // ignore frozen or read-only options objects
+  }
 
   if (flags.hasTop) {
     container.style.top = "10px";

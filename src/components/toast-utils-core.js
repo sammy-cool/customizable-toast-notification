@@ -38,10 +38,17 @@ export function createCTA(toast, options, onClose) {
 
     el.setAttribute("aria-label", cfg.ariaLabel || cfg.label);
 
-    const ctaTextColor = options.textColor || getDynamicAccessibleTextColorHex(options.backgroundColor);
-    const ctaBgColor = options.backgroundColor
-      ? getContrastBackground(options.backgroundColor)
-      : "rgba(255,255,255,0.15)";
+    const ctaTextColor =
+      cfg.textColor ||
+      cfg.color ||
+      options.textColor ||
+      getDynamicAccessibleTextColorHex(options.backgroundColor);
+    const ctaBgColor =
+      cfg.backgroundColor ||
+      cfg.background ||
+      (options.backgroundColor
+        ? getContrastBackground(options.backgroundColor)
+        : "rgba(255,255,255,0.15)");
 
     const isHex6 = typeof ctaTextColor === "string" && /^#[0-9a-fA-F]{6}$/.test(ctaTextColor.trim());
     const ctaBorderColor = isHex6 ? `${ctaTextColor.trim()}44` : "rgba(128, 128, 128, 0.3)";

@@ -89,8 +89,9 @@ export async function applyRichStyling(toast, options, onClose) {
     });
   }
 
-  toast.setAttribute("role", "alert");
-  toast.setAttribute("aria-live", "polite");
+  const isError = options?.type === "error";
+  toast.setAttribute("role", isError ? "alert" : "status");
+  toast.setAttribute("aria-live", isError ? "assertive" : "polite");
   toast.tabIndex = 0;
   toast._animationDuration = durationMs;
 

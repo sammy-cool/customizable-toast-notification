@@ -41,7 +41,16 @@ const ICON_SVGS = {
  * @returns {HTMLElement | null}
  */
 export function createToastIcon(options = {}) {
-  const iconOpt = options.icon;
+  let iconOpt = options.icon;
+  if (typeof iconOpt === "function") {
+    try {
+      iconOpt = iconOpt(options);
+    } catch (err) {
+      console.warn("options.icon callback error:", err);
+      iconOpt = null;
+    }
+  }
+
   if (iconOpt === false || iconOpt === "" || iconOpt === null) return null;
 
   const type = options.type;
@@ -71,9 +80,20 @@ export function createToastIcon(options = {}) {
     }
   }
 
-  // 2. Custom string: emoji, raw SVG, or text
+  // 2. Custom string: emoji, raw SVG, text, or alias
   if (typeof iconOpt === "string" && iconOpt.trim()) {
     const trimmed = iconOpt.trim();
+    const aliasMap = {
+      check: ICON_SVGS.success,
+      checkmark: ICON_SVGS.success,
+      cross: ICON_SVGS.error,
+      alert: ICON_SVGS.warning,
+      circle: ICON_SVGS.info,
+    };
+    if (aliasMap[trimmed.toLowerCase()]) {
+      iconTag.innerHTML = aliasMap[trimmed.toLowerCase()].trim();
+      return iconTag;
+    }
     if (trimmed.startsWith("<svg") && trimmed.endsWith("</svg>")) {
       iconTag.innerHTML = trimmed;
       const svg = iconTag.querySelector("svg");

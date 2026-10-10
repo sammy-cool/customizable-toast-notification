@@ -62,6 +62,10 @@ import {
  * @property {string} [rel]
  * @property {string} [ariaLabel]
  * @property {boolean} [autoClose]
+ * @property {string} [color]
+ * @property {string} [textColor]
+ * @property {string} [background]
+ * @property {string} [backgroundColor]
  * @property {(e: MouseEvent) => void | Promise<void>} [onClick]
  */
 
@@ -126,7 +130,7 @@ import {
  * @property {boolean} [stacked]
  * @property {boolean | 'success' | 'error' | 'warning' | 'info' | 'pop' | string} [sound]
  * @property {SoundPreset} [soundPreset]
- * @property {boolean | string | HTMLElement} [icon]
+ * @property {boolean | string | HTMLElement | ((options: ToastOptions) => boolean | string | HTMLElement | null | undefined)} [icon]
  * @property {boolean} [swipeToDismiss]
  * @property {number} [progress]
  * @property {boolean} [syncTabs]
@@ -186,9 +190,9 @@ import {
 
 /**
  * @typedef {Object} ToastPromiseMessages
- * @property {string} [loading]
- * @property {string | ((result: unknown) => string)} [success]
- * @property {string | ((error: unknown) => string)} [error]
+ * @property {string | Partial<ToastOptions>} [loading]
+ * @property {string | Partial<ToastOptions> | ((result: unknown) => string | Partial<ToastOptions>)} [success]
+ * @property {string | Partial<ToastOptions> | ((error: unknown) => string | Partial<ToastOptions>)} [error]
  */
 
 let defaultColors = {
@@ -552,7 +556,22 @@ createToastWithPriority.custom = (messageOrOptions, options) => {
   });
 };
 
-export { createToastWithPriority as createToast };
+const success = createToastWithPriority.success;
+const error = createToastWithPriority.error;
+const warning = createToastWithPriority.warning;
+const info = createToastWithPriority.info;
+const loading = createToastWithPriority.loading;
+const custom = createToastWithPriority.custom;
+
+export {
+  createToastWithPriority as createToast,
+  success,
+  error,
+  warning,
+  info,
+  loading,
+  custom,
+};
 
 export { setDefaultColors, setDefaultMessages };
 
@@ -608,7 +627,9 @@ const noopAll = async () => {
   })();
   await closePromise;
 };
-export { dismissToast as dismiss, noopAll as noop };
+const clear = noopAll;
+const dismissAll = noopAll;
+export { dismissToast as dismiss, noopAll as noop, dismissAll, clear };
 
 const TOAST_PROMISE_LOADING_DURATION_MS = 24 * 60 * 60 * 1000;
 
@@ -623,17 +644,30 @@ const TOAST_PROMISE_LOADING_DURATION_MS = 24 * 60 * 60 * 1000;
 async function toastPromise(promiseOrFn, messages = {}, options = {}) {
   const safeMessages = messages && typeof messages === "object" ? messages : {};
   const safeOptions = options && typeof options === "object" ? options : {};
-  const loadingMessage = safeMessages.loading ?? "Loading...";
 
-  const loadingHandle = await createToastWithPriority({
-    ...safeOptions,
-    type: "info",
-    message: loadingMessage,
-    duration: TOAST_PROMISE_LOADING_DURATION_MS,
-    showProgressBar: false,
-    pauseOnHover: false,
-    showLoader: safeOptions.showLoader ?? true,
-  });
+  const loadingInput = safeMessages.loading ?? "Loading...";
+  const loadingOptions =
+    typeof loadingInput === "object" && loadingInput !== null && !Array.isArray(loadingInput)
+      ? {
+          ...safeOptions,
+          type: "info",
+          duration: TOAST_PROMISE_LOADING_DURATION_MS,
+          showProgressBar: false,
+          pauseOnHover: false,
+          showLoader: true,
+          ...loadingInput,
+        }
+      : {
+          ...safeOptions,
+          type: "info",
+          message: String(loadingInput),
+          duration: TOAST_PROMISE_LOADING_DURATION_MS,
+          showProgressBar: false,
+          pauseOnHover: false,
+          showLoader: safeOptions.showLoader ?? true,
+        };
+
+  const loadingHandle = await createToastWithPriority(loadingOptions);
 
   const baseOptions = {
     ...safeOptions,
@@ -644,33 +678,48 @@ async function toastPromise(promiseOrFn, messages = {}, options = {}) {
     const settledPromise =
       typeof promiseOrFn === "function" ? promiseOrFn() : promiseOrFn;
     const result = await settledPromise;
-    await loadingHandle.dismiss();
 
-    const successMessage =
+    if (loadingHandle && typeof loadingHandle.dismiss === "function") {
+      try {
+        await loadingHandle.dismiss();
+      } catch {
+        // Loading toast may already be dismissed
+      }
+    }
+
+    const successResult =
       typeof safeMessages.success === "function"
         ? safeMessages.success(result)
         : (safeMessages.success ?? "Done!");
 
-    await createToastWithPriority({
-      ...baseOptions,
-      type: "success",
-      message: successMessage,
-    });
+    const successOptions =
+      typeof successResult === "object" && successResult !== null && !Array.isArray(successResult)
+        ? { ...baseOptions, type: "success", ...successResult }
+        : { ...baseOptions, type: "success", message: String(successResult) };
+
+    await createToastWithPriority(successOptions);
 
     return result;
   } catch (err) {
-    await loadingHandle.dismiss();
+    if (loadingHandle && typeof loadingHandle.dismiss === "function") {
+      try {
+        await loadingHandle.dismiss();
+      } catch {
+        // Loading toast may already be dismissed
+      }
+    }
 
-    const errorMessage =
+    const errorResult =
       typeof safeMessages.error === "function"
         ? safeMessages.error(err)
         : (safeMessages.error ?? "Something went wrong.");
 
-    await createToastWithPriority({
-      ...baseOptions,
-      type: "error",
-      message: errorMessage,
-    });
+    const errorOptions =
+      typeof errorResult === "object" && errorResult !== null && !Array.isArray(errorResult)
+        ? { ...baseOptions, type: "error", ...errorResult }
+        : { ...baseOptions, type: "error", message: String(errorResult) };
+
+    await createToastWithPriority(errorOptions);
 
     throw err;
   }
@@ -777,12 +826,20 @@ try {
       shouldReduceMotion,
       version,
       createToast: createToastWithPriority,
+      success,
+      error,
+      warning,
+      info,
+      loading,
+      custom,
       setDefaultColors,
       setDefaultMessages,
       noop: noopAll,
       dismiss: dismissToast,
       dismissAll: noopAll,
+      clear: noopAll,
       toastPromise,
+      promise: toastPromise,
       updateToastByKey,
       setAudioEnabled,
       isAudioEnabled,
