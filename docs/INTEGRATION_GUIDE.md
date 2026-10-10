@@ -108,8 +108,33 @@ export function useToast() {
     await noop();
   }, []);
 
+  const success = useCallback(async (msg: string | ToastOptions, opts?: ToastOptions): Promise<ToastHandle> => {
+    return await createToast.success(msg, opts);
+  }, []);
+
+  const error = useCallback(async (msg: string | ToastOptions, opts?: ToastOptions): Promise<ToastHandle> => {
+    return await createToast.error(msg, opts);
+  }, []);
+
+  const warning = useCallback(async (msg: string | ToastOptions, opts?: ToastOptions): Promise<ToastHandle> => {
+    return await createToast.warning(msg, opts);
+  }, []);
+
+  const info = useCallback(async (msg: string | ToastOptions, opts?: ToastOptions): Promise<ToastHandle> => {
+    return await createToast.info(msg, opts);
+  }, []);
+
+  const loading = useCallback(async (msg: string | ToastOptions, opts?: ToastOptions): Promise<ToastHandle> => {
+    return await createToast.loading(msg, opts);
+  }, []);
+
   return {
     toast: showToast,
+    success,
+    error,
+    warning,
+    info,
+    loading,
     promise: showPromise,
     dismiss: dismissLatest,
     dismissAll,
@@ -167,6 +192,11 @@ export function useToast() {
 
   return {
     toast,
+    success: (msg, opts) => createToast.success(msg, opts),
+    error: (msg, opts) => createToast.error(msg, opts),
+    warning: (msg, opts) => createToast.warning(msg, opts),
+    info: (msg, opts) => createToast.info(msg, opts),
+    loading: (msg, opts) => createToast.loading(msg, opts),
     promise,
     dismiss: closeLatest,
     dismissAll: closeAll,
@@ -229,6 +259,26 @@ export class ToastService {
 
   async show(options: ToastOptions): Promise<ToastHandle | null> {
     return await createToast(options);
+  }
+
+  async success(message: string | ToastOptions, options?: ToastOptions): Promise<ToastHandle | null> {
+    return await createToast.success(message, options);
+  }
+
+  async error(message: string | ToastOptions, options?: ToastOptions): Promise<ToastHandle | null> {
+    return await createToast.error(message, options);
+  }
+
+  async warning(message: string | ToastOptions, options?: ToastOptions): Promise<ToastHandle | null> {
+    return await createToast.warning(message, options);
+  }
+
+  async info(message: string | ToastOptions, options?: ToastOptions): Promise<ToastHandle | null> {
+    return await createToast.info(message, options);
+  }
+
+  async loading(message: string | ToastOptions, options?: ToastOptions): Promise<ToastHandle | null> {
+    return await createToast.loading(message, options);
   }
 
   async promise<T>(

@@ -15,6 +15,7 @@ import {
 import { playTone } from "../utils/audio.js";
 import { getSpringTransition } from "../utils/spring.js";
 import { getConfig } from "../utils/config.js";
+import { createToastIcon } from "./icons.js";
 
 /**
  * Applies rich styling and content to a toast element.
@@ -77,13 +78,22 @@ export async function applyRichStyling(toast, options, onClose) {
       userSelect: "text",
       pointerEvents: "auto",
       transition: `opacity ${opacityDuration} ${opacityEasing}, transform ${validAnimationDuration} ${easing}`,
-      transform: "translateY(20px)",
+      transform: options?.position && String(options.position).toLowerCase().includes("top")
+        ? "translateY(-20px)"
+        : "translateY(20px)",
       zIndex: String(config.zIndex),
+      direction:
+        options?.fontDirection && options.fontDirection !== "auto"
+          ? options.fontDirection
+          : undefined,
     });
   }
 
-  toast.setAttribute("role", "alert");
-  toast.setAttribute("aria-live", "polite");
+  const isError = options?.type === "error";
+  const role = options?.role || (isError ? "alert" : (options?.role ?? "alert"));
+  const ariaLive = options?.ariaLive || (isError ? "assertive" : "polite");
+  toast.setAttribute("role", role);
+  toast.setAttribute("aria-live", ariaLive);
   toast.tabIndex = 0;
   toast._animationDuration = durationMs;
 
@@ -143,6 +153,12 @@ export async function applyRichStyling(toast, options, onClose) {
   const allowHtml = !!options.allowHtml;
   const rawMessage = options.message ?? "";
 
+  // Render icon if provided or enabled for type
+  const iconEl = createToastIcon(options);
+  if (iconEl) {
+    toast.appendChild(iconEl);
+  }
+
   if (options.loader || options.showLoader) {
     const loaderEl = createLoader(options.loader || {});
     messageSpan.appendChild(loaderEl);
@@ -178,15 +194,10 @@ export async function applyRichStyling(toast, options, onClose) {
     messageSpan.appendChild(document.createTextNode(String(rawMessage)));
   }
 
-  messageSpan.setAttribute(
-    "title",
-    typeof rawMessage === "string"
-      ? rawMessage.replace(/<[^>]+>/g, "")
-      : String(rawMessage)
-  );
+  messageSpan.setAttribute("title", messageSpan.textContent || "");
   toast.appendChild(messageSpan);
 
-  if (options?.cta && Object.keys(options.cta).length !== 0) {
+  if (options?.cta && typeof options.cta === "object") {
     createCTA(toast, options, onClose);
   }
 
@@ -202,7 +213,9 @@ export async function applyRichStyling(toast, options, onClose) {
     createProgressBar(toast, options);
   }
 
-  if (options?.swipeToDismiss !== false) {
+  const shouldSwipe =
+    options?.swipeToDismiss !== undefined ? options.swipeToDismiss : config.swipeToDismiss;
+  if (shouldSwipe !== false) {
     attachSwipeToDismiss(toast, onClose);
   }
 
@@ -272,9 +285,22 @@ export async function createEmergencyToast(options = {}, onClose) {
     msgEl.className = "toast-emergency-message";
     if (!config.disableInlineStyles) msgEl.style.display = "inline-block";
     if (options.allowHtml) {
-      msgEl.innerHTML = sanitizeHtml(
-        String(options.message || "Emergency Toast Showing!")
-      );
+      try {
+        const sanitized = sanitizeHtml(
+          String(options.message || "Emergency Toast Showing!")
+        );
+        const tmp = document.createElement("div");
+        tmp.innerHTML = sanitized;
+        while (tmp.firstChild) {
+          msgEl.appendChild(tmp.firstChild);
+        }
+      } catch {
+        msgEl.appendChild(
+          document.createTextNode(
+            String(options.message || "Emergency Toast Showing!")
+          )
+        );
+      }
     } else {
       msgEl.textContent = String(
         options.message || "Emergency Toast Creation Showing!"

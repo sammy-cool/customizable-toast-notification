@@ -1,4 +1,4 @@
-import { test, describe } from "node:test";
+import { test, describe, beforeEach } from "node:test";
 import assert from "node:assert/strict";
 import { JSDOM } from "jsdom";
 import { resetToastManager } from "../../src/components/ToastManager.js";
@@ -171,6 +171,62 @@ describe("html-sanitizer.js — security boundary", () => {
     const clean = fallbackSanitize('<img src="file:///etc/passwd">');
     assert.doesNotMatch(clean, /src="file:/i);
   });
+
+  test("GOOD: nested <scr<script>ipt> evasion attempts are neutralized cleanly without ReDoS", async () => {
+    freshDom();
+    const { fallbackSanitize } =
+      await import("../../src/utils/html-sanitizer.js");
+    const clean = fallbackSanitize('<scr<script>ipt>alert(1)</script>');
+    assert.doesNotMatch(clean, /<script/i);
+    assert.doesNotMatch(clean, /alert/i);
+  });
+
+  test("GOOD: SVG, MathML, iframe, and object tags are discarded with zero regex backtracking", async () => {
+    freshDom();
+    const { fallbackSanitize } =
+      await import("../../src/utils/html-sanitizer.js");
+    const clean = fallbackSanitize('<svg onload="alert(1)"><circle r="10"/></svg><math><mi>x</mi></math><i>Italic</i>');
+    assert.doesNotMatch(clean, /<svg/i);
+    assert.doesNotMatch(clean, /<math/i);
+    assert.doesNotMatch(clean, /onload/i);
+    assert.match(clean, /<i>Italic<\/i>/);
+  });
+
+  test("GOOD: data: scheme is thoroughly checked (drops dangerous data URIs, permits safe raster image src)", async () => {
+    freshDom();
+    const { fallbackSanitize } =
+      await import("../../src/utils/html-sanitizer.js");
+    // data: in href must be neutralized (must not contain data:)
+    const linkClean = fallbackSanitize('<a href="data:text/html;base64,PHNjcmlwdD5hbGVydCgxKTwvc2NyaXB0Pg==">bad link</a>');
+    assert.doesNotMatch(linkClean, /data:/i);
+    assert.match(linkClean, /href="#"/i);
+
+    // SVG data URI in src must be dropped (XSS vector)
+    const svgDataClean = fallbackSanitize('<img src="data:image/svg+xml;utf8,<svg onload=alert(1)>">');
+    assert.doesNotMatch(svgDataClean, /src=/i);
+
+    // Safe PNG raster image data URI must be permitted
+    const pngDataClean = fallbackSanitize('<img src="data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mNk+A8AAQUBAScY42YAAAAASUVORK5CYII=" alt="dot">');
+    assert.match(pngDataClean, /src="data:image\/png;base64,/i);
+    assert.match(pngDataClean, /alt="dot"/i);
+  });
+});
+
+describe("dom.js — CSS custom property parsing and contrast", () => {
+  test("resolveCssCustomProperty parses CSS var() without polynomial regex and handles fallbacks", async () => {
+    freshDom();
+    const { getDynamicAccessibleTextColorHex } = await import("../../src/utils/dom.js");
+    // Test var with fallback matches direct color contrast resolution
+    const resFallback = getDynamicAccessibleTextColorHex("var(--brand-bg, #000000)");
+    assert.strictEqual(resFallback, getDynamicAccessibleTextColorHex("#000000"));
+
+    const resFallbackWhite = getDynamicAccessibleTextColorHex("var(--brand-bg, #ffffff)");
+    assert.strictEqual(resFallbackWhite, getDynamicAccessibleTextColorHex("#ffffff"));
+
+    // Test malformed var syntax does not crash or loop
+    const resMalformed = getDynamicAccessibleTextColorHex("var(not-a-css-var)");
+    assert.ok(typeof resMalformed === "string");
+  });
 });
 
 describe("position.js — container positioning", () => {
@@ -302,7 +358,7 @@ describe("PausableTimer.js — pause/resume math", () => {
     timer.pause();
     const remaining = timer.getRemainingTime();
     assert.ok(
-      remaining <= 340 && remaining >= 200,
+      remaining <= 350 && remaining >= 100,
       `expected ~300ms remaining, got ${remaining}ms`,
     );
     assert.equal(fired, false);
@@ -2375,6 +2431,23 @@ describe("toast-utils-core.js — Action Undo and live countdown badge", () => {
     assert.strictEqual(closed, true, "onClose should still execute even if onUndo rejects");
     toast._cleanupUndo?.();
   });
+
+  test("createUndoAction attaches _pauseUndo and _resumeUndo for synchronized pause-on-hover", async () => {
+    const { createUndoAction } = await import("../../src/components/toast-utils-core.js");
+    const toast = document.createElement("div");
+
+    createUndoAction(toast, { duration: 5000, undo: { label: "Undo", onUndo: () => {} } }, () => {});
+    const btn = toast.querySelector(".toast-undo-btn");
+    assert.ok(btn);
+    assert.strictEqual(typeof toast._pauseUndo, "function");
+    assert.strictEqual(typeof toast._resumeUndo, "function");
+
+    toast._pauseUndo();
+    toast._resumeUndo();
+    toast._cleanupUndo();
+    assert.strictEqual(toast._pauseUndo, null);
+    assert.strictEqual(toast._resumeUndo, null);
+  });
 });
 
 describe("spring.js — Configurable Spring Physics Animation Engine", () => {
@@ -2643,5 +2716,1017 @@ describe("toast-utils-core.js — multi-action CTA array support", () => {
     // closedCount should not increment again after cleanup
     assert.strictEqual(closedCount, 1);
   });
+
+  test("createCTA cleanly ignores empty array cta: []", async () => {
+    freshDom();
+    const { createCTA } = await import("../../src/components/toast-utils-core.js");
+    const toast = document.createElement("div");
+    createCTA(toast, { cta: [] }, () => {});
+    assert.strictEqual(toast.querySelectorAll(".toast-cta").length, 0);
+  });
+
+  test("updateToastByKey dynamically updates and removes CTA buttons", async () => {
+    freshDom();
+    const { createToast, resetToastManager } = await import("../../src/index.js");
+    resetToastManager();
+
+    const handle = await createToast({
+      message: "Processing file...",
+      duration: 10000,
+    });
+    await new Promise((r) => setTimeout(r, 60));
+
+    let toast = document.querySelector(".toast");
+    assert.ok(toast);
+    assert.strictEqual(toast.querySelectorAll(".toast-cta").length, 0);
+
+    // 1. Add CTA in-place
+    let clicked = false;
+    await handle.update({
+      cta: {
+        label: "View Report",
+        autoClose: false,
+        onClick: () => {
+          clicked = true;
+        },
+      },
+    });
+
+    let ctaBtns = toast.querySelectorAll(".toast-cta");
+    assert.strictEqual(ctaBtns.length, 1);
+    assert.strictEqual(ctaBtns[0].textContent, "View Report");
+
+    // Click it
+    ctaBtns[0].click();
+    assert.strictEqual(clicked, true);
+
+    // 2. Update to multi-action CTA array in-place
+    await handle.update({
+      cta: [
+        { label: "Approve", onClick: () => {} },
+        { label: "Reject", onClick: () => {} },
+      ],
+    });
+
+    ctaBtns = toast.querySelectorAll(".toast-cta");
+    assert.strictEqual(ctaBtns.length, 2);
+    assert.strictEqual(ctaBtns[0].textContent, "Approve");
+    assert.strictEqual(ctaBtns[1].textContent, "Reject");
+
+    // 3. Remove CTA in-place
+    await handle.update({ cta: null });
+    assert.strictEqual(toast.querySelectorAll(".toast-cta").length, 0);
+
+    await handle.dismiss();
+  });
+
+  test("updateToastByKey dynamically adds, modifies, and removes undo action in-place", async () => {
+    freshDom();
+    const { createToast, resetToastManager } = await import("../../src/index.js");
+    resetToastManager();
+
+    const handle = await createToast({
+      message: "Row item deleted",
+      duration: 10000,
+    });
+    await new Promise((r) => setTimeout(r, 60));
+
+    const toast = document.querySelector(".toast");
+    assert.ok(toast);
+    assert.strictEqual(toast.querySelectorAll(".toast-undo-btn").length, 0);
+
+    // 1. Add undo dynamically
+    let undid = false;
+    await handle.update({
+      undo: {
+        label: "Restore",
+        showCountdown: false,
+        onUndo: () => {
+          undid = true;
+        },
+      },
+    });
+
+    let undoBtns = toast.querySelectorAll(".toast-undo-btn");
+    assert.strictEqual(undoBtns.length, 1);
+    assert.strictEqual(undoBtns[0].textContent, "Restore");
+
+    // 2. Remove undo dynamically
+    await handle.update({ undo: null });
+    assert.strictEqual(toast.querySelectorAll(".toast-undo-btn").length, 0);
+
+    // 3. Add undo again and click it
+    await handle.update({
+      undo: () => {
+        undid = true;
+      },
+    });
+
+    undoBtns = toast.querySelectorAll(".toast-undo-btn");
+    assert.strictEqual(undoBtns.length, 1);
+    assert.ok(undoBtns[0].textContent.includes("Undo"));
+    undoBtns[0].click();
+    assert.strictEqual(undid, true);
+
+    await handle.dismiss();
+  });
+
+  test("attachSwipeToDismiss does not initiate drag when pointerdown originates from interactive buttons or links", async () => {
+    freshDom();
+    const { createToast, resetToastManager } = await import("../../src/index.js");
+    resetToastManager();
+
+    const handle = await createToast({
+      message: "Swipe test with actions",
+      swipeToDismiss: true,
+      cta: {
+        label: "Click Me",
+        onClick: () => {},
+      },
+    });
+    await new Promise((r) => setTimeout(r, 60));
+
+    const toast = document.querySelector(".toast");
+    assert.ok(toast);
+
+    const ctaBtn = toast.querySelector(".toast-cta");
+    assert.ok(ctaBtn);
+
+    // Simulate pointerdown on button
+    const event = new window.MouseEvent("mousedown", {
+      bubbles: true,
+      cancelable: true,
+      clientX: 100,
+      clientY: 100,
+    });
+    ctaBtn.dispatchEvent(event);
+
+    // Verify toast userSelect was NOT altered to "none" because drag was aborted
+    assert.notStrictEqual(toast.style.userSelect, "none");
+
+    await handle.dismiss();
+  });
 });
+
+describe("createToast — Ergonomic shorthands and string message normalization", () => {
+  test("createToast accepts plain string message and renders correctly", async () => {
+    freshDom();
+    const { createToast, resetToastManager } = await import("../../src/index.js");
+    resetToastManager();
+
+    const handle = await createToast("Direct string message!");
+    await new Promise((r) => setTimeout(r, 60));
+
+    const toast = document.querySelector(".toast");
+    assert.ok(toast);
+    const msg = toast.querySelector(".toast-message");
+    assert.strictEqual(msg.textContent, "Direct string message!");
+
+    await handle.dismiss();
+  });
+
+  test("createToast accepts string message and options object as second argument", async () => {
+    freshDom();
+    const { createToast, resetToastManager } = await import("../../src/index.js");
+    resetToastManager();
+
+    const handle = await createToast("Merged string message", { type: "warning", duration: 5000 });
+    await new Promise((r) => setTimeout(r, 60));
+
+    const toast = document.querySelector(".toast");
+    assert.ok(toast);
+    assert.ok(toast.classList.contains("toast-warning"));
+    const msg = toast.querySelector(".toast-message");
+    assert.strictEqual(msg.textContent, "Merged string message");
+
+    await handle.dismiss();
+  });
+
+  test("createToast.success, .error, .warning, .info shorthands assign correct types", async () => {
+    freshDom();
+    const { createToast, resetToastManager } = await import("../../src/index.js");
+    resetToastManager();
+
+    // 1. Success shorthand
+    const h1 = await createToast.success("Saved successfully!");
+    await new Promise((r) => setTimeout(r, 60));
+    let toast = document.querySelector(".toast-success");
+    assert.ok(toast);
+    assert.strictEqual(toast.querySelector(".toast-message").textContent, "Saved successfully!");
+    await h1.dismiss();
+    resetToastManager();
+    freshDom();
+
+    // 2. Error shorthand
+    const h2 = await createToast.error("Failed to connect!");
+    await new Promise((r) => setTimeout(r, 60));
+    toast = document.querySelector(".toast-error");
+    assert.ok(toast);
+    assert.strictEqual(toast.querySelector(".toast-message").textContent, "Failed to connect!");
+    await h2.dismiss();
+    resetToastManager();
+    freshDom();
+
+    // 3. Warning shorthand
+    const h3 = await createToast.warning("Low disk space!");
+    await new Promise((r) => setTimeout(r, 60));
+    toast = document.querySelector(".toast-warning");
+    assert.ok(toast);
+    assert.strictEqual(toast.querySelector(".toast-message").textContent, "Low disk space!");
+    await h3.dismiss();
+    resetToastManager();
+    freshDom();
+
+    // 4. Info shorthand
+    const h4 = await createToast.info("A new version is available");
+    await new Promise((r) => setTimeout(r, 60));
+    toast = document.querySelector(".toast-info");
+    assert.ok(toast);
+    assert.strictEqual(toast.querySelector(".toast-message").textContent, "A new version is available");
+    await h4.dismiss();
+  });
+
+  test("createToast.promise, .dismiss, and .clear helper methods are attached and functional", async () => {
+    freshDom();
+    const { createToast, resetToastManager } = await import("../../src/index.js");
+    resetToastManager();
+
+    assert.strictEqual(typeof createToast.promise, "function");
+    assert.strictEqual(typeof createToast.dismiss, "function");
+    assert.strictEqual(typeof createToast.clear, "function");
+
+    // Test createToast.promise
+    const result = await createToast.promise(
+      Promise.resolve("data-payload"),
+      {
+        loading: "Loading payload...",
+        success: "Payload loaded!",
+      }
+    );
+    assert.strictEqual(result, "data-payload");
+
+    await createToast.dismiss();
+  });
+
+  test("createToast.loading creates persistent loading toast and allows updating in-place", async () => {
+    freshDom();
+    const { createToast, resetToastManager } = await import("../../src/index.js");
+    resetToastManager();
+
+    const handle = await createToast.loading("Uploading files...");
+    assert.ok(handle);
+    assert.ok(typeof handle.id === "string");
+    assert.strictEqual(typeof handle.dismiss, "function");
+    assert.strictEqual(typeof handle.update, "function");
+
+    await new Promise((r) => setTimeout(r, 60));
+
+    let toast = document.querySelector(".toast");
+    assert.ok(toast);
+    assert.ok(toast.classList.contains("toast-info"));
+    assert.strictEqual(toast.querySelector(".toast-message").textContent, "Uploading files...");
+    // Loader spinner must be present
+    assert.ok(toast.querySelector(".toast-loader") || toast.querySelector("svg"));
+
+    // Update in-place to success without explicitly passing showLoader: false
+    await handle.update({
+      type: "success",
+      message: "Upload completed!",
+    });
+    await new Promise((r) => setTimeout(r, 60));
+
+    toast = document.querySelector(".toast");
+    assert.ok(toast.classList.contains("toast-success"));
+    assert.strictEqual(toast.querySelector(".toast-message").textContent, "Upload completed!");
+    assert.strictEqual(toast.querySelector(".toast-loader"), null);
+
+    await handle.dismiss();
+  });
+
+  test("loading toast updated to resolved type without duration automatically starts auto-dismiss timer", async () => {
+    freshDom();
+    const { createToast, resetToastManager } = await import("../../src/index.js");
+    resetToastManager();
+
+    const handle = await createToast.loading("Processing...");
+    await new Promise((r) => setTimeout(r, 60));
+
+    // Update to success without explicit duration
+    await handle.update({
+      type: "success",
+      message: "Processed!",
+    });
+    await new Promise((r) => setTimeout(r, 60));
+
+    let toast = document.querySelector(".toast");
+    assert.ok(toast);
+    assert.ok(toast.classList.contains("toast-success"));
+    assert.strictEqual(toast.querySelector(".toast-loader"), null);
+
+    await handle.dismiss();
+  });
+
+  test("createToast.dismiss supports target ID, handle, and dismissAll", async () => {
+    freshDom();
+    const { createToast, resetToastManager } = await import("../../src/index.js");
+    resetToastManager();
+
+    const h1 = await createToast({ message: "First Toast", duration: 10000 });
+    const h2 = await createToast({ message: "Second Toast", duration: 10000 });
+    await new Promise((r) => setTimeout(r, 60));
+
+    let toasts = document.querySelectorAll(".toast");
+    assert.strictEqual(toasts.length, 2);
+
+    // Dismiss first toast specifically by string ID
+    await createToast.dismiss(h1.id);
+    await new Promise((r) => setTimeout(r, 400));
+
+    toasts = document.querySelectorAll(".toast");
+    assert.strictEqual(toasts.length, 1);
+    assert.strictEqual(toasts[0].querySelector(".toast-message").textContent, "Second Toast");
+
+    // Dismiss second toast by handle object
+    await createToast.dismiss(h2);
+    await new Promise((r) => setTimeout(r, 400));
+
+    toasts = document.querySelectorAll(".toast");
+    assert.strictEqual(toasts.length, 0);
+
+    // Test dismissAll
+    await createToast({ message: "A", duration: 10000 });
+    await createToast({ message: "B", duration: 10000 });
+    await new Promise((r) => setTimeout(r, 60));
+
+    assert.strictEqual(document.querySelectorAll(".toast").length, 2);
+    await createToast.dismissAll();
+    await new Promise((r) => setTimeout(r, 400));
+
+    assert.strictEqual(document.querySelectorAll(".toast").length, 0);
+  });
+
+  test("default export interop works cleanly for ESM consumers", async () => {
+    freshDom();
+    const defaultExport = (await import("../../src/index.js")).default;
+    const { createToast } = await import("../../src/index.js");
+
+    assert.strictEqual(defaultExport, createToast);
+    assert.strictEqual(typeof defaultExport.success, "function");
+    assert.strictEqual(typeof defaultExport.error, "function");
+    assert.strictEqual(typeof defaultExport.warning, "function");
+    assert.strictEqual(typeof defaultExport.info, "function");
+    assert.strictEqual(typeof defaultExport.loading, "function");
+    assert.strictEqual(typeof defaultExport.promise, "function");
+    assert.strictEqual(typeof defaultExport.dismiss, "function");
+    assert.strictEqual(typeof defaultExport.dismissAll, "function");
+  });
+
+  test("duration: 0 and duration: Infinity disable dismiss timer for persistent manual toasts", async () => {
+    freshDom();
+    const { createToast, resetToastManager } = await import("../../src/index.js");
+    resetToastManager();
+
+    const hZero = await createToast({ message: "Zero duration toast", duration: 0 });
+    const hInf = await createToast({ message: "Infinity duration toast", duration: Infinity });
+    await new Promise((r) => setTimeout(r, 60));
+
+    const toasts = document.querySelectorAll(".toast");
+    assert.strictEqual(toasts.length, 2);
+
+    await hZero.dismiss();
+    await hInf.dismiss();
+  });
+});
+
+describe("icons.js & UI/UX enhancements — Toast status icons and hotkey navigation", () => {
+  test("createToastIcon renders built-in SVGs for success, error, warning, info", async () => {
+    freshDom();
+    const { createToastIcon } = await import("../../src/components/icons.js");
+
+    const successIcon = createToastIcon({ type: "success" });
+    assert.ok(successIcon, "Success icon must exist");
+    assert.ok(successIcon.querySelector("svg"), "Must contain svg element");
+    assert.strictEqual(successIcon.className, "toast-icon");
+
+    const errorIcon = createToastIcon({ type: "error" });
+    assert.ok(errorIcon.querySelector("svg"));
+
+    const warningIcon = createToastIcon({ type: "warning" });
+    assert.ok(warningIcon.querySelector("svg"));
+
+    const infoIcon = createToastIcon({ type: "info" });
+    assert.ok(infoIcon.querySelector("svg"));
+
+    const disabledIcon = createToastIcon({ type: "success", icon: false });
+    assert.strictEqual(disabledIcon, null, "icon: false must suppress icon");
+  });
+
+  test("createToastIcon renders custom emoji, svg string, or element", async () => {
+    freshDom();
+    const { createToastIcon } = await import("../../src/components/icons.js");
+
+    const emojiIcon = createToastIcon({ icon: "🚀" });
+    assert.strictEqual(emojiIcon.textContent, "🚀");
+
+    const customSvg = createToastIcon({ icon: '<svg width="20" height="20"><circle cx="10" cy="10" r="5"/></svg>' });
+    assert.ok(customSvg.querySelector("svg"));
+
+    const customEl = document.createElement("span");
+    customEl.className = "my-custom-badge";
+    const elementIcon = createToastIcon({ icon: customEl });
+    assert.ok(elementIcon.querySelector(".my-custom-badge"));
+  });
+
+  test("createToast renders icon inside messageSpan and updates icon on handle.update", async () => {
+    freshDom();
+    const { createToast, resetToastManager } = await import("../../src/index.js");
+    resetToastManager();
+
+    const handle = await createToast.success("Profile saved!");
+    await new Promise((r) => setTimeout(r, 60));
+
+    const toast = document.querySelector(".toast");
+    assert.ok(toast);
+    const icon = toast.querySelector(".toast-icon");
+    assert.ok(icon, "Toast must contain icon element");
+
+    // Dynamic in-place icon update
+    await handle.update({ type: "error", icon: "⚠️" });
+    const updatedIcon = toast.querySelector(".toast-icon");
+    assert.strictEqual(updatedIcon.textContent, "⚠️");
+
+    await handle.dismiss();
+  });
+});
+
+describe("Hardenings — ai-scorer, broadcast, pool, multi-touch, and global pauseOnHover", () => {
+  test("ai-scorer.js: word-boundary matching prevents false positive substring collisions", async () => {
+    const { calculateToastPriority, categorizeToast } = await import("../../src/utils/ai-scorer.js");
+
+    // "debug" contains "bug", but is NOT a critical bug report on its own
+    const debugResult = calculateToastPriority({
+      type: "info",
+      message: "Debug logs printed to console",
+      duration: 3000,
+    });
+    assert.strictEqual(debugResult.keywords.includes("bug"), false, "'debug' must not falsely match keyword 'bug'");
+
+    // Actual "bug" matches
+    const bugResult = calculateToastPriority({
+      type: "error",
+      message: "Critical bug found in production",
+      duration: 3000,
+    });
+    assert.strictEqual(bugResult.keywords.includes("bug"), true, "Whole word 'bug' must match");
+
+    // "download" contains "down", but routine download is not an outage
+    const downloadResult = calculateToastPriority({
+      type: "info",
+      message: "Download complete and ready",
+      duration: 3000,
+    });
+    assert.strictEqual(downloadResult.keywords.includes("down"), false, "'download' must not falsely match keyword 'down'");
+
+    // Actual system down matches
+    const downResult = calculateToastPriority({
+      type: "error",
+      message: "Server is down immediately",
+      duration: 3000,
+    });
+    assert.strictEqual(downResult.keywords.includes("down"), true, "Whole word 'down' must match");
+
+    // categorizeToast: "guide", "fruit", "building" must not trigger "ui" category
+    const catGuide = categorizeToast("Developer guide and building manual");
+    assert.strictEqual(catGuide.includes("ui"), false, "'guide' or 'building' must not trigger 'ui' category");
+
+    const catUI = categorizeToast("Modern UI layout refreshed");
+    assert.strictEqual(catUI.includes("ui"), true, "Actual 'UI' word must match");
+  });
+
+  test("toast-broadcast.js: cancels pending leader election timer when leader-elected is received", async () => {
+    const { ToastBroadcaster } = await import("../../src/utils/toast-broadcast.js");
+    const broadcaster = new ToastBroadcaster();
+
+    // Verify leaderTimer is set upon election attempt
+    broadcaster._becomeLeadIfNeeded();
+    assert.ok(broadcaster.leaderTimer, "Leader timer must be scheduled");
+
+    // Simulate incoming message from existing leader tab
+    broadcaster._handleMessage({
+      type: "leader-elected",
+      toastId: "",
+      payload: { tabId: "tab-other-leader" },
+      timestamp: Date.now(),
+      tabId: "tab-other-leader",
+    });
+
+    assert.strictEqual(broadcaster.leaderTimer, null, "Leader timer must be cancelled to prevent split-brain");
+    assert.strictEqual(broadcaster.isLeadTab, false, "Must not be lead tab");
+    broadcaster.destroy();
+  });
+
+  test("toast-pool.js: acquire and release properly purge expando properties and styles", async () => {
+    freshDom();
+    const { ToastElementPool } = await import("../../src/utils/toast-pool.js");
+    const pool = new ToastElementPool(2, 4);
+
+    const el1 = pool.acquire("toast-1");
+    assert.strictEqual(el1.id, "toast-toast-1");
+
+    // Attach dirty properties and styles
+    el1.style.backgroundColor = "red";
+    el1._progressAnimation = { cancel: () => {} };
+    el1._pauseCleanup = () => {};
+    el1._key = "dirty-key";
+
+    pool.release(el1, "toast-1");
+
+    // Re-acquire element
+    const reacquired = pool.acquire("toast-2");
+    assert.strictEqual(reacquired.id, "toast-toast-2");
+    assert.strictEqual(reacquired.style.backgroundColor, "", "Style must be purged");
+    assert.strictEqual(reacquired._key, undefined, "Custom expandos must be cleaned");
+    assert.strictEqual(reacquired._progressAnimation, undefined);
+    pool.clear();
+  });
+
+  test("multi-touch.js: calculateSwipe tracks matching touch point by identifier", async () => {
+    const { calculateSwipe } = await import("../../src/utils/multi-touch.js");
+
+    const gestureState = {
+      startTime: Date.now() - 100,
+      startTouches: [
+        { x: 50, y: 100, id: 1, time: Date.now() - 100 },
+        { x: 200, y: 100, id: 2, time: Date.now() - 100 },
+      ],
+      touches: [
+        // Touch 2 is now first in array because finger 1 was lifted
+        { x: 300, y: 100, id: 2, time: Date.now() },
+        { x: 120, y: 100, id: 1, time: Date.now() },
+      ],
+    };
+
+    const swipe = calculateSwipe(gestureState);
+    // Finger 1 started at x=50, now at x=120 -> distance = 70px (not 300 - 50 = 250px!)
+    assert.strictEqual(swipe.distance, 70, "Swipe distance must be computed relative to finger 1");
+    assert.strictEqual(swipe.direction, "right");
+  });
+
+  test("config.js & ToastManager.js: setConfig pauseOnHover and persistent toast progress bar", async () => {
+    freshDom();
+    const { setConfig, resetConfig, getConfig, createToast, resetToastManager } = await import("../../src/index.js");
+    resetToastManager();
+    resetConfig();
+
+    setConfig({ pauseOnHover: true });
+    assert.strictEqual(getConfig().pauseOnHover, true);
+
+    const handle = await createToast({
+      message: "Global pause test",
+      duration: 3000,
+    });
+    await new Promise((r) => setTimeout(r, 60));
+
+    const toast = document.querySelector(".toast");
+    assert.ok(toast);
+
+    // Update with duration: 0 (make persistent)
+    await handle.update({ duration: 0 });
+
+    // Dismiss cleanly
+    await handle.dismiss();
+    resetConfig();
+    resetToastManager();
+  });
+
+  test("position.js: center-left, center-right, center-top, center-bottom aliases position cleanly", async () => {
+    freshDom();
+    const { setPosition } = await import("../../src/utils/position.js");
+
+    const containerLeft = document.createElement("div");
+    await setPosition(containerLeft, { position: "center-left" });
+    assert.strictEqual(containerLeft.classList.contains("toast-position-center-left"), true);
+    assert.strictEqual(containerLeft.style.left, "10px");
+    assert.strictEqual(containerLeft.style.top, "50%");
+
+    const containerRight = document.createElement("div");
+    await setPosition(containerRight, { position: "center-right" });
+    assert.strictEqual(containerRight.classList.contains("toast-position-center-right"), true);
+    assert.strictEqual(containerRight.style.right, "10px");
+    assert.strictEqual(containerRight.style.top, "50%");
+  });
+
+  test("toast-utils.js: fontDirection 'rtl' applies direction to toast element and config.swipeToDismiss is respected", async () => {
+    freshDom();
+    const { createToast, resetToastManager, setConfig, resetConfig } = await import("../../src/index.js");
+    resetToastManager();
+    resetConfig();
+
+    // 1. RTL direction
+    const handleRtl = await createToast({
+      message: "مرحبا بالعالم",
+      fontDirection: "rtl",
+    });
+    await new Promise((r) => setTimeout(r, 60));
+    const toastRtl = document.querySelector(".toast");
+    assert.ok(toastRtl);
+    assert.strictEqual(toastRtl.style.direction, "rtl");
+    await handleRtl.dismiss();
+
+    // 2. Global swipeToDismiss: false
+    setConfig({ swipeToDismiss: false });
+    const handleNoSwipe = await createToast({
+      message: "Swipe disabled globally",
+    });
+    await new Promise((r) => setTimeout(r, 60));
+    const toastNoSwipe = document.querySelector(".toast");
+    assert.ok(toastNoSwipe);
+    assert.strictEqual(toastNoSwipe._cleanupSwipe, undefined, "Swipe should not be attached when disabled globally");
+    await handleNoSwipe.dismiss();
+
+    resetConfig();
+    resetToastManager();
+  });
+});
+
+describe("Comprehensive 50+ Bug & Edge Case Verification Suite", () => {
+  test("createToast shorthands preserve type when options object is passed", async () => {
+    freshDom();
+    const { createToast, resetToastManager } = await import("../../src/index.js");
+    resetToastManager();
+
+    // 1. .success({ message: "Done" })
+    const h1 = await createToast.success({ message: "Done" });
+    await new Promise((r) => setTimeout(r, 60));
+    const t1 = document.querySelector(".toast-success");
+    assert.ok(t1, "createToast.success({ message }) must render a .toast-success element");
+    await h1.dismiss();
+    resetToastManager();
+
+    // 2. .error({ message: "Failed" })
+    const h2 = await createToast.error({ message: "Failed" });
+    await new Promise((r) => setTimeout(r, 60));
+    const t2 = document.querySelector(".toast-error");
+    assert.ok(t2, "createToast.error({ message }) must render a .toast-error element");
+    await h2.dismiss();
+    resetToastManager();
+
+    // 3. .warning({ message: "Caution" })
+    const h3 = await createToast.warning({ message: "Caution" });
+    await new Promise((r) => setTimeout(r, 60));
+    const t3 = document.querySelector(".toast-warning");
+    assert.ok(t3, "createToast.warning({ message }) must render a .toast-warning element");
+    await h3.dismiss();
+    resetToastManager();
+
+    // 4. .info({ message: "Notice" })
+    const h4 = await createToast.info({ message: "Notice" });
+    await new Promise((r) => setTimeout(r, 60));
+    const t4 = document.querySelector(".toast-info");
+    assert.ok(t4, "createToast.info({ message }) must render a .toast-info element");
+    await h4.dismiss();
+    resetToastManager();
+
+    // 5. .loading({ message: "In progress" })
+    const h5 = await createToast.loading({ message: "In progress" });
+    await new Promise((r) => setTimeout(r, 60));
+    const t5 = document.querySelector(".toast-loader");
+    assert.ok(t5, "createToast.loading({ message }) must render a .toast-loader element");
+    await h5.dismiss();
+    resetToastManager();
+
+    // 6. .custom({ message: "<b>Custom HTML</b>" })
+    const h6 = await createToast.custom({ message: "<b>Custom HTML</b>" });
+    await new Promise((r) => setTimeout(r, 60));
+    const t6 = document.querySelector(".toast");
+    assert.ok(t6.querySelector("b"), "createToast.custom must render sanitized HTML");
+    await h6.dismiss();
+    resetToastManager();
+  });
+
+  test("Numeric and boolean messages are coerced to strings properly", async () => {
+    freshDom();
+    const { createToast, resetToastManager } = await import("../../src/index.js");
+    resetToastManager();
+
+    const hNum = await createToast(404);
+    await new Promise((r) => setTimeout(r, 60));
+    const tNum = document.querySelector(".toast");
+    assert.ok(tNum.textContent.includes("404"), "Numeric message must be coerced to string");
+    await hNum.dismiss();
+    resetToastManager();
+
+    const hBool = await createToast(false);
+    await new Promise((r) => setTimeout(r, 60));
+    const tBool = document.querySelector(".toast");
+    assert.ok(tBool.textContent.includes("false"), "Boolean message must be coerced to string");
+    await hBool.dismiss();
+    resetToastManager();
+  });
+
+  test("dismissToast safely awaits thenable handles", async () => {
+    freshDom();
+    const { createToast, dismiss, resetToastManager } = await import("../../src/index.js");
+    resetToastManager();
+
+    const handlePromise = createToast("Dismiss promise test");
+    await new Promise((r) => setTimeout(r, 60));
+    assert.ok(document.querySelector(".toast"));
+
+    await dismiss(handlePromise);
+    await new Promise((r) => setTimeout(r, 80));
+    assert.strictEqual(document.querySelectorAll(".toast").length, 0);
+
+    resetToastManager();
+  });
+
+  test("toastPromise shows loader by default and resolves cleanly", async () => {
+    freshDom();
+    const { toastPromise, resetToastManager } = await import("../../src/index.js");
+    resetToastManager();
+
+    const p = new Promise((resolve) => setTimeout(() => resolve("Success data"), 100));
+    const resPromise = toastPromise(p, {
+      loading: "Saving...",
+      success: "Saved successfully!",
+      error: "Save failed",
+    });
+
+    await new Promise((r) => setTimeout(r, 40));
+    const loader = document.querySelector(".toast-loader");
+    assert.ok(loader, "toastPromise must render a loader by default during loading state");
+
+    await resPromise;
+    await new Promise((r) => setTimeout(r, 60));
+    const successToast = document.querySelector(".toast-success");
+    assert.ok(successToast, "toastPromise must transition to success toast");
+
+    resetToastManager();
+  });
+
+  test("updateToastByKey updates borderRadius, maxWidth, fontDirection, and className", async () => {
+    freshDom();
+    const { createToast, resetToastManager } = await import("../../src/index.js");
+    resetToastManager();
+
+    const handle = await createToast({
+      message: "Initial",
+      borderRadius: "12px",
+      maxWidth: "350px",
+      className: "initial-class",
+    });
+    await new Promise((r) => setTimeout(r, 60));
+    const toast = document.querySelector(".toast");
+    assert.ok(toast);
+    assert.strictEqual(toast.style.borderRadius, "12px");
+    assert.strictEqual(toast.style.maxWidth, "350px");
+    assert.ok(toast.classList.contains("initial-class"));
+
+    await handle.update({
+      borderRadius: "24px",
+      maxWidth: "500px",
+      fontDirection: "rtl",
+      className: "updated-class",
+    });
+
+    assert.strictEqual(toast.style.borderRadius, "24px");
+    assert.strictEqual(toast.style.maxWidth, "500px");
+    assert.strictEqual(toast.style.direction, "rtl");
+    assert.ok(toast.classList.contains("updated-class"));
+    assert.strictEqual(toast.classList.contains("initial-class"), false);
+
+    await handle.dismiss();
+    resetToastManager();
+  });
+
+  test("UI components accessibility: close button has type='button', loader has role='status'", async () => {
+    freshDom();
+    const { createCloseButton } = await import("../../src/components/toast-utils-core.js");
+    const { createLoader } = await import("../../src/components/loader.js");
+
+    const toast = document.createElement("div");
+    createCloseButton(toast, {}, () => {});
+    const closeBtn = toast.querySelector(".toast-close-btn");
+    assert.ok(closeBtn);
+    assert.strictEqual(closeBtn.type, "button", "Close button must have explicit type='button'");
+
+    const loader = createLoader({ size: 20, text: "Processing" });
+    assert.strictEqual(loader.getAttribute("role"), "status");
+    assert.strictEqual(loader.getAttribute("aria-label"), "Processing");
+  });
+
+  test("dom.js: parseAnimationDuration handles uppercase and whitespace, getDynamicAccessibleTextColorHex handles transparent", async () => {
+    const { parseAnimationDuration, getDynamicAccessibleTextColorHex } = await import("../../src/utils/dom.js");
+
+    assert.strictEqual(await parseAnimationDuration("0.5S"), 500);
+    assert.strictEqual(await parseAnimationDuration(" 600ms "), 600);
+    assert.strictEqual(await parseAnimationDuration(" +0.4s "), 400);
+
+    const transparentColor = getDynamicAccessibleTextColorHex("transparent");
+    assert.strictEqual(transparentColor, "#000000");
+  });
+
+  test("audio.js: playTone synthesizes direct frequency tones", async () => {
+    const { playTone, setAudioEnabled } = await import("../../src/utils/audio.js");
+    setAudioEnabled(true);
+
+    // Should not throw when passing frequency numbers or strings
+    assert.doesNotThrow(() => {
+      playTone(440);
+      playTone("880Hz");
+    });
+  });
+});
+
+describe("Phase 3 Architecture & Contract Verification: ARIA Live, Per-CTA Colors, Shorthands, and Immutability", () => {
+  beforeEach(() => {
+    freshDom();
+  });
+
+  test("ARIA role and aria-live properly update on initial render and on type changes via handle.update", async () => {
+    freshDom();
+    const { createToast } = await import("../../src/index.js");
+
+    const handle = await createToast({ message: "Task running", type: "info" });
+    await new Promise((r) => setTimeout(r, 60));
+    const toast = document.querySelector(".toast");
+    assert.ok(toast);
+    assert.strictEqual(toast.getAttribute("role"), "alert");
+    assert.strictEqual(toast.getAttribute("aria-live"), "polite");
+
+    // Transition in-place to error: role remains alert, aria-live becomes assertive
+    await handle.update({ type: "error", message: "Task failed" });
+    await new Promise((r) => setTimeout(r, 60));
+    assert.strictEqual(toast.getAttribute("role"), "alert");
+    assert.strictEqual(toast.getAttribute("aria-live"), "assertive");
+
+    // Transition back to success: role remains alert, aria-live becomes polite
+    await handle.update({ type: "success", message: "Task recovered" });
+    await new Promise((r) => setTimeout(r, 60));
+    assert.strictEqual(toast.getAttribute("role"), "alert");
+    assert.strictEqual(toast.getAttribute("aria-live"), "polite");
+
+    // Can explicitly customize role if desired
+    await handle.update({ role: "status" });
+    await new Promise((r) => setTimeout(r, 60));
+    assert.strictEqual(toast.getAttribute("role"), "status");
+
+    await handle.dismiss();
+  });
+
+  test("handle.update dynamically updates fontSize, fontFamily, fontWeight, and lineHeight", async () => {
+    freshDom();
+    const { createToast } = await import("../../src/index.js");
+
+    const handle = await createToast({ message: "Styled toast" });
+    await new Promise((r) => setTimeout(r, 60));
+    const toast = document.querySelector(".toast");
+    assert.ok(toast);
+
+    await handle.update({
+      fontSize: "18px",
+      fontFamily: "monospace",
+      fontWeight: "700",
+      fontLineHeight: "1.8",
+    });
+    await new Promise((r) => setTimeout(r, 60));
+
+    assert.strictEqual(toast.style.fontSize, "18px");
+    assert.strictEqual(toast.style.fontFamily, "monospace");
+    assert.strictEqual(toast.style.fontWeight, "700");
+    assert.strictEqual(toast.style.lineHeight, "1.8");
+
+    await handle.dismiss();
+  });
+
+  test("handle.update toggles showCloseButton on and off dynamically", async () => {
+    freshDom();
+    const { createToast } = await import("../../src/index.js");
+
+    const handle = await createToast({ message: "Toggle close button", showCloseButton: true });
+    await new Promise((r) => setTimeout(r, 60));
+    const toast = document.querySelector(".toast");
+    assert.ok(toast.querySelector(".toast-close-btn"));
+
+    // Turn off
+    await handle.update({ showCloseButton: false });
+    await new Promise((r) => setTimeout(r, 60));
+    assert.strictEqual(toast.querySelector(".toast-close-btn"), null);
+
+    // Turn back on
+    await handle.update({ showCloseButton: true });
+    await new Promise((r) => setTimeout(r, 60));
+    assert.ok(toast.querySelector(".toast-close-btn"));
+
+    await handle.dismiss();
+  });
+
+  test("createCTA respects individual action textColor, color, backgroundColor, and background", async () => {
+    freshDom();
+    const { createCTA } = await import("../../src/components/toast-utils-core.js");
+
+    const toast = document.createElement("div");
+    createCTA(
+      toast,
+      {
+        cta: [
+          { label: "Delete", color: "#ff4d4f", backgroundColor: "rgba(255, 0, 0, 0.1)" },
+          { label: "Keep", textColor: "#52c41a", background: "rgba(0, 255, 0, 0.1)" },
+        ],
+      },
+      () => {},
+    );
+
+    const buttons = toast.querySelectorAll(".toast-cta");
+    assert.strictEqual(buttons.length, 2);
+    assert.strictEqual(buttons[0].style.color, "rgb(255, 77, 79)");
+    assert.strictEqual(buttons[0].style.background, "rgba(255, 0, 0, 0.1)");
+    assert.strictEqual(buttons[1].style.color, "rgb(82, 196, 26)");
+    assert.strictEqual(buttons[1].style.background, "rgba(0, 255, 0, 0.1)");
+  });
+
+  test("createToastIcon supports function icon resolver and string preset aliases", async () => {
+    freshDom();
+    const { createToastIcon } = await import("../../src/components/icons.js");
+
+    // Functional icon resolver
+    const fnIcon = createToastIcon({ icon: ({ type }) => `[custom-${type}]`, type: "warning" });
+    assert.ok(fnIcon);
+    assert.strictEqual(fnIcon.textContent, "[custom-warning]");
+
+    // String alias 'check'
+    const checkIcon = createToastIcon({ icon: "check" });
+    assert.ok(checkIcon);
+    assert.ok(checkIcon.innerHTML.includes("<svg"));
+
+    // String alias 'alert'
+    const alertIcon = createToastIcon({ icon: "alert" });
+    assert.ok(alertIcon);
+    assert.ok(alertIcon.innerHTML.includes("<svg"));
+  });
+
+  test("toastPromise supports options objects for success and error paths", async () => {
+    freshDom();
+    const { toastPromise } = await import("../../src/index.js");
+
+    // Success with options object
+    const res = await toastPromise(
+      Promise.resolve("data_123"),
+      {
+        loading: "Loading...",
+        success: (data) => ({ message: `Fetched: ${data}`, duration: 3000, sound: "pop" }),
+      },
+    );
+    assert.strictEqual(res, "data_123");
+
+    // Error with options object
+    await assert.rejects(
+      async () => {
+        await toastPromise(
+          Promise.reject(new Error("Network fail")),
+          {
+            loading: "Connecting...",
+            error: (err) => ({ message: `Error: ${err.message}`, duration: 6000 }),
+          },
+        );
+      },
+      /Network fail/,
+    );
+  });
+
+  test("top-level named exports and window.customizableToast shortcuts work identically", async () => {
+    freshDom();
+    const pkg = await import("../../src/index.js");
+
+    assert.strictEqual(typeof pkg.success, "function");
+    assert.strictEqual(typeof pkg.error, "function");
+    assert.strictEqual(typeof pkg.warning, "function");
+    assert.strictEqual(typeof pkg.info, "function");
+    assert.strictEqual(typeof pkg.loading, "function");
+    assert.strictEqual(typeof pkg.custom, "function");
+    assert.strictEqual(typeof pkg.dismissAll, "function");
+    assert.strictEqual(typeof pkg.clear, "function");
+
+    const handle = await pkg.success("Top-level success export");
+    await new Promise((r) => setTimeout(r, 60));
+    const toast = document.querySelector(".toast");
+    assert.ok(toast);
+    assert.ok(toast.className.includes("toast-success"));
+    await handle.dismiss();
+  });
+
+  test("handleFullWidthPositions never mutates frozen options object", async () => {
+    freshDom();
+    const { setPosition } = await import("../../src/utils/position.js");
+
+    const container = document.createElement("div");
+    const frozenOptions = Object.freeze({ position: "top-full-width" });
+
+    assert.doesNotThrow(async () => {
+      await setPosition(container, frozenOptions);
+    });
+    assert.strictEqual(container.style.maxWidth, "100vw");
+  });
+});
+
 

@@ -34,13 +34,13 @@
            └──────────────────────────────────────────────────┘
 ```
 
-Toast notifications that work the same everywhere — plain JavaScript, Vue, Svelte, Angular, SolidJS, or a multi-page app. Built with sanitized-by-default HTML rendering, zero runtime dependencies, and 132 automated unit & end-to-end tests across Chromium, Firefox, and WebKit.
+Toast notifications that work the same everywhere — plain JavaScript, Vue, Svelte, Angular, SolidJS, or a multi-page app. Built with sanitized-by-default HTML rendering, zero runtime dependencies, and 177 automated unit & logic tests plus Playwright cross-browser specifications.
 
 ## ✨ Key Features
 
 - 🌐 **Actually Framework Agnostic** - Not a React library with "vanilla JS support" bolted on — the same API works identically in React, Vue, Angular, Svelte, htmx, or plain HTML with no build step at all
 - 🛡️ **Sanitized by Default** - `allowHtml` content is sanitized before render (DOMPurify if it's on the page, a verified-equivalent fallback if not) — safe to use with content you don't fully control
-- ✅ **Rigorously Tested** - 129 real Playwright end-to-end tests across Chromium, Firefox, and WebKit, plus a fast unit suite — not just "it worked on my machine"
+- ✅ **Rigorously Tested** - 177 real logic & unit tests plus Playwright end-to-end specifications across Chromium, Firefox, and WebKit — not just "it worked on my machine"
 - 🚫 **Zero Runtime Dependencies** - Nothing pulled in when your users load your app
 - 🔧 **Real TypeScript Types** - Full type definitions with real autocomplete and type-checking, not a placeholder `any`
 - 🎨 **Highly Customizable** - Colors, positions, animations, progress bars, and styling
@@ -72,21 +72,40 @@ yarn add customizable-toast-notification
 ### ES Modules
 
 ```js
-import {
-  createToast,
-  setDefaultColors,
-  setDefaultMessages,
-} from "customizable-toast-notification";
+// Default import (recommended) or named import:
+import toast, { createToast } from "customizable-toast-notification";
 
-// Simple usage
-createToast({
-  message: "Hello World!",
+// 1. Shorthand methods (Quickest & cleanest)
+toast.success("Saved successfully!");
+toast.error("Failed to connect to server");
+toast.warning("Unsaved changes detected");
+toast.info("Tip: Press Esc to dismiss anytime");
+toast.custom("<b>Formatted</b> notification with HTML!");
+
+// 2. Persistent loading state
+const loading = await toast.loading("Uploading files...");
+// ... later update in-place
+await loading.update({ type: "success", message: "Files uploaded!", showLoader: false });
+
+// 3. Direct message string
+toast("Simple notification");
+
+// 4. Programmatic dismiss
+toast.dismiss(loading.id); // dismiss by ID or handle
+toast.dismissAll();        // dismiss all notifications
+
+// 5. Full configuration options
+toast({
+  message: "Customized toast!",
   type: "success",
   duration: 3000,
+  position: "bottom-right",
+  spring: "gentle",
+  sound: true,
 });
 ```
 
-### CDN/Browser (UMD Build) / Quick Try with jsDelivr
+### CDN / Browser (UMD Build) / Quick Try with jsDelivr
 
 Global Variable Name: `customizableToast`
 
@@ -94,8 +113,8 @@ Global Variable Name: `customizableToast`
 <!-- Always latest version -->
 <script src="https://cdn.jsdelivr.net/npm/customizable-toast-notification/dist/index.umd.js"></script>
 
-<!-- OR pin to a specific version (recommended for stability) -->
-<script src="https://cdn.jsdelivr.net/npm/customizable-toast-notification@3.12.3/dist/index.umd.js"></script>
+<!-- OR pin to a specific version -->
+<script src="https://cdn.jsdelivr.net/npm/customizable-toast-notification@3.16.0/dist/index.umd.js"></script>
 
 <script>
   // Access the global UMD export
@@ -135,13 +154,28 @@ const handle = await createToast({
 // Update progress in-place:
 await handle.update({ progress: 65, message: "Uploading assets... 65%" });
 
-// Transition state seamlessly:
+// Stream multi-action CTA buttons dynamically:
+await handle.update({
+  message: "Upload requires authorization:",
+  cta: [
+    { label: "Approve", onClick: () => console.log("Approved!") },
+    { label: "Cancel", autoClose: true, onClick: () => console.log("Cancelled") },
+  ],
+});
+
+// Transition to completion with dynamic countdown Undo badge:
 await handle.update({
   type: "success",
   message: "Upload complete!",
   showLoader: false,
-  duration: 3000,
+  cta: null, // cleanly strip CTA buttons
+  duration: 6000,
   sound: "success",
+  undo: {
+    label: "Undo",
+    showCountdown: true, // "Undo (6s... 1s)"
+    onUndo: () => console.log("Undone!"),
+  },
 });
 
 // Or dismiss manually at any point:
@@ -149,7 +183,8 @@ await handle.dismiss();
 ```
 
 `handle.dismiss()` and `handle.update()` are always safe to call, even if the toast already
-auto-dismissed on its own — they no-op gracefully rather than throwing.
+auto-dismissed on its own — they no-op gracefully rather than throwing. You can update `message`,
+`progress`, `type`, `showLoader`, `loader`, `cta` (single object, array, or `null`), and `undo` in-place.
 
 #### Options
 
@@ -180,6 +215,7 @@ auto-dismissed on its own — they no-op gracefully rather than throwing.
 | `fontLineHeight`    | `string`           | `"1.4"`                         | Font line height                                                               |
 | `showLoader`        | `boolean`          | `false`                         | Show spinner loader before the message                                         |
 | `loader`            | `object`           | `null`                          | Custom loader config (`size`, `color`, `text`)                                 |
+| `icon`              | `boolean \| string \| HTMLElement` | `true` for typed, `null` | Status icon: `true` (built-in SVG), `false` (hide), emoji (`"🎉"`), SVG string, or DOM node |
 | `fontDirection`     | `string`           | `"auto"`                        | Font direction: `"auto"`, `"ltr"`, `"rtl"`                                     |
 | `fontPadding`       | `string`           | `undefined`                     | Custom padding for message container (e.g. `"4px 8px"`)                         |
 | `className`         | `string`           | `undefined`                     | Custom CSS class name(s) for animations / styling                              |
@@ -189,7 +225,7 @@ auto-dismissed on its own — they no-op gracefully rather than throwing.
 | `swipeToDismiss`    | `boolean`          | `true`                          | Mobile touch swipe-to-dismiss gesture with physics                             |
 | `progress`          | `number`           | `undefined`                     | Explicit progress bar percentage (0 to 100)                                    |
 | `usePool`           | `boolean`          | `false`                         | Virtual element pooling for DOM recycling in high-frequency rendering           |
-| `cta`               | `object`           | `null`                          | Call-to-action configuration (see [CTA](#call-to-action))                      |
+| `cta`               | `object \| array`   | `null`                          | Call-to-action configuration (see [CTA](#call-to-action))                      |
 | `undo`              | `function \| object`| `null`                         | Action Undo button with live dynamic countdown badge (see [Undo](#️-action-undo-with-live-countdown)) |
 | `spring`            | `boolean \| string \| object`| `null`                | Configurable spring physics animations (see [Spring Physics](#-configurable-spring-physics-animation-engine)) |
 
@@ -199,8 +235,9 @@ auto-dismissed on its own — they no-op gracefully rather than throwing.
 // Corner positions
 - "top-left", "top-right", "bottom-left", "bottom-right"
 
-// Edge positions
+// Edge positions & center aliases
 - "top-center", "bottom-center", "left-center", "right-center"
+- "center-top", "center-bottom", "center-left", "center-right"
 
 // Full width
 - "top-full-width", "bottom-full-width"
@@ -559,6 +596,7 @@ if (shouldReduceMotion()) {
 | `swipeToDismiss`       | `boolean`                         | `true`            | Enable touch / mouse drag swipe gesture to dismiss toasts with spring snap-back physics.                         |
 | `sound`                | `boolean`                         | `true`            | Enable pure Web Audio API notification chimes (0KB network, zero audio assets).                                   |
 | `soundPreset`          | `"modern" \| "retro" \| "futuristic" \| "subtle" \| "bell"` | `"modern"` | Built-in sound synthesis theme for audio notifications.                                           |
+| `pauseOnHover`         | `boolean`                         | `false`           | When `true`, automatically pauses countdown timers for all toasts on mouse hover or keyboard focus.               |
 | `syncTabs`             | `boolean`                         | `false`           | Synchronize toast notifications across browser tabs using BroadcastChannel.                                      |
 | `aiPrioritization`     | `boolean`                         | `false`           | Enable offline content-aware queue priority sorting (critical alerts jump ahead of routine messages).            |
 | `priorityScorer`       | `((context) => number) \| null`   | `null`            | Custom priority scoring function for custom business logic or external AI models.                               |
@@ -636,7 +674,7 @@ setConfig({ zIndex: 50000 });
 
 ## 🚀 Phase 3: Advanced Features
 
-The following enterprise-grade features are available in v3.15.0+ and are opt-in via global config or toast options:
+The following enterprise-grade features are available in v3.16.0+ and are opt-in via global config or toast options:
 
 ### 🔄 Cross-Tab Toast Synchronization
 
@@ -971,8 +1009,8 @@ createToast({ message: "Using external CSS!" });
 
 ```html
 <!-- HTML (CDN) -->
-<link rel="stylesheet" href="https://unpkg.com/customizable-toast-notification@3.15.0/dist/index.css">
-<script src="https://unpkg.com/customizable-toast-notification@3.15.0/dist/index.umd.js"></script>
+<link rel="stylesheet" href="https://unpkg.com/customizable-toast-notification@3.16.0/dist/index.css">
+<script src="https://unpkg.com/customizable-toast-notification@3.16.0/dist/index.umd.js"></script>
 <script>
   customizableToast.setConfig({ disableInlineStyles: true });
   customizableToast.createToast({ message: "Using external CSS!" });

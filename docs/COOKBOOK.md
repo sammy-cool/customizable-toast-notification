@@ -9,8 +9,11 @@ A collection of battle-tested, zero-dependency recipes for common real-world not
 2. [Global Uncaught Exception & Promise Rejection Catcher](#2-global-uncaught-exception--promise-rejection-catcher)
 3. [Network Online / Offline Connectivity Monitor](#3-network-online--offline-connectivity-monitor)
 4. [File Upload with Live Streaming Progress & Abort](#4-file-upload-with-live-streaming-progress--abort)
+   - [4.1 In-Place Multi-CTA and Dynamic Undo Streaming (`handle.update({ cta, undo })`)](#41-in-place-multi-cta-and-dynamic-undo-streaming-handleupdate-cta-undo-)
 5. [Action Undo with Live Dynamic Countdown Badge](#5-action-undo-with-live-dynamic-countdown-badge)
 6. [High-Frequency Burst Stream with Card Deck Stacking & Sound](#6-high-frequency-burst-stream-with-card-deck-stacking--sound)
+7. [Inactive Tab Attention Alerting (tabTitleAlert)](#7-inactive-tab-attention-alerting-tabtitlealert)
+8. [Persistent Notification Center History Drawer](#8-persistent-notification-center-history-drawer)
 
 ---
 
@@ -235,6 +238,73 @@ export async function uploadFileWithProgress(file) {
 
 ---
 
+## 4.1 In-Place Multi-CTA and Dynamic Undo Streaming (`handle.update({ cta, undo })`)
+
+Dynamically add, replace, or strip action buttons and countdown undo triggers mid-flight on any active toast without flickering or recreation.
+
+```javascript
+import { createToast } from "customizable-toast-notification";
+
+export async function runWorkflowWithDynamicActions() {
+  // Step 1: Initial state — spinner with no actions
+  const handle = await createToast({
+    type: "info",
+    message: "Analyzing git branch changes...",
+    showLoader: true,
+    duration: 30000,
+  });
+
+  // Step 2: Stream prompt with multi-action buttons (Approve / Reject)
+  setTimeout(async () => {
+    await handle.update({
+      message: "Build ready for staging deployment. Review changes?",
+      showLoader: false,
+      cta: [
+        {
+          label: "Deploy",
+          onClick: async () => {
+            // Step 3: Transition to deploying state
+            await handle.update({
+              type: "warning",
+              message: "Deploying build v2.4...",
+              cta: null, // cleanly strip CTA buttons
+              showLoader: true,
+            });
+
+            // Step 4: Add live countdown Undo badge mid-flight
+            setTimeout(async () => {
+              await handle.update({
+                type: "success",
+                message: "Deployment live on staging!",
+                showLoader: false,
+                sound: "success",
+                duration: 8000,
+                undo: {
+                  label: "Rollback",
+                  showCountdown: true, // "Rollback (8s... 1s)"
+                  onUndo: async () => {
+                    createToast({ type: "info", message: "Deployment rolled back to previous commit." });
+                  },
+                },
+              });
+            }, 2000);
+          },
+        },
+        {
+          label: "Discard",
+          autoClose: true,
+          onClick: () => {
+            createToast({ type: "info", message: "Build discarded." });
+          },
+        },
+      ],
+    });
+  }, 1500);
+}
+```
+
+---
+
 ## 5. Action Undo with Live Dynamic Countdown Badge
 
 Provide high-confidence undo capability for destructive actions (e.g. deleting an email, removing an item, archiving an account).
@@ -295,3 +365,59 @@ export async function onIncomingMessage(message) {
   });
 }
 ```
+
+---
+
+## 7. Inactive Tab Attention Alerting (`tabTitleAlert`)
+
+When a user is multitasking on another browser tab, pulse the document title so critical alerts aren't missed, restoring the original title once the tab is focused.
+
+```javascript
+import { createToast } from "customizable-toast-notification";
+
+export async function notifyWithTabAlert(options) {
+  const originalTitle = document.title;
+  let intervalId = null;
+
+  if (document.hidden) {
+    let toggle = false;
+    intervalId = setInterval(() => {
+      document.title = toggle
+        ? `🔔 (1) ${options.message.slice(0, 30)}...`
+        : originalTitle;
+      toggle = !toggle;
+    }, 1000);
+
+    const onFocus = () => {
+      clearInterval(intervalId);
+      document.title = originalTitle;
+      window.removeEventListener("focus", onFocus);
+    };
+    window.addEventListener("focus", onFocus);
+  }
+
+  return await createToast(options);
+}
+```
+
+---
+
+## 8. Persistent Notification Center History Drawer
+
+Archive toasts into a slide-over history drawer so users can review dismissed notifications. See the full runnable demo in [`examples/notification-center/index.html`](../examples/notification-center/index.html).
+
+```javascript
+import { createToast } from "customizable-toast-notification";
+
+const notificationHistory = [];
+
+export async function dispatchAndArchive(options) {
+  notificationHistory.push({
+    options,
+    timestamp: new Date().toLocaleTimeString(),
+  });
+
+  return await createToast(options);
+}
+```
+

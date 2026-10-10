@@ -10,16 +10,20 @@
  * @typedef {Object} ToastSyncMessage
  * @property {string} type - Message type: 'create', 'update', 'dismiss', 'sync-request', 'sync-response'
  * @property {string} toastId - Unique toast identifier
- * @property {Object} payload - Message-specific data
+ * @property {Record<string, unknown>} payload - Message-specific data
  * @property {number} timestamp - Message timestamp
  * @property {string} tabId - Originating tab ID
  */
 
 class ToastBroadcaster {
   constructor() {
+    /** @type {BroadcastChannel | null} */
     this.channel = null;
     this.tabId = this._generateTabId();
     this.isLeadTab = false;
+    /** @type {ReturnType<typeof setTimeout> | null} */
+    this.leaderTimer = null;
+    /** @type {Map<string, Array<(data: Record<string, unknown>) => void>>} */
     this.listeners = new Map();
     this.supportsBroadcastChannel = typeof BroadcastChannel !== 'undefined';
 
@@ -108,7 +112,7 @@ class ToastBroadcaster {
    * Broadcast a toast event to other tabs
    * @param {string} type - Event type
    * @param {string} [toastId=''] - Toast ID
-   * @param {Object} [payload={}] - Event payload
+   * @param {Record<string, unknown>} [payload={}] - Event payload
    */
   broadcast(type, toastId = '', payload = {}) {
     if (!this.supportsBroadcastChannel || !this.channel) {
@@ -151,10 +155,19 @@ class ToastBroadcaster {
 
     const { type, toastId, payload } = message;
 
-    // Handle leader election
-    if (type === 'leader-elected' && !this.isLeadTab) {
-      this.isLeadTab = false; // Another tab is leader
+    // Handle leader election: cancel pending election timer if another tab is already leader
+    if (type === 'leader-elected') {
+      if (this.leaderTimer) {
+        clearTimeout(this.leaderTimer);
+        this.leaderTimer = null;
+      }
+      this.isLeadTab = false;
       return;
+    }
+
+    if (type === 'sync-response' && this.leaderTimer) {
+      clearTimeout(this.leaderTimer);
+      this.leaderTimer = null;
     }
 
     // Handle sync requests

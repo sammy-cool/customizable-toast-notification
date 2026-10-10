@@ -68,11 +68,12 @@ export async function removeElement(el) {
 export async function parseAnimationDuration(duration) {
   if (typeof duration === "number" && Number.isFinite(duration) && duration > 0) return duration;
   if (typeof duration === "string") {
-    if (duration.endsWith("s") && !duration.endsWith("ms")) {
-      const parsed = parseFloat(duration) * 1000;
+    const trimmed = duration.trim().toLowerCase();
+    if (trimmed.endsWith("s") && !trimmed.endsWith("ms")) {
+      const parsed = parseFloat(trimmed) * 1000;
       return Number.isFinite(parsed) && parsed > 0 ? parsed : 500;
     }
-    const parsed = parseFloat(duration);
+    const parsed = parseFloat(trimmed);
     return Number.isFinite(parsed) && parsed > 0 ? parsed : 500;
   }
   return 500;
@@ -258,6 +259,7 @@ const namedColors = {
   teal: [0, 128, 128],
   thistle: [216, 191, 216],
   tomato: [255, 99, 71],
+  transparent: [255, 255, 255],
   turquoise: [64, 224, 208],
   violet: [238, 130, 238],
   wheat: [245, 222, 179],
@@ -309,22 +311,32 @@ export function getDynamicAccessibleTextColorHex(toastBg) {
   // midpoint gray instead of Math.random() — deterministic and
   // reasonable, never actively wrong in a random direction.
   function resolveCssCustomProperty(value) {
-    const varMatch = value?.match(/^var\((--[\w-]+)(?:\s*,\s*(.+))?\)$/i);
-    if (!varMatch) return value;
+    if (typeof value !== "string") return value;
+    const trimmed = value.trim();
+    if (!trimmed.toLowerCase().startsWith("var(") || !trimmed.endsWith(")")) {
+      return value;
+    }
+    const inner = trimmed.slice(4, -1).trim();
+    const commaIndex = inner.indexOf(",");
+    const propName = (commaIndex === -1 ? inner : inner.slice(0, commaIndex)).trim();
+    const fallbackVal = commaIndex === -1 ? "" : inner.slice(commaIndex + 1).trim();
+
+    if (!propName.startsWith("--")) return value;
+
     try {
       if (
         typeof document !== "undefined" &&
         typeof getComputedStyle === "function"
       ) {
         const resolved = getComputedStyle(document.documentElement)
-          .getPropertyValue(varMatch[1])
+          .getPropertyValue(propName)
           .trim();
         if (resolved) return resolved;
       }
     } catch (e) {}
     // Fall back to the var()'s own declared fallback value, if it had one
     // (e.g. var(--brand, #336699)), before giving up entirely.
-    return varMatch[2]?.trim() || value;
+    return fallbackVal || value;
   }
 
   function parseToRgb(value) {
@@ -357,6 +369,17 @@ export function getDynamicAccessibleTextColorHex(toastBg) {
         r: Number(rgbMatch[1]),
         g: Number(rgbMatch[2]),
         b: Number(rgbMatch[3]),
+      };
+    }
+
+    const rgbSpaceMatch = value?.match(
+      /rgba?\(\s*(\d+)\s+(\d+)\s+(\d+)(?:\s*\/\s*[\d.%]+)?\s*\)/i,
+    );
+    if (rgbSpaceMatch) {
+      return {
+        r: Number(rgbSpaceMatch[1]),
+        g: Number(rgbSpaceMatch[2]),
+        b: Number(rgbSpaceMatch[3]),
       };
     }
 

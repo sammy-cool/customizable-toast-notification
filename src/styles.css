@@ -179,6 +179,7 @@
 }
 
 .toast-position-top-center,
+.toast-position-center-top,
 .toast-position-top {
   top: var(--toast-offset, 10px);
   right: auto;
@@ -187,7 +188,8 @@
   transform: translateX(-50%);
 }
 
-.toast-position-bottom-center {
+.toast-position-bottom-center,
+.toast-position-center-bottom {
   top: auto;
   right: auto;
   bottom: var(--toast-offset, 10px);
@@ -195,7 +197,8 @@
   transform: translateX(-50%);
 }
 
-.toast-position-left-center {
+.toast-position-left-center,
+.toast-position-center-left {
   top: 50%;
   right: auto;
   bottom: auto;
@@ -203,7 +206,8 @@
   transform: translateY(-50%);
 }
 
-.toast-position-right-center {
+.toast-position-right-center,
+.toast-position-center-right {
   top: 50%;
   right: var(--toast-offset, 10px);
   bottom: auto;
@@ -366,6 +370,10 @@
   transition: background 0.2s ease;
 }
 
+.toast-cta + .toast-cta {
+  margin-left: 6px;
+}
+
 .toast-cta:hover {
   background: rgba(0, 0, 0, 0.25);
 }
@@ -510,16 +518,44 @@
   }
 }
 
+/* ========== POSITION-SPECIFIC INITIAL TRANSFORMS ========== */
+[class*="toast-position-top"] .toast:not(.active) {
+  transform: translateY(-20px);
+}
+
 /* ========== ACTIVE STATE ========== */
 .toast.active {
   opacity: 1;
   transform: translateY(0);
 }
 
+/* ========== CUSTOM ANIMATION UTILITIES ========== */
+@keyframes toast-bounce-gentle {
+  0%, 100% {
+    transform: translateY(0);
+  }
+  50% {
+    transform: translateY(-8px);
+  }
+}
+
+.custom-animation-bounce {
+  animation: toast-bounce-gentle 0.6s ease-in-out;
+}
+
 /* ========== GLASSMORPHISM SUPPORT ========== */
 [data-toast-theme="glass"] .toast {
-  backdrop-filter: blur(4px);
-  border: 1px solid rgba(255, 255, 255, 0.18);
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
+  border: 1px solid rgba(255, 255, 255, 0.25);
+  text-shadow: 0 1px 2px rgba(0, 0, 0, 0.4);
+}
+
+/* ========== HIGH-CONTRAST FOCUS ACCESSIBILITY ========== */
+[data-toast-theme="high-contrast"] button:focus-visible,
+[data-toast-theme="high-contrast"] a:focus-visible {
+  outline: 3px solid #ffff00;
+  outline-offset: 2px;
 }
 
 /* ========== PINCH & FLICK GESTURES ========== */
@@ -607,8 +643,34 @@
   pointer-events: none;
 }
 
-[data-stacked="true"][id*="top"] .toast-outer-wrapper[data-stacked-depth="overflow"] {
-  transform: scale(0.85) translateY(30px);
+/* ========== STATUS ICONS & HOVER FREEZE SHIMMER ========== */
+.toast-icon {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  margin-right: 8px;
+  margin-inline-end: 8px;
+  line-height: 1;
+}
+
+[dir="rtl"] .toast-icon,
+.toast[style*="direction: rtl"] .toast-icon {
+  margin-right: 0;
+  margin-left: 8px;
+}
+
+.toast-icon svg {
+  display: block;
+}
+
+.toast.toast-paused {
+  box-shadow: 0 0 0 2px rgba(255, 255, 255, 0.3), 0 8px 16px rgba(0, 0, 0, 0.2) !important;
+}
+
+.toast.toast-paused .toast-progress-bar {
+  opacity: 1 !important;
+  filter: brightness(1.2);
 }
 
 /* ========== ACCESSIBILITY: REDUCED MOTION ========== */

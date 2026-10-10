@@ -14,13 +14,13 @@
  * @property {string} type - Toast type (success, error, warning, info)
  * @property {string} message - Toast message content
  * @property {number} duration - Duration in milliseconds
- * @property {Object} options - Full toast options
+ * @property {Record<string, unknown>} options - Full toast options
  */
 
 /**
  * @typedef {Object} ScorerResult
  * @property {number} score - Priority score (0-100)
- * @property {Object} breakdown - Score breakdown by factor
+ * @property {Record<string, number>} breakdown - Score breakdown by factor
  * @property {string[]} keywords - Detected keywords affecting score
  */
 
@@ -96,15 +96,20 @@ export function calculateToastPriority(context) {
   const messageLower = safeMessage.toLowerCase();
   let urgencyScore = 0;
 
+  // Precompile regexes with word boundaries to prevent substring collisions (e.g. 'debug' matching 'bug', 'download' matching 'down')
   for (const keyword of URGENCY_KEYWORDS) {
-    if (messageLower.includes(keyword.toLowerCase())) {
+    const escaped = keyword.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+    const regex = new RegExp(`\\b${escaped}\\b`, 'i');
+    if (regex.test(safeMessage)) {
       detectedKeywords.push(keyword);
       urgencyScore += 2; // +2 points per urgency keyword
     }
   }
 
   for (const keyword of LOW_PRIORITY_KEYWORDS) {
-    if (messageLower.includes(keyword.toLowerCase())) {
+    const escaped = keyword.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+    const regex = new RegExp(`\\b${escaped}\\b`, 'i');
+    if (regex.test(safeMessage)) {
       detectedKeywords.push(keyword);
       urgencyScore -= 1; // -1 point per low-priority keyword
     }
@@ -163,44 +168,32 @@ export function categorizeToast(message) {
   const categories = [];
 
   // Security-related
-  if (msgLower.includes('security') || msgLower.includes('auth') ||
-      msgLower.includes('password') || msgLower.includes('unauthorized') ||
-      msgLower.includes('breach') || msgLower.includes('hack')) {
+  if (/\b(security|auth|password|unauthorized|breach|hack)\b/i.test(msgLower)) {
     categories.push('security');
   }
 
   // Performance-related
-  if (msgLower.includes('performance') || msgLower.includes('slow') ||
-      msgLower.includes('timeout') || msgLower.includes('load') ||
-      msgLower.includes('responsive') || msgLower.includes('latency')) {
+  if (/\b(performance|slow|timeout|load|latency|responsive)\b/i.test(msgLower)) {
     categories.push('performance');
   }
 
   // User-related
-  if (msgLower.includes('user') || msgLower.includes('profile') ||
-      msgLower.includes('account') || msgLower.includes('preferences') ||
-      msgLower.includes('settings') || msgLower.includes('avatar')) {
+  if (/\b(user|profile|account|preferences|settings|avatar)\b/i.test(msgLower)) {
     categories.push('user');
   }
 
   // System-related
-  if (msgLower.includes('system') || msgLower.includes('server') ||
-      msgLower.includes('database') || msgLower.includes('network') ||
-      msgLower.includes('connection') || msgLower.includes('backend')) {
+  if (/\b(system|server|database|network|connection|backend)\b/i.test(msgLower)) {
     categories.push('system');
   }
 
   // Business-related
-  if (msgLower.includes('payment') || msgLower.includes('transaction') ||
-      msgLower.includes('billing') || msgLower.includes('charge') ||
-      msgLower.includes('order') || msgLower.includes('cart')) {
+  if (/\b(payment|transaction|billing|charge|order|cart)\b/i.test(msgLower)) {
     categories.push('business');
   }
 
   // UI/UX related
-  if (msgLower.includes('ui') || msgLower.includes('interface') ||
-      msgLower.includes('click') || msgLower.includes('scroll') ||
-      msgLower.includes('responsive') || msgLower.includes('mobile')) {
+  if (/\b(ui|interface|click|scroll|mobile)\b/i.test(msgLower)) {
     categories.push('ui');
   }
 

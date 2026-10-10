@@ -28,6 +28,8 @@
         <button class="error" @click="showError">Error (Stiff)</button>
         <button class="warning" @click="showWarning">Warning (Wobbly)</button>
         <button class="info" @click="showInfo">Info (Gentle)</button>
+        <button class="warning" style="grid-column: span 2; background: #8b5cf6; color: white;" @click="showUndo">🗑️ Delete with Undo Countdown</button>
+        <button class="info" style="grid-column: span 2; background: #0284c7; color: white;" @click="showMultiCTA">👥 Multi-Action CTA (Approve / Reject)</button>
       </div>
     </div>
   </div>
@@ -41,8 +43,23 @@
         const showError = () => customizableToast.createToast({ type: 'error', message: 'Vue 3 action failed!', sound: true, soundPreset: 'retro', spring: 'stiff' });
         const showWarning = () => customizableToast.createToast({ type: 'warning', message: 'Vue 3 warning prompt', sound: true, spring: 'wobbly' });
         const showInfo = () => customizableToast.createToast({ type: 'info', message: 'Vue 3 information update', sound: true, soundPreset: 'futuristic' });
+        const showUndo = () => customizableToast.createToast({
+          type: 'warning',
+          message: 'Project archived.',
+          duration: 6000,
+          undo: { label: 'Undo', showCountdown: true, onUndo: () => console.log('Undone') }
+        });
+        const showMultiCTA = () => customizableToast.createToast({
+          type: 'info',
+          message: 'New pull request submitted: #302',
+          duration: 8000,
+          cta: [
+            { label: 'Approve', onClick: () => customizableToast.createToast({ type: 'success', message: 'Approved!' }) },
+            { label: 'Reject', autoClose: true, onClick: () => customizableToast.createToast({ type: 'warning', message: 'Rejected.' }) }
+          ]
+        });
 
-        return { showSuccess, showError, showWarning, showInfo };
+        return { showSuccess, showError, showWarning, showInfo, showUndo, showMultiCTA };
       }
     }).mount('#app');
   </script>

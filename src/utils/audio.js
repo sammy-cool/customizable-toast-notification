@@ -7,6 +7,35 @@ let audioContext = null;
 let audioEnabled = true;
 
 /**
+ * Track user activation across the document to conform with browser autoplay policies.
+ */
+let hasUserGesture = false;
+if (typeof window !== "undefined") {
+  if (typeof navigator !== "undefined" && navigator.userActivation?.hasBeenActive) {
+    hasUserGesture = true;
+  } else {
+    const onGesture = () => {
+      hasUserGesture = true;
+      if (audioContext && audioContext.state === "suspended") {
+        try {
+          audioContext.resume().catch(() => {});
+        } catch {}
+      }
+      try {
+        window.removeEventListener("pointerdown", onGesture, true);
+        window.removeEventListener("keydown", onGesture, true);
+        window.removeEventListener("touchstart", onGesture, true);
+      } catch {}
+    };
+    try {
+      window.addEventListener("pointerdown", onGesture, { capture: true, once: true, passive: true });
+      window.addEventListener("keydown", onGesture, { capture: true, once: true, passive: true });
+      window.addEventListener("touchstart", onGesture, { capture: true, once: true, passive: true });
+    } catch {}
+  }
+}
+
+/**
  * Registry for user-defined sound synthesis functions.
  * @type {Map<string, (ctx: AudioContext, toneType: string, now: number) => void>}
  */
@@ -15,9 +44,10 @@ const customSoundPresets = new Map();
 /**
  * Lazily initialize and return a shared AudioContext.
  * Returns null in non-browser or unsupported environments.
+ * @param {boolean} [forceResume=true] - Whether to attempt resuming suspended AudioContext
  * @returns {AudioContext | null}
  */
-function getAudioContext() {
+export function getAudioContext(forceResume = true) {
   if (typeof window === "undefined") return null;
   const AudioCtx = window.AudioContext || window.webkitAudioContext;
   if (!AudioCtx) return null;
@@ -30,8 +60,13 @@ function getAudioContext() {
     }
   }
 
-  if (audioContext && audioContext.state === "suspended") {
-    // Resume context if suspended by browser autoplay policies
+  const hasActivation =
+    hasUserGesture ||
+    (typeof navigator !== "undefined" &&
+      navigator.userActivation &&
+      navigator.userActivation.hasBeenActive);
+
+  if (audioContext && audioContext.state === "suspended" && (forceResume || hasActivation)) {
     try {
       audioContext.resume().catch(() => {});
     } catch {}
@@ -47,7 +82,7 @@ let audioAnalyser = null;
  * @returns {AnalyserNode | null}
  */
 export function getAudioAnalyser() {
-  const ctx = getAudioContext();
+  const ctx = getAudioContext(false);
   if (!ctx || typeof ctx.createAnalyser !== "function") return null;
   if (!audioAnalyser) {
     try {
@@ -520,7 +555,37 @@ export function playTone(toneType = "info", preset) {
   if (!ctx) return;
 
   try {
+    if (ctx.state === "suspended") {
+      ctx.resume().catch(() => {});
+    }
+
     const now = ctx.currentTime;
+
+    // Check direct numeric frequency tone (e.g. 880 or "440Hz")
+    const numFreq = typeof toneType === "number" ? toneType : parseFloat(toneType);
+    if (
+      Number.isFinite(numFreq) &&
+      numFreq >= 20 &&
+      numFreq <= 20000 &&
+      (typeof toneType === "number" || /^\d+(\.\d+)?(hz)?$/i.test(String(toneType).trim()))
+    ) {
+      const osc = ctx.createOscillator();
+      const gain = ctx.createGain();
+      osc.type = "sine";
+      osc.frequency.setValueAtTime(numFreq, now);
+
+      gain.gain.setValueAtTime(0.001, now);
+      gain.gain.exponentialRampToValueAtTime(0.1, now + 0.015);
+      gain.gain.exponentialRampToValueAtTime(0.0001, now + 0.35);
+
+      osc.connect(gain);
+      routeAudio(ctx, gain);
+
+      osc.start(now);
+      osc.stop(now + 0.36);
+      return;
+    }
+
     const tone = String(toneType || "info").toLowerCase().trim();
     const activePreset = String(
       preset || getConfig().soundPreset || "modern"

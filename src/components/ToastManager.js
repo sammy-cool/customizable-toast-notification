@@ -8,8 +8,9 @@ import { setPosition } from "../utils/position.js";
 import { PausableTimer } from "../utils/PausableTimer.js";
 import { sanitizeHtml } from "../utils/html-sanitizer.js";
 import { playTone } from "../utils/audio.js";
-import { createProgressBar } from "./toast-utils-core.js";
+import { createProgressBar, createCTA, createUndoAction, createCloseButton, runToastAnimation } from "./toast-utils-core.js";
 import { createLoader } from "./loader.js";
+import { createToastIcon } from "./icons.js";
 import { getConfig, shouldReduceMotion } from "../utils/config.js";
 import { getToastBroadcaster } from "../utils/toast-broadcast.js";
 import { calculateToastPriority } from "../utils/ai-scorer.js";
@@ -281,7 +282,7 @@ export async function showToast(options = {}) {
       if (!data) throw new Error(`Active toast with key ${key} not found`);
       data.count++;
 
-      data.timer.clear();
+      data.timer?.clear();
       data.timer = createDismissTimer(data.toast, options);
       await setupPauseOnHover(data);
       await updateBadge(data);
@@ -406,9 +407,11 @@ async function createOne(options, key, initialCount) {
       }
     }
 
+    runToastAnimation(toast);
+
     const shouldPauseOnHover =
       options.pauseOnHover !== false &&
-      (options.pauseOnHover === true || !!options.cta);
+      (options.pauseOnHover === true || !!options.cta || Boolean(getConfig().pauseOnHover));
 
     const data = {
       outer,
@@ -556,6 +559,9 @@ export const noop = closeAllToasts;
 
 function createDismissTimer(toast, options) {
   const raw = Number(options?.duration);
+  if (options?.duration === Infinity || (typeof options?.duration === "number" && options?.duration <= 0)) {
+    return null;
+  }
   const duration = Number.isFinite(raw) && raw > 0 ? raw : 2500;
   const delay = duration + 5;
   const timer = new PausableTimer(async () => await closeToast(toast), delay);
@@ -571,16 +577,22 @@ async function setupPauseOnHover(data) {
   const onMouseEnter = () => {
     timer.pause();
     toast?._progressAnimation?.pause();
+    toast?._pauseUndo?.();
+    toast?.classList.add("toast-paused");
   };
   const onMouseLeave = () => {
     timer.resume();
     toast?._progressAnimation?.play();
+    toast?._resumeUndo?.();
+    toast?.classList.remove("toast-paused");
   };
 
   const onFocusIn = (e) => {
     if (e.target.matches("[tabindex], div, span, button, a")) {
       timer.pause();
       toast?._progressAnimation?.pause();
+      toast?._pauseUndo?.();
+      toast?.classList.add("toast-paused");
     }
   };
 
@@ -588,6 +600,8 @@ async function setupPauseOnHover(data) {
     if (!outer.contains(e.relatedTarget)) {
       timer.resume();
       toast?._progressAnimation?.play();
+      toast?._resumeUndo?.();
+      toast?.classList.remove("toast-paused");
     }
   };
 
@@ -691,13 +705,19 @@ export async function closeToastByKey(key) {
     if (badge) badge.remove();
 
     const animDuration = data.toast?._animationDuration ?? 400;
+    const exitDuration = Math.min(animDuration, 300);
+
     if (data.toast) {
-      data.toast.style.opacity = "0";
-      data.toast.style.transform = "translateY(20px)";
+      if (!getConfig().disableInlineStyles) {
+        data.toast.style.transition = `opacity ${exitDuration}ms ease-in, transform ${exitDuration}ms ease-in`;
+        data.toast.style.opacity = "0";
+        data.toast.style.transform = "translateY(20px)";
+      }
+      data.toast.classList.remove("active");
     }
 
     const parentContainer = data.outer?.parentElement;
-    await removeWithTransition(data.outer, data.toast, animDuration);
+    await removeWithTransition(data.outer, data.toast, exitDuration);
 
     if (
       parentContainer &&
@@ -780,7 +800,12 @@ async function removeWithTransition(el, targetEl, animationDurationMs = 400) {
     const onEnd = (e) => {
       try {
         if (e.target !== animEl) return;
-        finish();
+        if (
+          e.propertyName === "transform" ||
+          (!animEl.style.transform && e.propertyName === "opacity")
+        ) {
+          finish();
+        }
       } catch (error) {
         console.error("removeWithTransition error:", error);
       }
@@ -888,6 +913,7 @@ export async function updateToastByKey(key, newOptions = {}) {
   const data = active.get(key);
   if (!data || !data.toast) return;
 
+  const prevOptions = { ...data.options };
   data.options = { ...data.options, ...newOptions };
   const toast = data.toast;
   const messageSpan =
@@ -903,13 +929,18 @@ export async function updateToastByKey(key, newOptions = {}) {
         ? Boolean(newOptions.allowHtml)
         : Boolean(data.options.allowHtml);
 
+    const isFinishingLoading =
+      (newOptions.type === "success" || newOptions.type === "error") &&
+      newOptions.showLoader !== true;
+
     if (messageSpan) {
       const existingLoader = messageSpan.querySelector(".toast-loader");
       messageSpan.innerHTML = "";
       if (
         existingLoader &&
         newOptions.showLoader !== false &&
-        newOptions.loader !== null
+        newOptions.loader !== null &&
+        !isFinishingLoading
       ) {
         messageSpan.appendChild(existingLoader);
         const spacer = document.createElement("span");
@@ -933,15 +964,20 @@ export async function updateToastByKey(key, newOptions = {}) {
         messageSpan.appendChild(document.createTextNode(rawMessage));
       }
 
-      messageSpan.setAttribute(
-        "title",
-        rawMessage.replace(/<[^>]+>/g, "")
-      );
+      messageSpan.setAttribute("title", messageSpan.textContent || "");
     }
   }
 
   // 2. Handle Loader
-  if (newOptions.showLoader === false || newOptions.loader === null) {
+  const isFinishingLoading =
+    (newOptions.type === "success" || newOptions.type === "error") &&
+    newOptions.showLoader !== true;
+
+  if (
+    newOptions.showLoader === false ||
+    newOptions.loader === null ||
+    isFinishingLoading
+  ) {
     const loaderEl = messageSpan?.querySelector(".toast-loader");
     if (loaderEl) {
       if (loaderEl.nextSibling && loaderEl.nextSibling.nodeName === "SPAN") {
@@ -970,6 +1006,14 @@ export async function updateToastByKey(key, newOptions = {}) {
       /\btoast-(info|success|error|warning)\b/g,
       `toast-${newType}`,
     );
+    const isErr = newType === "error";
+    if (newOptions.role) {
+      toast.setAttribute("role", newOptions.role);
+    } else {
+      toast.setAttribute("role", "alert");
+    }
+    toast.setAttribute("aria-live", newOptions.ariaLive || (isErr ? "assertive" : "polite"));
+
     if (!newOptions.backgroundColor) {
       const typeColors = {
         success: "#28a745",
@@ -979,6 +1023,21 @@ export async function updateToastByKey(key, newOptions = {}) {
       };
       if (typeColors[newType]) {
         toast.style.background = typeColors[newType];
+      }
+    }
+  }
+
+  // 3.1 Update icon
+  if (newOptions.icon !== undefined || newOptions.type !== undefined) {
+    const existingIcon = toast?.querySelector(".toast-icon");
+    if (existingIcon) existingIcon.remove();
+    const mergedForIcon = { ...data.options, ...newOptions };
+    const newIconEl = createToastIcon(mergedForIcon);
+    if (newIconEl) {
+      if (messageSpan) {
+        toast.insertBefore(newIconEl, messageSpan);
+      } else {
+        toast.appendChild(newIconEl);
       }
     }
   }
@@ -999,7 +1058,60 @@ export async function updateToastByKey(key, newOptions = {}) {
     }
   }
 
-  // 4. Update Progress Bar
+  if (newOptions.borderRadius !== undefined) {
+    const br = typeof newOptions.borderRadius === "number" ? `${newOptions.borderRadius}px` : newOptions.borderRadius;
+    toast.style.borderRadius = br;
+  }
+
+  if (newOptions.maxWidth !== undefined) {
+    const mw = typeof newOptions.maxWidth === "number" ? `${newOptions.maxWidth}px` : newOptions.maxWidth;
+    toast.style.maxWidth = mw;
+  }
+
+  if (newOptions.fontDirection !== undefined) {
+    const dir = newOptions.fontDirection !== "auto" ? newOptions.fontDirection : "";
+    toast.style.direction = dir;
+    if (messageSpan) messageSpan.style.direction = dir;
+  }
+
+  if (newOptions.fontSize !== undefined) {
+    const fs = typeof newOptions.fontSize === "number" ? `${newOptions.fontSize}px` : newOptions.fontSize;
+    toast.style.fontSize = fs;
+    if (messageSpan) messageSpan.style.fontSize = fs;
+  }
+
+  if (newOptions.fontFamily !== undefined) {
+    toast.style.fontFamily = newOptions.fontFamily;
+    if (messageSpan) messageSpan.style.fontFamily = newOptions.fontFamily;
+  }
+
+  if (newOptions.fontWeight !== undefined) {
+    const fw = typeof newOptions.fontWeight === "number" ? String(newOptions.fontWeight) : newOptions.fontWeight;
+    toast.style.fontWeight = fw;
+    if (messageSpan) messageSpan.style.fontWeight = fw;
+  }
+
+  if (newOptions.fontLineHeight !== undefined) {
+    toast.style.lineHeight = newOptions.fontLineHeight;
+    if (messageSpan) messageSpan.style.lineHeight = newOptions.fontLineHeight;
+  }
+
+  if (newOptions.role !== undefined) {
+    toast.setAttribute("role", newOptions.role);
+  }
+  if (newOptions.ariaLive !== undefined) {
+    toast.setAttribute("aria-live", newOptions.ariaLive);
+  }
+
+  if (newOptions.className !== undefined) {
+    const prevClass = prevOptions.className;
+    if (prevClass && typeof prevClass === "string") {
+      toast.classList.remove(...prevClass.trim().split(/\s+/));
+    }
+    if (newOptions.className && typeof newOptions.className === "string") {
+      toast.classList.add(...newOptions.className.trim().split(/\s+/));
+    }
+  }
   if (newOptions.progress !== undefined) {
     let pct = Number(newOptions.progress);
     if (!Number.isFinite(pct)) pct = 0;
@@ -1035,11 +1147,73 @@ export async function updateToastByKey(key, newOptions = {}) {
     const raw = Number(newOptions.duration);
     if (Number.isFinite(raw) && raw > 0) {
       data.timer = createDismissTimer(toast, { duration: raw });
+      await setupPauseOnHover(data);
+    } else {
+      data.timer = null;
+    }
+  } else if (
+    (data.options.duration === 0 || !data.timer) &&
+    (newOptions.type === "success" ||
+      newOptions.type === "error" ||
+      newOptions.type === "warning" ||
+      newOptions.showLoader === false)
+  ) {
+    // If it was a persistent loading toast (duration: 0) and transitioned to a resolved state
+    // without an explicit duration, start a standard auto-dismiss timer so it doesn't stay permanently stuck on screen.
+    data.timer?.clear();
+    data.timer = createDismissTimer(toast, { duration: 2500 });
+    await setupPauseOnHover(data);
+  }
+
+  // 5.1 Update CTA
+  if (newOptions.cta !== undefined) {
+    if (toast._cleanupCTA) {
+      toast._cleanupCTA();
+      toast._cleanupCTA = null;
+    }
+    toast.querySelectorAll(".toast-cta").forEach((el) => el.remove());
+
+    if (newOptions.cta && typeof newOptions.cta === "object") {
+      const mergedOpts = { ...data.options, ...newOptions };
+      createCTA(toast, mergedOpts, closeToast);
+    }
+  }
+
+  // 5.2 Update Undo Action
+  if (newOptions.undo !== undefined) {
+    if (toast._cleanupUndo) {
+      toast._cleanupUndo();
+      toast._cleanupUndo = null;
+    }
+    toast.querySelectorAll(".toast-undo-btn").forEach((el) => el.remove());
+
+    if (newOptions.undo) {
+      const mergedOpts = { ...data.options, ...newOptions };
+      createUndoAction(toast, mergedOpts, closeToast);
+    }
+  }
+
+  // 5.3 Update Close Button
+  if (newOptions.showCloseButton !== undefined) {
+    const existingCloseBtn = toast.querySelector(".toast-close-btn");
+    if (newOptions.showCloseButton === false) {
+      if (toast._cleanupCloseButton) {
+        toast._cleanupCloseButton();
+        toast._cleanupCloseButton = null;
+      }
+      if (existingCloseBtn) existingCloseBtn.remove();
+    } else if (newOptions.showCloseButton === true && !existingCloseBtn) {
+      createCloseButton(toast, data.options, closeToast);
     }
   }
 
   // 6. Audio Tone
-  if (newOptions.sound) {
+  const shouldPlayAudio =
+    newOptions.sound !== undefined
+      ? Boolean(newOptions.sound)
+      : Boolean(newOptions.type && (data.options.sound || getConfig().sound));
+
+  if (shouldPlayAudio) {
     const tone =
       typeof newOptions.sound === "string"
         ? newOptions.sound
@@ -1057,5 +1231,8 @@ export async function updateToastByKey(key, newOptions = {}) {
   if (container && container.getAttribute("data-stacked") === "true") {
     updateStackedLayout(container);
   }
+
+  // 8. Synchronize options state
+  Object.assign(data.options, newOptions);
 }
 

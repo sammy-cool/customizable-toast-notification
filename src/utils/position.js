@@ -9,8 +9,12 @@ const DOCUMENTED_POSITIONS = new Set([
   "bottom-right",
   "top-center",
   "bottom-center",
+  "center-top",
+  "center-bottom",
   "left-center",
   "right-center",
+  "center-left",
+  "center-right",
   "top-full-width",
   "bottom-full-width",
   "center",
@@ -70,13 +74,12 @@ function resetContainerStyles(container) {
 function parsePosition(position) {
   const pos = position.toLowerCase().trim();
 
-  const hasTop = pos.startsWith("top");
-  const hasBottom = pos.startsWith("bottom") || pos.startsWith("below");
-  const hasLeft = pos.startsWith("left");
-  const hasRight = pos.startsWith("right");
-  const hasCenter = pos === "center" || (pos.includes("center") && !pos.includes("left") && !pos.includes("right") && !pos.includes("top") && !pos.includes("bottom"));
-
   const isFullWidth = pos === "top-full-width" || pos === "bottom-full-width";
+  const hasTop = pos.startsWith("top") || pos.endsWith("top");
+  const hasBottom = pos.startsWith("bottom") || pos.endsWith("bottom") || pos.includes("below");
+  const hasLeft = pos.startsWith("left") || pos.endsWith("left");
+  const hasRight = pos.startsWith("right") || pos.endsWith("right");
+  const hasCenter = pos.includes("center");
 
   return {
     hasTop,
@@ -96,7 +99,9 @@ function handleFullWidthPositions(container, options, flags) {
     if (options && !options.maxWidth && !Object.isFrozen(options)) {
       options.maxWidth = "100vw";
     }
-  } catch {}
+  } catch {
+    // ignore frozen or read-only options objects
+  }
 
   if (flags.hasTop) {
     container.style.top = "10px";

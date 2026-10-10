@@ -48,13 +48,22 @@ const ALLOWED_ATTRS = new Set([
   "loading",
 ]);
 
-const BLOCKED_TAGS_REGEX = /<\/?(script|iframe|object|embed|link|meta|style|form|input|button|svg|math|video|audio|details|dialog|applet|frame|frameset|textarea|select|option|optgroup|fieldset|legend|datalist|output|progress|meter|keygen|canvas|map|area|base|basefont|bgsound|blink|center|dir|font|hgroup|isindex|listing|marquee|multicol|nextid|noembed|noframes|plaintext|rb|rtc|spacer|strike|tt|xmp)[^>]*>/gi;
+const DISCARDED_TAGS = new Set([
+  "SCRIPT",
+  "STYLE",
+  "IFRAME",
+  "NOSCRIPT",
+  "OBJECT",
+  "EMBED",
+  "SVG",
+  "MATH",
+  "AUDIO",
+  "VIDEO",
+  "CANVAS",
+  "TEMPLATE",
+]);
 
-const EVENT_HANDLER_REGEX = /\s(on\w+)\s*=\s*(['"])[\s\S]*?\2/gi;
-
-const JAVASCRIPT_URI_REGEX = /(href|src)\s*=\s*(['"])\s*javascript:[^'"]*\2/gi;
-
-const ALLOWED_URI_REGEX = /^\s*(https?:|data:image\/)/i;
+const ALLOWED_URI_REGEX = /^\s*(?:https?:|mailto:|data:image\/(?:png|jpe?g|gif|webp|avif|bmp|ico);|\/|\.\/|\.\.\/|#)/i;
 
 export function hasDOMPurify() {
   try {
@@ -68,17 +77,40 @@ function sanitizeAttributes(el, allowedAttrs) {
   Array.from(el.attributes || []).forEach((attr) => {
     const name = attr.name.toLowerCase();
     const val = attr.value;
-    if (!allowedAttrs.has(name)) {
-      attrsToRemove.push(name);
+    if (!allowedAttrs.has(name) || name.startsWith("on")) {
+      attrsToRemove.push(attr.name);
       return;
     }
-    if ((name === "href" || name === "src") && /^\s*javascript:/i.test(val)) {
-      attrsToRemove.push(name);
-      return;
-    }
-    if (name === "src" && !/^\s*(https?:|data:image\/)/i.test(val)) {
-      attrsToRemove.push(name);
-      return;
+    if (name === "href" || name === "src") {
+      const trimmedVal = typeof val === "string" ? val.trim().toLowerCase() : "";
+      if (
+        trimmedVal.startsWith("javascript:") ||
+        trimmedVal.startsWith("vbscript:") ||
+        trimmedVal.startsWith("data:")
+      ) {
+        if (
+          name === "src" &&
+          trimmedVal.startsWith("data:image/") &&
+          !trimmedVal.startsWith("data:image/svg+xml")
+        ) {
+          // Allowed raster image data URI for <img> tags
+        } else {
+          if (name === "href") {
+            el.setAttribute("href", "#");
+            return;
+          }
+          attrsToRemove.push(attr.name);
+          return;
+        }
+      }
+      if (!ALLOWED_URI_REGEX.test(val)) {
+        if (name === "href") {
+          el.setAttribute("href", "#");
+          return;
+        }
+        attrsToRemove.push(attr.name);
+        return;
+      }
     }
     if (name === "target" && val === "_blank") {
       const rel = (el.getAttribute("rel") || "").split(/\s+/).filter(Boolean);
@@ -88,6 +120,13 @@ function sanitizeAttributes(el, allowedAttrs) {
     }
   });
   attrsToRemove.forEach((name) => el.removeAttribute(name));
+
+  if (el.tagName === "A" && el.getAttribute("target") === "_blank") {
+    const rel = (el.getAttribute("rel") || "").split(/\s+/).filter(Boolean);
+    if (!rel.includes("noopener")) rel.push("noopener");
+    if (!rel.includes("noreferrer")) rel.push("noreferrer");
+    el.setAttribute("rel", rel.join(" "));
+  }
 }
 
 function sanitizeNode(node, allowedTags, allowedAttrs) {
@@ -101,6 +140,14 @@ function sanitizeNode(node, allowedTags, allowedAttrs) {
     return null;
   }
   const tag = node.tagName.toUpperCase();
+  if (
+    DISCARDED_TAGS.has(tag) ||
+    tag.includes("SCRIPT") ||
+    tag.includes("<") ||
+    tag.includes(">")
+  ) {
+    return null;
+  }
   if (!allowedTags.has(tag)) {
     const frag = document.createDocumentFragment();
     Array.from(node.childNodes).forEach((child) => {
@@ -121,18 +168,32 @@ function sanitizeNode(node, allowedTags, allowedAttrs) {
   return el;
 }
 
+function parseHtmlInert(html) {
+  if (typeof DOMParser !== "undefined") {
+    try {
+      const parser = new DOMParser();
+      const doc = parser.parseFromString(html, "text/html");
+      if (doc && doc.body) return doc.body;
+    } catch {}
+  }
+  if (typeof document !== "undefined") {
+    const template = document.createElement("template");
+    if ("content" in template) {
+      template.innerHTML = html;
+      return template.content;
+    }
+    const div = document.createElement("div");
+    div.innerHTML = html;
+    return div;
+  }
+  return null;
+}
+
 export function fallbackSanitize(dirty) {
   if (!dirty || typeof dirty !== "string") return "";
 
-  let step1 = dirty.replace(BLOCKED_TAGS_REGEX, "");
-  step1 = step1.replace(EVENT_HANDLER_REGEX, "");
-  step1 = step1.replace(
-    JAVASCRIPT_URI_REGEX,
-    "$1=$2#$2",
-  );
-
-  const container = document.createElement("div");
-  container.innerHTML = step1;
+  const container = parseHtmlInert(dirty);
+  if (!container) return "";
 
   const outFrag = document.createDocumentFragment();
   Array.from(container.childNodes).forEach((child) => {

@@ -21,6 +21,7 @@
     <div class="btn-grid">
       <button class="solid-btn" id="solidSuccess">Solid Success</button>
       <button class="solid-btn" id="solidUndo">Solid Undo</button>
+      <button class="solid-btn" id="solidMultiCTA" style="grid-column: span 2; background: #0284c7;">👥 Multi-Action CTA (Allow / Block)</button>
     </div>
   </div>
 
@@ -37,6 +38,16 @@
       toast.warning("File moved to trash", {
         duration: 5000,
         undo: { label: "Restore", showCountdown: true, onUndo: () => console.log("Restored!") }
+      });
+    });
+
+    document.getElementById("solidMultiCTA").addEventListener("click", () => {
+      toast.info("Cookie permissions required", {
+        duration: 8000,
+        cta: [
+          { label: "Allow", onClick: () => toast.success("Cookies allowed!") },
+          { label: "Block", autoClose: true, onClick: () => toast.warning("Cookies blocked.") }
+        ]
       });
     });
   </script>

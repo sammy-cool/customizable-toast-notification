@@ -5,7 +5,9 @@ export function createCTA(toast, options, onClose) {
   const rawCfg = options?.cta;
   if (!rawCfg || typeof rawCfg !== "object") return;
 
-  const configs = Array.isArray(rawCfg) ? rawCfg.filter(Boolean) : [rawCfg];
+  const configs = Array.isArray(rawCfg)
+    ? rawCfg.filter((item) => item && typeof item === "object")
+    : [rawCfg];
   if (configs.length === 0) return;
 
   const cleanups = [];
@@ -22,7 +24,12 @@ export function createCTA(toast, options, onClose) {
     const el = document.createElement(isLink ? "a" : "button");
 
     if (isLink) {
-      el.href = cfg.href;
+      if (cfg.href) {
+        el.href = cfg.href;
+      } else {
+        el.setAttribute("role", "button");
+        el.tabIndex = 0;
+      }
       if (cfg.target) el.target = cfg.target;
       el.rel = cfg.rel || (cfg.target === "_blank" ? "noopener noreferrer" : "");
     } else {
@@ -31,10 +38,17 @@ export function createCTA(toast, options, onClose) {
 
     el.setAttribute("aria-label", cfg.ariaLabel || cfg.label);
 
-    const ctaTextColor = options.textColor || getDynamicAccessibleTextColorHex(options.backgroundColor);
-    const ctaBgColor = options.backgroundColor
-      ? getContrastBackground(options.backgroundColor)
-      : "rgba(255,255,255,0.15)";
+    const ctaTextColor =
+      cfg.textColor ||
+      cfg.color ||
+      options.textColor ||
+      getDynamicAccessibleTextColorHex(options.backgroundColor);
+    const ctaBgColor =
+      cfg.backgroundColor ||
+      cfg.background ||
+      (options.backgroundColor
+        ? getContrastBackground(options.backgroundColor)
+        : "rgba(255,255,255,0.15)");
 
     const isHex6 = typeof ctaTextColor === "string" && /^#[0-9a-fA-F]{6}$/.test(ctaTextColor.trim());
     const ctaBorderColor = isHex6 ? `${ctaTextColor.trim()}44` : "rgba(128, 128, 128, 0.3)";
@@ -74,13 +88,36 @@ export function createCTA(toast, options, onClose) {
       }
     };
 
-    el.addEventListener("click", onClick);
+    const onKeyDown = (e) => {
+      if (isLink && !cfg.href && (e.key === "Enter" || e.key === " ")) {
+        e.preventDefault();
+        onClick(e);
+      }
+    };
 
-    const cleanupItem = () => el.removeEventListener("click", onClick);
+    el.addEventListener("click", onClick);
+    if (isLink && !cfg.href) {
+      el.addEventListener("keydown", onKeyDown);
+    }
+
+    const cleanupItem = () => {
+      el.removeEventListener("click", onClick);
+      if (isLink && !cfg.href) {
+        el.removeEventListener("keydown", onKeyDown);
+      }
+    };
     el._cleanup = cleanupItem;
     cleanups.push(cleanupItem);
 
-    toast.appendChild(el);
+    const insertTarget =
+      toast.querySelector(".toast-undo-btn") ||
+      toast.querySelector(".toast-close-btn") ||
+      toast.querySelector(".toast-progress-bar");
+    if (insertTarget) {
+      toast.insertBefore(el, insertTarget);
+    } else {
+      toast.appendChild(el);
+    }
   });
 
   const prevCleanup = toast._cleanupCTA;
@@ -164,8 +201,10 @@ export function createUndoAction(toast, options, onClose) {
   updateLabel();
 
   let intervalId = null;
+  let isPaused = false;
   if (showCountdown) {
     intervalId = setInterval(() => {
+      if (isPaused) return;
       remainingSec = Math.max(0, remainingSec - 1);
       updateLabel();
       if (remainingSec <= 0 && intervalId) {
@@ -178,11 +217,20 @@ export function createUndoAction(toast, options, onClose) {
     }
   }
 
+  toast._pauseUndo = () => {
+    isPaused = true;
+  };
+  toast._resumeUndo = () => {
+    isPaused = false;
+  };
+
   const cleanupTimer = () => {
     if (intervalId) {
       clearInterval(intervalId);
       intervalId = null;
     }
+    toast._pauseUndo = null;
+    toast._resumeUndo = null;
   };
 
   const onClick = async (e) => {
@@ -213,11 +261,19 @@ export function createUndoAction(toast, options, onClose) {
     btn.removeEventListener("click", onClick);
   };
 
-  toast.appendChild(btn);
+  const insertTarget =
+    toast.querySelector(".toast-close-btn") ||
+    toast.querySelector(".toast-progress-bar");
+  if (insertTarget) {
+    toast.insertBefore(btn, insertTarget);
+  } else {
+    toast.appendChild(btn);
+  }
 }
 
 export function createCloseButton(toast, options, onClose) {
   const closeBtn = document.createElement("button");
+  closeBtn.type = "button";
   closeBtn.setAttribute("aria-label", "Close notification");
   closeBtn.setAttribute("title", "Close");
   closeBtn.textContent = "×";
@@ -266,9 +322,27 @@ export function createProgressBar(toast, options) {
   const borderRadiusStr = options.borderRadius || "0";
   const borderRadiusNum = parseInt(borderRadiusStr, 10);
 
-  const progressHeightPx = parseInt(options.progressHeight, 10) || 4;
+  let progressHeightPx = 4;
+  let progressHeightStyle = "4px";
+  if (typeof options.progressHeight === "number" && Number.isFinite(options.progressHeight) && options.progressHeight > 0) {
+    progressHeightPx = options.progressHeight;
+    progressHeightStyle = `${progressHeightPx}px`;
+  } else if (typeof options.progressHeight === "string" && options.progressHeight.trim()) {
+    const trimmed = options.progressHeight.trim();
+    const parsedFloat = parseFloat(trimmed);
+    if (Number.isFinite(parsedFloat) && parsedFloat > 0) {
+      if (trimmed.endsWith("rem") || trimmed.endsWith("em")) {
+        progressHeightPx = parsedFloat * 16;
+        progressHeightStyle = trimmed;
+      } else {
+        progressHeightPx = parsedFloat;
+        progressHeightStyle = /^\d+(\.\d+)?$/.test(trimmed) ? `${parsedFloat}px` : trimmed;
+      }
+    }
+  }
+
   const duration = Number(options.duration ?? 2500);
-  const progressDuration = duration + 5;
+  const progressDuration = Math.max(0, duration + 5);
 
   const leftOffset = Math.min(borderRadiusNum, progressHeightPx * 2);
   const finalWidth = borderRadiusNum > 0
@@ -279,7 +353,7 @@ export function createProgressBar(toast, options) {
     Object.assign(progressBar.style, {
     position: "absolute",
     left: `${leftOffset}px`,
-    height: `${progressHeightPx}px`,
+    height: progressHeightStyle,
     background: options.progressColor || "currentColor",
     width: `${finalWidth}`,
     transition: `width ${progressDuration}ms linear`,
@@ -298,6 +372,11 @@ export function createProgressBar(toast, options) {
     pct = Math.min(100, Math.max(0, pct));
     progressBar.style.width = `${pct}%`;
     progressBar.style.transition = "width 200ms ease";
+    return;
+  }
+
+  if (options.duration === 0 || options.duration === Infinity) {
+    progressBar.style.width = "0%";
     return;
   }
 
@@ -322,16 +401,47 @@ export function createProgressBar(toast, options) {
 }
 
 export function runToastAnimation(toast) {
+  if (!toast) return;
+  if (toast._hasAnimated) return;
+
   if (shouldReduceMotion()) {
+    toast._hasAnimated = true;
     toast.style.transition = "none";
     toast.style.opacity = "1";
     toast.style.transform = "translateY(0)";
+    toast.classList.add("active");
     return;
   }
-  requestAnimationFrame(() => {
-    toast.style.opacity = "1";
-    toast.style.transform = "translateY(0)";
-  });
+
+  const trigger = () => {
+    if (toast._hasAnimated) return;
+    toast._hasAnimated = true;
+    // Force browser layout/reflow so initial styles (opacity: 0, translateY) are committed to render tree
+    try {
+      void toast.offsetHeight;
+    } catch {}
+
+    requestAnimationFrame(() => {
+      toast.style.opacity = "1";
+      toast.style.transform = "translateY(0)";
+      toast.classList.add("active");
+    });
+  };
+
+  if (toast.isConnected) {
+    trigger();
+  } else {
+    // If not yet connected to the DOM, defer to next frame when container.appendChild has occurred
+    requestAnimationFrame(() => {
+      if (toast.isConnected) {
+        trigger();
+      } else {
+        requestAnimationFrame(() => {
+          trigger();
+        });
+      }
+    });
+  }
 }
 
 export function attachSwipeToDismiss(toast, onClose) {
@@ -343,6 +453,7 @@ export function attachSwipeToDismiss(toast, onClose) {
   let startTime = 0;
   let isDragging = false;
   let isHorizontal = false;
+  let touchId = null;
 
   let isWindowListening = false;
 
@@ -356,7 +467,21 @@ export function attachSwipeToDismiss(toast, onClose) {
 
   const onPointerDown = (e) => {
     if (!e) return;
-    const ev = e.touches ? e.touches[0] : e;
+    const target = e.target;
+    if (
+      target &&
+      typeof target.closest === "function" &&
+      target.closest("button, a, input, textarea, select, label")
+    ) {
+      return;
+    }
+    let ev = e;
+    if (e.touches && e.touches.length > 0) {
+      ev = e.touches[0];
+      touchId = ev.identifier ?? null;
+    } else {
+      touchId = null;
+    }
     startX = ev.clientX;
     startY = ev.clientY;
     currentX = startX;
@@ -375,7 +500,19 @@ export function attachSwipeToDismiss(toast, onClose) {
 
   const onPointerMove = (e) => {
     if (!isDragging || !e) return;
-    const ev = e.touches ? e.touches[0] : e;
+    let ev = e;
+    if (e.touches) {
+      if (touchId !== null) {
+        for (let i = 0; i < e.touches.length; i++) {
+          if (e.touches[i].identifier === touchId) {
+            ev = e.touches[i];
+            break;
+          }
+        }
+      } else if (e.touches.length > 0) {
+        ev = e.touches[0];
+      }
+    }
     const x = ev.clientX;
     const y = ev.clientY;
     const dx = x - startX;
@@ -404,6 +541,7 @@ export function attachSwipeToDismiss(toast, onClose) {
 
   const onPointerEnd = () => {
     cleanupWindowListeners();
+    touchId = null;
     if (!isDragging || !isHorizontal) {
       isDragging = false;
       toast.style.userSelect = "";
@@ -414,7 +552,7 @@ export function attachSwipeToDismiss(toast, onClose) {
 
     const dx = currentX - startX;
     const duration = Math.max(1, Date.now() - startTime);
-    const velocity = Math.abs(dx) / duration; // px/ms
+    const velocity = duration > 0 ? Math.abs(dx) / duration : 0; // px/ms
     const isFlick = velocity >= 0.65 && Math.abs(dx) >= 50;
     const threshold = isFlick ? 50 : 75;
 
