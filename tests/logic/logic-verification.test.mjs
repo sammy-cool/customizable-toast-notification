@@ -3551,20 +3551,25 @@ describe("Phase 3 Architecture & Contract Verification: ARIA Live, Per-CTA Color
     await new Promise((r) => setTimeout(r, 60));
     const toast = document.querySelector(".toast");
     assert.ok(toast);
-    assert.strictEqual(toast.getAttribute("role"), "status");
+    assert.strictEqual(toast.getAttribute("role"), "alert");
     assert.strictEqual(toast.getAttribute("aria-live"), "polite");
 
-    // Transition in-place to error: role becomes alert, aria-live becomes assertive
+    // Transition in-place to error: role remains alert, aria-live becomes assertive
     await handle.update({ type: "error", message: "Task failed" });
     await new Promise((r) => setTimeout(r, 60));
     assert.strictEqual(toast.getAttribute("role"), "alert");
     assert.strictEqual(toast.getAttribute("aria-live"), "assertive");
 
-    // Transition back to success: role becomes status, aria-live becomes polite
+    // Transition back to success: role remains alert, aria-live becomes polite
     await handle.update({ type: "success", message: "Task recovered" });
     await new Promise((r) => setTimeout(r, 60));
-    assert.strictEqual(toast.getAttribute("role"), "status");
+    assert.strictEqual(toast.getAttribute("role"), "alert");
     assert.strictEqual(toast.getAttribute("aria-live"), "polite");
+
+    // Can explicitly customize role if desired
+    await handle.update({ role: "status" });
+    await new Promise((r) => setTimeout(r, 60));
+    assert.strictEqual(toast.getAttribute("role"), "status");
 
     await handle.dismiss();
   });

@@ -90,8 +90,10 @@ export async function applyRichStyling(toast, options, onClose) {
   }
 
   const isError = options?.type === "error";
-  toast.setAttribute("role", isError ? "alert" : "status");
-  toast.setAttribute("aria-live", isError ? "assertive" : "polite");
+  const role = options?.role || (isError ? "alert" : (options?.role ?? "alert"));
+  const ariaLive = options?.ariaLive || (isError ? "assertive" : "polite");
+  toast.setAttribute("role", role);
+  toast.setAttribute("aria-live", ariaLive);
   toast.tabIndex = 0;
   toast._animationDuration = durationMs;
 

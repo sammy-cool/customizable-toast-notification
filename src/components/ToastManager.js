@@ -1007,8 +1007,12 @@ export async function updateToastByKey(key, newOptions = {}) {
       `toast-${newType}`,
     );
     const isErr = newType === "error";
-    toast.setAttribute("role", isErr ? "alert" : "status");
-    toast.setAttribute("aria-live", isErr ? "assertive" : "polite");
+    if (newOptions.role) {
+      toast.setAttribute("role", newOptions.role);
+    } else {
+      toast.setAttribute("role", "alert");
+    }
+    toast.setAttribute("aria-live", newOptions.ariaLive || (isErr ? "assertive" : "polite"));
 
     if (!newOptions.backgroundColor) {
       const typeColors = {
@@ -1090,6 +1094,13 @@ export async function updateToastByKey(key, newOptions = {}) {
   if (newOptions.fontLineHeight !== undefined) {
     toast.style.lineHeight = newOptions.fontLineHeight;
     if (messageSpan) messageSpan.style.lineHeight = newOptions.fontLineHeight;
+  }
+
+  if (newOptions.role !== undefined) {
+    toast.setAttribute("role", newOptions.role);
+  }
+  if (newOptions.ariaLive !== undefined) {
+    toast.setAttribute("aria-live", newOptions.ariaLive);
   }
 
   if (newOptions.className !== undefined) {
