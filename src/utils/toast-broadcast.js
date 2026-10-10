@@ -155,10 +155,19 @@ class ToastBroadcaster {
 
     const { type, toastId, payload } = message;
 
-    // Handle leader election
-    if (type === 'leader-elected' && !this.isLeadTab) {
-      this.isLeadTab = false; // Another tab is leader
+    // Handle leader election: cancel pending election timer if another tab is already leader
+    if (type === 'leader-elected') {
+      if (this.leaderTimer) {
+        clearTimeout(this.leaderTimer);
+        this.leaderTimer = null;
+      }
+      this.isLeadTab = false;
       return;
+    }
+
+    if (type === 'sync-response' && this.leaderTimer) {
+      clearTimeout(this.leaderTimer);
+      this.leaderTimer = null;
     }
 
     // Handle sync requests

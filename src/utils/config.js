@@ -33,6 +33,7 @@
  * @property {boolean} swipeToDismiss
  * @property {boolean} sound
  * @property {'modern' | 'retro' | 'futuristic' | 'subtle' | 'bell' | string} [soundPreset]
+ * @property {boolean} [pauseOnHover]
  * @property {boolean} syncTabs
  * @property {boolean} aiPrioritization
  * @property {boolean} [debug]
@@ -53,6 +54,7 @@ const DEFAULT_GLOBAL_CONFIG = Object.freeze({
   swipeToDismiss: true,
   sound: true,
   soundPreset: "modern",
+  pauseOnHover: false,
   syncTabs: false,
   aiPrioritization: false,
   priorityScorer: null,
@@ -89,6 +91,7 @@ export function setConfig(options = {}) {
     swipeToDismiss,
     sound,
     soundPreset,
+    pauseOnHover,
     syncTabs,
     aiPrioritization,
     priorityScorer,
@@ -175,6 +178,10 @@ export function setConfig(options = {}) {
     if (sp) {
       globalConfig.soundPreset = sp;
     }
+  }
+
+  if (pauseOnHover !== undefined) {
+    globalConfig.pauseOnHover = Boolean(pauseOnHover);
   }
 
   if (syncTabs !== undefined) {

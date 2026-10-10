@@ -206,7 +206,7 @@ export function calculateSwipe(state) {
   }
 
   const startTouch = state.startTouches[0];
-  const currentTouch = state.touches[0];
+  const currentTouch = state.touches.find((t) => t.id === startTouch.id) || state.touches[0];
 
   const distance = currentTouch.x - startTouch.x;
   const duration = Date.now() - state.startTime;

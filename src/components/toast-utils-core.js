@@ -329,6 +329,11 @@ export function createProgressBar(toast, options) {
     return;
   }
 
+  if (options.duration === 0 || options.duration === Infinity) {
+    progressBar.style.width = "0%";
+    return;
+  }
+
   if (shouldReduceMotion()) {
     progressBar.style.display = "none";
   } else if (typeof progressBar.animate === "function") {

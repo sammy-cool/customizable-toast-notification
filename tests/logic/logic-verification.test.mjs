@@ -3159,4 +3159,145 @@ describe("icons.js & UI/UX enhancements — Toast status icons and hotkey naviga
   });
 });
 
+describe("Hardenings — ai-scorer, broadcast, pool, multi-touch, and global pauseOnHover", () => {
+  test("ai-scorer.js: word-boundary matching prevents false positive substring collisions", async () => {
+    const { calculateToastPriority, categorizeToast } = await import("../../src/utils/ai-scorer.js");
+
+    // "debug" contains "bug", but is NOT a critical bug report on its own
+    const debugResult = calculateToastPriority({
+      type: "info",
+      message: "Debug logs printed to console",
+      duration: 3000,
+    });
+    assert.strictEqual(debugResult.keywords.includes("bug"), false, "'debug' must not falsely match keyword 'bug'");
+
+    // Actual "bug" matches
+    const bugResult = calculateToastPriority({
+      type: "error",
+      message: "Critical bug found in production",
+      duration: 3000,
+    });
+    assert.strictEqual(bugResult.keywords.includes("bug"), true, "Whole word 'bug' must match");
+
+    // "download" contains "down", but routine download is not an outage
+    const downloadResult = calculateToastPriority({
+      type: "info",
+      message: "Download complete and ready",
+      duration: 3000,
+    });
+    assert.strictEqual(downloadResult.keywords.includes("down"), false, "'download' must not falsely match keyword 'down'");
+
+    // Actual system down matches
+    const downResult = calculateToastPriority({
+      type: "error",
+      message: "Server is down immediately",
+      duration: 3000,
+    });
+    assert.strictEqual(downResult.keywords.includes("down"), true, "Whole word 'down' must match");
+
+    // categorizeToast: "guide", "fruit", "building" must not trigger "ui" category
+    const catGuide = categorizeToast("Developer guide and building manual");
+    assert.strictEqual(catGuide.includes("ui"), false, "'guide' or 'building' must not trigger 'ui' category");
+
+    const catUI = categorizeToast("Modern UI layout refreshed");
+    assert.strictEqual(catUI.includes("ui"), true, "Actual 'UI' word must match");
+  });
+
+  test("toast-broadcast.js: cancels pending leader election timer when leader-elected is received", async () => {
+    const { ToastBroadcaster } = await import("../../src/utils/toast-broadcast.js");
+    const broadcaster = new ToastBroadcaster();
+
+    // Verify leaderTimer is set upon election attempt
+    broadcaster._becomeLeadIfNeeded();
+    assert.ok(broadcaster.leaderTimer, "Leader timer must be scheduled");
+
+    // Simulate incoming message from existing leader tab
+    broadcaster._handleMessage({
+      type: "leader-elected",
+      toastId: "",
+      payload: { tabId: "tab-other-leader" },
+      timestamp: Date.now(),
+      tabId: "tab-other-leader",
+    });
+
+    assert.strictEqual(broadcaster.leaderTimer, null, "Leader timer must be cancelled to prevent split-brain");
+    assert.strictEqual(broadcaster.isLeadTab, false, "Must not be lead tab");
+    broadcaster.destroy();
+  });
+
+  test("toast-pool.js: acquire and release properly purge expando properties and styles", async () => {
+    freshDom();
+    const { ToastElementPool } = await import("../../src/utils/toast-pool.js");
+    const pool = new ToastElementPool(2, 4);
+
+    const el1 = pool.acquire("toast-1");
+    assert.strictEqual(el1.id, "toast-toast-1");
+
+    // Attach dirty properties and styles
+    el1.style.backgroundColor = "red";
+    el1._progressAnimation = { cancel: () => {} };
+    el1._pauseCleanup = () => {};
+    el1._key = "dirty-key";
+
+    pool.release(el1, "toast-1");
+
+    // Re-acquire element
+    const reacquired = pool.acquire("toast-2");
+    assert.strictEqual(reacquired.id, "toast-toast-2");
+    assert.strictEqual(reacquired.style.backgroundColor, "", "Style must be purged");
+    assert.strictEqual(reacquired._key, undefined, "Custom expandos must be cleaned");
+    assert.strictEqual(reacquired._progressAnimation, undefined);
+    pool.clear();
+  });
+
+  test("multi-touch.js: calculateSwipe tracks matching touch point by identifier", async () => {
+    const { calculateSwipe } = await import("../../src/utils/multi-touch.js");
+
+    const gestureState = {
+      startTime: Date.now() - 100,
+      startTouches: [
+        { x: 50, y: 100, id: 1, time: Date.now() - 100 },
+        { x: 200, y: 100, id: 2, time: Date.now() - 100 },
+      ],
+      touches: [
+        // Touch 2 is now first in array because finger 1 was lifted
+        { x: 300, y: 100, id: 2, time: Date.now() },
+        { x: 120, y: 100, id: 1, time: Date.now() },
+      ],
+    };
+
+    const swipe = calculateSwipe(gestureState);
+    // Finger 1 started at x=50, now at x=120 -> distance = 70px (not 300 - 50 = 250px!)
+    assert.strictEqual(swipe.distance, 70, "Swipe distance must be computed relative to finger 1");
+    assert.strictEqual(swipe.direction, "right");
+  });
+
+  test("config.js & ToastManager.js: setConfig pauseOnHover and persistent toast progress bar", async () => {
+    freshDom();
+    const { setConfig, resetConfig, getConfig, createToast, resetToastManager } = await import("../../src/index.js");
+    resetToastManager();
+    resetConfig();
+
+    setConfig({ pauseOnHover: true });
+    assert.strictEqual(getConfig().pauseOnHover, true);
+
+    const handle = await createToast({
+      message: "Global pause test",
+      duration: 3000,
+    });
+    await new Promise((r) => setTimeout(r, 60));
+
+    const toast = document.querySelector(".toast");
+    assert.ok(toast);
+
+    // Update with duration: 0 (make persistent)
+    await handle.update({ duration: 0 });
+
+    // Dismiss cleanly
+    await handle.dismiss();
+    resetConfig();
+    resetToastManager();
+  });
+});
+
 

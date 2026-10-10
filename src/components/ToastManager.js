@@ -411,7 +411,7 @@ async function createOne(options, key, initialCount) {
 
     const shouldPauseOnHover =
       options.pauseOnHover !== false &&
-      (options.pauseOnHover === true || !!options.cta);
+      (options.pauseOnHover === true || !!options.cta || Boolean(getConfig().pauseOnHover));
 
     const data = {
       outer,
@@ -1086,6 +1086,8 @@ export async function updateToastByKey(key, newOptions = {}) {
     if (Number.isFinite(raw) && raw > 0) {
       data.timer = createDismissTimer(toast, { duration: raw });
       await setupPauseOnHover(data);
+    } else {
+      data.timer = null;
     }
   } else if (
     (data.options.duration === 0 || !data.timer) &&

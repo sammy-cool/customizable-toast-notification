@@ -74,13 +74,25 @@ class ToastElementPool {
       if (poolEntry.element.parentNode) {
         poolEntry.element.parentNode.removeChild(poolEntry.element);
       }
+      poolEntry.element = this._createToastElement();
     }
 
-    // Clear element state and mark as in-use
+    // Clear element state, styles, and custom properties
     poolEntry.element.innerHTML = '';
     poolEntry.element.className = 'toast';
+    poolEntry.element.removeAttribute('style');
     poolEntry.element.setAttribute('role', 'alert');
     poolEntry.element.id = `toast-${toastId}`;
+    poolEntry.element._pooledId = toastId;
+    delete poolEntry.element._progressAnimation;
+    delete poolEntry.element._pauseCleanup;
+    delete poolEntry.element._cleanupSwipe;
+    delete poolEntry.element._cleanupCloseButton;
+    delete poolEntry.element._cleanupCTA;
+    delete poolEntry.element._cleanupUndo;
+    delete poolEntry.element._key;
+    delete poolEntry.element._cleanup;
+
     poolEntry.inUse = true;
     poolEntry.id = toastId;
     this.inUseCount += 1;
