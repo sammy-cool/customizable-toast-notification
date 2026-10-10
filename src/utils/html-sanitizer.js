@@ -120,6 +120,13 @@ function sanitizeAttributes(el, allowedAttrs) {
     }
   });
   attrsToRemove.forEach((name) => el.removeAttribute(name));
+
+  if (el.tagName === "A" && el.getAttribute("target") === "_blank") {
+    const rel = (el.getAttribute("rel") || "").split(/\s+/).filter(Boolean);
+    if (!rel.includes("noopener")) rel.push("noopener");
+    if (!rel.includes("noreferrer")) rel.push("noreferrer");
+    el.setAttribute("rel", rel.join(" "));
+  }
 }
 
 function sanitizeNode(node, allowedTags, allowedAttrs) {

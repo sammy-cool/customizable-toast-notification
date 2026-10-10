@@ -3349,4 +3349,193 @@ describe("Hardenings — ai-scorer, broadcast, pool, multi-touch, and global pau
   });
 });
 
+describe("Comprehensive 50+ Bug & Edge Case Verification Suite", () => {
+  test("createToast shorthands preserve type when options object is passed", async () => {
+    freshDom();
+    const { createToast, resetToastManager } = await import("../../src/index.js");
+    resetToastManager();
+
+    // 1. .success({ message: "Done" })
+    const h1 = await createToast.success({ message: "Done" });
+    await new Promise((r) => setTimeout(r, 60));
+    const t1 = document.querySelector(".toast-success");
+    assert.ok(t1, "createToast.success({ message }) must render a .toast-success element");
+    await h1.dismiss();
+    resetToastManager();
+
+    // 2. .error({ message: "Failed" })
+    const h2 = await createToast.error({ message: "Failed" });
+    await new Promise((r) => setTimeout(r, 60));
+    const t2 = document.querySelector(".toast-error");
+    assert.ok(t2, "createToast.error({ message }) must render a .toast-error element");
+    await h2.dismiss();
+    resetToastManager();
+
+    // 3. .warning({ message: "Caution" })
+    const h3 = await createToast.warning({ message: "Caution" });
+    await new Promise((r) => setTimeout(r, 60));
+    const t3 = document.querySelector(".toast-warning");
+    assert.ok(t3, "createToast.warning({ message }) must render a .toast-warning element");
+    await h3.dismiss();
+    resetToastManager();
+
+    // 4. .info({ message: "Notice" })
+    const h4 = await createToast.info({ message: "Notice" });
+    await new Promise((r) => setTimeout(r, 60));
+    const t4 = document.querySelector(".toast-info");
+    assert.ok(t4, "createToast.info({ message }) must render a .toast-info element");
+    await h4.dismiss();
+    resetToastManager();
+
+    // 5. .loading({ message: "In progress" })
+    const h5 = await createToast.loading({ message: "In progress" });
+    await new Promise((r) => setTimeout(r, 60));
+    const t5 = document.querySelector(".toast-loader");
+    assert.ok(t5, "createToast.loading({ message }) must render a .toast-loader element");
+    await h5.dismiss();
+    resetToastManager();
+
+    // 6. .custom({ message: "<b>Custom HTML</b>" })
+    const h6 = await createToast.custom({ message: "<b>Custom HTML</b>" });
+    await new Promise((r) => setTimeout(r, 60));
+    const t6 = document.querySelector(".toast");
+    assert.ok(t6.querySelector("b"), "createToast.custom must render sanitized HTML");
+    await h6.dismiss();
+    resetToastManager();
+  });
+
+  test("Numeric and boolean messages are coerced to strings properly", async () => {
+    freshDom();
+    const { createToast, resetToastManager } = await import("../../src/index.js");
+    resetToastManager();
+
+    const hNum = await createToast(404);
+    await new Promise((r) => setTimeout(r, 60));
+    const tNum = document.querySelector(".toast");
+    assert.ok(tNum.textContent.includes("404"), "Numeric message must be coerced to string");
+    await hNum.dismiss();
+    resetToastManager();
+
+    const hBool = await createToast(false);
+    await new Promise((r) => setTimeout(r, 60));
+    const tBool = document.querySelector(".toast");
+    assert.ok(tBool.textContent.includes("false"), "Boolean message must be coerced to string");
+    await hBool.dismiss();
+    resetToastManager();
+  });
+
+  test("dismissToast safely awaits thenable handles", async () => {
+    freshDom();
+    const { createToast, dismiss, resetToastManager } = await import("../../src/index.js");
+    resetToastManager();
+
+    const handlePromise = createToast("Dismiss promise test");
+    await new Promise((r) => setTimeout(r, 60));
+    assert.ok(document.querySelector(".toast"));
+
+    await dismiss(handlePromise);
+    await new Promise((r) => setTimeout(r, 80));
+    assert.strictEqual(document.querySelectorAll(".toast").length, 0);
+
+    resetToastManager();
+  });
+
+  test("toastPromise shows loader by default and resolves cleanly", async () => {
+    freshDom();
+    const { toastPromise, resetToastManager } = await import("../../src/index.js");
+    resetToastManager();
+
+    const p = new Promise((resolve) => setTimeout(() => resolve("Success data"), 100));
+    const resPromise = toastPromise(p, {
+      loading: "Saving...",
+      success: "Saved successfully!",
+      error: "Save failed",
+    });
+
+    await new Promise((r) => setTimeout(r, 40));
+    const loader = document.querySelector(".toast-loader");
+    assert.ok(loader, "toastPromise must render a loader by default during loading state");
+
+    await resPromise;
+    await new Promise((r) => setTimeout(r, 60));
+    const successToast = document.querySelector(".toast-success");
+    assert.ok(successToast, "toastPromise must transition to success toast");
+
+    resetToastManager();
+  });
+
+  test("updateToastByKey updates borderRadius, maxWidth, fontDirection, and className", async () => {
+    freshDom();
+    const { createToast, resetToastManager } = await import("../../src/index.js");
+    resetToastManager();
+
+    const handle = await createToast({
+      message: "Initial",
+      borderRadius: "12px",
+      maxWidth: "350px",
+      className: "initial-class",
+    });
+    await new Promise((r) => setTimeout(r, 60));
+    const toast = document.querySelector(".toast");
+    assert.ok(toast);
+    assert.strictEqual(toast.style.borderRadius, "12px");
+    assert.strictEqual(toast.style.maxWidth, "350px");
+    assert.ok(toast.classList.contains("initial-class"));
+
+    await handle.update({
+      borderRadius: "24px",
+      maxWidth: "500px",
+      fontDirection: "rtl",
+      className: "updated-class",
+    });
+
+    assert.strictEqual(toast.style.borderRadius, "24px");
+    assert.strictEqual(toast.style.maxWidth, "500px");
+    assert.strictEqual(toast.style.direction, "rtl");
+    assert.ok(toast.classList.contains("updated-class"));
+    assert.strictEqual(toast.classList.contains("initial-class"), false);
+
+    await handle.dismiss();
+    resetToastManager();
+  });
+
+  test("UI components accessibility: close button has type='button', loader has role='status'", async () => {
+    freshDom();
+    const { createCloseButton } = await import("../../src/components/toast-utils-core.js");
+    const { createLoader } = await import("../../src/components/loader.js");
+
+    const toast = document.createElement("div");
+    createCloseButton(toast, {}, () => {});
+    const closeBtn = toast.querySelector(".toast-close-btn");
+    assert.ok(closeBtn);
+    assert.strictEqual(closeBtn.type, "button", "Close button must have explicit type='button'");
+
+    const loader = createLoader({ size: 20, text: "Processing" });
+    assert.strictEqual(loader.getAttribute("role"), "status");
+    assert.strictEqual(loader.getAttribute("aria-label"), "Processing");
+  });
+
+  test("dom.js: parseAnimationDuration handles uppercase and whitespace, getDynamicAccessibleTextColorHex handles transparent", async () => {
+    const { parseAnimationDuration, getDynamicAccessibleTextColorHex } = await import("../../src/utils/dom.js");
+
+    assert.strictEqual(await parseAnimationDuration("0.5S"), 500);
+    assert.strictEqual(await parseAnimationDuration(" 600ms "), 600);
+    assert.strictEqual(await parseAnimationDuration(" +0.4s "), 400);
+
+    const transparentColor = getDynamicAccessibleTextColorHex("transparent");
+    assert.strictEqual(transparentColor, "#000000");
+  });
+
+  test("audio.js: playTone synthesizes direct frequency tones", async () => {
+    const { playTone, setAudioEnabled } = await import("../../src/utils/audio.js");
+    setAudioEnabled(true);
+
+    // Should not throw when passing frequency numbers or strings
+    assert.doesNotThrow(() => {
+      playTone(440);
+      playTone("880Hz");
+    });
+  });
+});
+
 

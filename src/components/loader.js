@@ -3,11 +3,14 @@ import { getConfig, shouldReduceMotion } from "../utils/config.js";
 
 export function createLoader(opts = {}) {
   const safeOpts = opts && typeof opts === "object" && !Array.isArray(opts) ? opts : {};
-  const size = Number(safeOpts.size) || 14;
+  const rawSize = Number(safeOpts.size);
+  const size = Number.isFinite(rawSize) && rawSize > 0 ? rawSize : 14;
   const color = typeof safeOpts.color === "string" && safeOpts.color.trim() ? safeOpts.color.trim() : "currentColor";
   const labelText = typeof safeOpts.text === "string" ? safeOpts.text : "";
   const wrapper = document.createElement("span");
   wrapper.className = "toast-loader";
+  wrapper.setAttribute("role", "status");
+  wrapper.setAttribute("aria-label", labelText || "Loading");
 
   const config = getConfig();
   if (!config.disableInlineStyles) {

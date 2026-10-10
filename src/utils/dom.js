@@ -68,11 +68,12 @@ export async function removeElement(el) {
 export async function parseAnimationDuration(duration) {
   if (typeof duration === "number" && Number.isFinite(duration) && duration > 0) return duration;
   if (typeof duration === "string") {
-    if (duration.endsWith("s") && !duration.endsWith("ms")) {
-      const parsed = parseFloat(duration) * 1000;
+    const trimmed = duration.trim().toLowerCase();
+    if (trimmed.endsWith("s") && !trimmed.endsWith("ms")) {
+      const parsed = parseFloat(trimmed) * 1000;
       return Number.isFinite(parsed) && parsed > 0 ? parsed : 500;
     }
-    const parsed = parseFloat(duration);
+    const parsed = parseFloat(trimmed);
     return Number.isFinite(parsed) && parsed > 0 ? parsed : 500;
   }
   return 500;
@@ -258,6 +259,7 @@ const namedColors = {
   teal: [0, 128, 128],
   thistle: [216, 191, 216],
   tomato: [255, 99, 71],
+  transparent: [255, 255, 255],
   turquoise: [64, 224, 208],
   violet: [238, 130, 238],
   wheat: [245, 222, 179],
@@ -367,6 +369,17 @@ export function getDynamicAccessibleTextColorHex(toastBg) {
         r: Number(rgbMatch[1]),
         g: Number(rgbMatch[2]),
         b: Number(rgbMatch[3]),
+      };
+    }
+
+    const rgbSpaceMatch = value?.match(
+      /rgba?\(\s*(\d+)\s+(\d+)\s+(\d+)(?:\s*\/\s*[\d.%]+)?\s*\)/i,
+    );
+    if (rgbSpaceMatch) {
+      return {
+        r: Number(rgbSpaceMatch[1]),
+        g: Number(rgbSpaceMatch[2]),
+        b: Number(rgbSpaceMatch[3]),
       };
     }
 

@@ -161,9 +161,9 @@ export function resolveSpringConfig(spring) {
 export function solveSpring(t, config) {
   if (t <= 0) return 0;
 
-  const k = Math.max(0.001, config.stiffness || 100);
-  const c = Math.max(0.001, config.damping || 10);
-  const m = Math.max(0.001, config.mass || 1);
+  const k = Math.max(0.001, config?.stiffness || 100);
+  const c = Math.max(0.001, config?.damping || 10);
+  const m = Math.max(0.001, config?.mass || 1);
 
   const omega0 = Math.sqrt(k / m);
   const zeta = c / (2 * Math.sqrt(k * m));

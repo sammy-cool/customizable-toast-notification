@@ -555,7 +555,37 @@ export function playTone(toneType = "info", preset) {
   if (!ctx) return;
 
   try {
+    if (ctx.state === "suspended") {
+      ctx.resume().catch(() => {});
+    }
+
     const now = ctx.currentTime;
+
+    // Check direct numeric frequency tone (e.g. 880 or "440Hz")
+    const numFreq = typeof toneType === "number" ? toneType : parseFloat(toneType);
+    if (
+      Number.isFinite(numFreq) &&
+      numFreq >= 20 &&
+      numFreq <= 20000 &&
+      (typeof toneType === "number" || /^\d+(\.\d+)?(hz)?$/i.test(String(toneType).trim()))
+    ) {
+      const osc = ctx.createOscillator();
+      const gain = ctx.createGain();
+      osc.type = "sine";
+      osc.frequency.setValueAtTime(numFreq, now);
+
+      gain.gain.setValueAtTime(0.001, now);
+      gain.gain.exponentialRampToValueAtTime(0.1, now + 0.015);
+      gain.gain.exponentialRampToValueAtTime(0.0001, now + 0.35);
+
+      osc.connect(gain);
+      routeAudio(ctx, gain);
+
+      osc.start(now);
+      osc.stop(now + 0.36);
+      return;
+    }
+
     const tone = String(toneType || "info").toLowerCase().trim();
     const activePreset = String(
       preset || getConfig().soundPreset || "modern"

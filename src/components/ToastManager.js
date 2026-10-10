@@ -913,6 +913,7 @@ export async function updateToastByKey(key, newOptions = {}) {
   const data = active.get(key);
   if (!data || !data.toast) return;
 
+  const prevOptions = { ...data.options };
   data.options = { ...data.options, ...newOptions };
   const toast = data.toast;
   const messageSpan =
@@ -1049,7 +1050,31 @@ export async function updateToastByKey(key, newOptions = {}) {
     }
   }
 
-  // 4. Update Progress Bar
+  if (newOptions.borderRadius !== undefined) {
+    const br = typeof newOptions.borderRadius === "number" ? `${newOptions.borderRadius}px` : newOptions.borderRadius;
+    toast.style.borderRadius = br;
+  }
+
+  if (newOptions.maxWidth !== undefined) {
+    const mw = typeof newOptions.maxWidth === "number" ? `${newOptions.maxWidth}px` : newOptions.maxWidth;
+    toast.style.maxWidth = mw;
+  }
+
+  if (newOptions.fontDirection !== undefined) {
+    const dir = newOptions.fontDirection !== "auto" ? newOptions.fontDirection : "";
+    toast.style.direction = dir;
+    if (messageSpan) messageSpan.style.direction = dir;
+  }
+
+  if (newOptions.className !== undefined) {
+    const prevClass = prevOptions.className;
+    if (prevClass && typeof prevClass === "string") {
+      toast.classList.remove(...prevClass.trim().split(/\s+/));
+    }
+    if (newOptions.className && typeof newOptions.className === "string") {
+      toast.classList.add(...newOptions.className.trim().split(/\s+/));
+    }
+  }
   if (newOptions.progress !== undefined) {
     let pct = Number(newOptions.progress);
     if (!Number.isFinite(pct)) pct = 0;

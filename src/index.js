@@ -278,20 +278,30 @@ async function createFirstToastContainer(options) {
 }
 
 function normalizeToastOptions(messageOrOptions, maybeOptions) {
-  if (typeof messageOrOptions === "string") {
-    const extra =
-      typeof maybeOptions === "object" && maybeOptions !== null && !Array.isArray(maybeOptions)
-        ? maybeOptions
-        : {};
+  const extra =
+    typeof maybeOptions === "object" && maybeOptions !== null && !Array.isArray(maybeOptions)
+      ? maybeOptions
+      : {};
+
+  if (
+    typeof messageOrOptions === "string" ||
+    typeof messageOrOptions === "number" ||
+    typeof messageOrOptions === "boolean"
+  ) {
     return {
       ...extra,
-      message: messageOrOptions,
+      message: String(messageOrOptions),
     };
   }
+
   if (typeof messageOrOptions === "object" && messageOrOptions !== null && !Array.isArray(messageOrOptions)) {
-    return messageOrOptions;
+    return {
+      ...extra,
+      ...messageOrOptions,
+    };
   }
-  return {};
+
+  return { ...extra };
 }
 
 async function sanitizeToastOptions(rawOptions) {
@@ -472,8 +482,10 @@ async function createToastWithPriority(messageOrOptions = {}, maybeOptions) {
  * @param {Partial<ToastOptions>} [options]
  * @returns {Promise<ToastHandle>}
  */
-createToastWithPriority.success = (messageOrOptions, options) =>
-  createToastWithPriority(normalizeToastOptions(messageOrOptions, { ...options, type: "success" }));
+createToastWithPriority.success = (messageOrOptions, options) => {
+  const normalized = normalizeToastOptions(messageOrOptions, options);
+  return createToastWithPriority({ ...normalized, type: "success" });
+};
 
 /**
  * Displays an error toast notification.
@@ -481,8 +493,10 @@ createToastWithPriority.success = (messageOrOptions, options) =>
  * @param {Partial<ToastOptions>} [options]
  * @returns {Promise<ToastHandle>}
  */
-createToastWithPriority.error = (messageOrOptions, options) =>
-  createToastWithPriority(normalizeToastOptions(messageOrOptions, { ...options, type: "error" }));
+createToastWithPriority.error = (messageOrOptions, options) => {
+  const normalized = normalizeToastOptions(messageOrOptions, options);
+  return createToastWithPriority({ ...normalized, type: "error" });
+};
 
 /**
  * Displays a warning toast notification.
@@ -490,8 +504,10 @@ createToastWithPriority.error = (messageOrOptions, options) =>
  * @param {Partial<ToastOptions>} [options]
  * @returns {Promise<ToastHandle>}
  */
-createToastWithPriority.warning = (messageOrOptions, options) =>
-  createToastWithPriority(normalizeToastOptions(messageOrOptions, { ...options, type: "warning" }));
+createToastWithPriority.warning = (messageOrOptions, options) => {
+  const normalized = normalizeToastOptions(messageOrOptions, options);
+  return createToastWithPriority({ ...normalized, type: "warning" });
+};
 
 /**
  * Displays an informational toast notification.
@@ -499,8 +515,10 @@ createToastWithPriority.warning = (messageOrOptions, options) =>
  * @param {Partial<ToastOptions>} [options]
  * @returns {Promise<ToastHandle>}
  */
-createToastWithPriority.info = (messageOrOptions, options) =>
-  createToastWithPriority(normalizeToastOptions(messageOrOptions, { ...options, type: "info" }));
+createToastWithPriority.info = (messageOrOptions, options) => {
+  const normalized = normalizeToastOptions(messageOrOptions, options);
+  return createToastWithPriority({ ...normalized, type: "info" });
+};
 
 /**
  * Displays a persistent loading toast with an animated spinner.
@@ -508,17 +526,31 @@ createToastWithPriority.info = (messageOrOptions, options) =>
  * @param {Partial<ToastOptions>} [options]
  * @returns {Promise<ToastHandle>}
  */
-createToastWithPriority.loading = (messageOrOptions, options) =>
-  createToastWithPriority(
-    normalizeToastOptions(messageOrOptions, {
-      type: "info",
-      showLoader: true,
-      duration: 0,
-      showProgressBar: false,
-      pauseOnHover: false,
-      ...options,
-    })
-  );
+createToastWithPriority.loading = (messageOrOptions, options) => {
+  const normalized = normalizeToastOptions(messageOrOptions, options);
+  return createToastWithPriority({
+    type: "info",
+    showLoader: true,
+    duration: 0,
+    showProgressBar: false,
+    pauseOnHover: false,
+    ...normalized,
+  });
+};
+
+/**
+ * Displays a custom styled HTML toast notification.
+ * @param {string | ToastOptions} [messageOrOptions]
+ * @param {Partial<ToastOptions>} [options]
+ * @returns {Promise<ToastHandle>}
+ */
+createToastWithPriority.custom = (messageOrOptions, options) => {
+  const normalized = normalizeToastOptions(messageOrOptions, options);
+  return createToastWithPriority({
+    allowHtml: true,
+    ...normalized,
+  });
+};
 
 export { createToastWithPriority as createToast };
 
@@ -526,22 +558,31 @@ export { setDefaultColors, setDefaultMessages };
 
 /**
  * Dismisses a toast by its key/id, handle, element, or dismisses the most recent toast if target is omitted.
- * @param {string | ToastHandle | HTMLElement} [target]
+ * @param {string | ToastHandle | HTMLElement | Promise<ToastHandle>} [target]
  * @returns {Promise<void>}
  */
 const dismissToast = async (target) => {
+  let resolvedTarget = target;
+  if (target && typeof target.then === "function") {
+    try {
+      resolvedTarget = await target;
+    } catch {
+      return;
+    }
+  }
+
   closeInProgress = true;
   closePromise = (async () => {
     try {
-      if (typeof target === "string" && target.length > 0) {
-        await closeToastByKey(target);
-      } else if (target && typeof target === "object") {
-        if (typeof target.dismiss === "function") {
-          await target.dismiss();
-        } else if (target.id && typeof target.id === "string") {
-          await closeToastByKey(target.id);
-        } else if (target._key && typeof target._key === "string") {
-          await closeToastByKey(target._key);
+      if (typeof resolvedTarget === "string" && resolvedTarget.length > 0) {
+        await closeToastByKey(resolvedTarget);
+      } else if (resolvedTarget && typeof resolvedTarget === "object") {
+        if (typeof resolvedTarget.dismiss === "function") {
+          await resolvedTarget.dismiss();
+        } else if (resolvedTarget.id && typeof resolvedTarget.id === "string") {
+          await closeToastByKey(resolvedTarget.id);
+        } else if (resolvedTarget._key && typeof resolvedTarget._key === "string") {
+          await closeToastByKey(resolvedTarget._key);
         } else {
           await dismiss();
         }
@@ -591,6 +632,7 @@ async function toastPromise(promiseOrFn, messages = {}, options = {}) {
     duration: TOAST_PROMISE_LOADING_DURATION_MS,
     showProgressBar: false,
     pauseOnHover: false,
+    showLoader: safeOptions.showLoader ?? true,
   });
 
   const baseOptions = {

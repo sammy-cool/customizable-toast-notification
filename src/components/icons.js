@@ -42,7 +42,7 @@ const ICON_SVGS = {
  */
 export function createToastIcon(options = {}) {
   const iconOpt = options.icon;
-  if (iconOpt === false) return null;
+  if (iconOpt === false || iconOpt === "" || iconOpt === null) return null;
 
   const type = options.type;
   const config = getConfig();
@@ -63,10 +63,12 @@ export function createToastIcon(options = {}) {
     });
   }
 
-  // 1. Custom HTMLElement node provided
-  if (typeof HTMLElement !== "undefined" && iconOpt instanceof HTMLElement) {
-    iconTag.appendChild(iconOpt.cloneNode(true));
-    return iconTag;
+  // 1. Custom DOM node provided (with cross-realm/iframe support)
+  if (iconOpt && (typeof iconOpt === "object" && (iconOpt.nodeType === 1 || (typeof HTMLElement !== "undefined" && iconOpt instanceof HTMLElement)))) {
+    if (typeof iconOpt.cloneNode === "function") {
+      iconTag.appendChild(iconOpt.cloneNode(true));
+      return iconTag;
+    }
   }
 
   // 2. Custom string: emoji, raw SVG, or text
@@ -78,6 +80,8 @@ export function createToastIcon(options = {}) {
       if (svg) {
         svg.setAttribute("aria-hidden", "true");
         svg.setAttribute("focusable", "false");
+        if (!svg.getAttribute("width")) svg.setAttribute("width", "18");
+        if (!svg.getAttribute("height")) svg.setAttribute("height", "18");
       }
     } else {
       iconTag.textContent = trimmed;
