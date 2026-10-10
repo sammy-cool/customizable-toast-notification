@@ -949,10 +949,7 @@ export async function updateToastByKey(key, newOptions = {}) {
         messageSpan.appendChild(document.createTextNode(rawMessage));
       }
 
-      messageSpan.setAttribute(
-        "title",
-        rawMessage.replace(/<[^>]+>/g, "")
-      );
+      messageSpan.setAttribute("title", messageSpan.textContent || "");
     }
   }
 

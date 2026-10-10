@@ -151,6 +151,16 @@
     "semantic-release": "^25.0.9",
     "typescript": "^5.9.2"
   },
+  "overrides": {
+    "handlebars": "^4.7.10",
+    "source-map-js": "^1.2.2",
+    "serialize-javascript": "^7.1.2",
+    "brace-expansion": "^5.0.12",
+    "http-cache-semantics": "^4.3.0",
+    "ip-address": "^10.7.3",
+    "postcss-selector-parser": "^7.1.6",
+    "undici": "^6.29.0"
+  },
   "repository": {
     "type": "git",
     "url": "git+https://github.com/sammy-cool/customizable-toast-notification.git"

@@ -180,12 +180,7 @@ export async function applyRichStyling(toast, options, onClose) {
     messageSpan.appendChild(document.createTextNode(String(rawMessage)));
   }
 
-  messageSpan.setAttribute(
-    "title",
-    typeof rawMessage === "string"
-      ? rawMessage.replace(/<[^>]+>/g, "")
-      : String(rawMessage)
-  );
+  messageSpan.setAttribute("title", messageSpan.textContent || "");
   toast.appendChild(messageSpan);
 
   if (options?.cta && typeof options.cta === "object") {

@@ -309,22 +309,32 @@ export function getDynamicAccessibleTextColorHex(toastBg) {
   // midpoint gray instead of Math.random() — deterministic and
   // reasonable, never actively wrong in a random direction.
   function resolveCssCustomProperty(value) {
-    const varMatch = value?.match(/^var\((--[\w-]+)(?:\s*,\s*(.+))?\)$/i);
-    if (!varMatch) return value;
+    if (typeof value !== "string") return value;
+    const trimmed = value.trim();
+    if (!trimmed.toLowerCase().startsWith("var(") || !trimmed.endsWith(")")) {
+      return value;
+    }
+    const inner = trimmed.slice(4, -1).trim();
+    const commaIndex = inner.indexOf(",");
+    const propName = (commaIndex === -1 ? inner : inner.slice(0, commaIndex)).trim();
+    const fallbackVal = commaIndex === -1 ? "" : inner.slice(commaIndex + 1).trim();
+
+    if (!propName.startsWith("--")) return value;
+
     try {
       if (
         typeof document !== "undefined" &&
         typeof getComputedStyle === "function"
       ) {
         const resolved = getComputedStyle(document.documentElement)
-          .getPropertyValue(varMatch[1])
+          .getPropertyValue(propName)
           .trim();
         if (resolved) return resolved;
       }
     } catch (e) {}
     // Fall back to the var()'s own declared fallback value, if it had one
     // (e.g. var(--brand, #336699)), before giving up entirely.
-    return varMatch[2]?.trim() || value;
+    return fallbackVal || value;
   }
 
   function parseToRgb(value) {

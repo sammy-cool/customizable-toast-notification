@@ -171,6 +171,43 @@ describe("html-sanitizer.js — security boundary", () => {
     const clean = fallbackSanitize('<img src="file:///etc/passwd">');
     assert.doesNotMatch(clean, /src="file:/i);
   });
+
+  test("GOOD: nested <scr<script>ipt> evasion attempts are neutralized cleanly without ReDoS", async () => {
+    freshDom();
+    const { fallbackSanitize } =
+      await import("../../src/utils/html-sanitizer.js");
+    const clean = fallbackSanitize('<scr<script>ipt>alert(1)</script>');
+    assert.doesNotMatch(clean, /<script/i);
+    assert.doesNotMatch(clean, /alert/i);
+  });
+
+  test("GOOD: SVG, MathML, iframe, and object tags are discarded with zero regex backtracking", async () => {
+    freshDom();
+    const { fallbackSanitize } =
+      await import("../../src/utils/html-sanitizer.js");
+    const clean = fallbackSanitize('<svg onload="alert(1)"><circle r="10"/></svg><math><mi>x</mi></math><i>Italic</i>');
+    assert.doesNotMatch(clean, /<svg/i);
+    assert.doesNotMatch(clean, /<math/i);
+    assert.doesNotMatch(clean, /onload/i);
+    assert.match(clean, /<i>Italic<\/i>/);
+  });
+});
+
+describe("dom.js — CSS custom property parsing and contrast", () => {
+  test("resolveCssCustomProperty parses CSS var() without polynomial regex and handles fallbacks", async () => {
+    freshDom();
+    const { getDynamicAccessibleTextColorHex } = await import("../../src/utils/dom.js");
+    // Test var with fallback matches direct color contrast resolution
+    const resFallback = getDynamicAccessibleTextColorHex("var(--brand-bg, #000000)");
+    assert.strictEqual(resFallback, getDynamicAccessibleTextColorHex("#000000"));
+
+    const resFallbackWhite = getDynamicAccessibleTextColorHex("var(--brand-bg, #ffffff)");
+    assert.strictEqual(resFallbackWhite, getDynamicAccessibleTextColorHex("#ffffff"));
+
+    // Test malformed var syntax does not crash or loop
+    const resMalformed = getDynamicAccessibleTextColorHex("var(not-a-css-var)");
+    assert.ok(typeof resMalformed === "string");
+  });
 });
 
 describe("position.js — container positioning", () => {
