@@ -919,13 +919,18 @@ export async function updateToastByKey(key, newOptions = {}) {
         ? Boolean(newOptions.allowHtml)
         : Boolean(data.options.allowHtml);
 
+    const isFinishingLoading =
+      (newOptions.type === "success" || newOptions.type === "error") &&
+      newOptions.showLoader !== true;
+
     if (messageSpan) {
       const existingLoader = messageSpan.querySelector(".toast-loader");
       messageSpan.innerHTML = "";
       if (
         existingLoader &&
         newOptions.showLoader !== false &&
-        newOptions.loader !== null
+        newOptions.loader !== null &&
+        !isFinishingLoading
       ) {
         messageSpan.appendChild(existingLoader);
         const spacer = document.createElement("span");
@@ -954,7 +959,15 @@ export async function updateToastByKey(key, newOptions = {}) {
   }
 
   // 2. Handle Loader
-  if (newOptions.showLoader === false || newOptions.loader === null) {
+  const isFinishingLoading =
+    (newOptions.type === "success" || newOptions.type === "error") &&
+    newOptions.showLoader !== true;
+
+  if (
+    newOptions.showLoader === false ||
+    newOptions.loader === null ||
+    isFinishingLoading
+  ) {
     const loaderEl = messageSpan?.querySelector(".toast-loader");
     if (loaderEl) {
       if (loaderEl.nextSibling && loaderEl.nextSibling.nodeName === "SPAN") {
@@ -1049,6 +1062,17 @@ export async function updateToastByKey(key, newOptions = {}) {
     if (Number.isFinite(raw) && raw > 0) {
       data.timer = createDismissTimer(toast, { duration: raw });
     }
+  } else if (
+    (data.options.duration === 0 || !data.timer) &&
+    (newOptions.type === "success" ||
+      newOptions.type === "error" ||
+      newOptions.type === "warning" ||
+      newOptions.showLoader === false)
+  ) {
+    // If it was a persistent loading toast (duration: 0) and transitioned to a resolved state
+    // without an explicit duration, start a standard auto-dismiss timer so it doesn't stay permanently stuck on screen.
+    data.timer?.clear();
+    data.timer = createDismissTimer(toast, { duration: 2500 });
   }
 
   // 5.1 Update CTA
@@ -1080,7 +1104,12 @@ export async function updateToastByKey(key, newOptions = {}) {
   }
 
   // 6. Audio Tone
-  if (newOptions.sound) {
+  const shouldPlayAudio =
+    newOptions.sound !== undefined
+      ? Boolean(newOptions.sound)
+      : Boolean(newOptions.type && (data.options.sound || getConfig().sound));
+
+  if (shouldPlayAudio) {
     const tone =
       typeof newOptions.sound === "string"
         ? newOptions.sound
@@ -1098,5 +1127,8 @@ export async function updateToastByKey(key, newOptions = {}) {
   if (container && container.getAttribute("data-stacked") === "true") {
     updateStackedLayout(container);
   }
+
+  // 8. Synchronize options state
+  Object.assign(data.options, newOptions);
 }
 

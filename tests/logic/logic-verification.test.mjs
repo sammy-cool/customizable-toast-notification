@@ -2970,17 +2970,39 @@ describe("createToast — Ergonomic shorthands and string message normalization"
     // Loader spinner must be present
     assert.ok(toast.querySelector(".toast-loader") || toast.querySelector("svg"));
 
-    // Update in-place to success
+    // Update in-place to success without explicitly passing showLoader: false
     await handle.update({
       type: "success",
       message: "Upload completed!",
-      showLoader: false,
     });
     await new Promise((r) => setTimeout(r, 60));
 
     toast = document.querySelector(".toast");
     assert.ok(toast.classList.contains("toast-success"));
     assert.strictEqual(toast.querySelector(".toast-message").textContent, "Upload completed!");
+    assert.strictEqual(toast.querySelector(".toast-loader"), null);
+
+    await handle.dismiss();
+  });
+
+  test("loading toast updated to resolved type without duration automatically starts auto-dismiss timer", async () => {
+    freshDom();
+    const { createToast, resetToastManager } = await import("../../src/index.js");
+    resetToastManager();
+
+    const handle = await createToast.loading("Processing...");
+    await new Promise((r) => setTimeout(r, 60));
+
+    // Update to success without explicit duration
+    await handle.update({
+      type: "success",
+      message: "Processed!",
+    });
+    await new Promise((r) => setTimeout(r, 60));
+
+    let toast = document.querySelector(".toast");
+    assert.ok(toast);
+    assert.ok(toast.classList.contains("toast-success"));
     assert.strictEqual(toast.querySelector(".toast-loader"), null);
 
     await handle.dismiss();
