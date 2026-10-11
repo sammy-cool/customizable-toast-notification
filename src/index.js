@@ -290,11 +290,19 @@ function normalizeToastOptions(messageOrOptions, maybeOptions) {
   if (
     typeof messageOrOptions === "string" ||
     typeof messageOrOptions === "number" ||
-    typeof messageOrOptions === "boolean"
+    typeof messageOrOptions === "boolean" ||
+    typeof messageOrOptions === "bigint"
   ) {
     return {
       ...extra,
       message: String(messageOrOptions),
+    };
+  }
+
+  if (messageOrOptions instanceof Error) {
+    return {
+      ...extra,
+      message: messageOrOptions.message || String(messageOrOptions),
     };
   }
 

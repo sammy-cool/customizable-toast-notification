@@ -31,7 +31,7 @@ export async function createToastElement(options, onClose) {
   } catch (error) {
     if (options?.usePool && toast?._pooledId) {
       try {
-        getToastPool().release(toast._pooledId);
+        getToastPool().release(toast, toast._pooledId);
       } catch {}
     }
     console.warn(

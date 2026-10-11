@@ -101,8 +101,10 @@ export function createToastIcon(options = {}) {
     if (trimmed.startsWith("<svg") && trimmed.endsWith("</svg>")) {
       const sanitizedSvg = trimmed
         .replace(/<script[\s\S]*?>[\s\S]*?<\/script>/gi, "")
+        .replace(/<foreignObject[\s\S]*?>[\s\S]*?<\/foreignObject>/gi, "")
         .replace(/\son\w+\s*=\s*(['"]).*?\1/gi, "")
-        .replace(/\son\w+\s*=\s*[^\s>]+/gi, "");
+        .replace(/\son\w+\s*=\s*[^\s>]+/gi, "")
+        .replace(/href\s*=\s*['"]\s*javascript:[^'"]*['"]/gi, 'href="#"');
       iconTag.innerHTML = sanitizedSvg;
       const svg = iconTag.querySelector("svg");
       if (svg) {
@@ -118,8 +120,9 @@ export function createToastIcon(options = {}) {
   }
 
   // 3. Built-in type icon (when icon is explicitly true, or type is specified and icon is not false)
-  if ((iconOpt === true || iconOpt === undefined) && type && ICON_SVGS[type]) {
-    iconTag.innerHTML = ICON_SVGS[type].trim();
+  const normalizedType = typeof type === "string" ? type.toLowerCase().trim() : "";
+  if ((iconOpt === true || iconOpt === undefined) && normalizedType && ICON_SVGS[normalizedType]) {
+    iconTag.innerHTML = ICON_SVGS[normalizedType].trim();
     return iconTag;
   }
 

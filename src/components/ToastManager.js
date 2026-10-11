@@ -88,9 +88,9 @@ if (broadcaster.isSupported() && typeof window !== 'undefined') {
 
   broadcaster.on('dismiss', ({ toastId }) => {
     if (!getConfig().syncTabs) return;
-    // Another tab dismissed a toast - dismiss in this tab
-    if (toastId && active.has(toastId)) {
-      closeToastByKey(toastId);
+    // Another tab dismissed a toast - dismiss in this tab without re-broadcasting
+    if (toastId && (active.has(toastId) || pending.has(toastId))) {
+      closeToastByKey(toastId, true);
     }
   });
 
@@ -117,6 +117,9 @@ if (broadcaster.isSupported() && typeof window !== 'undefined') {
  * @returns {number}
  */
 function getItemPriority(item) {
+  if (typeof item?.options?.priority === "number" && Number.isFinite(item.options.priority)) {
+    return item.options.priority;
+  }
   const cached = item?.priority?.score;
   if (typeof cached === "number" && Number.isFinite(cached)) return cached;
 
@@ -266,6 +269,7 @@ function hashString(str) {
 
 function makeKey(options = {}) {
   const safe = options && typeof options === "object" ? options : {};
+  if (safe.id) return String(safe.id);
   const type = String(safe.type || "info").trim().toLowerCase();
   const messageHash = hashString(String(safe.message || "")).toString(16);
   const position = normalizePositionKey(safe.position || "bottom-right");
@@ -547,6 +551,14 @@ export function resetToastManager() {
       badge._scaleTimer = null;
     }
   }
+  if (typeof document !== "undefined") {
+    const containers = document.querySelectorAll('[id^="toast-container-"]');
+    containers.forEach((c) => {
+      try {
+        c._stackedCleanup?.();
+      } catch {}
+    });
+  }
   active.clear();
   visibleCount = 0;
   droppedCount = 0;
@@ -633,12 +645,12 @@ export async function closeToast(toast) {
 // key, not a live element reference) target a SPECIFIC toast for removal
 // — e.g. the loading toast — rather than only being able to close
 // "whatever toast a DOM element currently points to."
-export async function closeToastByKey(key) {
+export async function closeToastByKey(key, fromSync = false) {
   try {
     if (!key) return;
 
-    // Broadcast dismissal to other tabs
-    if (getConfig().syncTabs && broadcaster.isSupported()) {
+    // Broadcast dismissal to other tabs if not initiated from a remote sync event
+    if (!fromSync && getConfig().syncTabs && broadcaster.isSupported()) {
       broadcaster.broadcast('dismiss', key, {});
     }
 
@@ -749,8 +761,8 @@ async function drainQueue() {
   try {
     const config = getConfig();
 
-    // Apply AI priority sorting if enabled
-    if (config.aiPrioritization && queue.length > 1) {
+    // Apply AI priority sorting if enabled globally or on queued items
+    if ((config.aiPrioritization || queue.some(i => i.options?.aiPrioritization || typeof i.options?.priority === "number")) && queue.length > 1) {
       queue.sort((a, b) => getItemPriority(b) - getItemPriority(a)); // Higher priority first
     }
 
@@ -1117,7 +1129,7 @@ export async function updateToastByKey(key, newOptions = {}) {
   if (newOptions.progress !== undefined) {
     let pct = Number(newOptions.progress);
     if (!Number.isFinite(pct)) pct = 0;
-    if (pct <= 1 && pct > 0) pct = pct * 100;
+    if (pct < 1 && pct > 0) pct = pct * 100;
     pct = Math.min(100, Math.max(0, pct));
 
     let progressBar = toast.querySelector(".toast-progress-bar");

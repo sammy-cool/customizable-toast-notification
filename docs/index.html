@@ -15,6 +15,7 @@
       href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@500;600;700&family=IBM+Plex+Sans:wght@400;500;600&family=IBM+Plex+Mono:wght@400;500;600&display=swap"
       rel="stylesheet"
     />
+    <link rel="stylesheet" href="../dist/index.css" />
 
     <style>
       :root {
@@ -38,6 +39,8 @@
         --display: "Space Grotesk", sans-serif;
         --body: "IBM Plex Sans", sans-serif;
         --mono: "IBM Plex Mono", monospace;
+        --border: var(--line);
+        --accent-tag: var(--text-dim);
       }
 
       * {
@@ -702,12 +705,29 @@
         .pg-controls {
           border-right: none;
           border-bottom: 1px solid var(--line);
-          max-height: 400px;
+          max-height: 480px;
         }
         .preset-grid {
-          grid-template-columns: 1fr;
+          grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+        }
+        .comparison-grid {
+          grid-template-columns: 1fr !important;
         }
         .navlinks {
+          display: flex;
+          gap: 12px;
+          flex-wrap: wrap;
+        }
+      }
+
+      @media (max-width: 600px) {
+        .wrap, .wrap-narrow {
+          padding: 0 16px;
+        }
+        .brand {
+          font-size: 14px;
+        }
+        .navlinks a:not(.sound-toggle-btn) {
           display: none;
         }
       }
@@ -1336,10 +1356,26 @@ npm install customizable-toast-notification</pre
           : "https://cdn.jsdelivr.net/npm/customizable-toast-notification@latest/dist/index.umd.js";
         var script = document.createElement("script");
         script.src = scriptSrc;
+        script.onload = function () {
+          if (window.customizableToast && window.customizableToast.setConfig && typeof updateMetricsDisplay === "function") {
+            window.customizableToast.setConfig({
+              onMetrics: updateMetricsDisplay,
+            });
+          }
+          if (typeof updateVersionBadge === "function") updateVersionBadge();
+        };
         script.onerror = function () {
           if (!window.customizableToast && !isLocal) {
             var fallback = document.createElement("script");
             fallback.src = "../dist/index.umd.js";
+            fallback.onload = function () {
+              if (window.customizableToast && window.customizableToast.setConfig && typeof updateMetricsDisplay === "function") {
+                window.customizableToast.setConfig({
+                  onMetrics: updateMetricsDisplay,
+                });
+              }
+              if (typeof updateVersionBadge === "function") updateVersionBadge();
+            };
             document.head.appendChild(fallback);
           }
         };
@@ -1670,8 +1706,10 @@ npm install customizable-toast-notification</pre
               })
               .join("\n");
             return (
+              '"use client";\n\n' +
               "// React Component or Hook\n" +
-              'import { createToast } from "customizable-toast-notification";\n\n' +
+              'import { createToast } from "customizable-toast-notification";\n' +
+              'import "customizable-toast-notification/index.css";\n\n' +
               "export function NotificationDemo() {\n" +
               "  const handleNotify = () => {\n" +
               indentCode + "\n" +
@@ -1694,7 +1732,8 @@ npm install customizable-toast-notification</pre
             return (
               "<!-- Vue 3 (Composition API) -->\n" +
               "<script setup>\n" +
-              'import { createToast } from "customizable-toast-notification";\n\n' +
+              'import { createToast } from "customizable-toast-notification";\n' +
+              'import "customizable-toast-notification/index.css";\n\n' +
               "function showNotification() {\n" +
               indentCodeVue + "\n" +
               "}\n" +
@@ -1714,12 +1753,13 @@ npm install customizable-toast-notification</pre
             return (
               "<!-- Svelte -->\n" +
               "<script>\n" +
-              '  import { createToast } from "customizable-toast-notification";\n\n' +
+              '  import { createToast } from "customizable-toast-notification";\n' +
+              '  import "customizable-toast-notification/index.css";\n\n' +
               "  function showNotification() {\n" +
               indentCodeSvelte + "\n" +
               "  }\n" +
               "<\/script>\n\n" +
-              "<button on:click={showNotification}>Show Notification</button>"
+              "<button onclick={showNotification}>Show Notification</button>"
             );
           } else if (fw === "ts") {
             var rawOpts = jsCode
@@ -1727,9 +1767,10 @@ npm install customizable-toast-notification</pre
               .replace(/\);$/, "");
             return (
               "// TypeScript (Strict Type-Safe Contract)\n" +
-              'import { createToast, type ToastOptions, type ToastHandle } from "customizable-toast-notification";\n\n' +
+              'import { createToast, type ToastOptions, type ToastHandle } from "customizable-toast-notification";\n' +
+              'import "customizable-toast-notification/index.css";\n\n' +
               "const options: ToastOptions = " +
-              rawOpts +
+              (rawOpts || "{}") +
               ";\n\n" +
               "const handle: ToastHandle = await createToast(options);"
             );
@@ -2309,7 +2350,8 @@ npm install customizable-toast-notification</pre
           .getElementById("pgResetBtn")
           .addEventListener("click", function () {
             state = Object.assign({}, DEFAULTS);
-            controlsEl.innerHTML = "";
+            var controlsEl = document.getElementById("pgControls");
+            if (controlsEl) controlsEl.innerHTML = "";
             buildControls();
             renderCode();
           });

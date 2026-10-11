@@ -40,7 +40,10 @@ export async function setPosition(container, options = {}) {
   }
 
   const config = getConfig();
-  const rawPos = String(options?.position || config.defaultPosition || "bottom-right").toLowerCase().trim();
+  const rawPos = String(options?.position || config.defaultPosition || "bottom-right")
+    .toLowerCase()
+    .trim()
+    .replace(/\s+/g, "-");
   let effectivePos = rawPos;
 
   if (!isDocumentedPosition(rawPos) && !LEGACY_POSITIONS.has(rawPos)) {
@@ -70,7 +73,7 @@ function resetContainerStyles(container) {
   container.style.left = "auto";
   container.style.right = "auto";
   container.style.transform = "none";
-  container.style.maxWidth = "auto";
+  container.style.maxWidth = "none";
 }
 
 function parsePosition(position) {

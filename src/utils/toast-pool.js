@@ -117,12 +117,19 @@ class ToastElementPool {
    * @returns {void}
    */
   release(element, toastId) {
-    if (!element || !toastId) {
+    if (!element && !toastId) {
       return;
     }
 
+    const targetElement = element instanceof HTMLElement ? element : null;
+    const targetId = typeof toastId === "string" ? toastId : (typeof element === "string" ? element : null);
+
     // Find and release the pooled element
-    const poolEntry = this.pool.find((entry) => entry.id === toastId);
+    const poolEntry = this.pool.find(
+      (entry) =>
+        (targetElement && entry.element === targetElement) ||
+        (targetId && entry.id === targetId)
+    );
 
     if (poolEntry && poolEntry.inUse) {
       // Remove cleanly from DOM if still attached

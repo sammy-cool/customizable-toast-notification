@@ -171,6 +171,11 @@ export function solveSpring(t, config) {
   const omega0 = Math.sqrt(k / m);
   const zeta = c / (2 * Math.sqrt(k * m));
 
+  if (Math.abs(zeta - 1) < 1e-4) {
+    // Critically damped: fastest convergence with zero overshoot
+    return 1 - Math.exp(-omega0 * t) * (1 + omega0 * t);
+  }
+
   if (zeta < 1) {
     // Underdamped: oscillates around target
     const omegaD = omega0 * Math.sqrt(1 - zeta * zeta);
@@ -179,16 +184,13 @@ export function solveSpring(t, config) {
     return 1 - envelope * oscillation;
   }
 
-  if (Math.abs(zeta - 1) < 1e-5) {
-    // Critically damped: fastest convergence with zero overshoot
-    return 1 - Math.exp(-omega0 * t) * (1 + omega0 * t);
-  }
-
-  // Overdamped: sluggish convergence without oscillation
+  // Overdamped: sluggish convergence without oscillation - stable real roots prevent NaN overflow
   const omegaD = omega0 * Math.sqrt(zeta * zeta - 1);
-  const envelope = Math.exp(-zeta * omega0 * t);
-  const term = Math.cosh(omegaD * t) + (zeta / Math.sqrt(zeta * zeta - 1)) * Math.sinh(omegaD * t);
-  return 1 - envelope * term;
+  const r1 = -zeta * omega0 + omegaD;
+  const r2 = -zeta * omega0 - omegaD;
+  const c1 = r2 / (r2 - r1);
+  const c2 = -r1 / (r2 - r1);
+  return 1 - (c1 * Math.exp(r1 * t) + c2 * Math.exp(r2 * t));
 }
 
 /**

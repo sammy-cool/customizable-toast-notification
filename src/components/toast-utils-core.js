@@ -33,7 +33,12 @@ export function createCTA(toast, options, onClose) {
         el.tabIndex = 0;
       }
       if (cfg.target) el.target = cfg.target;
-      el.rel = cfg.rel || (cfg.target === "_blank" ? "noopener noreferrer" : "");
+      const relSet = new Set((cfg.rel || "").split(/\s+/).filter(Boolean));
+      if (typeof cfg.target === "string" && cfg.target.trim().toLowerCase() === "_blank") {
+        relSet.add("noopener");
+        relSet.add("noreferrer");
+      }
+      el.rel = Array.from(relSet).join(" ");
     } else {
       el.type = "button";
     }
@@ -349,7 +354,7 @@ export function createProgressBar(toast, options) {
 
   const leftOffset = Math.min(borderRadiusNum, progressHeightPx * 2);
   const finalWidth = borderRadiusNum > 0
-    ? `calc(100% - ${leftOffset}px)`
+    ? `calc(100% - ${leftOffset * 2}px)`
     : "100%";
 
   if (!getConfig().disableInlineStyles) {
@@ -371,7 +376,7 @@ export function createProgressBar(toast, options) {
   if (options.progress !== undefined) {
     let pct = Number(options.progress);
     if (!Number.isFinite(pct)) pct = 0;
-    if (pct <= 1 && pct > 0) pct = pct * 100;
+    if (pct < 1 && pct > 0) pct = pct * 100;
     pct = Math.min(100, Math.max(0, pct));
     progressBar.style.width = `${pct}%`;
     progressBar.style.transition = "width 200ms ease";
@@ -532,57 +537,57 @@ export function attachSwipeToDismiss(toast, onClose) {
       }
     }
 
-    if (isHorizontal) {
-      currentX = x;
-      const opacity = Math.max(0, 1 - Math.abs(dx) / 280);
-      if (!getConfig().disableInlineStyles || shouldReduceMotion() === false) {
+      if (isHorizontal) {
+        currentX = x;
+        const opacity = Math.max(0, 1 - Math.abs(dx) / 280);
+        if (!getConfig().disableInlineStyles && !shouldReduceMotion()) {
           toast.style.transform = `translateX(${dx}px)`;
           toast.style.opacity = String(opacity);
+        }
+        if (e.cancelable) e.preventDefault();
       }
-      if (e.cancelable) e.preventDefault();
-    }
-  };
+    };
 
-  const onPointerEnd = () => {
-    cleanupWindowListeners();
-    touchId = null;
-    if (!isDragging || !isHorizontal) {
+    const onPointerEnd = () => {
+      cleanupWindowListeners();
+      touchId = null;
+      if (!isDragging || !isHorizontal) {
+        isDragging = false;
+        toast.style.userSelect = "";
+        return;
+      }
       isDragging = false;
       toast.style.userSelect = "";
-      return;
-    }
-    isDragging = false;
-    toast.style.userSelect = "";
 
-    const dx = currentX - startX;
-    const duration = Math.max(1, Date.now() - startTime);
-    const velocity = duration > 0 ? Math.abs(dx) / duration : 0; // px/ms
-    const isFlick = velocity >= 0.65 && Math.abs(dx) >= 50;
-    const threshold = isFlick ? 50 : 75;
+      const dx = currentX - startX;
+      const duration = Math.max(1, Date.now() - startTime);
+      const velocity = duration > 0 ? Math.abs(dx) / duration : 0; // px/ms
+      const isFlick = velocity >= 0.65 && Math.abs(dx) >= 50;
+      const threshold = isFlick ? 50 : 75;
 
-    if (Math.abs(dx) >= threshold) {
-      const exitX = dx > 0 ? 320 : -320;
-      const exitDuration = isFlick ? 120 : 180;
-      if (!getConfig().disableInlineStyles || shouldReduceMotion() === false) {
+      if (Math.abs(dx) >= threshold) {
+        const exitX = dx > 0 ? 320 : -320;
+        const exitDuration = isFlick ? 120 : 180;
+        if (!getConfig().disableInlineStyles && !shouldReduceMotion()) {
           toast.style.transition = `transform ${exitDuration}ms ease-out, opacity ${exitDuration}ms ease-out`;
           toast.style.transform = `translateX(${exitX}px)`;
           toast.style.opacity = "0";
-      }
-      if (toast._swipeTimeout) clearTimeout(toast._swipeTimeout);
-      toast._swipeTimeout = setTimeout(() => {
-        toast._swipeTimeout = null;
-        if (typeof onClose === "function") onClose(toast);
-      }, exitDuration);
-      if (typeof toast._swipeTimeout?.unref === "function") {
-        toast._swipeTimeout.unref();
-      }
-    } else {
-      if (!getConfig().disableInlineStyles || shouldReduceMotion() === false) {
-        const spring = toast._spring;
-        const snapEasing = spring?.easing || "cubic-bezier(0.34, 1.56, 0.64, 1)";
-        const snapDuration = spring?.duration ? Math.min(400, spring.duration) : 200;
-        toast.style.transition = `transform ${snapDuration}ms ${snapEasing}, opacity 200ms ease`;
-        toast.style.transform = "translateX(0)";
+        }
+        if (toast._swipeTimeout) clearTimeout(toast._swipeTimeout);
+        toast._swipeTimeout = setTimeout(() => {
+          toast._swipeTimeout = null;
+          if (typeof onClose === "function") onClose(toast);
+        }, exitDuration);
+        if (typeof toast._swipeTimeout?.unref === "function") {
+          toast._swipeTimeout.unref();
+        }
+      } else {
+        if (!getConfig().disableInlineStyles && !shouldReduceMotion()) {
+          const spring = toast._spring;
+          const snapEasing = spring?.easing || "cubic-bezier(0.34, 1.56, 0.64, 1)";
+          const snapDuration = spring?.duration ? Math.min(400, spring.duration) : 200;
+          toast.style.transition = `transform ${snapDuration}ms ${snapEasing}, opacity 200ms ease`;
+          toast.style.transform = "translateX(0)";
         toast.style.opacity = "1";
       }
     }

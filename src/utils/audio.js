@@ -110,6 +110,21 @@ function routeAudio(ctx, node) {
 }
 
 /**
+ * Register safe node disconnection on oscillator end to prevent audio graph leaks.
+ * @param {OscillatorNode} osc
+ * @param {AudioNode} gain
+ */
+export function registerNodeCleanup(osc, gain) {
+  if (!osc) return;
+  osc.onended = () => {
+    try {
+      osc.disconnect();
+      gain?.disconnect?.();
+    } catch {}
+  };
+}
+
+/**
  * Modern preset: crisp multi-tone chords and pings.
  * @param {AudioContext} ctx
  * @param {string} tone

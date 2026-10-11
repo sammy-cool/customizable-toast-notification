@@ -23,7 +23,7 @@ export async function appendChild(parent, child) {
     } catch (fallbackError) {
       console.warn("appendChild fallback failed:", fallbackError);
       try {
-        if (parent === document.body) {
+        if (parent && typeof parent.appendChild === "function") {
           console.warn(
             "appendChild: using last-resort cloneNode fallback — the " +
               "appended element's event listeners (close button, CTA " +
@@ -66,15 +66,15 @@ export async function removeElement(el) {
 }
 
 export async function parseAnimationDuration(duration) {
-  if (typeof duration === "number" && Number.isFinite(duration) && duration > 0) return duration;
+  if (typeof duration === "number" && Number.isFinite(duration) && duration >= 0) return duration;
   if (typeof duration === "string") {
     const trimmed = duration.trim().toLowerCase();
     if (trimmed.endsWith("s") && !trimmed.endsWith("ms")) {
       const parsed = parseFloat(trimmed) * 1000;
-      return Number.isFinite(parsed) && parsed > 0 ? parsed : 500;
+      return Number.isFinite(parsed) && parsed >= 0 ? parsed : 500;
     }
     const parsed = parseFloat(trimmed);
-    return Number.isFinite(parsed) && parsed > 0 ? parsed : 500;
+    return Number.isFinite(parsed) && parsed >= 0 ? parsed : 500;
   }
   return 500;
 }
@@ -415,7 +415,8 @@ export function getDynamicAccessibleTextColorHex(toastBg) {
   }
 
   try {
-    const resolvedBg = resolveCssCustomProperty(toastBg);
+    const cleanBg = typeof toastBg === "string" ? toastBg.trim() : String(toastBg || "");
+    const resolvedBg = resolveCssCustomProperty(cleanBg).trim();
     const parsed = parseToRgb(resolvedBg);
     if (!parsed) throw new Error("Unknown color");
     ({ r, g, b } = parsed);

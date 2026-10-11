@@ -63,11 +63,15 @@ const DISCARDED_TAGS = new Set([
   "TEMPLATE",
 ]);
 
-const ALLOWED_URI_REGEX = /^\s*(?:https?:|mailto:|data:image\/(?:png|jpe?g|gif|webp|avif|bmp|ico);|\/|\.\/|\.\.\/|#)/i;
+const ALLOWED_URI_REGEX = /^\s*(?:https?:|mailto:|data:image\/(?:png|jpe?g|gif|webp|avif|bmp|ico);|\/(?!\/|\\)|\.\/|\.\.\/|#)/i;
 
 export function hasDOMPurify() {
   try {
-    if (typeof window !== "undefined" && window.DOMPurify) return true;
+    return Boolean(
+      typeof window !== "undefined" &&
+      window.DOMPurify &&
+      typeof window.DOMPurify.sanitize === "function"
+    );
   } catch (e) {}
   return false;
 }
@@ -112,7 +116,7 @@ function sanitizeAttributes(el, allowedAttrs) {
         return;
       }
     }
-    if (name === "target" && val === "_blank") {
+    if (name === "target" && typeof val === "string" && val.trim().toLowerCase() === "_blank") {
       const rel = (el.getAttribute("rel") || "").split(/\s+/).filter(Boolean);
       if (!rel.includes("noopener")) rel.push("noopener");
       if (!rel.includes("noreferrer")) rel.push("noreferrer");
@@ -121,7 +125,8 @@ function sanitizeAttributes(el, allowedAttrs) {
   });
   attrsToRemove.forEach((name) => el.removeAttribute(name));
 
-  if (el.tagName === "A" && el.getAttribute("target") === "_blank") {
+  const finalTarget = el.getAttribute("target");
+  if (el.tagName === "A" && typeof finalTarget === "string" && finalTarget.trim().toLowerCase() === "_blank") {
     const rel = (el.getAttribute("rel") || "").split(/\s+/).filter(Boolean);
     if (!rel.includes("noopener")) rel.push("noopener");
     if (!rel.includes("noreferrer")) rel.push("noreferrer");

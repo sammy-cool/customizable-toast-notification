@@ -42,11 +42,13 @@ export function resetContainerRegistry() {
  * @param {string} id
  * @returns {void}
  */
-export function unregisterContainer(id) {
-  if (id) {
-    containerRegistry.delete(id);
-    containerLocks.delete(id);
-  }
+export function unregisterContainer(idOrPosition) {
+  if (!idOrPosition) return;
+  const id = typeof idOrPosition === "string" && idOrPosition.startsWith("toast-container-")
+    ? idOrPosition
+    : getContainerId(idOrPosition);
+  containerRegistry.delete(id);
+  containerLocks.delete(id);
 }
 
 function getContainerRoot() {
@@ -106,7 +108,9 @@ export async function getOrCreateToastContainer(options = {}, setPosition) {
 
     let el = findContainerById(root, id);
     if (!el) {
-      el = document.createElement("div");
+      const doc = root?.ownerDocument || (typeof document !== "undefined" ? document : null);
+      if (!doc) throw new Error("Document is unavailable");
+      el = doc.createElement("div");
       el.id = id;
       el.setAttribute("role", "status");
       el.setAttribute("aria-atomic", "true");
