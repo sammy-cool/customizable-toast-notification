@@ -322,7 +322,7 @@ function getContrastBackground(bgColor) {
   return "rgba(255,255,255,0.15)";
 }
 
-export function createProgressBar(toast, options) {
+export function createProgressBar(toast, options = {}) {
   const progressBar = document.createElement("div");
   progressBar.className = "toast-progress-bar";
   toast._progressBar = progressBar;
@@ -357,27 +357,45 @@ export function createProgressBar(toast, options) {
     ? `calc(100% - ${leftOffset * 2}px)`
     : "100%";
 
+  progressBar._leftOffset = leftOffset;
+  progressBar._finalWidth = finalWidth;
+
+  const progressBg = options.progressBarColor || options.progressColor || "currentColor";
+  const isReverse = options.progressDirection === "reverse" || options.progressDirection === "increasing" || options.progressDirection === "ltr";
+
   if (!getConfig().disableInlineStyles) {
     Object.assign(progressBar.style, {
-    position: "absolute",
-    left: `${leftOffset}px`,
-    height: progressHeightStyle,
-    background: options.progressColor || "currentColor",
-    width: `${finalWidth}`,
-    transition: `width ${progressDuration}ms linear`,
-    [options.progressPosition === "top" ? "top" : "bottom"]: "0",
-    borderRadius: `${progressHeightPx / 2}px`,
-    opacity: "0.8",
-  });
+      position: "absolute",
+      left: `${leftOffset}px`,
+      height: progressHeightStyle,
+      background: progressBg,
+      width: isReverse ? "0%" : `${finalWidth}`,
+      transition: `width ${progressDuration}ms linear`,
+      [options.progressPosition === "top" ? "top" : "bottom"]: "0",
+      borderRadius: `${progressHeightPx / 2}px`,
+      opacity: "0.8",
+      zIndex: "2",
+      willChange: "width",
+    });
   }
 
   toast.appendChild(progressBar);
 
+  // 1. Indeterminate mode or loading state (duration: 0 or Infinity with showProgressBar)
+  const isIndeterminate = options.progress === "indeterminate" ||
+    (Boolean(options.showProgressBar) && (options.duration === 0 || options.duration === Infinity) && options.progress === undefined);
+
+  if (isIndeterminate) {
+    progressBar.classList.add("toast-progress-bar-indeterminate");
+    progressBar.style.width = finalWidth;
+    return;
+  }
+
+  // 2. Explicit manual percentage progress (determinate)
   if (options.progress !== undefined) {
     let pct = Number(options.progress);
     if (!Number.isFinite(pct)) pct = 0;
     if (pct < 1 && pct > 0) pct = pct * 100;
-    pct = Math.min(100, Math.max(0, pct));
     progressBar.style.width = `${pct}%`;
     progressBar.style.transition = "width 200ms ease";
     return;
@@ -391,8 +409,11 @@ export function createProgressBar(toast, options) {
   if (shouldReduceMotion()) {
     progressBar.style.display = "none";
   } else if (typeof progressBar.animate === "function") {
+    const keyframes = isReverse
+      ? [{ width: "0%" }, { width: finalWidth }]
+      : [{ width: finalWidth }, { width: "0%" }];
     toast._progressAnimation = progressBar.animate(
-      [{ width: finalWidth }, { width: "0%" }],
+      keyframes,
       {
         duration: progressDuration,
         easing: "linear",
@@ -403,7 +424,7 @@ export function createProgressBar(toast, options) {
   } else {
     progressBar.style.transition = `width ${progressDuration}ms linear`;
     requestAnimationFrame(() => {
-      progressBar.style.width = "0%";
+      progressBar.style.width = isReverse ? finalWidth : "0%";
     });
   }
 }
@@ -431,7 +452,7 @@ export function runToastAnimation(toast) {
 
     requestAnimationFrame(() => {
       toast.style.opacity = "1";
-      toast.style.transform = "translateY(0)";
+      toast.style.transform = "none";
       toast.classList.add("active");
     });
   };

@@ -271,7 +271,11 @@ export function supportsCSSLinearEasing() {
     return false;
   }
   try {
-    return CSS.supports("transition-timing-function", "linear(0, 1)");
+    return (
+      CSS.supports("transition-timing-function", "linear(0 0%, 1 100%)") ||
+      CSS.supports("transition-timing-function", "linear(0, 1)") ||
+      CSS.supports("animation-timing-function", "linear(0 0%, 1 100%)")
+    );
   } catch {
     return false;
   }

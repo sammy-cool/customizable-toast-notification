@@ -107,9 +107,12 @@ import {
  * @property {boolean} [showProgressBar]
  * @property {string} [animationDuration]
  * @property {string} [animationEasing]
+ * @property {'default' | 'fade' | 'slide' | 'zoom' | 'bounce' | 'flip' | string} [animationType]
  * @property {string} [progressColor]
+ * @property {string} [progressBarColor]
  * @property {string} [progressHeight]
  * @property {'top' | 'bottom'} [progressPosition]
+ * @property {'decreasing' | 'increasing' | 'ltr' | 'rtl' | 'reverse' | string} [progressDirection]
  * @property {boolean} [pauseOnHover]
  * @property {boolean} [allowHtml]
  * @property {boolean} [sanitizeHtml]
@@ -132,7 +135,7 @@ import {
  * @property {SoundPreset} [soundPreset]
  * @property {boolean | string | HTMLElement | ((options: ToastOptions) => boolean | string | HTMLElement | null | undefined)} [icon]
  * @property {boolean} [swipeToDismiss]
- * @property {number} [progress]
+ * @property {number | 'indeterminate'} [progress]
  * @property {boolean} [syncTabs]
  * @property {boolean} [aiPrioritization]
  * @property {number} [priority]
@@ -341,8 +344,11 @@ async function sanitizeToastOptions(rawOptions) {
     animationEasing: "ease",
     showProgressBar: true,
     progressColor: undefined,
+    progressBarColor: undefined,
     progressHeight: "4px",
     progressPosition: "bottom",
+    progressDirection: "decreasing",
+    animationType: "default",
     fontFamily:
       '-apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif, "Apple Color Emoji", "Segoe UI Emoji", "Segoe UI Symbol"',
     fontSize: "14px",
@@ -388,10 +394,15 @@ async function sanitizeToastOptions(rawOptions) {
   }
 
   try {
-    if (!final.progressColor && final.backgroundColor) {
+    const rawProgressColor = options?.progressBarColor || options?.progressColor;
+    if (rawProgressColor) {
+      final.progressColor = rawProgressColor;
+      final.progressBarColor = rawProgressColor;
+    } else if (!final.progressColor && final.backgroundColor) {
       final.progressColor =
         final.textColor ||
         getDynamicAccessibleTextColorHex(final.backgroundColor);
+      final.progressBarColor = final.progressColor;
     }
   } catch (error) {
     console.warn("Progress bar color resolution failed:", error);

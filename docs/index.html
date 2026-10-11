@@ -1,3237 +1,1925 @@
 <!doctype html>
-<html lang="en">
+<html lang="en" data-theme="light">
   <head>
     <meta charset="utf-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1" />
-    <title>customizable-toast-notification — interactive playground</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+    <title>Customizable Toast Notification — Modern Interactive Studio</title>
     <meta
       name="description"
-      content="Live playground for customizable-toast-notification — every option, every API call, generate and copy real code, try it in your project immediately."
+      content="Zero-dependency, type-safe, enterprise-grade toast notifications for modern web applications. Interactive physics studio, Web Audio sound lab, telemetry, and multi-framework code generator."
     />
-
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
     <link
-      href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@500;600;700&family=IBM+Plex+Sans:wght@400;500;600&family=IBM+Plex+Mono:wght@400;500;600&display=swap"
+      href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500;600&display=swap"
       rel="stylesheet"
     />
     <link rel="stylesheet" href="../dist/index.css" />
 
     <style>
       :root {
-        --ink: #14161c;
-        --ink-1: #1c1f28;
-        --ink-2: #262a37;
-        --ink-3: #2f3341;
-        --line: #333748;
-        --text: #e7e9f0;
-        --text-dim: #9aa0b4;
-        --text-faint: #656c82;
+        /* Modern Clean Studio Palette (Light Default) */
+        --bg-page: #f8fafc;
+        --bg-surface: #ffffff;
+        --bg-surface-elevated: #ffffff;
+        --bg-card: #ffffff;
+        --bg-card-subtle: #f1f5f9;
+        --border-subtle: #e2e8f0;
+        --border-focus: #3b82f6;
 
-        --success: #28a745;
-        --error: #dc3545;
-        --warning: #ffc107;
-        --info: #17a2b8;
+        --text-main: #0f172a;
+        --text-muted: #475569;
+        --text-faint: #94a3b8;
 
-        --accent: var(--info);
-        --accent-soft: rgba(23, 162, 184, 0.14);
+        --primary: #2563eb;
+        --primary-hover: #1d4ed8;
+        --primary-subtle: #eff6ff;
 
-        --display: "Space Grotesk", sans-serif;
-        --body: "IBM Plex Sans", sans-serif;
-        --mono: "IBM Plex Mono", monospace;
-        --border: var(--line);
-        --accent-tag: var(--text-dim);
+        --success: #16a34a;
+        --success-subtle: #dcfce7;
+        --error: #dc2626;
+        --error-subtle: #fee2e2;
+        --warning: #d97706;
+        --warning-subtle: #fef3c7;
+        --info: #0284c7;
+        --info-subtle: #e0f2fe;
+
+        --font-sans: "Plus Jakarta Sans", -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+        --font-mono: "JetBrains Mono", SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+
+        --shadow-sm: 0 1px 2px 0 rgba(0, 0, 0, 0.05);
+        --shadow-md: 0 4px 6px -1px rgba(0, 0, 0, 0.07), 0 2px 4px -2px rgba(0, 0, 0, 0.05);
+        --shadow-lg: 0 10px 15px -3px rgba(0, 0, 0, 0.08), 0 4px 6px -4px rgba(0, 0, 0, 0.04);
+        --shadow-xl: 0 20px 25px -5px rgba(0, 0, 0, 0.08), 0 8px 10px -6px rgba(0, 0, 0, 0.04);
+
+        --radius-sm: 8px;
+        --radius-md: 12px;
+        --radius-lg: 16px;
+        --radius-full: 9999px;
+      }
+
+      [data-theme="dark"] {
+        --bg-page: #090d16;
+        --bg-surface: #0f172a;
+        --bg-surface-elevated: #1e293b;
+        --bg-card: #0f172a;
+        --bg-card-subtle: #172033;
+        --border-subtle: #1e293b;
+        --border-focus: #60a5fa;
+
+        --text-main: #f8fafc;
+        --text-muted: #94a3b8;
+        --text-faint: #64748b;
+
+        --primary: #3b82f6;
+        --primary-hover: #60a5fa;
+        --primary-subtle: rgba(59, 130, 246, 0.12);
+
+        --success: #22c55e;
+        --success-subtle: rgba(34, 197, 94, 0.12);
+        --error: #ef4444;
+        --error-subtle: rgba(239, 68, 68, 0.12);
+        --warning: #f59e0b;
+        --warning-subtle: rgba(245, 158, 11, 0.12);
+        --info: #38bdf8;
+        --info-subtle: rgba(56, 189, 248, 0.12);
+
+        --shadow-sm: 0 1px 2px 0 rgba(0, 0, 0, 0.4);
+        --shadow-md: 0 4px 6px -1px rgba(0, 0, 0, 0.5);
+        --shadow-lg: 0 10px 20px -3px rgba(0, 0, 0, 0.6);
+        --shadow-xl: 0 20px 30px -5px rgba(0, 0, 0, 0.7);
       }
 
       * {
         box-sizing: border-box;
-      }
-      html {
-        scroll-behavior: smooth;
-      }
-      body {
         margin: 0;
-        background: var(--ink);
-        color: var(--text);
-        font-family: var(--body);
-        line-height: 1.55;
+        padding: 0;
+      }
+
+      body {
+        font-family: var(--font-sans);
+        background-color: var(--bg-page);
+        color: var(--text-main);
+        line-height: 1.6;
         -webkit-font-smoothing: antialiased;
-      }
-      a {
-        color: inherit;
-      }
-      ::selection {
-        background: var(--accent-soft);
-      }
-      :focus-visible {
-        outline: 2px solid var(--accent);
-        outline-offset: 2px;
-        border-radius: 4px;
+        overflow-x: hidden;
+        transition: background-color 0.25s ease, color 0.25s ease;
       }
 
-      .wrap {
-        max-width: 1180px;
-        margin: 0 auto;
-        padding: 0 24px;
-      }
-      .wrap-narrow {
-        max-width: 980px;
+      /* Container */
+      .container {
+        width: 100%;
+        max-width: 1380px;
         margin: 0 auto;
         padding: 0 24px;
       }
 
-      /* ---------- nav ---------- */
-      nav.top {
+      /* Navigation */
+      header.navbar {
         position: sticky;
         top: 0;
-        z-index: 50;
-        backdrop-filter: blur(10px);
-        background: rgba(20, 22, 28, 0.86);
-        border-bottom: 1px solid var(--line);
+        z-index: 100;
+        backdrop-filter: blur(14px);
+        -webkit-backdrop-filter: blur(14px);
+        background: rgba(255, 255, 255, 0.82);
+        border-bottom: 1px solid var(--border-subtle);
+        transition: background-color 0.25s ease, border-color 0.25s ease;
       }
-      nav.top .wrap {
+      [data-theme="dark"] header.navbar {
+        background: rgba(15, 23, 42, 0.82);
+      }
+      .nav-content {
         display: flex;
         align-items: center;
         justify-content: space-between;
-        height: 60px;
+        height: 68px;
+        gap: 16px;
       }
-      .brand {
-        font-family: var(--display);
-        font-weight: 700;
-        font-size: 16px;
-        letter-spacing: -0.01em;
+      .brand-group {
+        display: flex;
+        align-items: center;
+        gap: 12px;
         text-decoration: none;
+        color: inherit;
+      }
+      .brand-logo {
+        width: 36px;
+        height: 36px;
+        border-radius: var(--radius-sm);
+        background: linear-gradient(135deg, #2563eb, #7c3aed);
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        color: #ffffff;
+        font-weight: 800;
+        font-size: 18px;
+        box-shadow: 0 4px 10px rgba(37, 99, 235, 0.3);
+      }
+      .brand-title {
+        font-weight: 800;
+        font-size: 18px;
+        letter-spacing: -0.02em;
         display: flex;
         align-items: center;
         gap: 8px;
       }
-      .brand .dot {
+      .brand-badge {
+        font-size: 11px;
+        font-weight: 700;
+        padding: 2px 8px;
+        border-radius: var(--radius-full);
+        background: var(--primary-subtle);
+        color: var(--primary);
+        font-family: var(--font-mono);
+      }
+
+      .nav-actions {
+        display: flex;
+        align-items: center;
+        gap: 12px;
+      }
+      .theme-btn, .github-btn {
+        display: inline-flex;
+        align-items: center;
+        gap: 8px;
+        padding: 8px 14px;
+        border-radius: var(--radius-md);
+        border: 1px solid var(--border-subtle);
+        background: var(--bg-surface);
+        color: var(--text-main);
+        font-size: 13px;
+        font-weight: 600;
+        cursor: pointer;
+        transition: all 0.2s ease;
+        text-decoration: none;
+      }
+      .theme-btn:hover, .github-btn:hover {
+        border-color: var(--primary);
+        background: var(--bg-card-subtle);
+        transform: translateY(-1px);
+      }
+
+      /* Hero Section */
+      section.hero {
+        padding: 48px 0 32px 0;
+        text-align: center;
+        position: relative;
+      }
+      .hero-tag {
+        display: inline-flex;
+        align-items: center;
+        gap: 8px;
+        padding: 6px 14px;
+        border-radius: var(--radius-full);
+        background: var(--bg-surface);
+        border: 1px solid var(--border-subtle);
+        font-size: 13px;
+        font-weight: 600;
+        color: var(--text-muted);
+        box-shadow: var(--shadow-sm);
+        margin-bottom: 20px;
+      }
+      .hero-tag span.pulse {
         width: 8px;
         height: 8px;
         border-radius: 50%;
-        background: var(--accent);
-        transition: background 0.4s ease;
+        background: var(--success);
+        box-shadow: 0 0 0 3px var(--success-subtle);
+        display: inline-block;
       }
-      .navlinks {
-        display: flex;
-        gap: 20px;
-        align-items: center;
+      .hero-headline {
+        font-size: clamp(32px, 5vw, 56px);
+        font-weight: 800;
+        letter-spacing: -0.03em;
+        line-height: 1.15;
+        max-width: 920px;
+        margin: 0 auto 18px auto;
       }
-      .navlinks a {
-        text-decoration: none;
-        color: var(--text-dim);
-        font-size: 13.5px;
-        font-weight: 500;
-        transition: color 0.15s ease;
+      .gradient-text {
+        background: linear-gradient(135deg, #1d4ed8 0%, #7c3aed 50%, #db2777 100%);
+        -webkit-background-clip: text;
+        -webkit-text-fill-color: transparent;
       }
-      .navlinks a:hover {
-        color: var(--text);
+      [data-theme="dark"] .gradient-text {
+        background: linear-gradient(135deg, #60a5fa 0%, #a78bfa 50%, #f472b6 100%);
+        -webkit-background-clip: text;
+        -webkit-text-fill-color: transparent;
       }
-      .version-pill {
-        font-family: var(--mono);
-        font-size: 11px;
-        font-weight: 600;
-        background: var(--ink-2);
-        color: var(--accent);
-        border: 1px solid var(--line);
-        border-radius: 12px;
-        padding: 2px 8px;
-        letter-spacing: 0.02em;
-        transition: border-color 0.2s ease, color 0.2s ease;
+      .hero-desc {
+        font-size: clamp(16px, 2vw, 19px);
+        color: var(--text-muted);
+        max-width: 720px;
+        margin: 0 auto 28px auto;
       }
-      .sound-toggle-btn {
-        font-family: var(--mono);
-        font-size: 11.5px;
-        font-weight: 500;
-        color: var(--text-dim);
-        background: var(--ink-2);
-        border: 1px solid var(--line);
-        border-radius: 6px;
-        padding: 5px 10px;
-        cursor: pointer;
+
+      /* Install Snippet */
+      .install-box {
         display: inline-flex;
         align-items: center;
-        gap: 5px;
-        transition: all 0.2s ease;
-      }
-      .sound-toggle-btn:hover {
-        color: var(--text);
-        border-color: var(--accent);
-      }
-      .sound-toggle-btn.active {
-        background: var(--accent-soft);
-        color: var(--accent);
-        border-color: var(--accent);
-      }
-      .audio-oscilloscope {
-        height: 26px;
-        width: 84px;
-        border-radius: 6px;
-        background: rgba(0, 0, 0, 0.4);
-        border: 1px solid var(--border);
-        vertical-align: middle;
-      }
-      .theme-select {
-        font-family: var(--mono);
-        font-size: 11.5px;
-        font-weight: 500;
-        color: var(--text-dim);
-        background: var(--ink-2);
-        border: 1px solid var(--line);
-        border-radius: 6px;
-        padding: 5px 8px;
-        cursor: pointer;
-        transition: all 0.2s ease;
-      }
-      .theme-select:hover, .theme-select:focus {
-        color: var(--text);
-        border-color: var(--accent);
-        outline: none;
-      }
-
-      /* ---------- hero ---------- */
-      .hero {
-        padding: 56px 0 40px;
-        border-bottom: 1px solid var(--line);
-      }
-      .eyebrow {
-        font-family: var(--mono);
-        font-size: 12px;
-        letter-spacing: 0.06em;
-        text-transform: uppercase;
-        color: var(--accent);
-        display: flex;
-        align-items: center;
-        gap: 10px;
-        margin-bottom: 18px;
-        transition: color 0.4s ease;
-      }
-      .eyebrow::before {
-        content: "";
-        width: 20px;
-        height: 1px;
-        background: var(--accent);
-        transition: background 0.4s ease;
-      }
-      h1 {
-        font-family: var(--display);
-        font-weight: 700;
-        font-size: clamp(28px, 4.4vw, 42px);
-        line-height: 1.08;
-        letter-spacing: -0.02em;
-        margin: 0 0 16px;
-        max-width: 24ch;
-      }
-      .lede {
-        font-size: 16px;
-        color: var(--text-dim);
-        max-width: 62ch;
-        margin: 0;
-      }
-      .lede code {
-        font-family: var(--mono);
-        background: var(--ink-2);
-        padding: 1px 6px;
-        border-radius: 4px;
-        font-size: 0.92em;
-        color: var(--text);
-      }
-
-      h2 {
-        font-family: var(--display);
-        font-size: clamp(21px, 2.6vw, 26px);
-        font-weight: 600;
-        letter-spacing: -0.01em;
-        margin: 0 0 8px;
-      }
-      .section-lede {
-        color: var(--text-dim);
-        max-width: 68ch;
-        margin: 0 0 28px;
-        font-size: 14.5px;
-      }
-      section.block {
-        padding: 52px 0;
-        border-bottom: 1px solid var(--line);
-      }
-      section.block:last-of-type {
-        border-bottom: none;
-      }
-
-      /* ---------- preset gallery ---------- */
-      .preset-grid {
-        display: grid;
-        grid-template-columns: repeat(3, 1fr);
         gap: 12px;
+        background: var(--bg-surface);
+        border: 1px solid var(--border-subtle);
+        padding: 8px 12px 8px 18px;
+        border-radius: var(--radius-md);
+        box-shadow: var(--shadow-sm);
+        font-family: var(--font-mono);
+        font-size: 14px;
+        margin-bottom: 36px;
       }
-      .preset-card {
-        background: var(--ink-1);
-        border: 1px solid var(--line);
-        border-radius: 12px;
-        padding: 18px;
-        text-align: left;
-        cursor: pointer;
-        color: var(--text);
-        font-family: var(--body);
-        transition:
-          border-color 0.15s ease,
-          transform 0.12s ease;
-      }
-      .preset-card:hover {
-        border-color: var(--accent);
-        transform: translateY(-1px);
-      }
-      .preset-card .icon {
-        font-size: 20px;
-        margin-bottom: 10px;
-        display: block;
-      }
-      .preset-card .title {
-        font-weight: 600;
-        font-size: 14.5px;
-        margin-bottom: 5px;
-      }
-      .preset-card .desc {
-        font-size: 12.5px;
-        color: var(--text-dim);
-        line-height: 1.5;
-      }
-      .preset-card .tag {
-        display: inline-block;
-        margin-top: 10px;
-        font-family: var(--mono);
-        font-size: 10.5px;
-        color: var(--accent-tag, var(--text-faint));
-        background: var(--ink-2);
-        padding: 3px 8px;
-        border-radius: 5px;
-      }
-
-      /* ---------- playground layout ---------- */
-      .playground {
-        display: grid;
-        grid-template-columns: 340px 1fr;
-        gap: 18px;
-        background: var(--ink-1);
-        border: 1px solid var(--line);
-        border-radius: 14px;
-        overflow: hidden;
-      }
-      .pg-controls {
-        border-right: 1px solid var(--line);
-        padding: 20px;
-        max-height: 720px;
-        overflow-y: auto;
-      }
-      .pg-main {
-        padding: 20px;
-        display: flex;
-        flex-direction: column;
-        gap: 16px;
-      }
-
-      .ctrl-group {
-        margin-bottom: 22px;
-      }
-      .ctrl-group summary {
-        font-family: var(--mono);
-        font-size: 11.5px;
-        letter-spacing: 0.06em;
-        text-transform: uppercase;
-        color: var(--text-faint);
-        cursor: pointer;
-        margin-bottom: 12px;
-        list-style: none;
-        display: flex;
-        align-items: center;
-        gap: 6px;
-      }
-      .ctrl-group summary::-webkit-details-marker {
-        display: none;
-      }
-      .ctrl-group summary::before {
-        content: "▸";
-        font-size: 10px;
-        transition: transform 0.15s ease;
-      }
-      .ctrl-group[open] summary::before {
-        transform: rotate(90deg);
-      }
-      .ctrl-group summary:hover {
-        color: var(--text-dim);
-      }
-
-      .field {
-        margin-bottom: 12px;
-      }
-      .field label {
-        display: block;
-        font-size: 12.5px;
-        color: var(--text-dim);
-        margin-bottom: 5px;
-        font-family: var(--mono);
-      }
-      .field input[type="text"],
-      .field input[type="number"],
-      .field select,
-      .field textarea {
-        width: 100%;
-        font-family: var(--body);
+      .install-copy-btn {
+        background: var(--primary);
+        color: #ffffff;
+        border: none;
+        padding: 6px 14px;
+        border-radius: var(--radius-sm);
+        font-family: var(--font-sans);
         font-size: 13px;
-        color: var(--text);
-        background: var(--ink-2);
-        border: 1px solid var(--line);
-        border-radius: 7px;
-        padding: 7px 9px;
+        font-weight: 600;
+        cursor: pointer;
+        transition: background-color 0.2s;
       }
-      .field textarea {
-        resize: vertical;
-        min-height: 50px;
-        font-family: var(--mono);
-        font-size: 12.5px;
+      .install-copy-btn:hover {
+        background: var(--primary-hover);
       }
-      .field input[type="color"] {
-        width: 100%;
-        height: 32px;
-        background: var(--ink-2);
-        border: 1px solid var(--line);
-        border-radius: 7px;
-        padding: 3px;
-      }
-      .field.checkbox {
+
+      /* Quick Fire Pills Bar */
+      .quick-actions-bar {
         display: flex;
+        flex-wrap: wrap;
+        align-items: center;
+        justify-content: center;
+        gap: 10px;
+        margin-bottom: 48px;
+      }
+      .quick-btn {
+        display: inline-flex;
         align-items: center;
         gap: 8px;
-      }
-      .field.checkbox label {
-        margin: 0;
-      }
-      .field.checkbox input {
-        accent-color: var(--accent);
-        width: 15px;
-        height: 15px;
-      }
-      .field .hint {
-        font-size: 11px;
-        color: var(--text-faint);
-        margin-top: 3px;
-      }
-      .radio-row {
-        display: flex;
-        gap: 6px;
-        flex-wrap: wrap;
-      }
-      .radio-row button {
-        font-family: var(--mono);
-        font-size: 12px;
-        padding: 6px 10px;
-        border-radius: 6px;
-        background: var(--ink-2);
-        border: 1px solid var(--line);
-        color: var(--text-dim);
-        cursor: pointer;
-      }
-      .radio-row button.active {
-        background: var(--accent-soft);
-        border-color: var(--accent);
-        color: var(--text);
-      }
-
-      .pos-grid-container {
-        display: flex;
-        flex-direction: column;
-        gap: 4px;
-        margin: 8px 0 10px;
-        padding: 8px;
-        background: var(--ink);
-        border: 1px solid var(--line);
-        border-radius: 8px;
-      }
-      .pos-bar {
-        height: 20px;
-        border-radius: 4px;
-        background: var(--ink-2);
-        border: 1px solid var(--line);
-        font-family: var(--mono);
-        font-size: 10px;
-        color: var(--text-faint);
-        display: flex;
-        align-items: center;
-        justify-content: center;
-        cursor: pointer;
-        user-select: none;
-        transition: all 0.15s ease;
-      }
-      .pos-bar:hover, .pos-cell:hover {
-        border-color: var(--accent);
-        color: var(--text);
-      }
-      .pos-bar.active, .pos-cell.active {
-        background: var(--accent-soft);
-        border-color: var(--accent);
-        color: var(--accent);
+        padding: 9px 16px;
+        border-radius: var(--radius-full);
+        font-size: 13px;
         font-weight: 600;
-      }
-      .pos-matrix {
-        display: grid;
-        grid-template-columns: repeat(3, 1fr);
-        gap: 4px;
-        height: 72px;
-      }
-      .pos-cell {
-        border-radius: 4px;
-        background: var(--ink-2);
-        border: 1px solid var(--line);
-        font-family: var(--mono);
-        font-size: 10px;
-        color: var(--text-faint);
-        display: flex;
-        align-items: center;
-        justify-content: center;
         cursor: pointer;
-        user-select: none;
-        transition: all 0.15s ease;
+        border: 1px solid var(--border-subtle);
+        background: var(--bg-surface);
+        color: var(--text-main);
+        box-shadow: var(--shadow-sm);
+        transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1);
+      }
+      .quick-btn:hover {
+        transform: translateY(-2px);
+        box-shadow: var(--shadow-md);
+        border-color: var(--primary);
+      }
+      .quick-btn.success { border-color: rgba(22, 163, 74, 0.3); color: var(--success); }
+      .quick-btn.error { border-color: rgba(220, 38, 38, 0.3); color: var(--error); }
+      .quick-btn.warning { border-color: rgba(217, 119, 6, 0.3); color: var(--warning); }
+      .quick-btn.info { border-color: rgba(2, 132, 199, 0.3); color: var(--info); }
+      .quick-btn.primary { background: var(--primary); color: #ffffff; border-color: var(--primary); }
+
+      /* Studio Bento Grid */
+      .studio-grid {
+        display: grid;
+        grid-template-columns: repeat(12, 1fr);
+        gap: 24px;
+        margin-bottom: 64px;
       }
 
-      .code-panel {
-        background: var(--ink);
-        border: 1px solid var(--line);
-        border-radius: 10px;
-        overflow: hidden;
-        flex: 1;
+      .card {
+        background: var(--bg-card);
+        border: 1px solid var(--border-subtle);
+        border-radius: var(--radius-lg);
+        padding: 24px;
+        box-shadow: var(--shadow-sm);
+        transition: border-color 0.2s, box-shadow 0.2s;
         display: flex;
         flex-direction: column;
-        min-height: 320px;
       }
-      .code-bar {
+      .card:hover {
+        border-color: rgba(59, 130, 246, 0.35);
+        box-shadow: var(--shadow-md);
+      }
+      .card-header {
         display: flex;
         align-items: center;
         justify-content: space-between;
-        padding: 8px 12px;
-        border-bottom: 1px solid var(--line);
-        font-family: var(--mono);
-        font-size: 11.5px;
-        color: var(--text-faint);
-        gap: 8px;
-        flex-wrap: wrap;
+        margin-bottom: 18px;
+        padding-bottom: 12px;
+        border-bottom: 1px solid var(--border-subtle);
       }
-      .code-framework-tabs {
+      .card-title {
+        font-size: 16px;
+        font-weight: 700;
         display: flex;
         align-items: center;
-        gap: 4px;
-        flex-wrap: wrap;
+        gap: 8px;
       }
-      .fw-tab {
-        font-family: var(--mono);
-        font-size: 11px;
-        padding: 3px 8px;
-        background: transparent;
-        color: var(--text-dim);
-        border: 1px solid transparent;
-        border-radius: 5px;
-        cursor: pointer;
-        transition: all 0.15s ease;
-      }
-      .fw-tab:hover {
-        color: var(--text);
-        background: var(--ink-2);
-      }
-      .fw-tab.active {
-        color: var(--accent);
-        background: var(--ink-2);
-        border-color: var(--line);
-        font-weight: 600;
-      }
-      .copy-btn {
-        font-family: var(--mono);
-        font-size: 11.5px;
-        color: var(--text-dim);
-        background: var(--ink-2);
-        border: 1px solid var(--line);
-        border-radius: 6px;
-        padding: 4px 10px;
-        cursor: pointer;
-      }
-      .copy-btn:hover {
-        color: var(--text);
-      }
-      .copy-btn.copied {
-        color: var(--success);
-        border-color: var(--success);
-      }
-      #codeOutput {
-        margin: 0;
-        padding: 16px 18px;
-        overflow: auto;
-        font-family: var(--mono);
-        font-size: 12.8px;
-        line-height: 1.65;
-        color: var(--text);
-        flex: 1;
-        white-space: pre;
-      }
-      .tok-kw {
-        color: var(--accent);
-      }
-      .tok-str {
-        color: var(--success);
-      }
-      .tok-num {
-        color: var(--warning);
-      }
-      .tok-cm {
-        color: var(--text-faint);
+      .card-subtitle {
+        font-size: 12px;
+        color: var(--text-muted);
+        font-weight: 500;
       }
 
-      .pg-actions {
-        display: flex;
-        gap: 10px;
-      }
-      .fire-btn {
-        font-family: var(--body);
-        font-weight: 600;
-        font-size: 14px;
-        color: var(--ink);
-        background: var(--accent);
-        border: none;
-        border-radius: 9px;
-        padding: 12px 22px;
-        cursor: pointer;
-        transition:
-          filter 0.15s ease,
-          background 0.4s ease;
-        flex: 1;
-      }
-      .fire-btn:hover {
-        filter: brightness(1.08);
-      }
-      .fire-btn.ghost {
-        color: var(--text);
-        background: transparent;
-        border: 1px solid var(--line);
-        flex: none;
-      }
-      .fire-btn.ghost:hover {
-        border-color: var(--text-faint);
+      /* Grid Span Helpers */
+      .col-12 { grid-column: span 12; }
+      .col-8 { grid-column: span 8; }
+      .col-7 { grid-column: span 7; }
+      .col-6 { grid-column: span 6; }
+      .col-5 { grid-column: span 5; }
+      .col-4 { grid-column: span 4; }
+
+      @media (max-width: 1024px) {
+        .col-8, .col-7, .col-6, .col-5, .col-4 { grid-column: span 12; }
       }
 
-      /* ---------- API reference demos ---------- */
-      .api-demo {
-        background: var(--ink-1);
-        border: 1px solid var(--line);
-        border-radius: 12px;
-        padding: 22px;
+      /* Form Controls */
+      .form-group {
         margin-bottom: 16px;
       }
-      .api-demo h3 {
-        font-family: var(--mono);
-        font-size: 14.5px;
-        color: var(--text);
-        margin: 0 0 6px;
-        font-weight: 600;
-      }
-      .api-demo .api-desc {
+      .form-label {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
         font-size: 13px;
-        color: var(--text-dim);
-        margin: 0 0 14px;
-        max-width: 68ch;
-      }
-      .api-demo .code-block {
-        background: var(--ink);
-        border: 1px solid var(--line);
-        border-radius: 8px;
-        padding: 14px 16px;
-        font-family: var(--mono);
-        font-size: 12.5px;
-        line-height: 1.6;
-        margin-bottom: 12px;
-        overflow-x: auto;
-      }
-      .api-demo .try-btn {
-        font-family: var(--body);
         font-weight: 600;
-        font-size: 13px;
-        color: var(--ink);
-        background: var(--accent);
-        border: none;
-        border-radius: 8px;
-        padding: 9px 16px;
+        color: var(--text-main);
+        margin-bottom: 6px;
+      }
+      .form-label span.value-badge {
+        font-family: var(--font-mono);
+        font-size: 11px;
+        color: var(--primary);
+        font-weight: 700;
+      }
+      .input-text, .select-input {
+        width: 100%;
+        padding: 10px 14px;
+        border-radius: var(--radius-sm);
+        border: 1px solid var(--border-subtle);
+        background: var(--bg-surface);
+        color: var(--text-main);
+        font-size: 14px;
+        font-family: inherit;
+        outline: none;
+        transition: border-color 0.2s, box-shadow 0.2s;
+      }
+      .input-text:focus, .select-input:focus {
+        border-color: var(--primary);
+        box-shadow: 0 0 0 3px var(--primary-subtle);
+      }
+      .range-slider {
+        width: 100%;
+        accent-color: var(--primary);
         cursor: pointer;
       }
-      .api-demo .try-btn.secondary {
-        background: transparent;
-        color: var(--text);
-        border: 1px solid var(--line);
+      .form-row {
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+        gap: 12px;
       }
-      .api-demo .try-row {
-        display: flex;
+      .form-row-3 {
+        display: grid;
+        grid-template-columns: 1fr 1fr 1fr;
         gap: 10px;
-        flex-wrap: wrap;
       }
 
-      footer {
-        padding: 34px 0 50px;
-      }
-      footer .wrap {
+      /* Segmented Button Groups */
+      .segmented-group {
         display: flex;
-        justify-content: space-between;
-        align-items: center;
+        background: var(--bg-card-subtle);
+        border: 1px solid var(--border-subtle);
+        border-radius: var(--radius-md);
+        padding: 3px;
+        gap: 2px;
         flex-wrap: wrap;
-        gap: 16px;
       }
-      footer .f-links {
+      .segmented-btn {
+        flex: 1;
+        min-width: 60px;
+        padding: 6px 10px;
+        font-size: 12px;
+        font-weight: 600;
+        border: none;
+        border-radius: var(--radius-sm);
+        background: transparent;
+        color: var(--text-muted);
+        cursor: pointer;
+        text-align: center;
+        transition: all 0.15s ease;
+      }
+      .segmented-btn:hover {
+        color: var(--text-main);
+      }
+      .segmented-btn.active {
+        background: var(--bg-surface);
+        color: var(--text-main);
+        box-shadow: var(--shadow-sm);
+      }
+
+      /* Toggle Switch */
+      .toggle-label {
         display: flex;
-        gap: 20px;
-      }
-      footer a {
-        text-decoration: none;
-        color: var(--text-dim);
+        align-items: center;
+        justify-content: space-between;
+        cursor: pointer;
         font-size: 13px;
-        font-weight: 500;
+        font-weight: 600;
+        padding: 6px 0;
       }
-      footer a:hover {
-        color: var(--text);
+      .switch {
+        position: relative;
+        display: inline-block;
+        width: 40px;
+        height: 22px;
       }
-      footer .made {
-        font-family: var(--mono);
-        font-size: 11.5px;
+      .switch input {
+        opacity: 0;
+        width: 0;
+        height: 0;
+      }
+      .slider {
+        position: absolute;
+        cursor: pointer;
+        top: 0; left: 0; right: 0; bottom: 0;
+        background-color: var(--border-subtle);
+        transition: 0.25s;
+        border-radius: 22px;
+      }
+      .slider:before {
+        position: absolute;
+        content: "";
+        height: 16px;
+        width: 16px;
+        left: 3px;
+        bottom: 3px;
+        background-color: white;
+        transition: 0.25s;
+        border-radius: 50%;
+        box-shadow: 0 1px 3px rgba(0,0,0,0.2);
+      }
+      input:checked + .slider {
+        background-color: var(--primary);
+      }
+      input:checked + .slider:before {
+        transform: translateX(18px);
+      }
+
+      /* Position Matrix Visual Canvas */
+      .position-matrix-canvas {
+        display: grid;
+        grid-template-columns: repeat(3, 1fr);
+        gap: 8px;
+        background: var(--bg-card-subtle);
+        border: 1px solid var(--border-subtle);
+        border-radius: var(--radius-md);
+        padding: 12px;
+        aspect-ratio: 16/10;
+        position: relative;
+      }
+      .pos-cell {
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        padding: 8px;
+        border-radius: var(--radius-sm);
+        border: 1px dashed var(--border-subtle);
+        background: var(--bg-surface);
+        color: var(--text-muted);
+        font-size: 11px;
+        font-weight: 600;
+        cursor: pointer;
+        transition: all 0.2s;
+        text-align: center;
+      }
+      .pos-cell:hover {
+        border-color: var(--primary);
+        color: var(--primary);
+        background: var(--primary-subtle);
+      }
+      .pos-cell.active {
+        border-style: solid;
+        border-color: var(--primary);
+        background: var(--primary);
+        color: #ffffff;
+        box-shadow: var(--shadow-sm);
+      }
+
+      /* Spring Curve Visualizer */
+      .spring-canvas-wrapper {
+        width: 100%;
+        height: 140px;
+        background: var(--bg-card-subtle);
+        border: 1px solid var(--border-subtle);
+        border-radius: var(--radius-md);
+        position: relative;
+        overflow: hidden;
+        margin-bottom: 12px;
+      }
+      .spring-canvas-wrapper svg {
+        width: 100%;
+        height: 100%;
+      }
+
+      /* Audio Oscilloscope Visualizer */
+      .audio-scope-wrapper {
+        width: 100%;
+        height: 110px;
+        background: var(--bg-card-subtle);
+        border: 1px solid var(--border-subtle);
+        border-radius: var(--radius-md);
+        position: relative;
+        overflow: hidden;
+        margin-bottom: 12px;
+      }
+      .audio-scope-wrapper canvas {
+        width: 100%;
+        height: 100%;
+        display: block;
+      }
+
+      /* Telemetry Meters */
+      .telemetry-row {
+        display: grid;
+        grid-template-columns: repeat(4, 1fr);
+        gap: 12px;
+        margin-bottom: 16px;
+      }
+      .telemetry-gauge {
+        background: var(--bg-card-subtle);
+        border: 1px solid var(--border-subtle);
+        border-radius: var(--radius-md);
+        padding: 14px;
+        text-align: center;
+      }
+      .telemetry-value {
+        font-size: 24px;
+        font-weight: 800;
+        font-family: var(--font-mono);
+        color: var(--primary);
+        line-height: 1.2;
+      }
+      .telemetry-label {
+        font-size: 11px;
+        font-weight: 600;
+        color: var(--text-muted);
+        text-transform: uppercase;
+        letter-spacing: 0.05em;
+        margin-top: 4px;
+      }
+
+      /* Multi-Framework Code Box */
+      .code-box {
+        background: #090d16;
+        color: #e2e8f0;
+        border-radius: var(--radius-md);
+        border: 1px solid #1e293b;
+        overflow: hidden;
+        position: relative;
+        font-family: var(--font-mono);
+        font-size: 13px;
+      }
+      .code-header {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        padding: 8px 16px;
+        background: #0f172a;
+        border-bottom: 1px solid #1e293b;
+      }
+      .code-tabs {
+        display: flex;
+        gap: 6px;
+      }
+      .code-tab-btn {
+        background: transparent;
+        border: none;
+        color: #94a3b8;
+        font-size: 12px;
+        font-weight: 600;
+        padding: 4px 10px;
+        border-radius: var(--radius-sm);
+        cursor: pointer;
+        transition: all 0.15s;
+        font-family: var(--font-sans);
+      }
+      .code-tab-btn:hover {
+        color: #ffffff;
+      }
+      .code-tab-btn.active {
+        background: #1e293b;
+        color: #38bdf8;
+      }
+      .code-copy-btn {
+        background: #1e293b;
+        border: 1px solid #334155;
+        color: #e2e8f0;
+        padding: 4px 10px;
+        border-radius: var(--radius-sm);
+        font-size: 12px;
+        cursor: pointer;
+        font-family: var(--font-sans);
+        font-weight: 600;
+        transition: background-color 0.2s;
+      }
+      .code-copy-btn:hover {
+        background: #334155;
+      }
+      .code-pre {
+        padding: 16px;
+        overflow-x: auto;
+        line-height: 1.6;
+        margin: 0;
+      }
+
+      /* Options Reference Table */
+      .table-wrapper {
+        width: 100%;
+        overflow-x: auto;
+        border: 1px solid var(--border-subtle);
+        border-radius: var(--radius-md);
+        background: var(--bg-surface);
+      }
+      table.options-table {
+        width: 100%;
+        border-collapse: collapse;
+        font-size: 13px;
+        text-align: left;
+      }
+      table.options-table th {
+        background: var(--bg-card-subtle);
+        padding: 12px 16px;
+        font-weight: 700;
+        border-bottom: 1px solid var(--border-subtle);
+      }
+      table.options-table td {
+        padding: 12px 16px;
+        border-bottom: 1px solid var(--border-subtle);
+      }
+      table.options-table tr:last-child td {
+        border-bottom: none;
+      }
+      .opt-name {
+        font-family: var(--font-mono);
+        font-weight: 600;
+        color: var(--primary);
+      }
+      .opt-type {
+        font-family: var(--font-mono);
+        font-size: 11px;
+        color: var(--text-muted);
+      }
+      .opt-default {
+        font-family: var(--font-mono);
+        font-size: 11px;
         color: var(--text-faint);
       }
 
-      @media (max-width: 900px) {
-        .playground {
-          grid-template-columns: 1fr;
-        }
-        .pg-controls {
-          border-right: none;
-          border-bottom: 1px solid var(--line);
-          max-height: 480px;
-        }
-        .preset-grid {
-          grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
-        }
-        .comparison-grid {
-          grid-template-columns: 1fr !important;
-        }
-        .navlinks {
-          display: flex;
-          gap: 12px;
-          flex-wrap: wrap;
-        }
+      /* Sticky Trigger Bar */
+      .action-footer-bar {
+        position: sticky;
+        bottom: 24px;
+        z-index: 90;
+        max-width: 680px;
+        margin: 0 auto 32px auto;
+        background: var(--bg-surface);
+        border: 1px solid var(--border-subtle);
+        border-radius: var(--radius-full);
+        padding: 8px 12px 8px 20px;
+        box-shadow: var(--shadow-xl);
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 16px;
+        backdrop-filter: blur(12px);
+      }
+      .footer-toast-btn {
+        background: linear-gradient(135deg, #2563eb, #7c3aed);
+        color: #ffffff;
+        border: none;
+        padding: 10px 24px;
+        border-radius: var(--radius-full);
+        font-size: 14px;
+        font-weight: 700;
+        cursor: pointer;
+        box-shadow: 0 4px 12px rgba(37, 99, 235, 0.35);
+        transition: transform 0.15s, box-shadow 0.15s;
+        display: inline-flex;
+        align-items: center;
+        gap: 8px;
+      }
+      .footer-toast-btn:hover {
+        transform: translateY(-2px);
+        box-shadow: 0 6px 18px rgba(37, 99, 235, 0.45);
+      }
+      .footer-clear-btn {
+        background: transparent;
+        border: 1px solid var(--border-subtle);
+        color: var(--text-muted);
+        padding: 10px 18px;
+        border-radius: var(--radius-full);
+        font-size: 13px;
+        font-weight: 600;
+        cursor: pointer;
+        transition: all 0.2s;
+      }
+      .footer-clear-btn:hover {
+        color: var(--error);
+        border-color: var(--error);
       }
 
-      @media (max-width: 600px) {
-        .wrap, .wrap-narrow {
-          padding: 0 16px;
-        }
-        .brand {
-          font-size: 14px;
-        }
-        .navlinks a:not(.sound-toggle-btn) {
-          display: none;
-        }
+      /* Footer */
+      footer.page-footer {
+        border-top: 1px solid var(--border-subtle);
+        padding: 40px 0;
+        text-align: center;
+        font-size: 13px;
+        color: var(--text-muted);
+        margin-top: 64px;
+      }
+      footer.page-footer a {
+        color: var(--primary);
+        text-decoration: none;
+        font-weight: 600;
       }
 
-      @keyframes toast-bounce-gentle {
-        0%, 100% {
-          transform: translateY(0);
-        }
-        50% {
-          transform: translateY(-8px);
-        }
-      }
-
-      .custom-animation-bounce {
-        animation: toast-bounce-gentle 0.6s ease-in-out;
-      }
-
-      @media (prefers-reduced-motion: reduce) {
-        html {
-          scroll-behavior: auto;
-        }
-        * {
-          transition-duration: 0.01ms !important;
-        }
+      @media (max-width: 640px) {
+        .telemetry-row { grid-template-columns: 1fr 1fr; }
+        .form-row, .form-row-3 { grid-template-columns: 1fr; }
+        .action-footer-bar { bottom: 12px; border-radius: var(--radius-md); width: calc(100% - 32px); }
       }
     </style>
   </head>
   <body>
-    <nav class="top">
-      <div class="wrap">
-        <div style="display: flex; align-items: center; gap: 10px">
-          <a class="brand" href="#top"
-            ><span class="dot" id="brandDot"></span
-            >customizable-toast-notification</a
-          >
-          <span class="version-pill" id="pkgVersionBadge">v3.17.0</span>
-        </div>
-        <div class="navlinks">
-          <a href="#presets">Try it instantly</a>
-          <a href="#playground">Playground</a>
-          <a href="#api">API</a>
-          <a href="#compare">Why this one</a>
-          <a href="#install">Install</a>
-          <button id="audioToggleBtn" class="sound-toggle-btn active" title="Toggle native Web Audio API chimes">🔊 Sound: ON</button>
-          <select id="soundPresetSelect" class="theme-select" title="Switch Sound Preset">
-            <option value="modern">🎵 Modern Synth</option>
-            <option value="retro">👾 Retro 8-Bit</option>
-            <option value="futuristic">🚀 Futuristic Sci-Fi</option>
-            <option value="subtle">📳 Subtle Haptic</option>
-            <option value="bell">🔔 Crystal Bell</option>
-          </select>
-          <canvas id="audioOscilloscope" width="84" height="26" class="audio-oscilloscope" title="Live Synth Waveform"></canvas>
-          <select id="themeSelect" class="theme-select" title="Switch Theme">
-            <option value="light">☀️ Light</option>
-            <option value="dark">🌙 Dark</option>
-            <option value="high-contrast">👁️ Contrast</option>
-            <option value="compact">📐 Compact</option>
-            <option value="spacious">🛋️ Spacious</option>
-            <option value="glass">🧊 Glass</option>
-          </select>
+    <!-- Navigation -->
+    <header class="navbar">
+      <div class="container nav-content">
+        <a href="#" class="brand-group">
+          <div class="brand-logo">T</div>
+          <div class="brand-title">
+            customizable-toast
+            <span class="brand-badge" id="versionBadge">v3.17.0</span>
+          </div>
+        </a>
+        <div class="nav-actions">
+          <button class="theme-btn" id="themeToggleBtn" aria-label="Toggle theme">
+            <span id="themeIcon">🌙</span> <span id="themeLabel">Dark Mode</span>
+          </button>
           <a
-            href="https://github.com/sammy-cool/customizable-toast-notification"
+            href="https://github.com/aashishvanand/customizable-toast-notification"
             target="_blank"
             rel="noopener noreferrer"
-            >GitHub</a
+            class="github-btn"
           >
-          <a
-            href="https://www.npmjs.com/package/customizable-toast-notification"
-            target="_blank"
-            rel="noopener noreferrer"
-            >npm</a
-          >
+            <span>GitHub</span> ★
+          </a>
         </div>
-      </div>
-    </nav>
-
-    <header class="hero" id="top">
-      <div class="wrap">
-        <div class="eyebrow" id="eyebrow">
-          every option · live code generation · copy &amp; ship
-        </div>
-        <h1>
-          Build the exact toast you want,
-          <em id="heroEm" style="color: var(--accent)">then copy the code.</em>
-        </h1>
-        <p class="lede">
-          This is the real, published
-          <code>customizable-toast-notification</code> package, loaded straight
-          from jsDelivr — not a mockup. Pick a preset, or tune every option
-          yourself, and the code panel updates live. Copy it, paste it in your
-          project, done.
-        </p>
       </div>
     </header>
 
-    <section class="block" id="presets">
-      <div class="wrap">
-        <h2>Try it instantly</h2>
-        <p class="section-lede">
-          Zero configuration — click a card, see it fire, then jump into the
-          playground below to make it your own.
-        </p>
-        <div class="preset-grid" id="presetGrid"></div>
-      </div>
-    </section>
-
-    <section class="block" id="playground">
-      <div class="wrap">
-        <h2>Playground</h2>
-        <p class="section-lede">
-          Every option this library supports is a control here. Change anything
-          — the code panel on the right reflects exactly what you'd write, with
-          only the options that actually differ from the defaults (the same way
-          you'd write it by hand).
+    <!-- Main Content -->
+    <main class="container">
+      <!-- Hero -->
+      <section class="hero">
+        <div class="hero-tag">
+          <span class="pulse"></span>
+          Zero-Dependency &bull; Offline-First &bull; 100% Type-Safe &bull; Enterprise Architecture
+        </div>
+        <h1 class="hero-headline">
+          The Intelligent, Universal <br />
+          <span class="gradient-text">Toast Notification Studio</span>
+        </h1>
+        <p class="hero-desc">
+          Craft pixel-perfect alerts with analytical spring physics, Web Audio harmonic synthesizers,
+          swipe gestures, card deck stacking, cross-tab sync, and automatic TypeSafe AI triage.
         </p>
 
-        <div class="playground">
-          <div class="pg-controls" id="pgControls"></div>
-          <div class="pg-main">
-            <div class="code-panel">
-              <div class="code-bar">
-                <div class="code-framework-tabs" id="frameworkTabs">
-                  <button class="fw-tab active" data-fw="js" type="button">Vanilla JS</button>
-                  <button class="fw-tab" data-fw="react" type="button">React</button>
-                  <button class="fw-tab" data-fw="vue" type="button">Vue 3</button>
-                  <button class="fw-tab" data-fw="svelte" type="button">Svelte</button>
-                  <button class="fw-tab" data-fw="ts" type="button">TypeScript</button>
-                </div>
-                <button class="copy-btn" id="copyBtn" type="button">Copy</button>
+        <!-- Install Snippet -->
+        <div class="install-box">
+          <span style="color: var(--text-muted);">$</span>
+          <span id="installCmd">npm install customizable-toast-notification</span>
+          <button class="install-copy-btn" id="copyInstallBtn">Copy</button>
+        </div>
+
+        <!-- Quick Actions Pills -->
+        <div class="quick-actions-bar">
+          <button class="quick-btn success" id="quickSuccessBtn">✔ Success Chime</button>
+          <button class="quick-btn error" id="quickErrorBtn">✖ Error Alert</button>
+          <button class="quick-btn warning" id="quickWarningBtn">⚠ Warning</button>
+          <button class="quick-btn info" id="quickInfoBtn">ℹ Informational</button>
+          <button class="quick-btn" id="quickLoadingBtn">⏳ Loading & Update</button>
+          <button class="quick-btn" id="quickPromiseBtn">🔄 Async Promise</button>
+          <button class="quick-btn" id="quickUndoBtn">↩ Action Undo (5s)</button>
+          <button class="quick-btn" id="quickStackedBtn">📚 iOS Card Stack</button>
+          <button class="quick-btn" id="quickBouncyBtn">💫 Bouncy Spring</button>
+          <button class="quick-btn primary" id="quickFloodBtn">⚡ 50x Burst Flood</button>
+        </div>
+      </section>
+
+      <!-- Bento Studio Grid -->
+      <div class="studio-grid">
+        <!-- 1. Live Notification Configurator -->
+        <section class="card col-7">
+          <div class="card-header">
+            <div>
+              <div class="card-title">Notification Configurator</div>
+              <div class="card-subtitle">Tune message, semantics, styles, and timing</div>
+            </div>
+            <button class="quick-btn" id="resetConfigBtn" style="padding: 4px 10px; font-size: 11px;">Reset</button>
+          </div>
+
+          <div class="form-group">
+            <label class="form-label" for="toastMessageInput">Message Content</label>
+            <input
+              type="text"
+              id="toastMessageInput"
+              class="input-text"
+              value="Changes saved successfully to your cloud workspace!"
+            />
+          </div>
+
+          <div class="form-row">
+            <div class="form-group">
+              <label class="form-label" for="toastTypeSelect">Semantic Type</label>
+              <select id="toastTypeSelect" class="select-input">
+                <option value="success" selected>success</option>
+                <option value="error">error</option>
+                <option value="warning">warning</option>
+                <option value="info">info</option>
+                <option value="loading">loading</option>
+                <option value="custom">custom</option>
+              </select>
+            </div>
+            <div class="form-group">
+              <label class="form-label" for="toastDurationSlider">
+                Duration <span class="value-badge" id="durationValueBadge">3000ms</span>
+              </label>
+              <input type="range" id="toastDurationSlider" class="range-slider" min="0" max="10000" step="250" value="3000" />
+            </div>
+          </div>
+
+          <div class="form-row">
+            <div class="form-group">
+              <label class="form-label" for="toastBgColor">Custom Background</label>
+              <input type="text" id="toastBgColor" class="input-text" placeholder="e.g. #2563eb or transparent" />
+            </div>
+            <div class="form-group">
+              <label class="form-label" for="toastTextColor">Custom Text Color</label>
+              <input type="text" id="toastTextColor" class="input-text" placeholder="Auto accessible contrast" />
+            </div>
+          </div>
+
+          <div class="form-row-3">
+            <label class="toggle-label">
+              <span>Close Button</span>
+              <label class="switch"><input type="checkbox" id="toggleCloseBtn" checked><span class="slider"></span></label>
+            </label>
+            <label class="toggle-label">
+              <span>Pause on Hover</span>
+              <label class="switch"><input type="checkbox" id="togglePauseOnHover" checked><span class="slider"></span></label>
+            </label>
+            <label class="toggle-label">
+              <span>Swipe-to-Dismiss</span>
+              <label class="switch"><input type="checkbox" id="toggleSwipeToDismiss" checked><span class="slider"></span></label>
+            </label>
+          </div>
+          <div class="form-row-3" style="margin-top: 8px;">
+            <label class="toggle-label">
+              <span>HTML Allowed</span>
+              <label class="switch"><input type="checkbox" id="toggleAllowHtml"><span class="slider"></span></label>
+            </label>
+            <label class="toggle-label">
+              <span>Card Stacking</span>
+              <label class="switch"><input type="checkbox" id="toggleStacked"><span class="slider"></span></label>
+            </label>
+            <label class="toggle-label">
+              <span>Icon Display</span>
+              <label class="switch"><input type="checkbox" id="toggleIcon" checked><span class="slider"></span></label>
+            </label>
+          </div>
+        </section>
+
+        <!-- 2. Position Matrix Canvas -->
+        <section class="card col-5">
+          <div class="card-header">
+            <div>
+              <div class="card-title">15-Position Matrix</div>
+              <div class="card-subtitle">Target any viewport corner, edge, center, or full width</div>
+            </div>
+            <span class="value-badge" id="currentPosBadge">bottom-right</span>
+          </div>
+
+          <div class="position-matrix-canvas" id="positionMatrixCanvas">
+            <div class="pos-cell" data-pos="top-left">top-left</div>
+            <div class="pos-cell" data-pos="top-center">top-center</div>
+            <div class="pos-cell" data-pos="top-right">top-right</div>
+            <div class="pos-cell" data-pos="left-center">center-left</div>
+            <div class="pos-cell" data-pos="center">center</div>
+            <div class="pos-cell" data-pos="right-center">center-right</div>
+            <div class="pos-cell" data-pos="bottom-left">bottom-left</div>
+            <div class="pos-cell" data-pos="bottom-center">bottom-center</div>
+            <div class="pos-cell active" data-pos="bottom-right">bottom-right</div>
+          </div>
+
+          <div style="display: flex; gap: 8px; margin-top: 12px;">
+            <button class="pos-cell" data-pos="top-full-width" style="flex: 1;">top-full-width</button>
+            <button class="pos-cell" data-pos="bottom-full-width" style="flex: 1;">bottom-full-width</button>
+            <button class="pos-cell" data-pos="center-top" style="flex: 1;">center-top</button>
+            <button class="pos-cell" data-pos="center-bottom" style="flex: 1;">center-bottom</button>
+          </div>
+        </section>
+
+        <!-- 3. Physics & Motion Studio -->
+        <section class="card col-6">
+          <div class="card-header">
+            <div>
+              <div class="card-title">Physics & Animation Studio</div>
+              <div class="card-subtitle">Analytical spring solver & CSS linear() timing curves</div>
+            </div>
+            <span class="value-badge" id="springPresetBadge">bouncy</span>
+          </div>
+
+          <div class="form-row" style="margin-bottom: 12px;">
+            <div class="form-group" style="margin: 0;">
+              <label class="form-label" for="animationTypeSelect">Animation Type</label>
+              <select id="animationTypeSelect" class="select-input">
+                <option value="spring" selected>spring (Physics)</option>
+                <option value="bounce">bounce (Gentle)</option>
+                <option value="slide">slide (Directional)</option>
+                <option value="zoom">zoom (Scale 0.75 -> 1)</option>
+                <option value="fade">fade (Opacity Only)</option>
+                <option value="flip">flip (3D Perspective)</option>
+              </select>
+            </div>
+            <div class="form-group" style="margin: 0;">
+              <label class="form-label" for="springPresetSelect">Spring Preset</label>
+              <select id="springPresetSelect" class="select-input">
+                <option value="default">default (Smooth)</option>
+                <option value="gentle">gentle (Minimal overshoot)</option>
+                <option value="wobbly">wobbly (Playful oscillation)</option>
+                <option value="stiff">stiff (Snappy crisp)</option>
+                <option value="bouncy" selected>bouncy (High energy)</option>
+              </select>
+            </div>
+          </div>
+
+          <!-- Spring Visualizer Graph -->
+          <div class="spring-canvas-wrapper" id="springGraphContainer">
+            <svg id="springSvgGraph" viewBox="0 0 400 120" preserveAspectRatio="none">
+              <!-- Grid line at y = 1 (target displacement) -->
+              <line x1="0" y1="40" x2="400" y2="40" stroke="var(--border-subtle)" stroke-dasharray="4 4" stroke-width="1" />
+              <!-- Spring displacement path -->
+              <path id="springGraphPath" d="M 0 110 Q 100 10 200 40 T 400 40" fill="none" stroke="var(--primary)" stroke-width="2.5" />
+            </svg>
+          </div>
+
+          <div class="form-row-3">
+            <div class="form-group" style="margin: 0;">
+              <label class="form-label">Stiffness <span class="value-badge" id="stiffnessVal">300</span></label>
+              <input type="range" id="stiffnessSlider" class="range-slider" min="50" max="600" step="10" value="300" />
+            </div>
+            <div class="form-group" style="margin: 0;">
+              <label class="form-label">Damping <span class="value-badge" id="dampingVal">15</span></label>
+              <input type="range" id="dampingSlider" class="range-slider" min="5" max="50" step="1" value="15" />
+            </div>
+            <div class="form-group" style="margin: 0;">
+              <label class="form-label">Mass <span class="value-badge" id="massVal">1.2</span></label>
+              <input type="range" id="massSlider" class="range-slider" min="0.2" max="3.0" step="0.1" value="1.2" />
+            </div>
+          </div>
+        </section>
+
+        <!-- 4. Web Audio Synthesizer & Progress Bar Lab -->
+        <section class="card col-6">
+          <div class="card-header">
+            <div>
+              <div class="card-title">Synthesizer & Progress Lab</div>
+              <div class="card-subtitle">Zero-asset Web Audio synthesis & streaming progress</div>
+            </div>
+            <div style="display: flex; gap: 6px;">
+              <button class="quick-btn" id="testToneBtn" style="padding: 4px 10px; font-size: 11px;">▶ Test Chime</button>
+            </div>
+          </div>
+
+          <!-- Oscilloscope Waveform Canvas -->
+          <div class="audio-scope-wrapper">
+            <canvas id="audioOscilloscopeCanvas"></canvas>
+          </div>
+
+          <div class="form-row" style="margin-bottom: 12px;">
+            <div class="form-group" style="margin: 0;">
+              <label class="form-label" for="soundPresetSelect">Synth Preset</label>
+              <select id="soundPresetSelect" class="select-input">
+                <option value="modern" selected>modern (Multi-tone sine chord)</option>
+                <option value="retro">retro (8-bit chip arpeggio)</option>
+                <option value="futuristic">futuristic (Resonant FM sweep)</option>
+                <option value="subtle">subtle (Haptic micro-click)</option>
+                <option value="bell">bell (Crystal harmonic chimes)</option>
+              </select>
+            </div>
+            <div class="form-group" style="margin: 0;">
+              <label class="form-label" for="progressTypeSelect">Progress Mode</label>
+              <select id="progressTypeSelect" class="select-input">
+                <option value="auto" selected>Auto Countdown</option>
+                <option value="stream">Live Manual Percentage</option>
+                <option value="indeterminate">Indeterminate Shimmer</option>
+                <option value="reverse">Reverse (Increasing)</option>
+                <option value="hidden">Hidden</option>
+              </select>
+            </div>
+          </div>
+
+          <div class="form-row">
+            <div class="form-group" style="margin: 0;">
+              <label class="form-label" for="manualProgressSlider">
+                Stream Progress <span class="value-badge" id="manualProgressVal">65%</span>
+              </label>
+              <input type="range" id="manualProgressSlider" class="range-slider" min="0" max="100" step="1" value="65" />
+            </div>
+            <div class="form-group" style="margin: 0;">
+              <label class="form-label" for="progressBarColorInput">Bar Color / Height</label>
+              <div style="display: flex; gap: 8px;">
+                <input type="text" id="progressBarColorInput" class="input-text" placeholder="e.g. #3b82f6" style="flex: 2;" />
+                <select id="progressBarHeightSelect" class="select-input" style="flex: 1;">
+                  <option value="3px">3px</option>
+                  <option value="4px" selected>4px</option>
+                  <option value="6px">6px</option>
+                </select>
               </div>
-              <pre id="codeOutput"></pre>
-            </div>
-            <div class="pg-actions">
-              <button class="fire-btn" id="pgFireBtn">Fire this toast</button>
-              <button class="fire-btn ghost" id="pgResetBtn">
-                Reset to defaults
-              </button>
-              <a href="https://stackblitz.com/edit/customizable-toast-notification-demo?file=index.html" target="_blank" rel="noopener noreferrer" class="fire-btn ghost" style="text-decoration:none; display:inline-flex; align-items:center; justify-content:center; gap:6px;">⚡ Open in StackBlitz</a>
             </div>
           </div>
+        </section>
+
+        <!-- 5. Actions, Undo & Gestures -->
+        <section class="card col-6">
+          <div class="card-header">
+            <div>
+              <div class="card-title">Interactive Actions & Undo</div>
+              <div class="card-subtitle">Multi-action buttons, undo countdown, and dismiss callbacks</div>
+            </div>
+          </div>
+
+          <div class="form-group">
+            <label class="form-label">Call-to-Action Buttons</label>
+            <div class="segmented-group" id="ctaVariantGroup">
+              <button class="segmented-btn active" data-cta="none">None</button>
+              <button class="segmented-btn" data-cta="single">Single Button</button>
+              <button class="segmented-btn" data-cta="multi">Dual Buttons (Accept / Decline)</button>
+              <button class="segmented-btn" data-cta="link">External Link</button>
+            </div>
+          </div>
+
+          <div class="form-group">
+            <label class="toggle-label">
+              <span>Enable Action Undo with Live Countdown</span>
+              <label class="switch"><input type="checkbox" id="toggleUndoAction"><span class="slider"></span></label>
+            </label>
+          </div>
+
+          <div class="form-row">
+            <div class="form-group" style="margin: 0;">
+              <label class="form-label" for="ctaLabelInput">Primary Label</label>
+              <input type="text" id="ctaLabelInput" class="input-text" value="Review Changes" />
+            </div>
+            <div class="form-group" style="margin: 0;">
+              <label class="form-label" for="undoLabelInput">Undo Button Label</label>
+              <input type="text" id="undoLabelInput" class="input-text" value="Undo" />
+            </div>
+          </div>
+        </section>
+
+        <!-- 6. Enterprise Subsystems & Live Telemetry -->
+        <section class="card col-6">
+          <div class="card-header">
+            <div>
+              <div class="card-title">Enterprise Subsystems & Telemetry</div>
+              <div class="card-subtitle">Real-time metrics, tab sync, recycling pool & AI triage</div>
+            </div>
+            <span class="value-badge" style="color: var(--success);">● Active</span>
+          </div>
+
+          <div class="telemetry-row">
+            <div class="telemetry-gauge">
+              <div class="telemetry-value" id="meterActive">0</div>
+              <div class="telemetry-label">Active</div>
+            </div>
+            <div class="telemetry-gauge">
+              <div class="telemetry-value" id="meterQueue">0</div>
+              <div class="telemetry-label">Queued</div>
+            </div>
+            <div class="telemetry-gauge">
+              <div class="telemetry-value" id="meterDropped">0</div>
+              <div class="telemetry-label">Dropped</div>
+            </div>
+            <div class="telemetry-gauge">
+              <div class="telemetry-value" id="meterFps">60</div>
+              <div class="telemetry-label">FPS</div>
+            </div>
+          </div>
+
+          <div class="form-row-3" style="margin-top: 8px;">
+            <label class="toggle-label">
+              <span>Cross-Tab Sync</span>
+              <label class="switch"><input type="checkbox" id="toggleSyncTabs"><span class="slider"></span></label>
+            </label>
+            <label class="toggle-label">
+              <span>AI Prioritization</span>
+              <label class="switch"><input type="checkbox" id="toggleAiScorer"><span class="slider"></span></label>
+            </label>
+            <label class="toggle-label">
+              <span>Recycling Pool</span>
+              <label class="switch"><input type="checkbox" id="togglePool" checked><span class="slider"></span></label>
+            </label>
+          </div>
+        </section>
+
+        <!-- 7. Multi-Framework Code Generator -->
+        <section class="card col-12">
+          <div class="card-header">
+            <div>
+              <div class="card-title">Live Code Generator</div>
+              <div class="card-subtitle">Production-ready snippets generated from your live selections</div>
+            </div>
+            <div class="code-tabs">
+              <button class="code-tab-btn active" data-lang="js">JavaScript / ESM</button>
+              <button class="code-tab-btn" data-lang="ts">TypeScript</button>
+              <button class="code-tab-btn" data-lang="react">React</button>
+              <button class="code-tab-btn" data-lang="vue">Vue 3</button>
+              <button class="code-tab-btn" data-lang="svelte">Svelte 5</button>
+              <button class="code-tab-btn" data-lang="cdn">CDN / HTML</button>
+            </div>
+          </div>
+
+          <div class="code-box">
+            <div class="code-header">
+              <span style="font-size: 11px; color: #94a3b8;" id="codeFilename">toast-snippet.js</span>
+              <button class="code-copy-btn" id="copyCodeBtn">Copy Snippet</button>
+            </div>
+            <pre class="code-pre"><code id="codeOutput">import { createToast } from "customizable-toast-notification";
+import "customizable-toast-notification/dist/index.css";
+
+createToast({
+  message: "Changes saved successfully to your cloud workspace!",
+  type: "success",
+  duration: 3000,
+  position: "bottom-right",
+  spring: "bouncy",
+  sound: true,
+});</code></pre>
+          </div>
+        </section>
+
+        <!-- 8. Complete Options Reference Table -->
+        <section class="card col-12">
+          <div class="card-header">
+            <div>
+              <div class="card-title">Comprehensive API Reference</div>
+              <div class="card-subtitle">Every option, parameter, and method exposed by customizable-toast-notification</div>
+            </div>
+          </div>
+
+          <div class="table-wrapper">
+            <table class="options-table">
+              <thead>
+                <tr>
+                  <th>Option</th>
+                  <th>Type</th>
+                  <th>Default</th>
+                  <th>Description</th>
+                </tr>
+              </thead>
+              <tbody>
+                <tr>
+                  <td class="opt-name">message</td>
+                  <td class="opt-type">string | HTMLElement</td>
+                  <td class="opt-default">""</td>
+                  <td>The notification text or element body. Supports raw text or sanitized HTML.</td>
+                </tr>
+                <tr>
+                  <td class="opt-name">type</td>
+                  <td class="opt-type">'success' | 'error' | 'warning' | 'info' | 'loading' | 'custom'</td>
+                  <td class="opt-default">'info'</td>
+                  <td>Semantic intent determining accessible ARIA role, SVG icon, color theme, and default sound.</td>
+                </tr>
+                <tr>
+                  <td class="opt-name">duration</td>
+                  <td class="opt-type">number</td>
+                  <td class="opt-default">2500</td>
+                  <td>Display time in milliseconds before auto-dismissing. Set to 0 or Infinity for persistent manual toasts.</td>
+                </tr>
+                <tr>
+                  <td class="opt-name">position</td>
+                  <td class="opt-type">ToastPosition</td>
+                  <td class="opt-default">'bottom-right'</td>
+                  <td>15 layout positions: corners, centers, edges, center-top/bottom, and top/bottom full-width.</td>
+                </tr>
+                <tr>
+                  <td class="opt-name">spring</td>
+                  <td class="opt-type">boolean | SpringPreset | SpringConfig</td>
+                  <td class="opt-default">false</td>
+                  <td>Configures damped harmonic oscillator physics motion using modern CSS linear() curves.</td>
+                </tr>
+                <tr>
+                  <td class="opt-name">animationType</td>
+                  <td class="opt-type">'default' | 'spring' | 'bounce' | 'slide' | 'zoom' | 'fade' | 'flip'</td>
+                  <td class="opt-default">'default'</td>
+                  <td>Animation entrance/exit style. Seamlessly works across standard CSS transitions and spring physics.</td>
+                </tr>
+                <tr>
+                  <td class="opt-name">sound</td>
+                  <td class="opt-type">boolean | SoundPreset</td>
+                  <td class="opt-default">false</td>
+                  <td>Synthesizes zero-asset audio tones on toast creation via Web Audio oscillator nodes.</td>
+                </tr>
+                <tr>
+                  <td class="opt-name">soundPreset</td>
+                  <td class="opt-type">'modern' | 'retro' | 'futuristic' | 'subtle' | 'bell'</td>
+                  <td class="opt-default">'modern'</td>
+                  <td>Sound design preset timbre. Easily extensible via registerSoundPreset().</td>
+                </tr>
+                <tr>
+                  <td class="opt-name">showProgressBar</td>
+                  <td class="opt-type">boolean</td>
+                  <td class="opt-default">true</td>
+                  <td>Displays a synchronized progress countdown bar. Automatically pauses on hover.</td>
+                </tr>
+                <tr>
+                  <td class="opt-name">progress</td>
+                  <td class="opt-type">number | 'indeterminate'</td>
+                  <td class="opt-default">undefined</td>
+                  <td>Live percentage (0-100 or 0-1) for progress streaming, or 'indeterminate' for loading shimmers.</td>
+                </tr>
+                <tr>
+                  <td class="opt-name">progressBarColor</td>
+                  <td class="opt-type">string</td>
+                  <td class="opt-default">currentColor</td>
+                  <td>Custom color for progress bar (accepts hex, rgb, hsl, or CSS custom properties).</td>
+                </tr>
+                <tr>
+                  <td class="opt-name">progressDirection</td>
+                  <td class="opt-type">'decreasing' | 'increasing' | 'reverse' | 'ltr'</td>
+                  <td class="opt-default">'decreasing'</td>
+                  <td>Progress bar fill direction (drains down by default, or fills up for uploads).</td>
+                </tr>
+                <tr>
+                  <td class="opt-name">cta</td>
+                  <td class="opt-type">CTAOptions | CTAOptions[]</td>
+                  <td class="opt-default">undefined</td>
+                  <td>Interactive action button(s) or link. Supports multiple buttons (e.g. Accept / Decline).</td>
+                </tr>
+                <tr>
+                  <td class="opt-name">undo</td>
+                  <td class="opt-type">UndoOptions | Function</td>
+                  <td class="opt-default">undefined</td>
+                  <td>Action undo button with dynamic decaying live countdown badge (Undo (5s)).</td>
+                </tr>
+                <tr>
+                  <td class="opt-name">stacked</td>
+                  <td class="opt-type">boolean</td>
+                  <td class="opt-default">false</td>
+                  <td>iOS-style card deck stacking with natural scale/peek physics and hover expansion.</td>
+                </tr>
+                <tr>
+                  <td class="opt-name">swipeToDismiss</td>
+                  <td class="opt-type">boolean</td>
+                  <td class="opt-default">true</td>
+                  <td>Enables mobile touch swipe gesture and mouse drag with spring velocity snap-back.</td>
+                </tr>
+                <tr>
+                  <td class="opt-name">syncTabs</td>
+                  <td class="opt-type">boolean</td>
+                  <td class="opt-default">false</td>
+                  <td>Synchronizes toasts across multiple browser tabs via BroadcastChannel.</td>
+                </tr>
+                <tr>
+                  <td class="opt-name">aiPrioritization</td>
+                  <td class="opt-type">boolean</td>
+                  <td class="opt-default">false</td>
+                  <td>Analyzes event semantics and urgency to calculate priority scores for dynamic queue ordering.</td>
+                </tr>
+                <tr>
+                  <td class="opt-name">usePool</td>
+                  <td class="opt-type">boolean</td>
+                  <td class="opt-default">false</td>
+                  <td>High-throughput element recycling pool preventing garbage collection pressure.</td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+        </section>
+      </div>
+
+      <!-- Sticky Action Trigger Bar -->
+      <div class="action-footer-bar">
+        <div style="display: flex; align-items: center; gap: 8px;">
+          <button class="footer-toast-btn" id="fireToastBtn">
+            <span>✨</span> Fire Notification
+          </button>
+          <button class="footer-clear-btn" id="dismissAllBtn">Clear All</button>
+        </div>
+        <div style="font-size: 12px; color: var(--text-muted); font-weight: 500;" id="footerStatusText">
+          Ready &bull; Click to trigger
         </div>
       </div>
-    </section>
+    </main>
 
-    <section class="block" id="api">
-      <div class="wrap-narrow">
-        <h2>API reference — live</h2>
-        <p class="section-lede">
-          Every function this package exports, each with a working example you
-          can actually run.
+    <!-- Footer -->
+    <footer class="page-footer">
+      <div class="container">
+        <p>
+          Crafted with &hearts; for high-performance web applications. Open source under the MIT License.
         </p>
-
-        <div class="api-demo">
-          <h3>Shorthands: <code>createToast.success()</code>, <code>error()</code>, <code>loading()</code>, etc.</h3>
-          <p class="api-desc">
-            Ultra-fast, zero-boilerplate syntax. Pass a message string directly or a full options object.
-          </p>
-          <div class="code-block">
-            <span class="tok-cm">// One-liner convenience methods:</span>
-            createToast.success(<span class="tok-str">"Changes published!"</span>);
-            createToast.error(<span class="tok-str">"Connection timed out."</span>);
-            createToast.warning(<span class="tok-str">"Unsaved draft will be lost."</span>);
-            createToast.loading(<span class="tok-str">"Syncing database..."</span>);
-            createToast.custom(<span class="tok-str">"&lt;b&gt;Custom HTML&lt;/b&gt; with sanitization!"</span>);
-          </div>
-          <div class="try-row">
-            <button class="try-btn" id="shorthandSuccessBtn">
-              .success()
-            </button>
-            <button class="try-btn secondary" id="shorthandErrorBtn">
-              .error()
-            </button>
-            <button class="try-btn secondary" id="shorthandWarnBtn">
-              .warning()
-            </button>
-            <button class="try-btn secondary" id="shorthandLoadingBtn">
-              .loading()
-            </button>
-            <button class="try-btn secondary" id="shorthandCustomBtn">
-              .custom()
-            </button>
-          </div>
-        </div>
-
-        <div class="api-demo">
-          <h3>createToast(options) → Promise&lt;ToastHandle&gt;</h3>
-          <p class="api-desc">
-            Returns a handle for dismissing <em>that specific toast</em> later —
-            regardless of what else has been created since. Fire two, then
-            dismiss only the first one.
-          </p>
-          <div class="code-block">
-            <span class="tok-cm"
-              >// stash the handle, dismiss it whenever you want</span
-            >
-            <span class="tok-kw">const</span> handle =
-            <span class="tok-kw">await</span> createToast({ message:
-            <span class="tok-str">"Uploading..."</span>, duration: 60000 });
-            <span class="tok-cm">// ...later, from anywhere...</span>
-            <span class="tok-kw">await</span> handle.dismiss();
-          </div>
-          <div class="try-row">
-            <button class="try-btn" id="handleCreateBtn">
-              Create a long-lived toast
-            </button>
-            <button class="try-btn secondary" id="handleDismissBtn">
-              Dismiss it via its handle
-            </button>
-          </div>
-        </div>
-
-        <div class="api-demo">
-          <h3>toastPromise(promise, messages, options)</h3>
-          <p class="api-desc">
-            Shows a loading toast, then swaps it for success or error once the
-            promise settles — passing the real resolved value or error straight
-            through.
-          </p>
-          <div class="code-block">
-            <span class="tok-kw">await</span> toastPromise( saveData(),
-            <span class="tok-cm">// any Promise</span> { loading:
-            <span class="tok-str">"Saving..."</span>, success: (val) =>
-            <span class="tok-str">`Saved! id=${val.id}`</span>, error: (err) =>
-            <span class="tok-str">`Failed: ${err.message}`</span>, } );
-          </div>
-          <div class="try-row">
-            <button class="try-btn" id="promiseSuccessBtn">
-              Try it (resolves after 1.5s)
-            </button>
-            <button class="try-btn secondary" id="promiseErrorBtn">
-              Try the error path
-            </button>
-          </div>
-        </div>
-
-        <div class="api-demo">
-          <h3>setDefaultColors(colors) / setDefaultMessages(messages)</h3>
-          <p class="api-desc">
-            Set your brand colors and copy once — every
-            <code
-              style="
-                font-family: var(--mono);
-                background: var(--ink-2);
-                padding: 1px 5px;
-                border-radius: 4px;
-              "
-              >createToast({ type: "success" })</code
-            >
-            afterward uses them automatically.
-          </p>
-          <div class="code-block">
-            setDefaultColors({ success: <span class="tok-str">"#0f9d58"</span>,
-            error: <span class="tok-str">"#d93025"</span> });
-            setDefaultMessages({ success:
-            <span class="tok-str">"✅ Done!"</span> });
-
-            <span class="tok-cm"
-              >// no message/color needed — uses what you just set</span
-            >
-            createToast({ type: <span class="tok-str">"success"</span> });
-          </div>
-          <div class="try-row">
-            <button class="try-btn" id="brandBtn">
-              Apply custom brand colors, then fire
-            </button>
-            <button class="try-btn secondary" id="brandResetBtn">
-              Reset to library defaults
-            </button>
-          </div>
-        </div>
-
-        <div class="api-demo">
-          <h3>Smart grouping — duplicate toasts collapse automatically</h3>
-          <p class="api-desc">
-            Same type + message + position, fired more than once, becomes one
-            toast with a count badge instead of stacking.
-          </p>
-          <div class="code-block">
-            <span class="tok-cm"
-              >// fire this 3 times in a row — watch the badge, not 3 separate
-              toasts</span
-            >
-            createToast({ type: <span class="tok-str">"info"</span>, message:
-            <span class="tok-str">"New comment on your post"</span> });
-          </div>
-          <div class="try-row">
-            <button class="try-btn" id="groupBtn">
-              Fire the same toast 3 times
-            </button>
-          </div>
-        </div>
-
-        <div class="api-demo">
-          <h3>Smart notification triage — TypeSafe AI</h3>
-          <p class="api-desc">
-            Use TypeSafe System One models (Jev) to turn unstructured application events, error logs, or user feedback into typed toast configs (<code style="font-family: var(--mono); background: var(--ink-2); padding: 1px 5px; border-radius: 4px;">Choice</code> for severity, <code style="font-family: var(--mono); background: var(--ink-2); padding: 1px 5px; border-radius: 4px;">Noul</code> for actionability, and <code style="font-family: var(--mono); background: var(--ink-2); padding: 1px 5px; border-radius: 4px;">Score</code> for urgency) before calling <code style="font-family: var(--mono); background: var(--ink-2); padding: 1px 5px; border-radius: 4px;">createToast()</code>.
-          </p>
-          <div class="code-block">
-            <span class="tok-cm">// TypeSafe AI System One returns typed judgments:</span>
-            <span class="tok-kw">const</span> { answers } = <span class="tok-kw">await</span> client.systemOne({
-              state: { event: <span class="tok-str">"Payment failed: card expired"</span> },
-              questions: {
-                severity: choice(<span class="tok-str">"Severity level"</span>, { info: <span class="tok-kw">null</span>, success: <span class="tok-kw">null</span>, warning: <span class="tok-kw">null</span>, error: <span class="tok-kw">null</span> }),
-                needsAction: noul(<span class="tok-str">"Requires user action?"</span>),
-                urgency: score(<span class="tok-str">"Urgency 1-5"</span>, [1, 2, 3, 4, 5])
-              }
-            });
-            <span class="tok-cm">// Code maps typed answers directly to toast configuration:</span>
-            createToast({
-              type: answers.severity.choice,
-              message: <span class="tok-str">"Payment failed: card expired"</span>,
-              duration: answers.urgency.score &gt; 3 ? 6000 : 3000,
-              cta: answers.needsAction.probability &gt; 0.7 ? { label: <span class="tok-str">"Update Card"</span> } : <span class="tok-kw">undefined</span>
-            });
-          </div>
-          <div class="try-row">
-            <button class="try-btn" id="aiTriageErrorBtn">
-              Triage: Card Expired (Error + CTA)
-            </button>
-            <button class="try-btn secondary" id="aiTriageSuccessBtn">
-              Triage: Export Ready (Success + CTA)
-            </button>
-            <button class="try-btn secondary" id="aiTriageWarningBtn">
-              Triage: Storage Alert (Warning)
-            </button>
-          </div>
-        </div>
-
-        <div class="api-demo">
-          <h3>Live in-place mutation & streaming updates — <code>handle.update()</code></h3>
-          <p class="api-desc">
-            Update message, progress bar, type, and icon on active toasts in-place without unmounting, flickering, or timer jumps.
-          </p>
-          <div class="code-block">
-            <span class="tok-kw">const</span> handle = <span class="tok-kw">await</span> createToast({ message: <span class="tok-str">"Exporting report... 0%"</span>, showProgressBar: <span class="tok-kw">true</span>, showLoader: <span class="tok-kw">true</span> });<br/>
-            <span class="tok-kw">await</span> handle.update({ progress: 50, message: <span class="tok-str">"Exporting report... 50%"</span> });<br/>
-            <span class="tok-kw">await</span> handle.update({ type: <span class="tok-str">"success"</span>, message: <span class="tok-str">"Export finished!"</span>, showLoader: <span class="tok-kw">false</span>, sound: <span class="tok-str">"success"</span> });
-          </div>
-          <div class="try-row">
-            <button class="try-btn" id="streamUpdateBtn">
-              Run Live In-Place Streaming Demo
-            </button>
-          </div>
-        </div>
-
-        <div class="api-demo">
-          <h3>iOS-Style Card Deck Stacked Mode — <code>stacked: true</code></h3>
-          <p class="api-desc">
-            Stack multiple toasts behind each other with scale and peek offsets. Hover or focus expands the deck; leaving collapses it.
-          </p>
-          <div class="code-block">
-            createToast({ message: <span class="tok-str">"Deploying v3.17.0..."</span>, stacked: <span class="tok-kw">true</span> });<br/>
-            createToast({ message: <span class="tok-str">"3 tests running..."</span>, stacked: <span class="tok-kw">true</span> });<br/>
-            createToast({ message: <span class="tok-str">"All builds verified!"</span>, type: <span class="tok-str">"success"</span>, stacked: <span class="tok-kw">true</span> });
-          </div>
-          <div class="try-row">
-            <button class="try-btn" id="stackedDeckBtn">
-              Fire Stacked Deck (3 Toasts)
-            </button>
-          </div>
-        </div>
-
-        <div class="api-demo">
-          <h3>Zero-Asset Web Audio API Micro-Feedback Synth — <code>sound: true</code></h3>
-          <p class="api-desc">
-            Pure native browser math oscillators — 0 MP3s, 0 audio assets, 0KB network payload.
-          </p>
-          <div class="try-row">
-            <button class="try-btn" id="soundSuccessBtn">
-              ♫ Success Chime
-            </button>
-            <button class="try-btn secondary" id="soundErrorBtn">
-              ♫ Error Buzz
-            </button>
-            <button class="try-btn secondary" id="soundWarnBtn">
-              ♫ Warning Ping
-            </button>
-            <button class="try-btn secondary" id="soundPopBtn">
-              ♫ Droplet Pop
-            </button>
-          </div>
-        </div>
-
-        <div class="api-demo" id="burst-simulator">
-          <h3>Stress-Test & High-Frequency Burst Simulator — <code>onMetrics & bounded queue</code></h3>
-          <p class="api-desc">
-            Simulate high-frequency notification floods (up to 100 rapid notifications) to verify bounded memory, zero main-thread freezing, queue depth dynamics, and automatic drop protection.
-          </p>
-          <div class="metrics-dashboard" style="display: flex; gap: 12px; margin: 16px 0; flex-wrap: wrap;">
-            <div class="metric-badge" style="background: var(--ink-2); border: 1px solid var(--line); border-radius: 8px; padding: 10px 16px; flex: 1; min-width: 120px; text-align: center;">
-              <div style="font-size: 11px; text-transform: uppercase; color: var(--text-dim); font-weight: 600; letter-spacing: 0.05em;">Active Count</div>
-              <div id="metricActive" style="font-size: 22px; font-weight: 700; color: var(--accent); font-family: var(--mono); margin-top: 4px;">0</div>
-            </div>
-            <div class="metric-badge" style="background: var(--ink-2); border: 1px solid var(--line); border-radius: 8px; padding: 10px 16px; flex: 1; min-width: 120px; text-align: center;">
-              <div style="font-size: 11px; text-transform: uppercase; color: var(--text-dim); font-weight: 600; letter-spacing: 0.05em;">Queue Depth</div>
-              <div id="metricQueue" style="font-size: 22px; font-weight: 700; color: #ffc107; font-family: var(--mono); margin-top: 4px;">0</div>
-            </div>
-            <div class="metric-badge" style="background: var(--ink-2); border: 1px solid var(--line); border-radius: 8px; padding: 10px 16px; flex: 1; min-width: 120px; text-align: center;">
-              <div style="font-size: 11px; text-transform: uppercase; color: var(--text-dim); font-weight: 600; letter-spacing: 0.05em;">Dropped Toasts</div>
-              <div id="metricDropped" style="font-size: 22px; font-weight: 700; color: #dc3545; font-family: var(--mono); margin-top: 4px;">0</div>
-            </div>
-            <div class="metric-badge" style="background: var(--ink-2); border: 1px solid var(--line); border-radius: 8px; padding: 10px 16px; flex: 1; min-width: 120px; text-align: center;">
-              <div style="font-size: 11px; text-transform: uppercase; color: var(--text-dim); font-weight: 600; letter-spacing: 0.05em;">Frame Rate</div>
-              <div id="metricFps" style="font-size: 22px; font-weight: 700; color: #28a745; font-family: var(--mono); margin-top: 4px;">60 fps</div>
-            </div>
-          </div>
-          <div class="try-row">
-            <button class="try-btn" id="burst50Btn">
-              ⚡ Fire 50 Toasts Burst
-            </button>
-            <button class="try-btn secondary" id="burst100Btn">
-              🔥 Fire 100 Extreme Burst
-            </button>
-            <button class="try-btn secondary" id="burstClearBtn">
-              🧹 Clear All & Reset
-            </button>
-          </div>
-        </div>
-      </div>
-    </section>
-
-    <section class="block" id="compare">
-      <div class="wrap-narrow">
-        <h2>Why not just use Sonner or react-toastify?</h2>
-        <p class="section-lede">
-          Honestly — if you're already all-in on React, they're excellent, and
-          Sonner in particular is a great default. This library exists for the
-          cases those don't cover.
+        <p style="margin-top: 6px;">
+          <a href="https://github.com/aashishvanand/customizable-toast-notification" target="_blank" rel="noopener noreferrer">GitHub Repository</a>
+          &bull;
+          <a href="https://www.npmjs.com/package/customizable-toast-notification" target="_blank" rel="noopener noreferrer">npm Package</a>
         </p>
-        <div
-          style="
-            display: grid;
-            grid-template-columns: repeat(3, 1fr);
-            gap: 1px;
-            background: var(--line);
-            border: 1px solid var(--line);
-            border-radius: 12px;
-            overflow: hidden;
-          "
-        >
-          <div style="background: var(--ink-1); padding: 20px">
-            <div
-              style="
-                font-family: var(--mono);
-                font-size: 11px;
-                text-transform: uppercase;
-                letter-spacing: 0.06em;
-                color: var(--text-faint);
-                margin-bottom: 8px;
-              "
-            >
-              Stack
-            </div>
-            <div
-              style="font-weight: 600; font-size: 14.5px; margin-bottom: 8px"
-            >
-              You're not on React
-            </div>
-            <div style="font-size: 13px; color: var(--text-dim)">
-              Vue, Svelte, Angular, htmx, a plain multi-page app, an Electron
-              shell. Every mainstream toast library assumes React. This one
-              doesn't assume anything — you just saw it work with plain
-              <code style="font-family: var(--mono)">&lt;script&gt;</code> tags
-              above.
-            </div>
-          </div>
-          <div style="background: var(--ink-1); padding: 20px">
-            <div
-              style="
-                font-family: var(--mono);
-                font-size: 11px;
-                text-transform: uppercase;
-                letter-spacing: 0.06em;
-                color: var(--text-faint);
-                margin-bottom: 8px;
-              "
-            >
-              Content
-            </div>
-            <div
-              style="font-weight: 600; font-size: 14.5px; margin-bottom: 8px"
-            >
-              Your message isn't always yours
-            </div>
-            <div style="font-size: 13px; color: var(--text-dim)">
-              Show user-generated content or API error text in a toast, and
-              <code style="font-family: var(--mono)">allowHtml</code> is
-              sanitized before it touches the DOM — try the "sanitized" preset
-              above.
-            </div>
-          </div>
-          <div style="background: var(--ink-1); padding: 20px">
-            <div
-              style="
-                font-family: var(--mono);
-                font-size: 11px;
-                text-transform: uppercase;
-                letter-spacing: 0.06em;
-                color: var(--text-faint);
-                margin-bottom: 8px;
-              "
-            >
-              Trust
-            </div>
-            <div
-              style="font-weight: 600; font-size: 14.5px; margin-bottom: 8px"
-            >
-              You want to see the tests
-            </div>
-            <div style="font-size: 13px; color: var(--text-dim)">
-              177 unit & logic tests plus Playwright cross-browser specifications
-              across three browser engines, zero npm audit vulnerabilities, a real
-              semantic-release pipeline. Not a claim — a public repo.
-            </div>
-          </div>
-        </div>
-      </div>
-    </section>
-
-    <section class="block" id="install">
-      <div class="wrap-narrow">
-        <h2>Install</h2>
-        <div
-          style="
-            background: var(--ink-1);
-            border: 1px solid var(--line);
-            border-radius: 10px;
-            overflow: hidden;
-            margin-bottom: 16px;
-          "
-        >
-          <div
-            style="
-              padding: 9px 16px;
-              border-bottom: 1px solid var(--line);
-              font-family: var(--mono);
-              font-size: 12px;
-              color: var(--text-faint);
-            "
-          >
-            npm / yarn
-          </div>
-          <pre
-            style="
-              margin: 0;
-              padding: 16px 18px;
-              font-family: var(--mono);
-              font-size: 13px;
-              line-height: 1.6;
-            "
-          >
-npm install customizable-toast-notification</pre
-          >
-        </div>
-        <div
-          style="
-            background: var(--ink-1);
-            border: 1px solid var(--line);
-            border-radius: 10px;
-            overflow: hidden;
-          "
-        >
-          <div
-            style="
-              padding: 9px 16px;
-              border-bottom: 1px solid var(--line);
-              font-family: var(--mono);
-              font-size: 12px;
-              color: var(--text-faint);
-            "
-          >
-            CDN — no build step at all
-          </div>
-          <pre
-            style="
-              margin: 0;
-              padding: 16px 18px;
-              font-family: var(--mono);
-              font-size: 13px;
-              line-height: 1.6;
-            "
-          >
-&lt;script src="https://cdn.jsdelivr.net/npm/customizable-toast-notification/dist/index.umd.js"&gt;&lt;/script&gt;</pre
-          >
-        </div>
-      </div>
-    </section>
-
-    <footer>
-      <div class="wrap">
-        <span class="made"
-          >Built and tested in the open — 177+ unit &amp; logic tests, 0 known
-          vulnerabilities.</span
-        >
-        <div class="f-links">
-          <a
-            href="https://github.com/sammy-cool/customizable-toast-notification"
-            target="_blank"
-            rel="noopener noreferrer"
-            >GitHub</a
-          >
-          <a
-            href="https://www.npmjs.com/package/customizable-toast-notification"
-            target="_blank"
-            rel="noopener noreferrer"
-            >npm</a
-          >
-          <a
-            href="https://github.com/sammy-cool/customizable-toast-notification#readme"
-            target="_blank"
-            rel="noopener noreferrer"
-            >Full Docs</a
-          >
-        </div>
       </div>
     </footer>
 
+    <!-- Load Customizable Toast UMD -->
+    <script src="../dist/index.umd.js"></script>
     <script>
-      (function () {
-        var isLocal =
-          location.hostname === "localhost" ||
-          location.hostname === "127.0.0.1" ||
-          location.protocol === "file:";
-        var scriptSrc = isLocal
-          ? "../dist/index.umd.js"
-          : "https://cdn.jsdelivr.net/npm/customizable-toast-notification@latest/dist/index.umd.js";
-        var script = document.createElement("script");
-        script.src = scriptSrc;
-        script.onload = function () {
-          if (window.customizableToast && window.customizableToast.setConfig && typeof updateMetricsDisplay === "function") {
-            window.customizableToast.setConfig({
-              onMetrics: updateMetricsDisplay,
-            });
-          }
-          if (typeof updateVersionBadge === "function") updateVersionBadge();
-        };
-        script.onerror = function () {
-          if (!window.customizableToast && !isLocal) {
-            var fallback = document.createElement("script");
-            fallback.src = "../dist/index.umd.js";
-            fallback.onload = function () {
-              if (window.customizableToast && window.customizableToast.setConfig && typeof updateMetricsDisplay === "function") {
-                window.customizableToast.setConfig({
-                  onMetrics: updateMetricsDisplay,
-                });
-              }
-              if (typeof updateVersionBadge === "function") updateVersionBadge();
-            };
-            document.head.appendChild(fallback);
-          }
-        };
-        document.head.appendChild(script);
-      })();
-    </script>
-    <script>
-      (function () {
-        var TYPE_COLORS = {
-          success: "#28a745",
-          error: "#dc3545",
-          warning: "#ffc107",
-          info: "#17a2b8",
-        };
-
-        // Update version badge dynamically from runtime or registry
-        function updateVersionBadge() {
-          var badge = document.getElementById("pkgVersionBadge");
-          if (!badge) return;
-          var ver =
-            window.customizableToast && window.customizableToast.version
-              ? window.customizableToast.version
-              : "3.17.0";
-          badge.textContent = "v" + String(ver).replace(/^v/, "");
-          if (navigator.onLine && location.protocol !== "file:") {
-            fetch(
-              "https://registry.npmjs.org/customizable-toast-notification/latest",
-              { cache: "no-cache" },
-            )
-              .then(function (res) {
-                return res.json();
-              })
-              .then(function (data) {
-                if (data && data.version) {
-                  badge.textContent = "v" + data.version;
-                }
-              })
-              .catch(function () {});
-          }
-        }
-        updateVersionBadge();
-
-        // Audio chime toggle in navbar
-        var audioBtn = document.getElementById("audioToggleBtn");
-        if (audioBtn) {
-          audioBtn.addEventListener("click", function () {
-            if (!window.customizableToast || !window.customizableToast.setAudioEnabled) return;
-            var current = window.customizableToast.isAudioEnabled();
-            var next = !current;
-            window.customizableToast.setAudioEnabled(next);
-            if (next) {
-              audioBtn.classList.add("active");
-              audioBtn.textContent = "🔊 Sound: ON";
-              if (window.customizableToast.playTone) {
-                window.customizableToast.playTone("pop");
-              }
-            } else {
-              audioBtn.classList.remove("active");
-              audioBtn.textContent = "🔇 Sound: OFF";
-            }
-          });
-        }
-
-        // Theme switcher in navbar
-        var themeSelect = document.getElementById("themeSelect");
-        if (themeSelect) {
-          themeSelect.addEventListener("change", function () {
-            var val = themeSelect.value;
-            if (window.customizableToast && window.customizableToast.setConfig) {
-              window.customizableToast.setConfig({ theme: val });
-            } else {
-              document.documentElement.setAttribute("data-toast-theme", val);
-            }
-            if (window.customizableToast && window.customizableToast.playTone) {
-              window.customizableToast.playTone("pop");
-            }
-          });
-        }
-
-        // ---- Real, verified defaults — pulled directly from the library's own
-        // source (src/index.js's `defaults` object), not guessed or copied from
-        // docs that could drift out of sync. ----
-        var DEFAULTS = {
-          message: "",
-          type: "info",
-          allowHtml: false,
-          sanitizeHtml: true,
-          duration: 2500,
-          position: "bottom-right",
-          borderRadius: "50px",
-          backgroundColor: "",
-          textColor: "",
-          showCloseButton: true,
-          showProgressBar: true,
-          progress: "",
-          progressColor: "",
-          progressHeight: "4px",
-          progressPosition: "bottom",
-          animationDuration: "0.4s",
-          animationEasing: "ease",
-          fontFamily: '-apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif, "Apple Color Emoji", "Segoe UI Emoji", "Segoe UI Symbol"',
-          fontSize: "14px",
-          fontWeight: "400",
-          fontLineHeight: "1.4",
-          fontDirection: "auto",
-          fontPadding: "",
-          className: "",
-          wrapText: "normal",
-          maxWidth: "400px",
-          pauseOnHover: null, // null = "auto" (true only if cta is set)
-          stacked: false,
-          swipeToDismiss: true,
-          sound: "none",
-          soundPreset: "modern",
-          spring: "none",
-          icon: "auto",
-          enableUndo: false,
-          showLoader: false,
-          loaderSize: 14,
-          loaderColor: "",
-          loaderText: "",
-          ctaEnabled: false,
-          ctaLabel: "Undo",
-          ctaVariant: "button",
-          ctaHref: "",
-          ctaTarget: "",
-          ctaRel: "",
-          ctaAutoClose: true,
-          ctaAriaLabel: "",
-          cta2Enabled: false,
-          cta2Label: "Decline",
-          cta2Variant: "button",
-          cta2Href: "",
-          cta2Target: "",
-          cta2Rel: "",
-          cta2AutoClose: true,
-          cta2AriaLabel: "",
-          syncTabs: false,
-          aiPrioritization: false,
-          priority: "",
-          usePool: false,
-        };
-
-        var state = Object.assign({}, DEFAULTS);
-
-        function setAccent(type) {
-          var c = TYPE_COLORS[type] || TYPE_COLORS.info;
-          document.documentElement.style.setProperty("--accent", c);
-          document.documentElement.style.setProperty("--accent-soft", c + "24");
-        }
-
-        // ---- Build the real options object matching createToast()'s actual
-        // shape, from current playground state ----
-        function buildOptions(s) {
-          var opts = {};
-          if (s.message) opts.message = s.message;
-          if (s.type !== DEFAULTS.type) opts.type = s.type;
-          if (s.allowHtml) opts.allowHtml = true;
-          if (s.sanitizeHtml !== DEFAULTS.sanitizeHtml) opts.sanitizeHtml = s.sanitizeHtml;
-          if (s.duration !== DEFAULTS.duration)
-            opts.duration = Number(s.duration);
-          if (s.position !== DEFAULTS.position) opts.position = s.position;
-          if (s.borderRadius !== DEFAULTS.borderRadius)
-            opts.borderRadius = s.borderRadius;
-          if (s.backgroundColor) opts.backgroundColor = s.backgroundColor;
-          if (s.textColor) opts.textColor = s.textColor;
-          if (s.showCloseButton !== DEFAULTS.showCloseButton)
-            opts.showCloseButton = s.showCloseButton;
-          if (s.showProgressBar !== DEFAULTS.showProgressBar)
-            opts.showProgressBar = s.showProgressBar;
-          if (s.progressColor) opts.progressColor = s.progressColor;
-          if (s.progressHeight !== DEFAULTS.progressHeight)
-            opts.progressHeight = s.progressHeight;
-          if (s.progressPosition !== DEFAULTS.progressPosition)
-            opts.progressPosition = s.progressPosition;
-          if (s.animationDuration !== DEFAULTS.animationDuration)
-            opts.animationDuration = s.animationDuration;
-          if (s.animationEasing !== DEFAULTS.animationEasing)
-            opts.animationEasing = s.animationEasing;
-          if (s.fontFamily && s.fontFamily !== DEFAULTS.fontFamily) opts.fontFamily = s.fontFamily;
-          if (s.fontSize !== DEFAULTS.fontSize) opts.fontSize = s.fontSize;
-          if (s.fontWeight !== DEFAULTS.fontWeight)
-            opts.fontWeight = s.fontWeight;
-          if (s.fontLineHeight !== DEFAULTS.fontLineHeight)
-            opts.fontLineHeight = s.fontLineHeight;
-          if (s.fontDirection !== DEFAULTS.fontDirection) opts.fontDirection = s.fontDirection;
-          if (s.fontPadding) opts.fontPadding = s.fontPadding;
-          if (s.className) opts.className = s.className;
-          if (s.wrapText !== DEFAULTS.wrapText) opts.wrapText = s.wrapText;
-          if (s.maxWidth && s.maxWidth !== DEFAULTS.maxWidth) opts.maxWidth = s.maxWidth;
-          if (s.pauseOnHover !== null) opts.pauseOnHover = s.pauseOnHover;
-          if (s.showLoader) {
-            opts.showLoader = true;
-            var loaderObj = {};
-            if (s.loaderSize && Number(s.loaderSize) !== 14) loaderObj.size = Number(s.loaderSize);
-            if (s.loaderColor) loaderObj.color = s.loaderColor;
-            if (s.loaderText) loaderObj.text = s.loaderText;
-            if (Object.keys(loaderObj).length > 0) {
-              opts.loader = loaderObj;
-            }
-          }
-          if (s.ctaEnabled) {
-            var cta1 = { label: s.ctaLabel || "Undo" };
-            if (s.ctaVariant === "link" && s.ctaHref) {
-              cta1.href = s.ctaHref;
-              cta1.variant = "link";
-              if (s.ctaTarget) cta1.target = s.ctaTarget;
-              if (s.ctaRel) cta1.rel = s.ctaRel;
-            }
-            if (s.ctaAutoClose !== DEFAULTS.ctaAutoClose)
-              cta1.autoClose = s.ctaAutoClose;
-            if (s.ctaAriaLabel) cta1.ariaLabel = s.ctaAriaLabel;
-
-            if (s.cta2Enabled) {
-              var cta2 = { label: s.cta2Label || "Decline" };
-              if (s.cta2Variant === "link" && s.cta2Href) {
-                cta2.href = s.cta2Href;
-                cta2.variant = "link";
-                if (s.cta2Target) cta2.target = s.cta2Target;
-                if (s.cta2Rel) cta2.rel = s.cta2Rel;
-              }
-              if (s.cta2AutoClose !== DEFAULTS.cta2AutoClose)
-                cta2.autoClose = s.cta2AutoClose;
-              if (s.cta2AriaLabel) cta2.ariaLabel = s.cta2AriaLabel;
-              opts.cta = [cta1, cta2];
-            } else {
-              opts.cta = cta1;
-            }
-          }
-          if (s.stacked) opts.stacked = true;
-          if (s.swipeToDismiss === false) opts.swipeToDismiss = false;
-          if (s.sound && s.sound !== "none") {
-            opts.sound = s.sound === "default" ? true : s.sound;
-            if (s.soundPreset && s.soundPreset !== "modern") {
-              opts.soundPreset = s.soundPreset;
-            }
-          }
-          if (s.spring && s.spring !== "none") {
-            opts.spring = s.spring;
-          }
-          if (s.icon && s.icon !== "auto") {
-            if (s.icon === "false") {
-              opts.icon = false;
-            } else if (s.icon === "true") {
-              opts.icon = true;
-            } else {
-              opts.icon = s.icon;
-            }
-          }
-          if (s.enableUndo) {
-            opts.undo = {
-              label: "Undo",
-              showCountdown: true,
-            };
-          }
-          if (s.progress !== "" && !isNaN(Number(s.progress))) {
-            opts.progress = Number(s.progress);
-          }
-          if (s.syncTabs) opts.syncTabs = true;
-          if (s.aiPrioritization) opts.aiPrioritization = true;
-          if (s.priority !== "" && !isNaN(Number(s.priority))) {
-            opts.priority = Number(s.priority);
-          }
-          if (s.usePool) opts.usePool = true;
-          return opts;
-        }
-
-        function stringifyOptions(opts) {
-          var lines = [];
-          Object.keys(opts).forEach(function (key) {
-            var val = opts[key];
-            if (Array.isArray(val)) {
-              var arrLines = [];
-              val.forEach(function (item) {
-                if (typeof item === "object" && item !== null) {
-                  var objLines = [];
-                  Object.keys(item).forEach(function (k) {
-                    var v = item[k];
-                    var strV =
-                      typeof v === "function"
-                        ? "() => { /* action */ }"
-                        : JSON.stringify(v);
-                    objLines.push("        " + k + ": " + strV);
-                  });
-                  arrLines.push("      {\n" + objLines.join(",\n") + "\n      }");
-                } else {
-                  arrLines.push("      " + JSON.stringify(item));
-                }
-              });
-              lines.push("  " + key + ": [\n" + arrLines.join(",\n") + "\n  ]");
-            } else if (key === "cta" || key === "loader" || key === "undo") {
-              var nestedLines = [];
-              Object.keys(val).forEach(function (k) {
-                var v = val[k];
-                var strV =
-                  typeof v === "function"
-                    ? "() => { /* action */ }"
-                    : JSON.stringify(v);
-                nestedLines.push("      " + k + ": " + strV);
-              });
-              lines.push("  " + key + ": {\n" + nestedLines.join(",\n") + "\n  }");
-            } else {
-              var strVal =
-                typeof val === "function"
-                  ? "() => { /* action */ }"
-                  : JSON.stringify(val);
-              lines.push("  " + key + ": " + strVal);
-            }
-          });
-          return (
-            "customizableToast.createToast({\n" + lines.join(",\n") + "\n});"
-          );
-        }
-
-        var activeFramework = "js";
-
-        function generateFrameworkCode(opts, fw) {
-          var jsCode = Object.keys(opts).length
-            ? stringifyOptions(opts)
-            : "customizableToast.createToast();";
-
-          if (fw === "react") {
-            var indentCode = jsCode
-              .replace(/^customizableToast\./, "")
-              .split("\n")
-              .map(function (line) {
-                return "    " + line;
-              })
-              .join("\n");
-            return (
-              '"use client";\n\n' +
-              "// React Component or Hook\n" +
-              'import { createToast } from "customizable-toast-notification";\n' +
-              'import "customizable-toast-notification/index.css";\n\n' +
-              "export function NotificationDemo() {\n" +
-              "  const handleNotify = () => {\n" +
-              indentCode + "\n" +
-              "  };\n\n" +
-              "  return (\n" +
-              '    <button onClick={handleNotify} className="btn">\n' +
-              "      Show Notification\n" +
-              "    </button>\n" +
-              "  );\n" +
-              "}"
-            );
-          } else if (fw === "vue") {
-            var indentCodeVue = jsCode
-              .replace(/^customizableToast\./, "")
-              .split("\n")
-              .map(function (line) {
-                return "  " + line;
-              })
-              .join("\n");
-            return (
-              "<!-- Vue 3 (Composition API) -->\n" +
-              "<script setup>\n" +
-              'import { createToast } from "customizable-toast-notification";\n' +
-              'import "customizable-toast-notification/index.css";\n\n' +
-              "function showNotification() {\n" +
-              indentCodeVue + "\n" +
-              "}\n" +
-              "<\/script>\n\n" +
-              "<template>\n" +
-              '  <button @click="showNotification">Show Notification</button>\n' +
-              "</template>"
-            );
-          } else if (fw === "svelte") {
-            var indentCodeSvelte = jsCode
-              .replace(/^customizableToast\./, "")
-              .split("\n")
-              .map(function (line) {
-                return "    " + line;
-              })
-              .join("\n");
-            return (
-              "<!-- Svelte -->\n" +
-              "<script>\n" +
-              '  import { createToast } from "customizable-toast-notification";\n' +
-              '  import "customizable-toast-notification/index.css";\n\n' +
-              "  function showNotification() {\n" +
-              indentCodeSvelte + "\n" +
-              "  }\n" +
-              "<\/script>\n\n" +
-              "<button onclick={showNotification}>Show Notification</button>"
-            );
-          } else if (fw === "ts") {
-            var rawOpts = jsCode
-              .replace(/^customizableToast\.createToast\(/, "")
-              .replace(/\);$/, "");
-            return (
-              "// TypeScript (Strict Type-Safe Contract)\n" +
-              'import { createToast, type ToastOptions, type ToastHandle } from "customizable-toast-notification";\n' +
-              'import "customizable-toast-notification/index.css";\n\n' +
-              "const options: ToastOptions = " +
-              (rawOpts || "{}") +
-              ";\n\n" +
-              "const handle: ToastHandle = await createToast(options);"
-            );
-          }
-          return jsCode;
-        }
-
-        function escapeHtml(str) {
-          return String(str)
-            .replace(/&/g, "&amp;")
-            .replace(/</g, "&lt;")
-            .replace(/>/g, "&gt;")
-            .replace(/"/g, "&quot;")
-            .replace(/'/g, "&#39;");
-        }
-
-        function highlightCode(code) {
-          var safe = escapeHtml(code);
-          return safe
-            .replace(/(\/\/[^\n]*|&lt;!--[\s\S]*?--&gt;)/g, '<span class="tok-cm">$1</span>')
-            .replace(/"([^"]*)"/g, '<span class="tok-str">"$1"</span>')
-            .replace(/\b(import|export|from|function|const|let|var|return|async|await|type|script|setup|template)\b/g, '<span class="tok-kw">$1</span>')
-            .replace(/\b(true|false|null|undefined)\b/g, '<span class="tok-kw">$1</span>')
-            .replace(/: (\d+(\.\d+)?)/g, ': <span class="tok-num">$1</span>');
-        }
-
-        function renderCode(customOpts) {
-          var opts = customOpts || buildOptions(state);
-          var code = Object.keys(opts).length
-            ? generateFrameworkCode(opts, activeFramework)
-            : (activeFramework === "ts"
-                ? '// TypeScript\nimport { createToast } from "customizable-toast-notification";\n\nawait createToast(); // all defaults'
-                : "customizableToast.createToast(); // all defaults — try changing something!");
-          document.getElementById("codeOutput").innerHTML = highlightCode(code);
-          if (opts.type || state.type) setAccent(opts.type || state.type);
-        }
-
-        function fireCurrentConfig() {
-          if (typeof customizableToast === "undefined") return;
-          var opts = buildOptions(state);
-          if (!opts.message)
-            opts.message = {
-              success: "Saved successfully!",
-              error: "Something went wrong.",
-              warning: "Please double-check that.",
-              info: "Here's something worth knowing.",
-            }[state.type || "info"];
-          if (opts.cta) {
-            if (Array.isArray(opts.cta)) {
-              opts.cta.forEach(function (c) {
-                if (c && !c.onClick && !c.href) {
-                  c.onClick = function () {};
-                }
-              });
-            } else if (!opts.cta.onClick && !opts.cta.href) {
-              opts.cta.onClick = function () {};
-            }
-          }
-          if (opts.undo && typeof opts.undo === "object" && !opts.undo.onUndo) {
-            opts.undo.onUndo = function () {};
-          }
-          customizableToast.createToast(opts);
-        }
-
-        // ---------------- Controls panel ----------------
-        var controlGroups = [
-          {
-            title: "Content & Type",
-            open: true,
-            fields: [
-              {
-                key: "message",
-                type: "text",
-                label: "message",
-                placeholder: "(uses per-type default if empty)",
-              },
-              {
-                key: "type",
-                type: "radio",
-                label: "type",
-                options: ["info", "success", "warning", "error"],
-              },
-              {
-                key: "icon",
-                type: "select",
-                label: "icon (built-in SVG, emoji, or false)",
-                options: ["auto", "false", "🎉", "🔥", "🚀", "⚡", "bell", "true"],
-              },
-              {
-                key: "allowHtml",
-                type: "checkbox",
-                label: "allowHtml (sanitized before render)",
-              },
-            ],
-          },
-          {
-            title: "Position & Layout",
-            fields: [
-              {
-                key: "position",
-                type: "select",
-                label: "position",
-                options: [
-                  "bottom-right",
-                  "bottom-left",
-                  "top-right",
-                  "top-left",
-                  "top-center",
-                  "bottom-center",
-                  "left-center",
-                  "right-center",
-                  "center-top",
-                  "center-bottom",
-                  "center-left",
-                  "center-right",
-                  "top-full-width",
-                  "bottom-full-width",
-                  "center",
-                ],
-              },
-              { key: "duration", type: "number", label: "duration (ms)" },
-              { key: "borderRadius", type: "text", label: "borderRadius" },
-              {
-                key: "wrapText",
-                type: "radio",
-                label: "wrapText",
-                options: ["normal", "false"],
-              },
-              {
-                key: "maxWidth",
-                type: "text",
-                label: "maxWidth (auto: 400px / 100vw for full-width)",
-                placeholder: "e.g. 500px",
-              },
-            ],
-          },
-          {
-            title: "Colors",
-            fields: [
-              {
-                key: "backgroundColor",
-                type: "color",
-                label: "backgroundColor (auto per type if unset)",
-              },
-              {
-                key: "textColor",
-                type: "color",
-                label: "textColor (auto WCAG-computed if unset)",
-              },
-            ],
-          },
-          {
-            title: "Physics & Micro-Feedback",
-            open: true,
-            fields: [
-              {
-                key: "stacked",
-                type: "checkbox",
-                label: "stacked (iOS-style 3D card deck with hover expand)",
-              },
-              {
-                key: "swipeToDismiss",
-                type: "checkbox",
-                label: "swipeToDismiss (touch swipe physics with velocity snap)",
-              },
-              {
-                key: "sound",
-                type: "select",
-                label: "sound (zero-asset Web Audio chime)",
-                options: ["none", "default", "success", "error", "warning", "pop"],
-              },
-              {
-                key: "soundPreset",
-                type: "select",
-                label: "soundPreset (audio synth theme)",
-                options: ["modern", "retro", "futuristic", "subtle", "bell"],
-              },
-              {
-                key: "spring",
-                type: "select",
-                label: "spring (damped harmonic oscillator physics)",
-                options: ["none", "default", "gentle", "wobbly", "stiff", "bouncy"],
-              },
-              {
-                key: "enableUndo",
-                type: "checkbox",
-                label: "undo (Action Undo button with live countdown badge)",
-              },
-            ],
-          },
-          {
-            title: "Progress Bar",
-            fields: [
-              {
-                key: "showProgressBar",
-                type: "checkbox",
-                label: "showProgressBar",
-              },
-              {
-                key: "progress",
-                type: "text",
-                label: "progress (0–100 fixed or blank for timer countdown)",
-                placeholder: "e.g. 50 or leave blank",
-              },
-              {
-                key: "progressPosition",
-                type: "radio",
-                label: "progressPosition",
-                options: ["bottom", "top"],
-              },
-              { key: "progressHeight", type: "text", label: "progressHeight" },
-              {
-                key: "progressColor",
-                type: "color",
-                label: "progressColor (falls back to textColor)",
-              },
-            ],
-          },
-          {
-            title: "Typography",
-            fields: [
-              { key: "fontFamily", type: "text", label: "fontFamily (leave empty for system default)", placeholder: "e.g. Inter, system-ui, sans-serif" },
-              { key: "fontSize", type: "text", label: "fontSize" },
-              { key: "fontWeight", type: "text", label: "fontWeight" },
-              { key: "fontLineHeight", type: "text", label: "fontLineHeight" },
-              {
-                key: "fontDirection",
-                type: "select",
-                label: "fontDirection",
-                options: ["auto", "ltr", "rtl"],
-              },
-              { key: "fontPadding", type: "text", label: "fontPadding", placeholder: "e.g. 0 4px" },
-            ],
-          },
-          {
-            title: "Loader / Spinner",
-            fields: [
-              {
-                key: "showLoader",
-                type: "checkbox",
-                label: "showLoader (inline SVG spinner)",
-              },
-              {
-                key: "loaderSize",
-                type: "number",
-                label: "loader.size (px, default 14)",
-                placeholder: "14",
-              },
-              {
-                key: "loaderColor",
-                type: "color",
-                label: "loader.color (auto: currentColor)",
-              },
-              {
-                key: "loaderText",
-                type: "text",
-                label: "loader.text (inline label next to spinner)",
-                placeholder: "e.g. Loading...",
-              },
-            ],
-          },
-          {
-            title: "Behavior",
-            fields: [
-              {
-                key: "showCloseButton",
-                type: "checkbox",
-                label: "showCloseButton",
-              },
-              {
-                key: "sanitizeHtml",
-                type: "checkbox",
-                label: "sanitizeHtml (when allowHtml=true)",
-              },
-              {
-                key: "pauseOnHoverTri",
-                type: "select",
-                label: "pauseOnHover",
-                options: ["auto (true if CTA set)", "true", "false"],
-              },
-              {
-                key: "animationDuration",
-                type: "text",
-                label: "animationDuration",
-              },
-              {
-                key: "animationEasing",
-                type: "text",
-                label: "animationEasing",
-              },
-              {
-                key: "className",
-                type: "text",
-                label: "className (custom CSS class)",
-                placeholder: "e.g. custom-animation-bounce",
-              },
-            ],
-          },
-          {
-            title: "Call-to-Action",
-            fields: [
-              { key: "ctaEnabled", type: "checkbox", label: "add a cta" },
-              { key: "ctaLabel", type: "text", label: "cta.label" },
-              {
-                key: "ctaVariant",
-                type: "radio",
-                label: "cta.variant",
-                options: ["button", "link"],
-              },
-              {
-                key: "ctaHref",
-                type: "text",
-                label: "cta.href (link variant)",
-                placeholder: "https:// or mailto:",
-              },
-              {
-                key: "ctaTarget",
-                type: "text",
-                label: "cta.target",
-                placeholder: "_blank",
-              },
-              {
-                key: "ctaRel",
-                type: "text",
-                label: "cta.rel (auto: noopener noreferrer for _blank)",
-                placeholder: "noopener noreferrer",
-              },
-              { key: "ctaAutoClose", type: "checkbox", label: "cta.autoClose" },
-              {
-                key: "ctaAriaLabel",
-                type: "text",
-                label: "cta.ariaLabel (accessibility)",
-              },
-              { key: "cta2Enabled", type: "checkbox", label: "add secondary action (cta[1])" },
-              { key: "cta2Label", type: "text", label: "secondary cta.label" },
-              {
-                key: "cta2Variant",
-                type: "radio",
-                label: "secondary cta.variant",
-                options: ["button", "link"],
-              },
-              {
-                key: "cta2Href",
-                type: "text",
-                label: "secondary cta.href",
-                placeholder: "https:// or mailto:",
-              },
-              { key: "cta2AutoClose", type: "checkbox", label: "secondary cta.autoClose" },
-              {
-                key: "cta2AriaLabel",
-                type: "text",
-                label: "secondary cta.ariaLabel",
-              },
-            ],
-          },
-          {
-            title: "Phase 3 Enterprise & Sync",
-            fields: [
-              {
-                key: "syncTabs",
-                type: "checkbox",
-                label: "syncTabs (Cross-Tab BroadcastChannel Sync)",
-              },
-              {
-                key: "aiPrioritization",
-                type: "checkbox",
-                label: "aiPrioritization (Deterministic Smart Triage)",
-              },
-              {
-                key: "priority",
-                type: "number",
-                label: "priority (Numeric queue priority 0-100)",
-                placeholder: "e.g. 85",
-              },
-              {
-                key: "usePool",
-                type: "checkbox",
-                label: "usePool (High-throughput DOM element recycling)",
-              },
-            ],
-          },
-        ];
-
-        function buildControls() {
-          var controlsEl = document.getElementById("pgControls");
-          controlsEl.innerHTML = "";
-          controlGroups.forEach(function (group) {
-          var details = document.createElement("details");
-          details.className = "ctrl-group";
-          if (group.open) details.open = true;
-          var summary = document.createElement("summary");
-          summary.textContent = group.title;
-          details.appendChild(summary);
-
-          group.fields.forEach(function (f) {
-            var field = document.createElement("div");
-            field.className =
-              "field" + (f.type === "checkbox" ? " checkbox" : "");
-
-            if (f.type === "checkbox") {
-              var input = document.createElement("input");
-              input.type = "checkbox";
-              input.id = "f_" + f.key;
-              input.checked = !!state[f.key];
-              input.addEventListener("change", function () {
-                state[f.key] = input.checked;
-                renderCode();
-              });
-              var label = document.createElement("label");
-              label.htmlFor = input.id;
-              label.textContent = f.label;
-              field.appendChild(input);
-              field.appendChild(label);
-            } else if (f.type === "select") {
-              var label2 = document.createElement("label");
-              label2.textContent = f.label;
-              var select = document.createElement("select");
-              f.options.forEach(function (optVal) {
-                var opt = document.createElement("option");
-                opt.value = optVal;
-                opt.textContent = optVal;
-                select.appendChild(opt);
-              });
-              if (f.key === "pauseOnHoverTri") {
-                select.value =
-                  state.pauseOnHover === null
-                    ? "auto (true if CTA set)"
-                    : String(state.pauseOnHover);
-                select.addEventListener("change", function () {
-                  state.pauseOnHover =
-                    select.value.indexOf("auto") === 0
-                      ? null
-                      : select.value === "true";
-                  renderCode();
-                });
-              } else {
-                select.value = state[f.key];
-                select.addEventListener("change", function () {
-                  state[f.key] = select.value;
-                  renderCode();
-                });
-              }
-              if (f.key === "position") {
-                var gridWrap = document.createElement("div");
-                gridWrap.className = "pos-grid-container";
-                gridWrap.innerHTML =
-                  '<div class="pos-bar" data-pos="top-full-width">top-full-width</div>' +
-                  '<div class="pos-matrix">' +
-                  '  <div class="pos-cell" data-pos="top-left">TL</div>' +
-                  '  <div class="pos-cell" data-pos="top-center">TC</div>' +
-                  '  <div class="pos-cell" data-pos="top-right">TR</div>' +
-                  '  <div class="pos-cell" data-pos="left-center">LC</div>' +
-                  '  <div class="pos-cell" data-pos="center">Center</div>' +
-                  '  <div class="pos-cell" data-pos="right-center">RC</div>' +
-                  '  <div class="pos-cell" data-pos="bottom-left">BL</div>' +
-                  '  <div class="pos-cell" data-pos="bottom-center">BC</div>' +
-                  '  <div class="pos-cell" data-pos="bottom-right">BR</div>' +
-                  '</div>' +
-                  '<div class="pos-bar" data-pos="bottom-full-width">bottom-full-width</div>';
-
-                var syncActiveCell = function (pos) {
-                  var all = gridWrap.querySelectorAll("[data-pos]");
-                  all.forEach(function (el) {
-                    if (el.getAttribute("data-pos") === pos) {
-                      el.classList.add("active");
-                    } else {
-                      el.classList.remove("active");
-                    }
-                  });
-                };
-                syncActiveCell(state.position);
-
-                gridWrap.addEventListener("click", function (e) {
-                  var target = e.target.closest("[data-pos]");
-                  if (!target) return;
-                  var pos = target.getAttribute("data-pos");
-                  state.position = pos;
-                  select.value = pos;
-                  syncActiveCell(pos);
-                  renderCode();
-                });
-
-                select.addEventListener("change", function () {
-                  syncActiveCell(select.value);
-                });
-
-                field.appendChild(label2);
-                field.appendChild(gridWrap);
-                field.appendChild(select);
-              } else {
-                field.appendChild(label2);
-                field.appendChild(select);
-              }
-            } else if (f.type === "radio") {
-              var label3 = document.createElement("label");
-              label3.textContent = f.label;
-              var row = document.createElement("div");
-              row.className = "radio-row";
-              f.options.forEach(function (optVal) {
-                var btn = document.createElement("button");
-                btn.type = "button";
-                btn.textContent = optVal;
-                var current =
-                  f.key === "wrapText"
-                    ? String(state.wrapText === "normal" ? "normal" : "false")
-                    : String(state[f.key]);
-                if (current === optVal) btn.classList.add("active");
-                btn.addEventListener("click", function () {
-                  if (f.key === "wrapText") {
-                    state.wrapText = optVal === "normal" ? "normal" : false;
-                  } else {
-                    state[f.key] = optVal;
-                  }
-                  Array.from(row.children).forEach(function (b) {
-                    b.classList.remove("active");
-                  });
-                  btn.classList.add("active");
-                  renderCode();
-                });
-                row.appendChild(btn);
-              });
-              field.appendChild(label3);
-              field.appendChild(row);
-            } else if (f.type === "color") {
-              var label4 = document.createElement("label");
-              label4.textContent = f.label;
-              var colorRow = document.createElement("div");
-              colorRow.style.display = "flex";
-              colorRow.style.gap = "6px";
-              var colorInput = document.createElement("input");
-              colorInput.type = "color";
-              colorInput.value = state[f.key] || "#000000";
-              colorInput.style.flex = "0 0 44px";
-              var clearBtn = document.createElement("button");
-              clearBtn.type = "button";
-              clearBtn.textContent = "auto";
-              clearBtn.className = "copy-btn";
-              colorInput.addEventListener("input", function () {
-                state[f.key] = colorInput.value;
-                renderCode();
-              });
-              clearBtn.addEventListener("click", function () {
-                state[f.key] = "";
-                renderCode();
-              });
-              colorRow.appendChild(colorInput);
-              colorRow.appendChild(clearBtn);
-              field.appendChild(label4);
-              field.appendChild(colorRow);
-            } else {
-              var label5 = document.createElement("label");
-              label5.textContent = f.label;
-              var textInput = document.createElement("input");
-              textInput.type = f.type === "number" ? "number" : "text";
-              textInput.value = state[f.key];
-              if (f.placeholder) textInput.placeholder = f.placeholder;
-              textInput.addEventListener("input", function () {
-                state[f.key] = textInput.value;
-                renderCode();
-              });
-              field.appendChild(label5);
-              field.appendChild(textInput);
-            }
-
-            details.appendChild(field);
-          });
-
-          controlsEl.appendChild(details);
-        });
+      // Fallback loader if local dist not present
+      if (typeof window.customizableToast === "undefined") {
+        var s = document.createElement("script");
+        s.src = "https://cdn.jsdelivr.net/npm/customizable-toast-notification@3.17.0/dist/index.umd.js";
+        document.head.appendChild(s);
       }
+    </script>
 
-        buildControls();
-        document
-          .getElementById("pgFireBtn")
-          .addEventListener("click", fireCurrentConfig);
-        document
-          .getElementById("pgResetBtn")
-          .addEventListener("click", function () {
-            state = Object.assign({}, DEFAULTS);
-            var controlsEl = document.getElementById("pgControls");
-            if (controlsEl) controlsEl.innerHTML = "";
-            buildControls();
-            renderCode();
-          });
+    <!-- Interactive Studio Logic -->
+    <script>
+      (function () {
+        // State
+        var currentPosition = "bottom-right";
+        var currentCta = "none";
+        var activeCodeLang = "js";
 
-        function fallbackCopy(text) {
-          var ta = document.createElement("textarea");
-          ta.value = text;
-          ta.style.position = "fixed";
-          ta.style.opacity = "0";
-          document.body.appendChild(ta);
-          ta.focus();
-          ta.select();
-          try {
-            document.execCommand("copy");
-          } catch (e) {}
-          document.body.removeChild(ta);
+        // Theme Toggle
+        var themeToggleBtn = document.getElementById("themeToggleBtn");
+        var themeIcon = document.getElementById("themeIcon");
+        var themeLabel = document.getElementById("themeLabel");
+
+        function setTheme(theme) {
+          document.documentElement.setAttribute("data-theme", theme);
+          if (theme === "dark") {
+            themeIcon.textContent = "☀️";
+            themeLabel.textContent = "Light Mode";
+          } else {
+            themeIcon.textContent = "🌙";
+            themeLabel.textContent = "Dark Mode";
+          }
+          localStorage.setItem("ctn-theme", theme);
         }
 
-        document
-          .getElementById("copyBtn")
-          .addEventListener("click", function () {
-            var code = document.getElementById("codeOutput").textContent;
-            function markCopied() {
-              var btn = document.getElementById("copyBtn");
-              btn.textContent = "✓ Copied!";
-              btn.classList.add("copied");
-              if (window.customizableToast && window.customizableToast.createToast) {
-                window.customizableToast.createToast({
-                  type: "success",
-                  message: "Code snippet copied to clipboard!",
-                  duration: 1800,
-                  sound: "pop",
-                });
-              }
-              setTimeout(function () {
-                btn.textContent = "Copy";
-                btn.classList.remove("copied");
-              }, 1800);
-            }
+        var savedTheme = localStorage.getItem("ctn-theme") || "light";
+        setTheme(savedTheme);
 
-            if (navigator.clipboard && navigator.clipboard.writeText) {
-              navigator.clipboard
-                .writeText(code)
-                .then(markCopied)
-                .catch(function () {
-                  fallbackCopy(code);
-                  markCopied();
-                });
+        themeToggleBtn.addEventListener("click", function () {
+          var current = document.documentElement.getAttribute("data-theme");
+          setTheme(current === "dark" ? "light" : "dark");
+        });
+
+        // Copy Install Command
+        document.getElementById("copyInstallBtn").addEventListener("click", function () {
+          navigator.clipboard.writeText("npm install customizable-toast-notification").then(function () {
+            var btn = document.getElementById("copyInstallBtn");
+            btn.textContent = "Copied!";
+            setTimeout(function () { btn.textContent = "Copy"; }, 2000);
+          });
+        });
+
+        // Sliders & Value Badges
+        var durationSlider = document.getElementById("toastDurationSlider");
+        var durationBadge = document.getElementById("durationValueBadge");
+        durationSlider.addEventListener("input", function () {
+          durationBadge.textContent = durationSlider.value === "0" ? "Persistent (0)" : durationSlider.value + "ms";
+          updateCodeSnippet();
+        });
+
+        var stiffnessSlider = document.getElementById("stiffnessSlider");
+        var stiffnessVal = document.getElementById("stiffnessVal");
+        stiffnessSlider.addEventListener("input", function () {
+          stiffnessVal.textContent = stiffnessSlider.value;
+          renderSpringGraph();
+          updateCodeSnippet();
+        });
+
+        var dampingSlider = document.getElementById("dampingSlider");
+        var dampingVal = document.getElementById("dampingVal");
+        dampingSlider.addEventListener("input", function () {
+          dampingVal.textContent = dampingSlider.value;
+          renderSpringGraph();
+          updateCodeSnippet();
+        });
+
+        var massSlider = document.getElementById("massSlider");
+        var massVal = document.getElementById("massVal");
+        massSlider.addEventListener("input", function () {
+          massVal.textContent = massSlider.value;
+          renderSpringGraph();
+          updateCodeSnippet();
+        });
+
+        var manualProgressSlider = document.getElementById("manualProgressSlider");
+        var manualProgressVal = document.getElementById("manualProgressVal");
+        manualProgressSlider.addEventListener("input", function () {
+          manualProgressVal.textContent = manualProgressSlider.value + "%";
+          updateCodeSnippet();
+        });
+
+        // Position Matrix Click Handlers
+        var posCells = document.querySelectorAll(".pos-cell");
+        var currentPosBadge = document.getElementById("currentPosBadge");
+        posCells.forEach(function (cell) {
+          cell.addEventListener("click", function () {
+            posCells.forEach(function (c) { c.classList.remove("active"); });
+            cell.classList.add("active");
+            currentPosition = cell.getAttribute("data-pos");
+            currentPosBadge.textContent = currentPosition;
+            updateCodeSnippet();
+          });
+        });
+
+        // CTA Segmented Buttons
+        var ctaBtns = document.querySelectorAll("#ctaVariantGroup .segmented-btn");
+        ctaBtns.forEach(function (btn) {
+          btn.addEventListener("click", function () {
+            ctaBtns.forEach(function (b) { b.classList.remove("active"); });
+            btn.classList.add("active");
+            currentCta = btn.getAttribute("data-cta");
+            updateCodeSnippet();
+          });
+        });
+
+        // Spring Preset Select Handler
+        var springPresetSelect = document.getElementById("springPresetSelect");
+        var springPresetBadge = document.getElementById("springPresetBadge");
+        springPresetSelect.addEventListener("change", function () {
+          var val = springPresetSelect.value;
+          springPresetBadge.textContent = val;
+          if (val === "default") {
+            stiffnessSlider.value = 100; dampingSlider.value = 10; massSlider.value = 1;
+          } else if (val === "gentle") {
+            stiffnessSlider.value = 120; dampingSlider.value = 14; massSlider.value = 1;
+          } else if (val === "wobbly") {
+            stiffnessSlider.value = 180; dampingSlider.value = 12; massSlider.value = 1;
+          } else if (val === "stiff") {
+            stiffnessSlider.value = 210; dampingSlider.value = 20; massSlider.value = 1;
+          } else if (val === "bouncy") {
+            stiffnessSlider.value = 300; dampingSlider.value = 15; massSlider.value = 1.2;
+          }
+          stiffnessVal.textContent = stiffnessSlider.value;
+          dampingVal.textContent = dampingSlider.value;
+          massVal.textContent = massSlider.value;
+          renderSpringGraph();
+          updateCodeSnippet();
+        });
+
+        // Analytical Spring Graph Renderer
+        function renderSpringGraph() {
+          var k = parseFloat(stiffnessSlider.value) || 100;
+          var c = parseFloat(dampingSlider.value) || 10;
+          var m = parseFloat(massSlider.value) || 1;
+
+          var omega0 = Math.sqrt(k / m);
+          var zeta = c / (2 * Math.sqrt(k * m));
+
+          var points = [];
+          var totalPoints = 100;
+          var duration = 1.5; // seconds
+
+          for (var i = 0; i <= totalPoints; i++) {
+            var t = (i / totalPoints) * duration;
+            var y = 1;
+            if (zeta < 1) {
+              var omegaD = omega0 * Math.sqrt(1 - zeta * zeta);
+              var envelope = Math.exp(-zeta * omega0 * t);
+              var osc = Math.cos(omegaD * t) + (zeta / Math.sqrt(1 - zeta * zeta)) * Math.sin(omegaD * t);
+              y = 1 - envelope * osc;
             } else {
-              fallbackCopy(code);
-              markCopied();
+              y = 1 - Math.exp(-omega0 * t);
             }
-          });
 
-        var fwTabs = document.querySelectorAll("#frameworkTabs .fw-tab");
-        fwTabs.forEach(function (tab) {
-          tab.addEventListener("click", function () {
-            var fw = tab.getAttribute("data-fw");
-            if (!fw) return;
-            activeFramework = fw;
-            fwTabs.forEach(function (t) {
-              t.classList.toggle("active", t === tab);
-            });
-            renderCode();
-          });
-        });
+            // Map t (0 to 1.5s) to x (0 to 400), y (0 to 1.4) to svg Y (110 down to 10)
+            var px = (t / duration) * 400;
+            var py = 110 - (y * 70);
+            points.push(px.toFixed(1) + " " + py.toFixed(1));
+          }
 
-        renderCode();
-
-        // ---------------- Preset gallery ----------------
-        var presets = [
-          {
-            icon: "🎨",
-            title: "Custom HTML & rich markup",
-            tag: "createToast.custom()",
-            desc: "Render rich formatted HTML with automatic SVG/DOMPurify sanitization.",
-            options: {
-              type: "info",
-              message: "<strong>Order #8294</strong> placed! Delivery in <em>2 days</em> 📦",
-              allowHtml: true,
-              sanitizeHtml: true,
-              duration: 5000,
-              sound: "pop",
-            },
-          },
-          {
-            icon: "⏳",
-            title: "Action undo countdown",
-            tag: "undo: { showCountdown }",
-            desc: "Destructive action confirmation with decaying dynamic timer badge on the undo button.",
-            options: {
-              type: "warning",
-              message: "Document moved to trash.",
-              duration: 7000,
-              enableUndo: true,
-              sound: "warning",
-            },
-          },
-          {
-            icon: "✅",
-            title: "Success confirmation",
-            tag: "type: success",
-            desc: "The everyday case — an action completed.",
-            options: {
-              type: "success",
-              message: "Changes saved successfully!",
-            },
-          },
-          {
-            icon: "🔁",
-            title: "Error with retry",
-            tag: "cta + autoClose:false",
-            desc: "Keeps the toast open after the CTA so the user can retry if it fails again.",
-            options: {
-              type: "error",
-              message: "Failed to save changes.",
-              cta: {
-                label: "Retry",
-                autoClose: false,
-                onClick: function () {},
-              },
-            },
-          },
-          {
-            icon: "↩️",
-            title: "Undo delete",
-            tag: "cta + onClick",
-            desc: "The classic destructive-action-with-undo pattern.",
-            options: {
-              type: "info",
-              message: "Item deleted.",
-              cta: { label: "Undo", onClick: function () {} },
-            },
-          },
-          {
-            icon: "📋",
-            title: "Copy-to-clipboard + email",
-            tag: "real bug-report scenario",
-            desc: "The exact configuration that surfaced a real progress-bar bug we found and fixed — link CTA, custom borderRadius, top-center.",
-            options: {
-              type: "success",
-              message: "Email copied to clipboard: dev@example.com",
-              position: "top-center",
-              borderRadius: "14px",
-              cta: {
-                label: "Send Email",
-                href: "mailto:dev@example.com",
-                variant: "link",
-                autoClose: true,
-              },
-            },
-          },
-          {
-            icon: "🔄",
-            title: "Grouped duplicates",
-            tag: "smart dedup",
-            desc: "Fires the same toast 3× — watch it collapse into one with a count badge.",
-            isGroupDemo: true,
-          },
-          {
-            icon: "📐",
-            title: "Full-width banner",
-            tag: "position: top-full-width",
-            desc: "Spans the full viewport width — good for site-wide announcements.",
-            options: {
-              type: "warning",
-              message: "Scheduled maintenance tonight at 11pm UTC.",
-              position: "top-full-width",
-              duration: 4000,
-            },
-          },
-          {
-            icon: "⏳",
-            title: "Inline SVG loader",
-            tag: "showLoader: true",
-            desc: "Displays an animated inline SVG spinner alongside notification message.",
-            options: {
-              type: "info",
-              message: "Processing file upload...",
-              showLoader: true,
-              duration: 3500,
-            },
-          },
-          {
-            icon: "⚡",
-            title: "Live in-place mutation",
-            tag: "handle.update()",
-            desc: "Mutates toast in-place from 0% → 50% → 100% complete without flickering or timer jumps.",
-            isStreamingDemo: true,
-          },
-          {
-            icon: "🗂️",
-            title: "iOS card deck stacked mode",
-            tag: "stacked: true",
-            desc: "Stacks multiple toasts in 3D depth with peek offsets. Hover or tap expands the deck.",
-            isStackedDemo: true,
-          },
-          {
-            icon: "🔊",
-            title: "Zero-asset sound chimes",
-            tag: "sound: 'success'",
-            desc: "Pure native browser Web Audio API synthesis — 0 audio requests, 0KB network payload.",
-            options: {
-              type: "success",
-              message: "Task completed with audio confirmation!",
-              sound: "success",
-            },
-          },
-          {
-            icon: "👆",
-            title: "Touch swipe-to-dismiss",
-            tag: "swipeToDismiss: true",
-            desc: "Flick or swipe horizontally or vertically on touch screen to dismiss with velocity spring physics.",
-            options: {
-              type: "info",
-              message: "Swipe me away! (Flick or drag on touch screen)",
-              swipeToDismiss: true,
-              duration: 15000,
-            },
-          },
-          {
-            icon: "👥",
-            title: "Multi-action confirmation",
-            tag: "cta: [action1, action2]",
-            desc: "Dual action buttons (Accept / Decline) with distinct callbacks and autoClose behaviors.",
-            options: {
-              type: "info",
-              message: "Team invite from Priya Patel (Frontend Lead)",
-              position: "top-right",
-              duration: 8000,
-              spring: "gentle",
-              cta: [
-                {
-                  label: "Accept",
-                  onClick: function () {
-                    customizableToast.createToast({
-                      type: "success",
-                      message: "Invitation accepted!",
-                      sound: "success",
-                    });
-                  },
-                },
-                {
-                  label: "Decline",
-                  autoClose: true,
-                  onClick: function () {
-                    customizableToast.createToast({
-                      type: "warning",
-                      message: "Invitation declined.",
-                    });
-                  },
-                },
-              ],
-            },
-          },
-          {
-            icon: "🌐",
-            title: "Network status monitor",
-            tag: "offline / online auto-toast",
-            desc: "Simulates an offline event with retry CTA followed by back-online confirmation.",
-            isNetworkDemo: true,
-          },
-        ];
-
-        var presetGrid = document.getElementById("presetGrid");
-        presets.forEach(function (p) {
-          var card = document.createElement("button");
-          card.className = "preset-card";
-          card.innerHTML =
-            '<span class="icon">' +
-            p.icon +
-            "</span>" +
-            '<div class="title">' +
-            p.title +
-            "</div>" +
-            '<div class="desc">' +
-            p.desc +
-            "</div>" +
-            '<span class="tag">' +
-            p.tag +
-            "</span>";
-          card.addEventListener("click", function () {
-            if (typeof customizableToast === "undefined") return;
-            if (p.isGroupDemo) {
-              var groupCode =
-                "// Deduplication & grouping: 3 identical toasts coalesce into 1 with dynamic count badge\n" +
-                "for (let i = 0; i < 3; i++) {\n" +
-                "  customizableToast.createToast({\n" +
-                "    type: \"info\",\n" +
-                "    message: \"New comment on your post\"\n" +
-                "  });\n" +
-                "}";
-              document.getElementById("codeOutput").innerHTML = highlightCode(groupCode);
-              for (var i = 0; i < 3; i++) {
-                customizableToast.createToast({
-                  type: "info",
-                  message: "New comment on your post",
-                });
-              }
-              setAccent("info");
-              return;
-            }
-            if (p.isStreamingDemo) {
-              var streamCode =
-                "// Live in-place mutation / streaming updates:\n" +
-                "const handle = await customizableToast.createToast({\n" +
-                "  message: \"Exporting data... 0%\",\n" +
-                "  type: \"info\",\n" +
-                "  showLoader: true,\n" +
-                "  showProgressBar: true,\n" +
-                "  duration: 20000\n" +
-                "});\n\n" +
-                "// In-place progress update:\n" +
-                "handle.update({\n" +
-                "  message: \"Processing rows... 50%\",\n" +
-                "  progress: 50\n" +
-                "});\n\n" +
-                "// Final state transition:\n" +
-                "handle.update({\n" +
-                "  type: \"success\",\n" +
-                "  message: \"Export ready: 10,000 rows processed!\",\n" +
-                "  progress: 100,\n" +
-                "  showLoader: false,\n" +
-                "  duration: 4000,\n" +
-                "  sound: \"success\"\n" +
-                "});";
-              document.getElementById("codeOutput").innerHTML = highlightCode(streamCode);
-              customizableToast
-                .createToast({
-                  message: "Exporting data... 0%",
-                  type: "info",
-                  showLoader: true,
-                  showProgressBar: true,
-                  duration: 20000,
-                })
-                .then(function (handle) {
-                  setAccent("info");
-                  setTimeout(function () {
-                    handle.update({
-                      message: "Processing rows... 50%",
-                      progress: 50,
-                    });
-                  }, 800);
-                  setTimeout(function () {
-                    handle.update({
-                      type: "success",
-                      message: "Export ready: 10,000 rows processed!",
-                      progress: 100,
-                      showLoader: false,
-                      duration: 4000,
-                      sound: "success",
-                    });
-                    setAccent("success");
-                  }, 1600);
-                });
-              return;
-            }
-            if (p.isStackedDemo) {
-              var stackCode =
-                "// iOS-style 3D Card Deck Stacked Mode:\n" +
-                "customizableToast.createToast({\n" +
-                "  message: \"Deploying build...\",\n" +
-                "  type: \"info\",\n" +
-                "  stacked: true,\n" +
-                "  duration: 12000\n" +
-                "});\n" +
-                "customizableToast.createToast({\n" +
-                "  message: \"47 suites running...\",\n" +
-                "  type: \"warning\",\n" +
-                "  stacked: true,\n" +
-                "  duration: 12000\n" +
-                "});\n" +
-                "customizableToast.createToast({\n" +
-                "  message: \"All 88 tests verified cleanly!\",\n" +
-                "  type: \"success\",\n" +
-                "  stacked: true,\n" +
-                "  sound: \"success\",\n" +
-                "  duration: 12000\n" +
-                "});";
-              document.getElementById("codeOutput").innerHTML = highlightCode(stackCode);
-              customizableToast.createToast({
-                message: "Deploying build...",
-                type: "info",
-                stacked: true,
-                duration: 12000,
-              });
-              setTimeout(function () {
-                customizableToast.createToast({
-                  message: "47 suites running...",
-                  type: "warning",
-                  stacked: true,
-                  duration: 12000,
-                });
-              }, 250);
-              setTimeout(function () {
-                customizableToast.createToast({
-                  message: "All 88 tests verified cleanly!",
-                  type: "success",
-                  stacked: true,
-                  sound: "success",
-                  duration: 12000,
-                });
-              }, 500);
-              return;
-            }
-            if (p.isNetworkDemo) {
-              var netCode =
-                "// Network status monitor with retry CTA:\n" +
-                "customizableToast.createToast({\n" +
-                "  type: \"error\",\n" +
-                "  message: \"You are currently offline. Changes will sync once reconnected.\",\n" +
-                "  position: \"top-center\",\n" +
-                "  duration: 5000,\n" +
-                "  showProgressBar: false,\n" +
-                "  sound: \"error\",\n" +
-                "  soundPreset: \"retro\",\n" +
-                "  spring: \"stiff\",\n" +
-                "  cta: {\n" +
-                "    label: \"Retry\",\n" +
-                "    autoClose: true,\n" +
-                "    onClick: () => reconnect()\n" +
-                "  }\n" +
-                "});";
-              document.getElementById("codeOutput").innerHTML = highlightCode(netCode);
-              customizableToast.createToast({
-                type: "error",
-                message: "You are currently offline. Changes will sync once reconnected.",
-                position: "top-center",
-                duration: 5000,
-                showProgressBar: false,
-                sound: "error",
-                soundPreset: "retro",
-                spring: "stiff",
-                cta: {
-                  label: "Retry",
-                  autoClose: true,
-                  onClick: function () {
-                    setTimeout(function () {
-                      customizableToast.createToast({
-                        type: "success",
-                        message: "Back online! Connection restored.",
-                        position: "top-center",
-                        duration: 3000,
-                        sound: "success",
-                        soundPreset: "bell",
-                        spring: "bouncy",
-                      });
-                      setAccent("success");
-                    }, 400);
-                  },
-                },
-              });
-              setAccent("error");
-              return;
-            }
-            if (p.options) {
-              renderCode(p.options);
-              if (p.options.type) state.type = p.options.type;
-              if (p.options.message) state.message = p.options.message;
-              if (p.options.position) state.position = p.options.position;
-              if (p.options.duration) state.duration = p.options.duration;
-              if (p.options.sound) state.sound = p.options.sound;
-              if (p.options.soundPreset) state.soundPreset = p.options.soundPreset;
-              if (p.options.spring) state.spring = p.options.spring;
-              if (p.options.showLoader !== undefined) state.showLoader = !!p.options.showLoader;
-              if (p.options.stacked !== undefined) state.stacked = !!p.options.stacked;
-              if (p.options.swipeToDismiss !== undefined) state.swipeToDismiss = p.options.swipeToDismiss !== false;
-              if (p.options.allowHtml !== undefined) state.allowHtml = !!p.options.allowHtml;
-              if (p.options.sanitizeHtml !== undefined) state.sanitizeHtml = !!p.options.sanitizeHtml;
-              if (p.options.icon !== undefined) state.icon = String(p.options.icon);
-              if (p.options.enableUndo !== undefined) state.enableUndo = !!p.options.enableUndo;
-              if (p.options.cta) {
-                state.ctaEnabled = true;
-                if (Array.isArray(p.options.cta)) {
-                  var c1 = p.options.cta[0] || {};
-                  var c2 = p.options.cta[1] || {};
-                  state.ctaLabel = c1.label || "Action";
-                  state.ctaVariant = c1.variant || "button";
-                  state.ctaHref = c1.href || "";
-                  state.ctaAutoClose = c1.autoClose !== false;
-
-                  state.cta2Enabled = true;
-                  state.cta2Label = c2.label || "Decline";
-                  state.cta2Variant = c2.variant || "button";
-                  state.cta2Href = c2.href || "";
-                  state.cta2AutoClose = c2.autoClose !== false;
-                } else {
-                  state.ctaLabel = p.options.cta.label || "Action";
-                  state.ctaVariant = p.options.cta.variant || "button";
-                  state.ctaHref = p.options.cta.href || "";
-                  state.ctaAutoClose = p.options.cta.autoClose !== false;
-                  state.cta2Enabled = false;
-                }
-              } else {
-                state.ctaEnabled = false;
-                state.cta2Enabled = false;
-              }
-              buildControls();
-              customizableToast.createToast(p.options);
-              setAccent(p.options.type || "info");
-              return;
-            }
-          });
-          presetGrid.appendChild(card);
-        });
-
-        // ---------------- API reference live demos ----------------
-        function wire(id, fn) {
-          var el = document.getElementById(id);
-          if (el) el.addEventListener("click", fn);
+          var path = document.getElementById("springGraphPath");
+          if (path && points.length > 0) {
+            path.setAttribute("d", "M " + points.join(" L "));
+          }
         }
+        renderSpringGraph();
 
-        wire("shorthandSuccessBtn", function () {
-          if (customizableToast.createToast && customizableToast.createToast.success) {
-            customizableToast.createToast.success("Changes published!");
-          } else {
-            customizableToast.createToast({ type: "success", message: "Changes published!" });
-          }
-          setAccent("success");
-        });
-        wire("shorthandErrorBtn", function () {
-          if (customizableToast.createToast && customizableToast.createToast.error) {
-            customizableToast.createToast.error("Connection timed out.");
-          } else {
-            customizableToast.createToast({ type: "error", message: "Connection timed out." });
-          }
-          setAccent("error");
-        });
-        wire("shorthandWarnBtn", function () {
-          if (customizableToast.createToast && customizableToast.createToast.warning) {
-            customizableToast.createToast.warning("Unsaved draft will be lost.");
-          } else {
-            customizableToast.createToast({ type: "warning", message: "Unsaved draft will be lost." });
-          }
-          setAccent("warning");
-        });
-        wire("shorthandLoadingBtn", function () {
-          if (customizableToast.createToast && customizableToast.createToast.loading) {
-            customizableToast.createToast.loading("Syncing database... (auto closes in 3s)", { duration: 3000 });
-          } else {
-            customizableToast.createToast({ type: "info", showLoader: true, message: "Syncing database...", duration: 3000 });
-          }
-          setAccent("info");
-        });
-        wire("shorthandCustomBtn", function () {
-          if (customizableToast.createToast && customizableToast.createToast.custom) {
-            customizableToast.createToast.custom("<b>Custom HTML</b> with sanitization!", { duration: 3500 });
-          } else {
-            customizableToast.createToast({ allowHtml: true, message: "<b>Custom HTML</b> with sanitization!", duration: 3500 });
-          }
-          setAccent("info");
-        });
+        // Audio Oscilloscope Visualizer
+        var scopeCanvas = document.getElementById("audioOscilloscopeCanvas");
+        var scopeCtx = scopeCanvas ? scopeCanvas.getContext("2d") : null;
+        var analyser = null;
+        var animFrameId = null;
 
-        var storedHandle = null;
-        wire("handleCreateBtn", function () {
-          customizableToast
-            .createToast({ message: "Uploading...", duration: 60000 })
-            .then(function (h) {
-              storedHandle = h;
-            });
-        });
-        wire("handleDismissBtn", function () {
-          if (storedHandle) storedHandle.dismiss();
-        });
+        function initOscilloscope() {
+          if (!scopeCanvas || !scopeCtx) return;
+          scopeCanvas.width = scopeCanvas.parentElement.clientWidth || 400;
+          scopeCanvas.height = scopeCanvas.parentElement.clientHeight || 110;
 
-        wire("promiseSuccessBtn", function () {
-          customizableToast.toastPromise(
-            new Promise(function (resolve) {
-              setTimeout(function () {
-                resolve({ id: 42 });
-              }, 1500);
-            }),
-            {
-              loading: "Saving...",
-              success: function (v) {
-                return "Saved! id=" + v.id;
-              },
-              error: "Failed to save.",
-            },
-          );
-        });
-        wire("promiseErrorBtn", function () {
-          customizableToast.toastPromise(
-            new Promise(function (_r, reject) {
-              setTimeout(function () {
-                reject(new Error("network down"));
-              }, 1500);
-            }),
-            {
-              loading: "Syncing...",
-              success: "Synced!",
-              error: function (e) {
-                return "Sync failed: " + e.message;
-              },
-            },
-          );
-        });
+          function draw() {
+            animFrameId = requestAnimationFrame(draw);
+            scopeCtx.clearRect(0, 0, scopeCanvas.width, scopeCanvas.height);
 
-        wire("brandBtn", function () {
-          customizableToast.setDefaultColors({
-            success: "#0f9d58",
-            error: "#d93025",
-          });
-          customizableToast.setDefaultMessages({
-            success: "✅ Done, brand style!",
-          });
-          customizableToast.createToast({ type: "success" });
-        });
-        wire("brandResetBtn", function () {
-          customizableToast.setDefaultColors({
-            success: "#28a745",
-            error: "#dc3545",
-            warning: "#ffc107",
-            info: "#17a2b8",
-          });
-          customizableToast.setDefaultMessages({
-            success: "Operation completed successfully!",
-          });
-          customizableToast.createToast({
-            type: "success",
-            message: "Back to defaults.",
-          });
-        });
-
-        wire("groupBtn", function () {
-          for (var i = 0; i < 3; i++) {
-            customizableToast.createToast({
-              type: "info",
-              message: "New comment on your post",
-            });
-          }
-        });
-
-        wire("aiTriageErrorBtn", function () {
-          customizableToast.createToast({
-            type: "error",
-            message: "Payment failed: card expired (TypeSafe AI Triaged)",
-            duration: 6000,
-            cta: {
-              label: "Update Card",
-              onClick: function () {},
-              autoClose: true,
-            },
-          });
-          setAccent("error");
-        });
-
-        wire("aiTriageSuccessBtn", function () {
-          customizableToast.createToast({
-            type: "success",
-            message: "Export completed: sales_report.csv ready (24MB)",
-            duration: 4500,
-            cta: {
-              label: "Download",
-              onClick: function () {},
-              autoClose: true,
-            },
-          });
-          setAccent("success");
-        });
-
-        wire("aiTriageWarningBtn", function () {
-          customizableToast.createToast({
-            type: "warning",
-            message: "Cloud storage usage reached 88% capacity",
-            duration: 4000,
-          });
-          setAccent("warning");
-        });
-        wire("streamUpdateBtn", function () {
-          customizableToast
-            .createToast({
-              message: "Exporting data... 0%",
-              type: "info",
-              showLoader: true,
-              showProgressBar: true,
-              duration: 20000,
-            })
-            .then(function (handle) {
-              setAccent("info");
-              setTimeout(function () {
-                handle.update({
-                  message: "Processing rows... 50%",
-                  progress: 50,
-                });
-              }, 900);
-              setTimeout(function () {
-                handle.update({
-                  type: "success",
-                  message: "Export ready: 10,000 rows processed!",
-                  progress: 100,
-                  showLoader: false,
-                  duration: 4000,
-                  sound: "success",
-                });
-                setAccent("success");
-              }, 1800);
-            });
-        });
-
-        wire("stackedDeckBtn", function () {
-          customizableToast.createToast({
-            message: "Deploying v3.17.0...",
-            type: "info",
-            stacked: true,
-            duration: 12000,
-          });
-          setTimeout(function () {
-            customizableToast.createToast({
-              message: "3 suites running...",
-              type: "warning",
-              stacked: true,
-              duration: 12000,
-            });
-          }, 250);
-          setTimeout(function () {
-            customizableToast.createToast({
-              message: "All 85 tests verified cleanly!",
-              type: "success",
-              stacked: true,
-              sound: "success",
-              duration: 12000,
-            });
-          }, 500);
-        });
-
-        var soundPresetSelect = document.getElementById("soundPresetSelect");
-        if (soundPresetSelect) {
-          soundPresetSelect.addEventListener("change", function (e) {
-            if (customizableToast.setConfig) {
-              customizableToast.setConfig({ soundPreset: e.target.value });
-            }
-            if (customizableToast.playTone) {
-              customizableToast.playTone("info", e.target.value);
-            }
-          });
-        }
-
-        // Live Audio Oscilloscope Canvas Visualizer
-        (function initOscilloscope() {
-          var canvas = document.getElementById("audioOscilloscope");
-          if (!canvas || !canvas.getContext) return;
-          var ctx = canvas.getContext("2d");
-          var analyser = null;
-          var dataArray = null;
-          var hasGesture = false;
-
-          function onGesture() {
-            hasGesture = true;
-            try {
-              window.removeEventListener("pointerdown", onGesture, true);
-              window.removeEventListener("keydown", onGesture, true);
-              window.removeEventListener("touchstart", onGesture, true);
-            } catch (e) {}
-          }
-          window.addEventListener("pointerdown", onGesture, { capture: true, once: true, passive: true });
-          window.addEventListener("keydown", onGesture, { capture: true, once: true, passive: true });
-          window.addEventListener("touchstart", onGesture, { capture: true, once: true, passive: true });
-
-          function render() {
-            requestAnimationFrame(render);
-            if (!analyser && hasGesture && window.customizableToast && window.customizableToast.getAudioAnalyser) {
-              analyser = window.customizableToast.getAudioAnalyser();
-              if (analyser) {
-                dataArray = new Uint8Array(analyser.frequencyBinCount);
-              }
-            }
-
-            ctx.clearRect(0, 0, canvas.width, canvas.height);
-            ctx.lineWidth = 1.5;
-            ctx.strokeStyle = "#38bdf8";
-
-            ctx.beginPath();
-            var count = dataArray ? dataArray.length : 32;
-            var sliceWidth = canvas.width / count;
-            var x = 0;
-
-            if (analyser && dataArray) {
+            if (analyser && window.customizableToast && window.customizableToast.isAudioEnabled()) {
+              var bufferLength = analyser.frequencyBinCount || 256;
+              var dataArray = new Uint8Array(bufferLength);
               analyser.getByteTimeDomainData(dataArray);
-              for (var i = 0; i < count; i++) {
+
+              scopeCtx.lineWidth = 2;
+              scopeCtx.strokeStyle = document.documentElement.getAttribute("data-theme") === "dark" ? "#38bdf8" : "#2563eb";
+              scopeCtx.beginPath();
+
+              var sliceWidth = (scopeCanvas.width * 1.0) / bufferLength;
+              var x = 0;
+
+              for (var i = 0; i < bufferLength; i++) {
                 var v = dataArray[i] / 128.0;
-                var y = (v * canvas.height) / 2;
-                if (i === 0) ctx.moveTo(x, y);
-                else ctx.lineTo(x, y);
+                var y = (v * scopeCanvas.height) / 2;
+                if (i === 0) scopeCtx.moveTo(x, y);
+                else scopeCtx.lineTo(x, y);
                 x += sliceWidth;
               }
+              scopeCtx.lineTo(scopeCanvas.width, scopeCanvas.height / 2);
+              scopeCtx.stroke();
             } else {
-              var time = Date.now() * 0.003;
-              for (var j = 0; j <= 32; j++) {
-                var ry = canvas.height / 2 + Math.sin(time + j * 0.3) * 1.5;
-                if (j === 0) ctx.moveTo(x, ry);
-                else ctx.lineTo(x, ry);
-                x += sliceWidth;
-              }
+              // Idle sine line
+              scopeCtx.lineWidth = 1.5;
+              scopeCtx.strokeStyle = "rgba(148, 163, 184, 0.4)";
+              scopeCtx.beginPath();
+              var mid = scopeCanvas.height / 2;
+              scopeCtx.moveTo(0, mid);
+              scopeCtx.lineTo(scopeCanvas.width, mid);
+              scopeCtx.stroke();
             }
-            ctx.stroke();
           }
-          render();
-        })();
-
-        wire("soundSuccessBtn", function () {
-          if (customizableToast.playTone) customizableToast.playTone("success");
-          customizableToast.createToast({ message: "Task completed successfully!", type: "success" });
-        });
-        wire("soundErrorBtn", function () {
-          if (customizableToast.playTone) customizableToast.playTone("error");
-          customizableToast.createToast({ message: "Action failed. Please retry.", type: "error" });
-        });
-        wire("soundWarnBtn", function () {
-          if (customizableToast.playTone) customizableToast.playTone("warning");
-          customizableToast.createToast({ message: "Warning: High memory usage.", type: "warning" });
-        });
-        wire("soundPopBtn", function () {
-          if (customizableToast.playTone) customizableToast.playTone("pop");
-          customizableToast.createToast({ message: "Incoming notification ping", type: "info" });
-        });
-
-        // Stress-Test & Burst Simulator Wiring
-        var metricActiveEl = document.getElementById("metricActive");
-        var metricQueueEl = document.getElementById("metricQueue");
-        var metricDroppedEl = document.getElementById("metricDropped");
-        var metricFpsEl = document.getElementById("metricFps");
-
-        function updateMetricsDisplay(m) {
-          if (!m) return;
-          if (metricActiveEl) metricActiveEl.textContent = String(m.activeCount || 0);
-          if (metricQueueEl) metricQueueEl.textContent = String(m.queueDepth || 0);
-          if (metricDroppedEl) metricDroppedEl.textContent = String(m.droppedCount || 0);
+          draw();
         }
+        initOscilloscope();
 
-        if (window.customizableToast && window.customizableToast.setConfig) {
-          window.customizableToast.setConfig({
-            onMetrics: updateMetricsDisplay,
-          });
-        }
+        document.getElementById("testToneBtn").addEventListener("click", function () {
+          if (window.customizableToast) {
+            window.customizableToast.setAudioEnabled(true);
+            if (typeof window.customizableToast.getAudioAnalyser === "function") {
+              analyser = window.customizableToast.getAudioAnalyser();
+            }
+            var preset = document.getElementById("soundPresetSelect").value;
+            window.customizableToast.playTone("success", preset);
+          }
+        });
 
-        // Live FPS meter for responsiveness verification
+        // Telemetry Monitor
+        var meterActive = document.getElementById("meterActive");
+        var meterQueue = document.getElementById("meterQueue");
+        var meterDropped = document.getElementById("meterDropped");
+        var meterFps = document.getElementById("meterFps");
+
         var lastFrameTime = performance.now();
         var frameCount = 0;
-        var currentFps = 60;
-        function trackFps(now) {
+        function updateFps() {
+          var now = performance.now();
           frameCount++;
-          if (now - lastFrameTime >= 500) {
-            currentFps = Math.round((frameCount * 1000) / (now - lastFrameTime));
-            if (metricFpsEl) {
-              metricFpsEl.textContent = currentFps + " fps";
-              metricFpsEl.style.color = currentFps >= 50 ? "#28a745" : currentFps >= 30 ? "#ffc107" : "#dc3545";
-            }
+          if (now - lastFrameTime >= 1000) {
+            meterFps.textContent = frameCount;
             frameCount = 0;
             lastFrameTime = now;
           }
-          requestAnimationFrame(trackFps);
+          requestAnimationFrame(updateFps);
         }
-        requestAnimationFrame(trackFps);
+        requestAnimationFrame(updateFps);
 
-        wire("burst50Btn", function () {
+        function attachTelemetry() {
+          if (window.customizableToast && typeof window.customizableToast.setConfig === "function") {
+            window.customizableToast.setConfig({
+              onMetrics: function (m) {
+                if (!m) return;
+                meterActive.textContent = m.activeCount || 0;
+                meterQueue.textContent = m.queueDepth || 0;
+                meterDropped.textContent = m.droppedCount || 0;
+              }
+            });
+          }
+        }
+        attachTelemetry();
+
+        // Code Generator
+        var codeOutput = document.getElementById("codeOutput");
+        var codeFilename = document.getElementById("codeFilename");
+        var codeTabs = document.querySelectorAll(".code-tabs .code-tab-btn");
+
+        codeTabs.forEach(function (tab) {
+          tab.addEventListener("click", function () {
+            codeTabs.forEach(function (t) { t.classList.remove("active"); });
+            tab.classList.add("active");
+            activeCodeLang = tab.getAttribute("data-lang");
+            updateCodeSnippet();
+          });
+        });
+
+        function buildOptions() {
+          var msg = document.getElementById("toastMessageInput").value || "Notification";
+          var type = document.getElementById("toastTypeSelect").value;
+          var dur = parseInt(durationSlider.value, 10);
+          var animType = document.getElementById("animationTypeSelect").value;
+          var springPreset = springPresetSelect.value;
+          var soundPreset = document.getElementById("soundPresetSelect").value;
+          var progMode = document.getElementById("progressTypeSelect").value;
+          var progVal = parseInt(manualProgressSlider.value, 10);
+          var progColor = document.getElementById("progressBarColorInput").value.trim();
+          var progHeight = document.getElementById("progressBarHeightSelect").value;
+
+          var opts = {
+            message: msg,
+            type: type,
+            duration: dur,
+            position: currentPosition,
+          };
+
+          if (animType === "spring") {
+            opts.spring = springPreset;
+          } else {
+            opts.animationType = animType;
+          }
+
+          if (document.getElementById("toggleCloseBtn").checked === false) opts.showCloseButton = false;
+          if (document.getElementById("togglePauseOnHover").checked === false) opts.pauseOnHover = false;
+          if (document.getElementById("toggleSwipeToDismiss").checked === false) opts.swipeToDismiss = false;
+          if (document.getElementById("toggleAllowHtml").checked) opts.allowHtml = true;
+          if (document.getElementById("toggleStacked").checked) opts.stacked = true;
+          if (document.getElementById("toggleSyncTabs").checked) opts.syncTabs = true;
+          if (document.getElementById("toggleAiScorer").checked) opts.aiPrioritization = true;
+          if (document.getElementById("togglePool").checked) opts.usePool = true;
+
+          opts.sound = true;
+          opts.soundPreset = soundPreset;
+
+          if (progMode === "hidden") {
+            opts.showProgressBar = false;
+          } else if (progMode === "stream") {
+            opts.progress = progVal;
+          } else if (progMode === "indeterminate") {
+            opts.progress = "indeterminate";
+          } else if (progMode === "reverse") {
+            opts.progressDirection = "increasing";
+          }
+
+          if (progColor) opts.progressBarColor = progColor;
+          if (progHeight !== "4px") opts.progressHeight = progHeight;
+
+          var customBg = document.getElementById("toastBgColor").value.trim();
+          var customTxt = document.getElementById("toastTextColor").value.trim();
+          if (customBg) opts.backgroundColor = customBg;
+          if (customTxt) opts.textColor = customTxt;
+
+          if (currentCta === "single") {
+            opts.cta = { label: document.getElementById("ctaLabelInput").value, onClick: "() => console.log('Action clicked')" };
+          } else if (currentCta === "multi") {
+            opts.cta = [
+              { label: "Accept", onClick: "() => console.log('Accepted')" },
+              { label: "Decline", background: "rgba(0,0,0,0.1)", onClick: "() => console.log('Declined')" }
+            ];
+          } else if (currentCta === "link") {
+            opts.cta = { label: "Learn More", href: "https://github.com", variant: "link" };
+          }
+
+          if (document.getElementById("toggleUndoAction").checked) {
+            opts.undo = {
+              label: document.getElementById("undoLabelInput").value,
+              onUndo: "() => console.log('Undone!')"
+            };
+          }
+
+          return opts;
+        }
+
+        function updateCodeSnippet() {
+          var opts = buildOptions();
+          var snippet = "";
+
+          if (activeCodeLang === "js") {
+            codeFilename.textContent = "toast-example.js";
+            snippet = 'import { createToast } from "customizable-toast-notification";\nimport "customizable-toast-notification/dist/index.css";\n\n' +
+              'createToast(' + JSON.stringify(opts, null, 2) + ');';
+          } else if (activeCodeLang === "ts") {
+            codeFilename.textContent = "toast-example.ts";
+            snippet = 'import { createToast, type ToastOptions, type ToastHandle } from "customizable-toast-notification";\nimport "customizable-toast-notification/dist/index.css";\n\n' +
+              'const options: ToastOptions = ' + JSON.stringify(opts, null, 2) + ';\n' +
+              'const handle: ToastHandle = await createToast(options);';
+          } else if (activeCodeLang === "react") {
+            codeFilename.textContent = "ToastTrigger.jsx";
+            snippet = '"use client";\nimport { createToast } from "customizable-toast-notification";\nimport "customizable-toast-notification/dist/index.css";\n\n' +
+              'export default function ToastButton() {\n  const trigger = () => {\n    createToast(' + JSON.stringify(opts, null, 4).replace(/\n/g, "\n    ") + ');\n  };\n  return <button onClick={trigger}>Fire Toast</button>;\n}';
+          } else if (activeCodeLang === "vue") {
+            codeFilename.textContent = "ToastTrigger.vue";
+            snippet = '<script setup>\nimport { createToast } from "customizable-toast-notification";\nimport "customizable-toast-notification/dist/index.css";\n\n' +
+              'function show() {\n  createToast(' + JSON.stringify(opts, null, 2) + ');\n}\n<\/script>\n\n<template>\n  <button @click="show">Fire Toast</button>\n</template>';
+          } else if (activeCodeLang === "svelte") {
+            codeFilename.textContent = "ToastTrigger.svelte";
+            snippet = '<script>\n  import { createToast } from "customizable-toast-notification";\n  import "customizable-toast-notification/dist/index.css";\n\n' +
+              '  function notify() {\n    createToast(' + JSON.stringify(opts, null, 4) + ');\n  }\n<\/script>\n\n<button onclick={notify}>Fire Toast</button>';
+          } else if (activeCodeLang === "cdn") {
+            codeFilename.textContent = "index.html";
+            snippet = '<!-- 1. Include CSS and UMD JS -->\n' +
+              '<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/customizable-toast-notification@3.17.0/dist/index.css" />\n' +
+              '<script src="https://cdn.jsdelivr.net/npm/customizable-toast-notification@3.17.0/dist/index.umd.js"><\/script>\n\n' +
+              '<script>\n  customizableToast.createToast(' + JSON.stringify(opts, null, 2) + ');\n<\/script>';
+          }
+
+          codeOutput.textContent = snippet;
+        }
+
+        // Copy Code Button
+        document.getElementById("copyCodeBtn").addEventListener("click", function () {
+          navigator.clipboard.writeText(codeOutput.textContent).then(function () {
+            var btn = document.getElementById("copyCodeBtn");
+            btn.textContent = "Copied!";
+            setTimeout(function () { btn.textContent = "Copy Snippet"; }, 2000);
+          });
+        });
+
+        // Fire Toast Trigger
+        function fireToast(customOverride) {
+          if (!window.customizableToast) {
+            alert("customizableToast library is loading... Please retry in a moment.");
+            return;
+          }
+
+          var opts = Object.assign({}, buildOptions(), customOverride || {});
+
+          // Clean up stringified functions in options for runtime execution
+          if (opts.cta) {
+            if (Array.isArray(opts.cta)) {
+              opts.cta = opts.cta.map(function (item) {
+                return Object.assign({}, item, { onClick: function () { console.log(item.label + " clicked"); } });
+              });
+            } else if (typeof opts.cta === "object" && !opts.cta.href) {
+              opts.cta.onClick = function () { console.log(opts.cta.label + " clicked"); };
+            }
+          }
+          if (opts.undo) {
+            opts.undo = {
+              label: opts.undo.label || "Undo",
+              onUndo: function () {
+                window.customizableToast.createToast.info("Action successfully reversed!");
+              }
+            };
+          }
+
+          // Wire up audio analyser if needed
+          if (opts.sound && typeof window.customizableToast.getAudioAnalyser === "function") {
+            analyser = window.customizableToast.getAudioAnalyser();
+          }
+
+          window.customizableToast.createToast(opts);
+        }
+
+        document.getElementById("fireToastBtn").addEventListener("click", function () {
+          fireToast();
+        });
+
+        document.getElementById("dismissAllBtn").addEventListener("click", function () {
+          if (window.customizableToast) {
+            window.customizableToast.dismissAll();
+          }
+        });
+
+        // Quick Preset Buttons
+        document.getElementById("quickSuccessBtn").addEventListener("click", function () {
+          fireToast({ type: "success", message: "Deployment pipeline succeeded in 42s!", sound: true, soundPreset: "bell", spring: "bouncy" });
+        });
+        document.getElementById("quickErrorBtn").addEventListener("click", function () {
+          fireToast({ type: "error", message: "Database connection failed. Retrying in 5s...", sound: true, soundPreset: "retro", spring: "stiff" });
+        });
+        document.getElementById("quickWarningBtn").addEventListener("click", function () {
+          fireToast({ type: "warning", message: "Disk usage at 91%. Cleanup recommended.", sound: true, soundPreset: "modern" });
+        });
+        document.getElementById("quickInfoBtn").addEventListener("click", function () {
+          fireToast({ type: "info", message: "New security updates are available for your system.", sound: true, soundPreset: "subtle" });
+        });
+
+        document.getElementById("quickLoadingBtn").addEventListener("click", function () {
+          if (!window.customizableToast) return;
+          window.customizableToast.createToast.loading("Uploading production artifacts (0%)...").then(function (h) {
+            var pct = 0;
+            var iv = setInterval(function () {
+              pct += 25;
+              if (pct < 100) {
+                h.update({ message: "Uploading production artifacts (" + pct + "%)...", progress: pct });
+              } else {
+                clearInterval(iv);
+                h.update({ type: "success", message: "Artifact upload complete!", progress: 100, showLoader: false, duration: 3000 });
+              }
+            }, 500);
+          });
+        });
+
+        document.getElementById("quickPromiseBtn").addEventListener("click", function () {
+          if (!window.customizableToast) return;
+          var dummyPromise = new Promise(function (resolve) {
+            setTimeout(function () { resolve({ id: "DOC-892" }); }, 2200);
+          });
+          window.customizableToast.toastPromise(dummyPromise, {
+            loading: "Generating cryptographic invoice PDF...",
+            success: function (data) { return "Invoice " + data.id + " generated successfully!"; },
+            error: "Failed to generate invoice."
+          });
+        });
+
+        document.getElementById("quickUndoBtn").addEventListener("click", function () {
+          fireToast({
+            type: "warning",
+            message: "Project 'alpha-v2' moved to trash.",
+            duration: 5000,
+            undo: {
+              label: "Undo",
+              onUndo: function () {
+                window.customizableToast.createToast.success("Project 'alpha-v2' restored!");
+              }
+            }
+          });
+        });
+
+        document.getElementById("quickStackedBtn").addEventListener("click", function () {
+          fireToast({ type: "info", message: "System notice 1: Background backup initiated.", stacked: true });
+          setTimeout(function () { fireToast({ type: "warning", message: "System notice 2: High CPU threshold reached.", stacked: true }); }, 300);
+          setTimeout(function () { fireToast({ type: "success", message: "System notice 3: Backup completed safely.", stacked: true }); }, 600);
+        });
+
+        document.getElementById("quickBouncyBtn").addEventListener("click", function () {
+          fireToast({ type: "success", message: "Bouncy dynamic spring physics!", spring: "bouncy", animationType: "spring" });
+        });
+
+        document.getElementById("quickFloodBtn").addEventListener("click", function () {
+          if (!window.customizableToast) return;
           for (var i = 1; i <= 50; i++) {
-            customizableToast.createToast({
-              message: "Burst alert #" + i + " [High Frequency]",
-              type: i % 4 === 0 ? "error" : i % 3 === 0 ? "warning" : i % 2 === 0 ? "success" : "info",
-              duration: 3000,
-            });
+            (function (idx) {
+              setTimeout(function () {
+                window.customizableToast.createToast({
+                  message: "Burst notification #" + idx + " of 50",
+                  type: idx % 3 === 0 ? "success" : (idx % 3 === 1 ? "info" : "warning"),
+                  duration: 2000,
+                  position: "bottom-right",
+                  usePool: true
+                });
+              }, idx * 25);
+            })(i);
           }
         });
 
-        wire("burst100Btn", function () {
-          for (var i = 1; i <= 100; i++) {
-            customizableToast.createToast({
-              message: "Extreme burst item #" + i + " (Safe Queue)",
-              type: i % 2 === 0 ? "info" : "success",
-              duration: 2500,
-            });
-          }
-        });
+        // Initialize Snippet on load
+        updateCodeSnippet();
 
-        wire("burstClearBtn", function () {
-          customizableToast.noop();
-          if (customizableToast.getToastMetrics) {
-            updateMetricsDisplay(customizableToast.getToastMetrics());
-          }
+        // Listen for all inputs to re-generate code
+        document.querySelectorAll("input, select").forEach(function (el) {
+          el.addEventListener("change", updateCodeSnippet);
         });
       })();
     </script>

@@ -723,9 +723,26 @@ export async function closeToastByKey(key, fromSync = false) {
 
     if (data.toast) {
       if (!getConfig().disableInlineStyles) {
+        const pos = String(data.options?.position || data.outer?.parentElement?.id || "").toLowerCase();
+        const isTop = pos.includes("top");
+        const isLeft = pos.includes("left");
+        const isRight = pos.includes("right");
+        const anim = String(data.options?.animationType || "").toLowerCase().trim();
+
+        let exitTransform = "translateY(20px)";
+        if (anim === "fade") {
+          exitTransform = "none";
+        } else if (anim === "zoom" || anim === "scale") {
+          exitTransform = "scale(0.75)";
+        } else if (anim === "flip") {
+          exitTransform = "perspective(600px) rotateX(-45deg)";
+        } else if (anim === "slide") {
+          exitTransform = isLeft ? "translateX(-100%)" : isRight ? "translateX(100%)" : isTop ? "translateY(-100%)" : "translateY(100%)";
+        }
+
         data.toast.style.transition = `opacity ${exitDuration}ms ease-in, transform ${exitDuration}ms ease-in`;
         data.toast.style.opacity = "0";
-        data.toast.style.transform = "translateY(20px)";
+        data.toast.style.transform = exitTransform;
       }
       data.toast.classList.remove("active");
     }
@@ -1153,6 +1170,34 @@ export async function updateToastByKey(key, newOptions = {}) {
   } else if (newOptions.showProgressBar === false) {
     const bar = toast.querySelector(".toast-progress-bar");
     if (bar) bar.remove();
+  }
+
+  if (newOptions.progressBarColor || newOptions.progressColor) {
+    const bar = toast.querySelector(".toast-progress-bar");
+    if (bar) {
+      bar.style.background = newOptions.progressBarColor || newOptions.progressColor;
+    }
+  }
+
+  if (newOptions.progressPosition) {
+    const bar = toast.querySelector(".toast-progress-bar");
+    if (bar) {
+      bar.style.top = newOptions.progressPosition === "top" ? "0" : "auto";
+      bar.style.bottom = newOptions.progressPosition === "bottom" ? "0" : "auto";
+    }
+  }
+
+  if (newOptions.progressHeight !== undefined) {
+    const bar = toast.querySelector(".toast-progress-bar");
+    if (bar) {
+      const ph = typeof newOptions.progressHeight === "number" ? `${newOptions.progressHeight}px` : newOptions.progressHeight;
+      bar.style.height = ph;
+    }
+  }
+
+  if (newOptions.animationType !== undefined) {
+    data.options.animationType = newOptions.animationType;
+    toast._animationType = newOptions.animationType;
   }
 
   // 5. Update Duration / Timer
