@@ -96,7 +96,12 @@ export function setConfig(options = {}) {
     aiPrioritization,
     priorityScorer,
     onMetrics,
+    debug,
   } = options;
+
+  if (debug !== undefined) {
+    globalConfig.debug = Boolean(debug);
+  }
 
   if (maxVisible !== undefined) {
     const v = Number(maxVisible);

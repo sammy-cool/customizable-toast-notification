@@ -598,10 +598,10 @@ const dismissToast = async (target) => {
       } else if (resolvedTarget && typeof resolvedTarget === "object") {
         if (typeof resolvedTarget.dismiss === "function") {
           await resolvedTarget.dismiss();
-        } else if (resolvedTarget.id && typeof resolvedTarget.id === "string") {
-          await closeToastByKey(resolvedTarget.id);
         } else if (resolvedTarget._key && typeof resolvedTarget._key === "string") {
           await closeToastByKey(resolvedTarget._key);
+        } else if (resolvedTarget.id && typeof resolvedTarget.id === "string") {
+          await closeToastByKey(resolvedTarget.id);
         } else {
           await dismiss();
         }

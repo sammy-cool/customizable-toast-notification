@@ -34,12 +34,13 @@ function resetPositionClasses(container) {
   }
 }
 
-export async function setPosition(container, options) {
-  if (!container || !options?.position) {
+export async function setPosition(container, options = {}) {
+  if (!container || !options || typeof options !== "object") {
     throw new Error("Invalid container or position!");
   }
 
-  const rawPos = String(options.position).toLowerCase().trim();
+  const config = getConfig();
+  const rawPos = String(options?.position || config.defaultPosition || "bottom-right").toLowerCase().trim();
   let effectivePos = rawPos;
 
   if (!isDocumentedPosition(rawPos) && !LEGACY_POSITIONS.has(rawPos)) {
@@ -69,6 +70,7 @@ function resetContainerStyles(container) {
   container.style.left = "auto";
   container.style.right = "auto";
   container.style.transform = "none";
+  container.style.maxWidth = "auto";
 }
 
 function parsePosition(position) {

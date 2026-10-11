@@ -310,6 +310,9 @@ export async function createEmergencyToast(options = {}, onClose) {
 
     const closeSpan = document.createElement("span");
     closeSpan.className = "toast-emergency-close";
+    closeSpan.setAttribute("role", "button");
+    closeSpan.setAttribute("aria-label", "Close emergency notification");
+    closeSpan.tabIndex = 0;
     if (!config.disableInlineStyles) {
       Object.assign(closeSpan.style, {
         float: "right",

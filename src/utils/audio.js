@@ -540,17 +540,25 @@ const BUILTIN_PRESETS = {
  * @param {'modern' | 'retro' | 'futuristic' | 'subtle' | 'bell' | string} [preset="modern"]
  * @returns {void}
  */
+let isPlayingDelegated = false;
+
 export function playTone(toneType = "info", preset) {
+  if (!audioEnabled) return;
   if (
+    !isPlayingDelegated &&
     typeof window !== "undefined" &&
     window.customizableToast &&
     typeof window.customizableToast.playTone === "function" &&
     window.customizableToast.playTone !== playTone
   ) {
-    window.customizableToast.playTone(toneType, preset);
-    return;
+    try {
+      isPlayingDelegated = true;
+      window.customizableToast.playTone(toneType, preset);
+      return;
+    } finally {
+      isPlayingDelegated = false;
+    }
   }
-  if (!audioEnabled) return;
   const ctx = getAudioContext();
   if (!ctx) return;
 

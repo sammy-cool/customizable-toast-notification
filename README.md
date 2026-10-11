@@ -114,7 +114,7 @@ Global Variable Name: `customizableToast`
 <script src="https://cdn.jsdelivr.net/npm/customizable-toast-notification/dist/index.umd.js"></script>
 
 <!-- OR pin to a specific version -->
-<script src="https://cdn.jsdelivr.net/npm/customizable-toast-notification@3.16.0/dist/index.umd.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/customizable-toast-notification@3.17.0/dist/index.umd.js"></script>
 
 <script>
   // Access the global UMD export
@@ -674,7 +674,7 @@ setConfig({ zIndex: 50000 });
 
 ## 🚀 Phase 3: Advanced Features
 
-The following enterprise-grade features are available in v3.16.0+ and are opt-in via global config or toast options:
+The following enterprise-grade features are available in v3.17.0+ and are opt-in via global config or toast options:
 
 ### 🔄 Cross-Tab Toast Synchronization
 
@@ -1009,8 +1009,8 @@ createToast({ message: "Using external CSS!" });
 
 ```html
 <!-- HTML (CDN) -->
-<link rel="stylesheet" href="https://unpkg.com/customizable-toast-notification@3.16.0/dist/index.css">
-<script src="https://unpkg.com/customizable-toast-notification@3.16.0/dist/index.umd.js"></script>
+<link rel="stylesheet" href="https://unpkg.com/customizable-toast-notification@3.17.0/dist/index.css">
+<script src="https://unpkg.com/customizable-toast-notification@3.17.0/dist/index.umd.js"></script>
 <script>
   customizableToast.setConfig({ disableInlineStyles: true });
   customizableToast.createToast({ message: "Using external CSS!" });

@@ -223,11 +223,17 @@ export function sanitizeHtml(dirty, opts = {}) {
         ALLOWED_TAGS: Array.from(ALLOWED_TAGS),
         ALLOWED_ATTR: Array.from(ALLOWED_ATTRS),
         ALLOWED_URI_REGEXP:
-          /^(?:(?:https?|mailto|ftp|tel|data):|[^a-z]|[a-z+.\-]+(?:[^a-z+.\-:]|$))/i,
+          /^(?:(?:https?|mailto|ftp|tel):|data:image\/(?:png|jpeg|jpg|gif|webp|avif|bmp|ico);base64,|[^a-z]|[a-z+.\-]+(?:[^a-z+.\-:]|$))/i,
       });
 
       const wrapper = document.createElement("div");
       wrapper.innerHTML = cleaned;
+      wrapper.querySelectorAll("a[href]").forEach((a) => {
+        const h = (a.getAttribute("href") || "").trim().toLowerCase();
+        if (h.startsWith("data:") || h.startsWith("javascript:") || h.startsWith("vbscript:")) {
+          a.setAttribute("href", "#");
+        }
+      });
       wrapper.querySelectorAll('a[target="_blank"]').forEach((a) => {
         const rel = (a.getAttribute("rel") || "").split(/\s+/).filter(Boolean);
         if (!rel.includes("noopener")) rel.push("noopener");

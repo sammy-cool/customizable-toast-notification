@@ -25,7 +25,9 @@ export function createCTA(toast, options, onClose) {
 
     if (isLink) {
       if (cfg.href) {
-        el.href = cfg.href;
+        const trimmedHref = String(cfg.href).trim();
+        const isDangerous = /^(javascript:|vbscript:|data:(?!image\/[a-z0-9.+-]+;base64,))/i.test(trimmedHref);
+        el.href = isDangerous ? "#" : trimmedHref;
       } else {
         el.setAttribute("role", "button");
         el.tabIndex = 0;
@@ -320,7 +322,8 @@ export function createProgressBar(toast, options) {
   progressBar.className = "toast-progress-bar";
   toast._progressBar = progressBar;
   const borderRadiusStr = options.borderRadius || "0";
-  const borderRadiusNum = parseInt(borderRadiusStr, 10);
+  const parsedRadius = parseInt(borderRadiusStr, 10);
+  const borderRadiusNum = Number.isFinite(parsedRadius) && parsedRadius > 0 ? parsedRadius : 0;
 
   let progressHeightPx = 4;
   let progressHeightStyle = "4px";
@@ -523,6 +526,7 @@ export function attachSwipeToDismiss(toast, onClose) {
         isHorizontal = true;
       } else if (Math.abs(dy) > 8) {
         isDragging = false;
+        toast.style.userSelect = "";
         cleanupWindowListeners();
         return;
       }

@@ -572,6 +572,8 @@ function createDismissTimer(toast, options) {
 async function setupPauseOnHover(data) {
   if (!data.pauseOnHover || !data.outer || !data.timer) return;
 
+  data.outer._pauseCleanup?.();
+
   const { outer, timer, toast } = data;
 
   const onMouseEnter = () => {
@@ -1231,8 +1233,5 @@ export async function updateToastByKey(key, newOptions = {}) {
   if (container && container.getAttribute("data-stacked") === "true") {
     updateStackedLayout(container);
   }
-
-  // 8. Synchronize options state
-  Object.assign(data.options, newOptions);
 }
 

@@ -116,7 +116,7 @@ export function calculateToastPriority(context) {
   }
 
   breakdown.urgency = Math.min(Math.max(urgencyScore, -10), 20); // Cap -10 to +20
-  score += urgencyScore;
+  score += breakdown.urgency;
 
   // Factor 3: Duration (shorter = higher priority)
   const hasDuration = typeof duration === 'number' && duration > 0;

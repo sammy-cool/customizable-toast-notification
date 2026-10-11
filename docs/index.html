@@ -743,7 +743,7 @@
             ><span class="dot" id="brandDot"></span
             >customizable-toast-notification</a
           >
-          <span class="version-pill" id="pkgVersionBadge">v3.16.0</span>
+          <span class="version-pill" id="pkgVersionBadge">v3.17.0</span>
         </div>
         <div class="navlinks">
           <a href="#presets">Try it instantly</a>
@@ -1059,7 +1059,7 @@
             Stack multiple toasts behind each other with scale and peek offsets. Hover or focus expands the deck; leaving collapses it.
           </p>
           <div class="code-block">
-            createToast({ message: <span class="tok-str">"Deploying v3.16.0..."</span>, stacked: <span class="tok-kw">true</span> });<br/>
+            createToast({ message: <span class="tok-str">"Deploying v3.17.0..."</span>, stacked: <span class="tok-kw">true</span> });<br/>
             createToast({ message: <span class="tok-str">"3 tests running..."</span>, stacked: <span class="tok-kw">true</span> });<br/>
             createToast({ message: <span class="tok-str">"All builds verified!"</span>, type: <span class="tok-str">"success"</span>, stacked: <span class="tok-kw">true</span> });
           </div>
@@ -1362,7 +1362,7 @@ npm install customizable-toast-notification</pre
           var ver =
             window.customizableToast && window.customizableToast.version
               ? window.customizableToast.version
-              : "3.16.0";
+              : "3.17.0";
           badge.textContent = "v" + String(ver).replace(/^v/, "");
           if (navigator.onLine && location.protocol !== "file:") {
             fetch(
@@ -1477,6 +1477,10 @@ npm install customizable-toast-notification</pre
           cta2Rel: "",
           cta2AutoClose: true,
           cta2AriaLabel: "",
+          syncTabs: false,
+          aiPrioritization: false,
+          priority: "",
+          usePool: false,
         };
 
         var state = Object.assign({}, DEFAULTS);
@@ -1594,6 +1598,12 @@ npm install customizable-toast-notification</pre
           if (s.progress !== "" && !isNaN(Number(s.progress))) {
             opts.progress = Number(s.progress);
           }
+          if (s.syncTabs) opts.syncTabs = true;
+          if (s.aiPrioritization) opts.aiPrioritization = true;
+          if (s.priority !== "" && !isNaN(Number(s.priority))) {
+            opts.priority = Number(s.priority);
+          }
+          if (s.usePool) opts.usePool = true;
           return opts;
         }
 
@@ -1831,6 +1841,10 @@ npm install customizable-toast-notification</pre
                   "bottom-center",
                   "left-center",
                   "right-center",
+                  "center-top",
+                  "center-bottom",
+                  "center-left",
+                  "center-right",
                   "top-full-width",
                   "bottom-full-width",
                   "center",
@@ -2068,6 +2082,32 @@ npm install customizable-toast-notification</pre
                 key: "cta2AriaLabel",
                 type: "text",
                 label: "secondary cta.ariaLabel",
+              },
+            ],
+          },
+          {
+            title: "Phase 3 Enterprise & Sync",
+            fields: [
+              {
+                key: "syncTabs",
+                type: "checkbox",
+                label: "syncTabs (Cross-Tab BroadcastChannel Sync)",
+              },
+              {
+                key: "aiPrioritization",
+                type: "checkbox",
+                label: "aiPrioritization (Deterministic Smart Triage)",
+              },
+              {
+                key: "priority",
+                type: "number",
+                label: "priority (Numeric queue priority 0-100)",
+                placeholder: "e.g. 85",
+              },
+              {
+                key: "usePool",
+                type: "checkbox",
+                label: "usePool (High-throughput DOM element recycling)",
               },
             ],
           },
@@ -2972,7 +3012,7 @@ npm install customizable-toast-notification</pre
 
         wire("stackedDeckBtn", function () {
           customizableToast.createToast({
-            message: "Deploying v3.16.0...",
+            message: "Deploying v3.17.0...",
             type: "info",
             stacked: true,
             duration: 12000,

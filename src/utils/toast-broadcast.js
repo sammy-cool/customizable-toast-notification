@@ -288,12 +288,14 @@ export function getToastBroadcaster() {
   if (!broadcasterInstance) {
     broadcasterInstance = new ToastBroadcaster();
 
-    // Cleanup on page unload
+    // Cleanup on page hide/unload without breaking BFCache
     if (typeof window !== 'undefined') {
-      window.addEventListener('unload', () => {
+      const cleanup = () => {
         broadcasterInstance?.destroy();
         broadcasterInstance = null;
-      });
+      };
+      window.addEventListener('pagehide', cleanup);
+      window.addEventListener('beforeunload', cleanup);
     }
   }
   return broadcasterInstance;

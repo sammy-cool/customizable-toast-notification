@@ -283,7 +283,7 @@ Object.entries(namedColors).forEach(([name, [r, g, b]]) => {
 });
 
 export function getDynamicAccessibleTextColorHex(toastBg) {
-  if (!toastBg) return "snow";
+  if (!toastBg) return "#ffffff";
 
   const key = String(toastBg);
   const cached = colorCache.get(key);
@@ -340,9 +340,9 @@ export function getDynamicAccessibleTextColorHex(toastBg) {
   }
 
   function parseToRgb(value) {
-    const hexMatch = value?.match(/^#([0-9a-f]{3,8})$/i);
+    const hexMatch = value?.match(/^#(?:([0-9a-f]{3,4})|([0-9a-f]{6})|([0-9a-f]{8}))$/i);
     if (hexMatch) {
-      let hex = hexMatch[1];
+      let hex = hexMatch[1] || hexMatch[2] || hexMatch[3];
       if (hex.length === 3 || hex.length === 4) {
         hex = hex
           .slice(0, 3)

@@ -86,16 +86,24 @@ export function createToastIcon(options = {}) {
     const aliasMap = {
       check: ICON_SVGS.success,
       checkmark: ICON_SVGS.success,
+      success: ICON_SVGS.success,
       cross: ICON_SVGS.error,
+      error: ICON_SVGS.error,
       alert: ICON_SVGS.warning,
+      warning: ICON_SVGS.warning,
       circle: ICON_SVGS.info,
+      info: ICON_SVGS.info,
     };
     if (aliasMap[trimmed.toLowerCase()]) {
       iconTag.innerHTML = aliasMap[trimmed.toLowerCase()].trim();
       return iconTag;
     }
     if (trimmed.startsWith("<svg") && trimmed.endsWith("</svg>")) {
-      iconTag.innerHTML = trimmed;
+      const sanitizedSvg = trimmed
+        .replace(/<script[\s\S]*?>[\s\S]*?<\/script>/gi, "")
+        .replace(/\son\w+\s*=\s*(['"]).*?\1/gi, "")
+        .replace(/\son\w+\s*=\s*[^\s>]+/gi, "");
+      iconTag.innerHTML = sanitizedSvg;
       const svg = iconTag.querySelector("svg");
       if (svg) {
         svg.setAttribute("aria-hidden", "true");

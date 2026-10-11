@@ -130,13 +130,16 @@ export function resolveSpringConfig(spring) {
     const damping = Number.isFinite(rawDamping) && rawDamping > 0 ? rawDamping : 10;
     const mass = Number.isFinite(rawMass) && rawMass > 0 ? rawMass : 1;
 
-    // Dynamically derive appropriate bezier curve fallback based on damping ratio
     const zeta = damping / (2 * Math.sqrt(stiffness * mass));
-    let bezierFallback = "cubic-bezier(0.25, 1, 0.5, 1)";
-    if (zeta < 0.6) {
-      bezierFallback = "cubic-bezier(0.34, 1.7, 0.55, 1)";
-    } else if (zeta < 0.85) {
-      bezierFallback = "cubic-bezier(0.34, 1.35, 0.64, 1)";
+    let bezierFallback = typeof spring.bezierFallback === "string" && spring.bezierFallback.trim()
+      ? spring.bezierFallback.trim()
+      : "cubic-bezier(0.25, 1, 0.5, 1)";
+    if (!spring.bezierFallback) {
+      if (zeta < 0.6) {
+        bezierFallback = "cubic-bezier(0.34, 1.7, 0.55, 1)";
+      } else if (zeta < 0.85) {
+        bezierFallback = "cubic-bezier(0.34, 1.35, 0.64, 1)";
+      }
     }
 
     return {

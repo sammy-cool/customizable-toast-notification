@@ -4,17 +4,19 @@
 export class PausableTimer {
   constructor(callback, delay) {
     this.callback = typeof callback === "function" ? callback : () => {};
-    const safeDelay = Number.isFinite(delay) && delay >= 0 ? delay : 0;
+    const isInfinite = delay === Infinity;
+    const safeDelay = Number.isFinite(delay) && delay >= 0 ? delay : (isInfinite ? Infinity : 0);
     this.delay = safeDelay;
     this.remaining = safeDelay;
     this.startTime = null;
     this.timeoutId = null;
     this.isPaused = false;
     this.isCompleted = false;
+    this.isInfinite = isInfinite;
   }
 
   start() {
-    if (this.isCompleted || this.timeoutId) return this;
+    if (this.isCompleted || this.timeoutId || this.isInfinite) return this;
     this.startTime = Date.now();
     this.timeoutId = setTimeout(() => {
       this.isCompleted = true;
