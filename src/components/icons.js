@@ -3,6 +3,123 @@ import { getConfig } from "../utils/config.js";
 
 const svgNS = "http://www.w3.org/2000/svg";
 
+const ALLOWED_SVG_TAGS = new Set([
+  "svg",
+  "g",
+  "path",
+  "circle",
+  "rect",
+  "line",
+  "polyline",
+  "polygon",
+  "ellipse",
+  "title",
+  "desc",
+  "defs",
+  "clippath",
+  "use",
+]);
+
+const ALLOWED_SVG_ATTRS = new Set([
+  "viewbox",
+  "width",
+  "height",
+  "fill",
+  "stroke",
+  "stroke-width",
+  "stroke-linecap",
+  "stroke-linejoin",
+  "stroke-miterlimit",
+  "stroke-dasharray",
+  "stroke-dashoffset",
+  "opacity",
+  "fill-opacity",
+  "stroke-opacity",
+  "d",
+  "cx",
+  "cy",
+  "r",
+  "x",
+  "y",
+  "x1",
+  "y1",
+  "x2",
+  "y2",
+  "points",
+  "rx",
+  "ry",
+  "transform",
+  "role",
+  "aria-hidden",
+  "focusable",
+  "xmlns",
+  "preserveaspectratio",
+  "class",
+  "id",
+  "href",
+  "xlink:href",
+]);
+
+function isUnsafeUrl(value = "") {
+  return /^\s*javascript:/i.test(value);
+}
+
+function sanitizeInlineSvg(svgText) {
+  const parserClass =
+    typeof DOMParser !== "undefined"
+      ? DOMParser
+      : typeof window !== "undefined" && window.DOMParser
+        ? window.DOMParser
+        : null;
+
+  if (!parserClass) return null;
+  try {
+    const parser = new parserClass();
+    const parsed = parser.parseFromString(svgText, "image/svg+xml");
+    if (parsed.querySelector("parsererror")) return null;
+    const sourceSvg = parsed.documentElement;
+    if (!sourceSvg || sourceSvg.tagName.toLowerCase() !== "svg") return null;
+
+    const copySafeNode = (node) => {
+      if (node.nodeType === 3) {
+        return document.createTextNode(node.textContent || "");
+      }
+      if (node.nodeType !== 1) return null;
+      const tag = node.tagName.toLowerCase();
+      if (!ALLOWED_SVG_TAGS.has(tag)) return null;
+
+      const safeEl = document.createElementNS(svgNS, tag);
+      if (node.attributes) {
+        for (let i = 0; i < node.attributes.length; i++) {
+          const attr = node.attributes[i];
+          const name = attr.name;
+          const lowerName = name.toLowerCase();
+          const value = attr.value || "";
+
+          if (lowerName.startsWith("on")) continue;
+          if (!ALLOWED_SVG_ATTRS.has(lowerName)) continue;
+          if ((lowerName === "href" || lowerName === "xlink:href") && isUnsafeUrl(value)) {
+            continue;
+          }
+          safeEl.setAttribute(name, value);
+        }
+      }
+
+      if (node.childNodes) {
+        for (let j = 0; j < node.childNodes.length; j++) {
+          const safeChild = copySafeNode(node.childNodes[j]);
+          if (safeChild) safeEl.appendChild(safeChild);
+        }
+      }
+      return safeEl;
+    };
+
+    return copySafeNode(sourceSvg);
+  } catch {
+    return null;
+  }
+}
+
 /**
  * Default SVG path data for built-in toast status icons.
  */
@@ -94,24 +211,24 @@ export function createToastIcon(options = {}) {
       circle: ICON_SVGS.info,
       info: ICON_SVGS.info,
     };
-    if (aliasMap[trimmed.toLowerCase()]) {
-      iconTag.innerHTML = aliasMap[trimmed.toLowerCase()].trim();
+    const matchedAlias = aliasMap[trimmed.toLowerCase()];
+    if (matchedAlias) {
+      const safeSvg = sanitizeInlineSvg(matchedAlias.trim());
+      if (safeSvg) {
+        iconTag.appendChild(safeSvg);
+      }
       return iconTag;
     }
     if (trimmed.startsWith("<svg") && trimmed.endsWith("</svg>")) {
-      const sanitizedSvg = trimmed
-        .replace(/<script[\s\S]*?>[\s\S]*?<\/script>/gi, "")
-        .replace(/<foreignObject[\s\S]*?>[\s\S]*?<\/foreignObject>/gi, "")
-        .replace(/\son\w+\s*=\s*(['"]).*?\1/gi, "")
-        .replace(/\son\w+\s*=\s*[^\s>]+/gi, "")
-        .replace(/href\s*=\s*['"]\s*javascript:[^'"]*['"]/gi, 'href="#"');
-      iconTag.innerHTML = sanitizedSvg;
-      const svg = iconTag.querySelector("svg");
-      if (svg) {
-        svg.setAttribute("aria-hidden", "true");
-        svg.setAttribute("focusable", "false");
-        if (!svg.getAttribute("width")) svg.setAttribute("width", "18");
-        if (!svg.getAttribute("height")) svg.setAttribute("height", "18");
+      const safeSvg = sanitizeInlineSvg(trimmed);
+      if (safeSvg) {
+        safeSvg.setAttribute("aria-hidden", "true");
+        safeSvg.setAttribute("focusable", "false");
+        if (!safeSvg.getAttribute("width")) safeSvg.setAttribute("width", "18");
+        if (!safeSvg.getAttribute("height")) safeSvg.setAttribute("height", "18");
+        iconTag.appendChild(safeSvg);
+      } else {
+        iconTag.textContent = trimmed;
       }
     } else {
       iconTag.textContent = trimmed;
@@ -122,7 +239,10 @@ export function createToastIcon(options = {}) {
   // 3. Built-in type icon (when icon is explicitly true, or type is specified and icon is not false)
   const normalizedType = typeof type === "string" ? type.toLowerCase().trim() : "";
   if ((iconOpt === true || iconOpt === undefined) && normalizedType && ICON_SVGS[normalizedType]) {
-    iconTag.innerHTML = ICON_SVGS[normalizedType].trim();
+    const safeSvg = sanitizeInlineSvg(ICON_SVGS[normalizedType].trim());
+    if (safeSvg) {
+      iconTag.appendChild(safeSvg);
+    }
     return iconTag;
   }
 
