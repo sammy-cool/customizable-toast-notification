@@ -1,3 +1,17 @@
+# [3.18.0](https://github.com/sammy-cool/customizable-toast-notification/compare/v3.17.0...v3.18.0) (2026-10-11)
+
+
+### Bug Fixes
+
+* resolve 60+ core engine bugs and modernize interactive playground ([026c08f](https://github.com/sammy-cool/customizable-toast-notification/commit/026c08fecc24909441a7a77ffa6fe30baa846cdb))
+* resolve core runtime bugs and enhance playground with Phase 3 enterprise controls ([4fc8a26](https://github.com/sammy-cool/customizable-toast-notification/commit/4fc8a267870dc1de93d940e0162eb5a870a98ff0))
+* **security:** resolve CodeQL SVG sanitization alerts using DOM AST traversal ([67f0ae5](https://github.com/sammy-cool/customizable-toast-notification/commit/67f0ae537f2ce11405ca0cf833f2e44c62029a50))
+
+
+### Features
+
+* overhaul docs playground studio and resolve 100+ animation, physics, and progress bar bugs ([a83105e](https://github.com/sammy-cool/customizable-toast-notification/commit/a83105e34eeed1720832ee648a63207d1f8b828b))
+
 # [3.17.0](https://github.com/sammy-cool/customizable-toast-notification/compare/v3.16.0...v3.17.0) (2026-10-10)
 
 
