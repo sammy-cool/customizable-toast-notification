@@ -1,3 +1,10 @@
+## [3.18.1](https://github.com/sammy-cool/customizable-toast-notification/compare/v3.18.0...v3.18.1) (2026-10-11)
+
+
+### Bug Fixes
+
+* **animation:** harden progress bar indeterminate state and swipe snapback ([38faf63](https://github.com/sammy-cool/customizable-toast-notification/commit/38faf630acaad1b010a4efe81af12352c4d55cef))
+
 # [3.18.0](https://github.com/sammy-cool/customizable-toast-notification/compare/v3.17.0...v3.18.0) (2026-10-11)
 
 
