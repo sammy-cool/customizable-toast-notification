@@ -223,7 +223,9 @@ auto-dismissed on its own — they no-op gracefully rather than throwing. You ca
 | `sound`             | `boolean \| string`| `false`                         | Zero-asset audio chime (`true`, `'success'`, `'error'`, `'warning'`, `'pop'`)   |
 | `soundPreset`       | `string`           | `"modern"`                      | Audio synth theme: `"modern"`, `"retro"`, `"futuristic"`, `"subtle"`, `"bell"`  |
 | `swipeToDismiss`    | `boolean`          | `true`                          | Mobile touch swipe-to-dismiss gesture with physics                             |
-| `progress`          | `number`           | `undefined`                     | Explicit progress bar percentage (0 to 100)                                    |
+| `progressDirection` | `string`           | `"decreasing"`                  | Progress bar fill direction: `"decreasing"`, `"increasing"`, `"reverse"`, `"ltr"` |
+| `progressBarColor`  | `string`           | Falls back to `textColor`       | Alias for `progressColor` (accepts hex, rgb, hsl, CSS var)                     |
+| `progress`          | `number \| 'indeterminate'`| `undefined`            | Explicit percentage (0 to 100) or `"indeterminate"` moving gradient            |
 | `usePool`           | `boolean`          | `false`                         | Virtual element pooling for DOM recycling in high-frequency rendering           |
 | `cta`               | `object \| array`   | `null`                          | Call-to-action configuration (see [CTA](#call-to-action))                      |
 | `undo`              | `function \| object`| `null`                         | Action Undo button with live dynamic countdown badge (see [Undo](#️-action-undo-with-live-countdown)) |

@@ -588,15 +588,47 @@ async function setupPauseOnHover(data) {
 
   const { outer, timer, toast } = data;
 
+  const pauseProgressBar = () => {
+    if (toast?._progressAnimation) {
+      try {
+        toast._progressAnimation.pause();
+      } catch {}
+    } else if (toast?._progressBar) {
+      try {
+        const computedWidth = window.getComputedStyle(toast._progressBar).width;
+        toast._progressBar._pausedWidth = computedWidth;
+        toast._progressBar.style.transition = "none";
+        toast._progressBar.style.width = computedWidth;
+      } catch {}
+    }
+  };
+
+  const resumeProgressBar = () => {
+    if (toast?._progressAnimation) {
+      try {
+        toast._progressAnimation.play();
+      } catch {}
+    } else if (toast?._progressBar && toast._progressBar._pausedWidth) {
+      try {
+        const remainingMs = timer.getRemainingTime?.() ?? 1000;
+        const isReverse = toast._progressBar._isReverse;
+        const finalWidth = toast._progressBar._finalWidth || "100%";
+        toast._progressBar.style.transition = `width ${Math.max(0, remainingMs)}ms linear`;
+        toast._progressBar.style.width = isReverse ? finalWidth : "0%";
+        toast._progressBar._pausedWidth = null;
+      } catch {}
+    }
+  };
+
   const onMouseEnter = () => {
     timer.pause();
-    toast?._progressAnimation?.pause();
+    pauseProgressBar();
     toast?._pauseUndo?.();
     toast?.classList.add("toast-paused");
   };
   const onMouseLeave = () => {
     timer.resume();
-    toast?._progressAnimation?.play();
+    resumeProgressBar();
     toast?._resumeUndo?.();
     toast?.classList.remove("toast-paused");
   };
@@ -604,7 +636,7 @@ async function setupPauseOnHover(data) {
   const onFocusIn = (e) => {
     if (e.target.matches("[tabindex], div, span, button, a")) {
       timer.pause();
-      toast?._progressAnimation?.pause();
+      pauseProgressBar();
       toast?._pauseUndo?.();
       toast?.classList.add("toast-paused");
     }
@@ -613,7 +645,7 @@ async function setupPauseOnHover(data) {
   const onFocusOut = (e) => {
     if (!outer.contains(e.relatedTarget)) {
       timer.resume();
-      toast?._progressAnimation?.play();
+      resumeProgressBar();
       toast?._resumeUndo?.();
       toast?.classList.remove("toast-paused");
     }
@@ -730,19 +762,30 @@ export async function closeToastByKey(key, fromSync = false) {
         const anim = String(data.options?.animationType || "").toLowerCase().trim();
 
         let exitTransform = "translateY(20px)";
-        if (anim === "fade") {
-          exitTransform = "none";
-        } else if (anim === "zoom" || anim === "scale") {
-          exitTransform = "scale(0.75)";
-        } else if (anim === "flip") {
-          exitTransform = "perspective(600px) rotateX(-45deg)";
-        } else if (anim === "slide") {
-          exitTransform = isLeft ? "translateX(-100%)" : isRight ? "translateX(100%)" : isTop ? "translateY(-100%)" : "translateY(100%)";
-        }
+        const spring = data.toast?._spring;
 
-        data.toast.style.transition = `opacity ${exitDuration}ms ease-in, transform ${exitDuration}ms ease-in`;
-        data.toast.style.opacity = "0";
-        data.toast.style.transform = exitTransform;
+        if (shouldReduceMotion()) {
+          data.toast.style.transition = "none";
+          data.toast.style.opacity = "0";
+        } else {
+          if (anim === "fade") {
+            exitTransform = "none";
+          } else if (anim === "zoom" || anim === "scale") {
+            exitTransform = "scale(0.75)";
+          } else if (anim === "flip") {
+            exitTransform = "perspective(600px) rotateX(-45deg)";
+          } else if (anim === "slide") {
+            exitTransform = isLeft ? "translateX(-100%)" : isRight ? "translateX(100%)" : isTop ? "translateY(-100%)" : "translateY(100%)";
+          } else if (anim === "bounce") {
+            exitTransform = isTop ? "translateY(-36px) scale(0.9)" : "translateY(36px) scale(0.9)";
+          } else if (spring) {
+            exitTransform = isTop ? "translateY(-28px) scale(0.94)" : "translateY(28px) scale(0.94)";
+          }
+
+          data.toast.style.transition = `opacity ${exitDuration}ms ease-in, transform ${exitDuration}ms ease-in`;
+          data.toast.style.opacity = "0";
+          data.toast.style.transform = exitTransform;
+        }
       }
       data.toast.classList.remove("active");
     }
