@@ -88,9 +88,9 @@ if (broadcaster.isSupported() && typeof window !== 'undefined') {
 
   broadcaster.on('dismiss', ({ toastId }) => {
     if (!getConfig().syncTabs) return;
-    // Another tab dismissed a toast - dismiss in this tab
-    if (toastId && active.has(toastId)) {
-      closeToastByKey(toastId);
+    // Another tab dismissed a toast - dismiss in this tab without re-broadcasting
+    if (toastId && (active.has(toastId) || pending.has(toastId))) {
+      closeToastByKey(toastId, true);
     }
   });
 
@@ -117,6 +117,9 @@ if (broadcaster.isSupported() && typeof window !== 'undefined') {
  * @returns {number}
  */
 function getItemPriority(item) {
+  if (typeof item?.options?.priority === "number" && Number.isFinite(item.options.priority)) {
+    return item.options.priority;
+  }
   const cached = item?.priority?.score;
   if (typeof cached === "number" && Number.isFinite(cached)) return cached;
 
@@ -266,6 +269,7 @@ function hashString(str) {
 
 function makeKey(options = {}) {
   const safe = options && typeof options === "object" ? options : {};
+  if (safe.id) return String(safe.id);
   const type = String(safe.type || "info").trim().toLowerCase();
   const messageHash = hashString(String(safe.message || "")).toString(16);
   const position = normalizePositionKey(safe.position || "bottom-right");
@@ -547,6 +551,14 @@ export function resetToastManager() {
       badge._scaleTimer = null;
     }
   }
+  if (typeof document !== "undefined") {
+    const containers = document.querySelectorAll('[id^="toast-container-"]');
+    containers.forEach((c) => {
+      try {
+        c._stackedCleanup?.();
+      } catch {}
+    });
+  }
   active.clear();
   visibleCount = 0;
   droppedCount = 0;
@@ -571,6 +583,8 @@ function createDismissTimer(toast, options) {
 
 async function setupPauseOnHover(data) {
   if (!data.pauseOnHover || !data.outer || !data.timer) return;
+
+  data.outer._pauseCleanup?.();
 
   const { outer, timer, toast } = data;
 
@@ -631,12 +645,12 @@ export async function closeToast(toast) {
 // key, not a live element reference) target a SPECIFIC toast for removal
 // — e.g. the loading toast — rather than only being able to close
 // "whatever toast a DOM element currently points to."
-export async function closeToastByKey(key) {
+export async function closeToastByKey(key, fromSync = false) {
   try {
     if (!key) return;
 
-    // Broadcast dismissal to other tabs
-    if (getConfig().syncTabs && broadcaster.isSupported()) {
+    // Broadcast dismissal to other tabs if not initiated from a remote sync event
+    if (!fromSync && getConfig().syncTabs && broadcaster.isSupported()) {
       broadcaster.broadcast('dismiss', key, {});
     }
 
@@ -709,9 +723,26 @@ export async function closeToastByKey(key) {
 
     if (data.toast) {
       if (!getConfig().disableInlineStyles) {
+        const pos = String(data.options?.position || data.outer?.parentElement?.id || "").toLowerCase();
+        const isTop = pos.includes("top");
+        const isLeft = pos.includes("left");
+        const isRight = pos.includes("right");
+        const anim = String(data.options?.animationType || "").toLowerCase().trim();
+
+        let exitTransform = "translateY(20px)";
+        if (anim === "fade") {
+          exitTransform = "none";
+        } else if (anim === "zoom" || anim === "scale") {
+          exitTransform = "scale(0.75)";
+        } else if (anim === "flip") {
+          exitTransform = "perspective(600px) rotateX(-45deg)";
+        } else if (anim === "slide") {
+          exitTransform = isLeft ? "translateX(-100%)" : isRight ? "translateX(100%)" : isTop ? "translateY(-100%)" : "translateY(100%)";
+        }
+
         data.toast.style.transition = `opacity ${exitDuration}ms ease-in, transform ${exitDuration}ms ease-in`;
         data.toast.style.opacity = "0";
-        data.toast.style.transform = "translateY(20px)";
+        data.toast.style.transform = exitTransform;
       }
       data.toast.classList.remove("active");
     }
@@ -747,8 +778,8 @@ async function drainQueue() {
   try {
     const config = getConfig();
 
-    // Apply AI priority sorting if enabled
-    if (config.aiPrioritization && queue.length > 1) {
+    // Apply AI priority sorting if enabled globally or on queued items
+    if ((config.aiPrioritization || queue.some(i => i.options?.aiPrioritization || typeof i.options?.priority === "number")) && queue.length > 1) {
       queue.sort((a, b) => getItemPriority(b) - getItemPriority(a)); // Higher priority first
     }
 
@@ -1115,7 +1146,7 @@ export async function updateToastByKey(key, newOptions = {}) {
   if (newOptions.progress !== undefined) {
     let pct = Number(newOptions.progress);
     if (!Number.isFinite(pct)) pct = 0;
-    if (pct <= 1 && pct > 0) pct = pct * 100;
+    if (pct < 1 && pct > 0) pct = pct * 100;
     pct = Math.min(100, Math.max(0, pct));
 
     let progressBar = toast.querySelector(".toast-progress-bar");
@@ -1139,6 +1170,34 @@ export async function updateToastByKey(key, newOptions = {}) {
   } else if (newOptions.showProgressBar === false) {
     const bar = toast.querySelector(".toast-progress-bar");
     if (bar) bar.remove();
+  }
+
+  if (newOptions.progressBarColor || newOptions.progressColor) {
+    const bar = toast.querySelector(".toast-progress-bar");
+    if (bar) {
+      bar.style.background = newOptions.progressBarColor || newOptions.progressColor;
+    }
+  }
+
+  if (newOptions.progressPosition) {
+    const bar = toast.querySelector(".toast-progress-bar");
+    if (bar) {
+      bar.style.top = newOptions.progressPosition === "top" ? "0" : "auto";
+      bar.style.bottom = newOptions.progressPosition === "bottom" ? "0" : "auto";
+    }
+  }
+
+  if (newOptions.progressHeight !== undefined) {
+    const bar = toast.querySelector(".toast-progress-bar");
+    if (bar) {
+      const ph = typeof newOptions.progressHeight === "number" ? `${newOptions.progressHeight}px` : newOptions.progressHeight;
+      bar.style.height = ph;
+    }
+  }
+
+  if (newOptions.animationType !== undefined) {
+    data.options.animationType = newOptions.animationType;
+    toast._animationType = newOptions.animationType;
   }
 
   // 5. Update Duration / Timer
@@ -1231,8 +1290,5 @@ export async function updateToastByKey(key, newOptions = {}) {
   if (container && container.getAttribute("data-stacked") === "true") {
     updateStackedLayout(container);
   }
-
-  // 8. Synchronize options state
-  Object.assign(data.options, newOptions);
 }
 

@@ -29,6 +29,11 @@ export async function createToastElement(options, onClose) {
     await applyRichStyling(toast, options, onClose);
     return toast;
   } catch (error) {
+    if (options?.usePool && toast?._pooledId) {
+      try {
+        getToastPool().release(toast, toast._pooledId);
+      } catch {}
+    }
     console.warn(
       "toast creation failed with error showing fallback one: ",
       error

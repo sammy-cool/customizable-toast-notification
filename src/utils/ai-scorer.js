@@ -116,11 +116,13 @@ export function calculateToastPriority(context) {
   }
 
   breakdown.urgency = Math.min(Math.max(urgencyScore, -10), 20); // Cap -10 to +20
-  score += urgencyScore;
+  score += breakdown.urgency;
 
-  // Factor 3: Duration (shorter = higher priority)
-  const hasDuration = typeof duration === 'number' && duration > 0;
-  if (hasDuration) {
+  // Factor 3: Duration (shorter or persistent manual = higher priority)
+  if (duration === Infinity) {
+    breakdown.duration = 30; // Maximum priority for persistent alerts
+    score += 15;
+  } else if (typeof duration === 'number' && Number.isFinite(duration) && duration > 0) {
     const durationScore = Math.max(0, 30 - (duration / 1000)); // 0-30 range based on seconds
     breakdown.duration = Math.round(durationScore);
     score += durationScore * 0.5; // Weight duration lightly

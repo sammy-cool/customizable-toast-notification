@@ -130,13 +130,16 @@ export function resolveSpringConfig(spring) {
     const damping = Number.isFinite(rawDamping) && rawDamping > 0 ? rawDamping : 10;
     const mass = Number.isFinite(rawMass) && rawMass > 0 ? rawMass : 1;
 
-    // Dynamically derive appropriate bezier curve fallback based on damping ratio
     const zeta = damping / (2 * Math.sqrt(stiffness * mass));
-    let bezierFallback = "cubic-bezier(0.25, 1, 0.5, 1)";
-    if (zeta < 0.6) {
-      bezierFallback = "cubic-bezier(0.34, 1.7, 0.55, 1)";
-    } else if (zeta < 0.85) {
-      bezierFallback = "cubic-bezier(0.34, 1.35, 0.64, 1)";
+    let bezierFallback = typeof spring.bezierFallback === "string" && spring.bezierFallback.trim()
+      ? spring.bezierFallback.trim()
+      : "cubic-bezier(0.25, 1, 0.5, 1)";
+    if (!spring.bezierFallback) {
+      if (zeta < 0.6) {
+        bezierFallback = "cubic-bezier(0.34, 1.7, 0.55, 1)";
+      } else if (zeta < 0.85) {
+        bezierFallback = "cubic-bezier(0.34, 1.35, 0.64, 1)";
+      }
     }
 
     return {
@@ -168,6 +171,11 @@ export function solveSpring(t, config) {
   const omega0 = Math.sqrt(k / m);
   const zeta = c / (2 * Math.sqrt(k * m));
 
+  if (Math.abs(zeta - 1) < 1e-4) {
+    // Critically damped: fastest convergence with zero overshoot
+    return 1 - Math.exp(-omega0 * t) * (1 + omega0 * t);
+  }
+
   if (zeta < 1) {
     // Underdamped: oscillates around target
     const omegaD = omega0 * Math.sqrt(1 - zeta * zeta);
@@ -176,16 +184,13 @@ export function solveSpring(t, config) {
     return 1 - envelope * oscillation;
   }
 
-  if (Math.abs(zeta - 1) < 1e-5) {
-    // Critically damped: fastest convergence with zero overshoot
-    return 1 - Math.exp(-omega0 * t) * (1 + omega0 * t);
-  }
-
-  // Overdamped: sluggish convergence without oscillation
+  // Overdamped: sluggish convergence without oscillation - stable real roots prevent NaN overflow
   const omegaD = omega0 * Math.sqrt(zeta * zeta - 1);
-  const envelope = Math.exp(-zeta * omega0 * t);
-  const term = Math.cosh(omegaD * t) + (zeta / Math.sqrt(zeta * zeta - 1)) * Math.sinh(omegaD * t);
-  return 1 - envelope * term;
+  const r1 = -zeta * omega0 + omegaD;
+  const r2 = -zeta * omega0 - omegaD;
+  const c1 = r2 / (r2 - r1);
+  const c2 = -r1 / (r2 - r1);
+  return 1 - (c1 * Math.exp(r1 * t) + c2 * Math.exp(r2 * t));
 }
 
 /**
@@ -266,7 +271,11 @@ export function supportsCSSLinearEasing() {
     return false;
   }
   try {
-    return CSS.supports("transition-timing-function", "linear(0, 1)");
+    return (
+      CSS.supports("transition-timing-function", "linear(0 0%, 1 100%)") ||
+      CSS.supports("transition-timing-function", "linear(0, 1)") ||
+      CSS.supports("animation-timing-function", "linear(0 0%, 1 100%)")
+    );
   } catch {
     return false;
   }

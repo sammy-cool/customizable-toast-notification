@@ -29,7 +29,8 @@ export function generateToastId(prefix = "toast") {
     typeof prefix === "string"
       ? prefix
           .trim()
-          .replace(/[^a-zA-Z0-9_-]/g, "-")
+          .toLowerCase()
+          .replace(/[^a-z0-9_-]/g, "-")
           .replace(/-+/g, "-")
           .replace(/^-|-$/g, "")
       : "";

@@ -110,6 +110,21 @@ function routeAudio(ctx, node) {
 }
 
 /**
+ * Register safe node disconnection on oscillator end to prevent audio graph leaks.
+ * @param {OscillatorNode} osc
+ * @param {AudioNode} gain
+ */
+export function registerNodeCleanup(osc, gain) {
+  if (!osc) return;
+  osc.onended = () => {
+    try {
+      osc.disconnect();
+      gain?.disconnect?.();
+    } catch {}
+  };
+}
+
+/**
  * Modern preset: crisp multi-tone chords and pings.
  * @param {AudioContext} ctx
  * @param {string} tone
@@ -540,17 +555,25 @@ const BUILTIN_PRESETS = {
  * @param {'modern' | 'retro' | 'futuristic' | 'subtle' | 'bell' | string} [preset="modern"]
  * @returns {void}
  */
+let isPlayingDelegated = false;
+
 export function playTone(toneType = "info", preset) {
+  if (!audioEnabled) return;
   if (
+    !isPlayingDelegated &&
     typeof window !== "undefined" &&
     window.customizableToast &&
     typeof window.customizableToast.playTone === "function" &&
     window.customizableToast.playTone !== playTone
   ) {
-    window.customizableToast.playTone(toneType, preset);
-    return;
+    try {
+      isPlayingDelegated = true;
+      window.customizableToast.playTone(toneType, preset);
+      return;
+    } finally {
+      isPlayingDelegated = false;
+    }
   }
-  if (!audioEnabled) return;
   const ctx = getAudioContext();
   if (!ctx) return;
 

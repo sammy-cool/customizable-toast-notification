@@ -69,8 +69,16 @@ class ToastElementPool {
     }
 
     // If still no available element, recycle the oldest (emergency fallback)
+    let isRecycled = false;
     if (!poolEntry) {
       poolEntry = this.pool[0];
+      isRecycled = true;
+      if (poolEntry.element._cleanupSwipe) poolEntry.element._cleanupSwipe();
+      if (poolEntry.element._cleanupCloseButton) poolEntry.element._cleanupCloseButton();
+      if (poolEntry.element._cleanupCTA) poolEntry.element._cleanupCTA();
+      if (poolEntry.element._cleanupUndo) poolEntry.element._cleanupUndo();
+      if (poolEntry.element._pauseCleanup) poolEntry.element._pauseCleanup();
+      if (poolEntry.element._cleanup) poolEntry.element._cleanup();
       if (poolEntry.element.parentNode) {
         poolEntry.element.parentNode.removeChild(poolEntry.element);
       }
@@ -95,7 +103,9 @@ class ToastElementPool {
 
     poolEntry.inUse = true;
     poolEntry.id = toastId;
-    this.inUseCount += 1;
+    if (!isRecycled) {
+      this.inUseCount += 1;
+    }
 
     return poolEntry.element;
   }
@@ -107,12 +117,19 @@ class ToastElementPool {
    * @returns {void}
    */
   release(element, toastId) {
-    if (!element || !toastId) {
+    if (!element && !toastId) {
       return;
     }
 
+    const targetElement = element instanceof HTMLElement ? element : null;
+    const targetId = typeof toastId === "string" ? toastId : (typeof element === "string" ? element : null);
+
     // Find and release the pooled element
-    const poolEntry = this.pool.find((entry) => entry.id === toastId);
+    const poolEntry = this.pool.find(
+      (entry) =>
+        (targetElement && entry.element === targetElement) ||
+        (targetId && entry.id === targetId)
+    );
 
     if (poolEntry && poolEntry.inUse) {
       // Remove cleanly from DOM if still attached

@@ -23,6 +23,38 @@ import { createToastIcon } from "./icons.js";
  * @param {object} options - Configuration options for the toast.
  * @param {Function} onClose - Callback invoked when the toast closes.
  */
+function getInitialTransform(position, animationType, isSpring) {
+  const pos = String(position || "").toLowerCase();
+  const isTop = pos.includes("top");
+  const isLeft = pos.includes("left");
+  const isRight = pos.includes("right");
+  const anim = String(animationType || "").toLowerCase().trim();
+
+  if (anim === "fade") return "none";
+  if (anim === "zoom" || anim === "scale") return "scale(0.75)";
+  if (anim === "flip") return "perspective(600px) rotateX(45deg)";
+  if (anim === "slide") {
+    if (isLeft) return "translateX(-100%)";
+    if (isRight) return "translateX(100%)";
+    return isTop ? "translateY(-100%)" : "translateY(100%)";
+  }
+
+  if (isSpring) {
+    if (pos.includes("center") && !isTop && !pos.includes("bottom")) {
+      if (isLeft) return "translateX(-36px) scale(0.92)";
+      if (isRight) return "translateX(36px) scale(0.92)";
+      return "scale(0.85)";
+    }
+    return isTop ? "translateY(-36px) scale(0.92)" : "translateY(36px) scale(0.92)";
+  }
+
+  if (anim === "bounce") {
+    return isTop ? "translateY(-36px) scale(0.9)" : "translateY(36px) scale(0.9)";
+  }
+
+  return isTop ? "translateY(-20px)" : "translateY(20px)";
+}
+
 export async function applyRichStyling(toast, options, onClose) {
   const config = getConfig();
   const springTransition = options?.spring ? getSpringTransition(options.spring) : null;
@@ -39,6 +71,7 @@ export async function applyRichStyling(toast, options, onClose) {
   if (springTransition) {
     toast._spring = springTransition;
   }
+  toast._animationType = options?.animationType;
 
   const customClass = typeof options?.className === "string" && options.className.trim()
     ? ` ${options.className.trim()}`
@@ -78,9 +111,7 @@ export async function applyRichStyling(toast, options, onClose) {
       userSelect: "text",
       pointerEvents: "auto",
       transition: `opacity ${opacityDuration} ${opacityEasing}, transform ${validAnimationDuration} ${easing}`,
-      transform: options?.position && String(options.position).toLowerCase().includes("top")
-        ? "translateY(-20px)"
-        : "translateY(20px)",
+      transform: getInitialTransform(options?.position, options?.animationType, !!springTransition),
       zIndex: String(config.zIndex),
       direction:
         options?.fontDirection && options.fontDirection !== "auto"
@@ -209,7 +240,7 @@ export async function applyRichStyling(toast, options, onClose) {
     createCloseButton(toast, options, onClose);
   }
 
-  if (options?.showProgressBar) {
+  if (options?.showProgressBar !== false && (options?.showProgressBar || options?.progress !== undefined)) {
     createProgressBar(toast, options);
   }
 
@@ -310,6 +341,9 @@ export async function createEmergencyToast(options = {}, onClose) {
 
     const closeSpan = document.createElement("span");
     closeSpan.className = "toast-emergency-close";
+    closeSpan.setAttribute("role", "button");
+    closeSpan.setAttribute("aria-label", "Close emergency notification");
+    closeSpan.tabIndex = 0;
     if (!config.disableInlineStyles) {
       Object.assign(closeSpan.style, {
         float: "right",
