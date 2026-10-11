@@ -322,6 +322,26 @@ function getContrastBackground(bgColor) {
   return "rgba(255,255,255,0.15)";
 }
 
+function ensureProgressIndeterminateStyles() {
+  if (typeof document === "undefined" || document.getElementById("toast-progress-indeterminate-styles")) {
+    return;
+  }
+  const st = document.createElement("style");
+  st.id = "toast-progress-indeterminate-styles";
+  st.textContent = `
+    @keyframes toast-progress-indeterminate {
+      0% { left: 0%; width: 0%; }
+      50% { left: 20%; width: 60%; }
+      100% { left: 100%; width: 0%; }
+    }
+    .toast-progress-bar-indeterminate {
+      animation: toast-progress-indeterminate 1.6s cubic-bezier(0.4, 0, 0.2, 1) infinite !important;
+    }
+  `;
+  const target = document.head || document.documentElement;
+  if (target) target.appendChild(st);
+}
+
 export function createProgressBar(toast, options = {}) {
   const progressBar = document.createElement("div");
   progressBar.className = "toast-progress-bar";
@@ -357,11 +377,12 @@ export function createProgressBar(toast, options = {}) {
     ? `calc(100% - ${leftOffset * 2}px)`
     : "100%";
 
+  const isReverse = options.progressDirection === "reverse" || options.progressDirection === "increasing" || options.progressDirection === "ltr";
   progressBar._leftOffset = leftOffset;
   progressBar._finalWidth = finalWidth;
+  progressBar._isReverse = isReverse;
 
   const progressBg = options.progressBarColor || options.progressColor || "currentColor";
-  const isReverse = options.progressDirection === "reverse" || options.progressDirection === "increasing" || options.progressDirection === "ltr";
 
   if (!getConfig().disableInlineStyles) {
     Object.assign(progressBar.style, {
@@ -387,6 +408,10 @@ export function createProgressBar(toast, options = {}) {
 
   if (isIndeterminate) {
     progressBar.classList.add("toast-progress-bar-indeterminate");
+    if (!getConfig().disableInlineStyles) {
+      ensureProgressIndeterminateStyles();
+      progressBar.style.animation = "toast-progress-indeterminate 1.6s cubic-bezier(0.4, 0, 0.2, 1) infinite";
+    }
     progressBar.style.width = finalWidth;
     return;
   }
@@ -396,6 +421,7 @@ export function createProgressBar(toast, options = {}) {
     let pct = Number(options.progress);
     if (!Number.isFinite(pct)) pct = 0;
     if (pct < 1 && pct > 0) pct = pct * 100;
+    pct = Math.min(100, Math.max(0, pct));
     progressBar.style.width = `${pct}%`;
     progressBar.style.transition = "width 200ms ease";
     return;
@@ -517,6 +543,7 @@ export function attachSwipeToDismiss(toast, onClose) {
     startTime = Date.now();
     isDragging = true;
     isHorizontal = false;
+    toast._originalTransition = toast.style.transition || "";
     toast.style.transition = "none";
     toast.style.userSelect = "none";
 
@@ -609,10 +636,21 @@ export function attachSwipeToDismiss(toast, onClose) {
           const snapDuration = spring?.duration ? Math.min(400, spring.duration) : 200;
           toast.style.transition = `transform ${snapDuration}ms ${snapEasing}, opacity 200ms ease`;
           toast.style.transform = "translateX(0)";
-        toast.style.opacity = "1";
+          toast.style.opacity = "1";
+
+          if (toast._snapbackTimer) clearTimeout(toast._snapbackTimer);
+          toast._snapbackTimer = setTimeout(() => {
+            toast._snapbackTimer = null;
+            if (toast._originalTransition) {
+              toast.style.transition = toast._originalTransition;
+            }
+          }, snapDuration);
+          if (typeof toast._snapbackTimer?.unref === "function") {
+            toast._snapbackTimer.unref();
+          }
+        }
       }
-    }
-  };
+    };
 
   toast.addEventListener("touchstart", onPointerDown, { passive: true });
   toast.addEventListener("touchmove", onPointerMove, { passive: false });
@@ -625,6 +663,10 @@ export function attachSwipeToDismiss(toast, onClose) {
     if (toast._swipeTimeout) {
       clearTimeout(toast._swipeTimeout);
       toast._swipeTimeout = null;
+    }
+    if (toast._snapbackTimer) {
+      clearTimeout(toast._snapbackTimer);
+      toast._snapbackTimer = null;
     }
     cleanupWindowListeners();
 

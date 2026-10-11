@@ -3729,4 +3729,78 @@ describe("Phase 3 Architecture & Contract Verification: ARIA Live, Per-CTA Color
   });
 });
 
+describe("Phase 4 Enhancements: Progress bar & Animation Physics Hardening", () => {
+  test("createProgressBar inlines indeterminate keyframe stylesheet when needed", async () => {
+    freshDom();
+    const { createProgressBar } = await import("../../src/components/toast-utils-core.js");
+    const toast = document.createElement("div");
+
+    createProgressBar(toast, { progress: "indeterminate" });
+    const bar = toast.querySelector(".toast-progress-bar");
+    assert.ok(bar);
+    assert.ok(bar.classList.contains("toast-progress-bar-indeterminate"));
+    assert.ok(document.getElementById("toast-progress-indeterminate-styles"));
+  });
+
+  test("progressBar CSS transition pause/resume correctly freezes and resumes width", async () => {
+    freshDom();
+    const { createToast, resetToastManager } = await import("../../src/index.js");
+    resetToastManager();
+
+    const handle = await createToast({
+      message: "Testing progress pause",
+      showProgressBar: true,
+      duration: 3000,
+      pauseOnHover: true,
+    });
+    await new Promise((r) => setTimeout(r, 60));
+
+    const toast = document.querySelector(".toast");
+    const outer = document.querySelector(".toast-outer-wrapper");
+    const bar = toast.querySelector(".toast-progress-bar");
+    assert.ok(bar);
+
+    // Simulate mouseenter (pause)
+    outer.dispatchEvent(new window.MouseEvent("mouseenter"));
+    assert.ok(toast.classList.contains("toast-paused"));
+
+    // Simulate mouseleave (resume)
+    outer.dispatchEvent(new window.MouseEvent("mouseleave"));
+    assert.ok(!toast.classList.contains("toast-paused"));
+
+    await handle.dismiss();
+    resetToastManager();
+  });
+
+  test("attachSwipeToDismiss snapback cleans up timer and restores transition", async () => {
+    freshDom();
+    const { attachSwipeToDismiss } = await import("../../src/components/toast-utils-core.js");
+    const toast = document.createElement("div");
+    toast.style.transition = "transform 300ms ease, opacity 300ms ease";
+
+    attachSwipeToDismiss(toast, () => {});
+
+    // Touch down and slight horizontal drag under threshold
+    toast.dispatchEvent(
+      new window.TouchEvent("touchstart", {
+        touches: [{ clientX: 50, clientY: 50, identifier: 0 }],
+      }),
+    );
+    toast.dispatchEvent(
+      new window.TouchEvent("touchmove", {
+        touches: [{ clientX: 70, clientY: 50, identifier: 0 }],
+        cancelable: true,
+      }),
+    );
+    toast.dispatchEvent(new window.TouchEvent("touchend", { touches: [] }));
+
+    assert.ok(toast.style.transform === "translateX(0)");
+    assert.ok(toast._snapbackTimer);
+
+    // Calling cleanup cancels snapback timer
+    toast._cleanupSwipe?.();
+    assert.strictEqual(toast._snapbackTimer, null);
+  });
+});
+
 
