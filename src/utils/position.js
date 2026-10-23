@@ -61,7 +61,7 @@ export async function setPosition(container, options = {}) {
   resetContainerStyles(container);
   const positionFlags = parsePosition(effectivePos);
 
-  if (handleFullWidthPositions(container, options, positionFlags)) return;
+  if (handleFullWidthPositions(container, positionFlags)) return;
   if (handleCenterPositions(container, positionFlags)) return;
 
   applyStandardPositioning(container, positionFlags);
@@ -96,17 +96,10 @@ function parsePosition(position) {
   };
 }
 
-function handleFullWidthPositions(container, options, flags) {
+function handleFullWidthPositions(container, flags) {
   if (!flags.hasFullWidth) return false;
 
   container.style.maxWidth = "100vw";
-  try {
-    if (options && !options.maxWidth && !Object.isFrozen(options)) {
-      options.maxWidth = "100vw";
-    }
-  } catch {
-    // ignore frozen or read-only options objects
-  }
 
   if (flags.hasTop) {
     container.style.top = "10px";

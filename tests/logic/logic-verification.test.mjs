@@ -288,6 +288,29 @@ describe("dom.js — getDynamicAccessibleTextColorHex", () => {
     assert.equal(viaHsl, viaHex);
   });
 
+  test("parses CSS Color 4 space-separated RGB/HSL syntax and percent channels", async () => {
+    freshDom();
+    const { getDynamicAccessibleTextColorHex } =
+      await import("../../src/utils/dom.js");
+
+    assert.equal(
+      getDynamicAccessibleTextColorHex("rgb(100% 0% 0% / 50%)"),
+      getDynamicAccessibleTextColorHex("#ff0000"),
+    );
+    assert.equal(
+      getDynamicAccessibleTextColorHex("rgb(255, 0, 0)"),
+      getDynamicAccessibleTextColorHex("#ff0000"),
+    );
+    assert.equal(
+      getDynamicAccessibleTextColorHex("hsl(0 100% 50% / 50%)"),
+      getDynamicAccessibleTextColorHex("#ff0000"),
+    );
+    assert.equal(
+      getDynamicAccessibleTextColorHex("hsl(0.5turn 100% 50%)"),
+      getDynamicAccessibleTextColorHex("#00ffff"),
+    );
+  });
+
   test("FIXED (H2): CSS custom properties (var()) resolve via the document root", async () => {
     freshDom();
     document.documentElement.style.setProperty("--test-brand", "#050505");
@@ -527,7 +550,11 @@ describe("position.js — full-width maxWidth consistency (L5)", () => {
     const container = document.createElement("div");
     const opts = { position: "top-full-width" };
     await setPosition(container, opts);
-    assert.equal(opts.maxWidth, "100vw");
+    // containerRegistry.js uses getContainerId to canonicalize position BEFORE calling setPosition,
+    // so opts.position is "top-full-width" and setPosition should set container.style.maxWidth.
+    // This test verifies that when the real setPosition is called with top-full-width,
+    // the container's maxWidth gets set even though setPosition does NOT mutate opts.
+    assert.equal(container.style.maxWidth, "100vw");
   });
 });
 
@@ -3801,6 +3828,124 @@ describe("Phase 4 Enhancements: Progress bar & Animation Physics Hardening", () 
     toast._cleanupSwipe?.();
     assert.strictEqual(toast._snapbackTimer, null);
   });
+
+  test("parseToRgb supports percentage RGB, space-separated HSL, negative hue, and turn/rad units", async () => {
+    freshDom();
+    const { getDynamicAccessibleTextColorHex } = await import("../../src/utils/dom.js");
+
+    // Percentage RGB
+    const pctRgb = getDynamicAccessibleTextColorHex("rgb(100%, 0%, 0%)");
+    const hexRed = getDynamicAccessibleTextColorHex("#ff0000");
+    assert.strictEqual(pctRgb, hexRed);
+
+    // Space-separated HSL with degree unit
+    const spaceHsl = getDynamicAccessibleTextColorHex("hsl(0deg 100% 50%)");
+    assert.strictEqual(spaceHsl, hexRed);
+
+    // Negative hue (-360deg = 0deg)
+    const negHue = getDynamicAccessibleTextColorHex("hsl(-360deg, 100%, 50%)");
+    assert.strictEqual(negHue, hexRed);
+
+    // Turn units (1turn = 360deg = 0deg)
+    const turnHue = getDynamicAccessibleTextColorHex("hsl(1turn, 100%, 50%)");
+    assert.strictEqual(turnHue, hexRed);
+
+    // Nested CSS var() fallback
+    const nestedVar = getDynamicAccessibleTextColorHex("var(--missing-1, var(--missing-2, #000000))");
+    assert.strictEqual(nestedVar, getDynamicAccessibleTextColorHex("#000000"));
+  });
+
+  test("ToastManager preserves highest-priority items when a full priority queue overflows", async () => {
+    freshDom();
+    const { setConfig, resetConfig } = await import("../../src/utils/config.js");
+    const { showToast, closeToastByKey, getToastMetrics, resetToastManager } =
+      await import("../../src/components/ToastManager.js");
+
+    resetToastManager();
+    resetConfig();
+    setConfig({ maxVisible: 1, maxQueueSize: 2, aiPrioritization: true });
+
+    try {
+      const activeKey = await showToast({
+        message: "Initial active toast",
+        duration: 10000,
+        priority: 50,
+      });
+      await new Promise((resolve) => setTimeout(resolve, 60));
+
+      await showToast({ message: "High priority item", duration: 10000, priority: 90 });
+      await new Promise((resolve) => setTimeout(resolve, 60));
+      await showToast({ message: "Medium priority item", duration: 10000, priority: 70 });
+      await new Promise((resolve) => setTimeout(resolve, 60));
+      await showToast({ message: "Low priority incoming", duration: 10000, priority: 10 });
+      await new Promise((resolve) => setTimeout(resolve, 60));
+      await showToast({ message: "Critical priority incoming", duration: 10000, priority: 100 });
+      await new Promise((resolve) => setTimeout(resolve, 60));
+
+      assert.equal(getToastMetrics().queueDepth, 2);
+      assert.equal(getToastMetrics().droppedCount, 2);
+
+      // Critical replaced medium; then critical drains before high.
+      await closeToastByKey(activeKey);
+      await new Promise((resolve) => setTimeout(resolve, 450));
+      assert.match(document.body.textContent, /Critical priority incoming/);
+
+      const criticalToast = document.querySelector(".toast");
+      await closeToastByKey(criticalToast._key);
+      await new Promise((resolve) => setTimeout(resolve, 450));
+      assert.match(document.body.textContent, /High priority item/);
+
+      const highToast = document.querySelector(".toast");
+      await closeToastByKey(highToast._key);
+      await new Promise((resolve) => setTimeout(resolve, 450));
+      assert.equal(getToastMetrics().activeCount, 0);
+      assert.equal(getToastMetrics().queueDepth, 0);
+      assert.doesNotMatch(document.body.textContent, /Medium priority item|Low priority incoming/);
+    } finally {
+      resetToastManager();
+      resetConfig();
+    }
+  });
+});
+
+describe("Audit hardening — sanitizer, priority queues, and immutable options", () => {
+  test("sanitizeHtml uses identical strict URI policy with and without DOMPurify", async () => {
+    freshDom();
+    const { sanitizeHtml } = await import("../../src/utils/html-sanitizer.js");
+    const original = window.DOMPurify;
+
+    try {
+      window.DOMPurify = {
+        sanitize(input, config) {
+          assert.ok(config.ALLOWED_URI_REGEXP.test("https://example.test"));
+          assert.ok(config.ALLOWED_URI_REGEXP.test("mailto:help@example.test"));
+          assert.ok(!config.ALLOWED_URI_REGEXP.test("ftp://example.test/archive"));
+          assert.ok(!config.ALLOWED_URI_REGEXP.test("tel:+15551234567"));
+          assert.ok(!config.ALLOWED_URI_REGEXP.test("//evil.example"));
+          return input;
+        },
+      };
+
+      const output = sanitizeHtml('<a href="ftp://example.test/archive">download</a>');
+      assert.match(output, /href="#"/);
+    } finally {
+      if (original === undefined) delete window.DOMPurify;
+      else window.DOMPurify = original;
+    }
+  });
+
+  test("full-width positioning does not mutate mutable caller options", async () => {
+    freshDom();
+    const { setPosition } = await import("../../src/utils/position.js");
+    const options = { position: "top-full-width" };
+    const container = document.createElement("div");
+
+    await setPosition(container, options);
+
+    assert.deepEqual(options, { position: "top-full-width" });
+    assert.equal(container.style.maxWidth, "100vw");
+  });
+
 });
 
 

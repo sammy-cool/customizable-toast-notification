@@ -227,15 +227,14 @@ export function sanitizeHtml(dirty, opts = {}) {
       const cleaned = DOMPurify.sanitize(dirty, {
         ALLOWED_TAGS: Array.from(ALLOWED_TAGS),
         ALLOWED_ATTR: Array.from(ALLOWED_ATTRS),
-        ALLOWED_URI_REGEXP:
-          /^(?:(?:https?|mailto|ftp|tel):|data:image\/(?:png|jpeg|jpg|gif|webp|avif|bmp|ico);base64,|[^a-z]|[a-z+.\-]+(?:[^a-z+.\-:]|$))/i,
+        ALLOWED_URI_REGEXP: ALLOWED_URI_REGEX,
       });
 
       const wrapper = document.createElement("div");
       wrapper.innerHTML = cleaned;
       wrapper.querySelectorAll("a[href]").forEach((a) => {
-        const h = (a.getAttribute("href") || "").trim().toLowerCase();
-        if (h.startsWith("data:") || h.startsWith("javascript:") || h.startsWith("vbscript:")) {
+        const href = a.getAttribute("href") || "";
+        if (!ALLOWED_URI_REGEX.test(href)) {
           a.setAttribute("href", "#");
         }
       });
