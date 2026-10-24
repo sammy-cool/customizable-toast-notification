@@ -57,8 +57,15 @@ export function createCTA(toast, options, onClose) {
         ? getContrastBackground(options.backgroundColor)
         : "rgba(255,255,255,0.15)");
 
-    const isHex6 = typeof ctaTextColor === "string" && /^#[0-9a-fA-F]{6}$/.test(ctaTextColor.trim());
-    const ctaBorderColor = isHex6 ? `${ctaTextColor.trim()}44` : "rgba(128, 128, 128, 0.3)";
+    const trimmedColor = typeof ctaTextColor === "string" ? ctaTextColor.trim() : "";
+    const hexMatch = trimmedColor.match(/^#([0-9a-fA-F]{3}|[0-9a-fA-F]{6})$/);
+    let ctaBorderColor = "rgba(128, 128, 128, 0.3)";
+    if (hexMatch) {
+      const h = hexMatch[1].length === 3
+        ? `#${hexMatch[1][0]}${hexMatch[1][0]}${hexMatch[1][1]}${hexMatch[1][1]}${hexMatch[1][2]}${hexMatch[1][2]}`
+        : `#${hexMatch[1]}`;
+      ctaBorderColor = `${h}44`;
+    }
 
     el.className = "toast-cta";
     if (!getConfig().disableInlineStyles) {
@@ -172,12 +179,15 @@ export function createUndoAction(toast, options, onClose) {
     ? getContrastBackground(options.backgroundColor)
     : "rgba(255,255,255,0.18)";
 
-  const isHex6 =
-    typeof textColor === "string" &&
-    /^#[0-9a-fA-F]{6}$/.test(textColor.trim());
-  const borderColor = isHex6
-    ? `${textColor.trim()}55`
-    : "rgba(128, 128, 128, 0.35)";
+  const trimmedText = typeof textColor === "string" ? textColor.trim() : "";
+  const hexMatchUndo = trimmedText.match(/^#([0-9a-fA-F]{3}|[0-9a-fA-F]{6})$/);
+  let borderColor = "rgba(128, 128, 128, 0.35)";
+  if (hexMatchUndo) {
+    const h = hexMatchUndo[1].length === 3
+      ? `#${hexMatchUndo[1][0]}${hexMatchUndo[1][0]}${hexMatchUndo[1][1]}${hexMatchUndo[1][1]}${hexMatchUndo[1][2]}${hexMatchUndo[1][2]}`
+      : `#${hexMatchUndo[1]}`;
+    borderColor = `${h}55`;
+  }
 
   if (!getConfig().disableInlineStyles) {
     Object.assign(btn.style, {
@@ -522,6 +532,7 @@ export function attachSwipeToDismiss(toast, onClose) {
 
   const onPointerDown = (e) => {
     if (!e) return;
+    if (e.button !== undefined && e.button !== 0) return;
     const target = e.target;
     if (
       target &&

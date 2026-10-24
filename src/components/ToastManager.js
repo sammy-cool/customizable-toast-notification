@@ -269,7 +269,7 @@ function hashString(str) {
 
 function makeKey(options = {}) {
   const safe = options && typeof options === "object" ? options : {};
-  if (safe.id) return String(safe.id);
+  if (safe.id !== undefined && safe.id !== null && safe.id !== "") return String(safe.id);
   const type = String(safe.type || "info").trim().toLowerCase();
   const messageHash = hashString(String(safe.message || "")).toString(16);
   const position = normalizePositionKey(safe.position || "bottom-right");
@@ -319,6 +319,17 @@ export async function showToast(options = {}) {
         const maxQ = getConfig().maxQueueSize ?? 100;
         if (maxQ <= 0) {
           droppedCount++;
+          emitMetrics();
+          return;
+        }
+
+        const existingQueued = queue.find((queuedItem) => queuedItem.key === key);
+        if (existingQueued) {
+          existingQueued.count += current.count;
+          if (typeof current.options?.priority === "number") {
+            existingQueued.options = { ...existingQueued.options, ...current.options };
+            existingQueued.priority = calculateToastPriority(existingQueued.options);
+          }
           emitMetrics();
           return;
         }
@@ -904,6 +915,11 @@ async function removeWithTransition(el, targetEl, animationDurationMs = 400) {
       resolve();
     };
 
+    if (shouldReduceMotion() || animationDurationMs <= 0) {
+      finish();
+      return;
+    }
+
     const onEnd = (e) => {
       try {
         if (e.target !== animEl) return;
@@ -1220,11 +1236,6 @@ export async function updateToastByKey(key, newOptions = {}) {
     }
   }
   if (newOptions.progress !== undefined) {
-    let pct = Number(newOptions.progress);
-    if (!Number.isFinite(pct)) pct = 0;
-    if (pct < 1 && pct > 0) pct = pct * 100;
-    pct = Math.min(100, Math.max(0, pct));
-
     let progressBar = toast.querySelector(".toast-progress-bar");
     if (
       !progressBar &&
@@ -1233,15 +1244,38 @@ export async function updateToastByKey(key, newOptions = {}) {
       createProgressBar(toast, { ...data.options, ...newOptions });
       progressBar = toast.querySelector(".toast-progress-bar");
     }
-    if (progressBar) {
-      if (toast._progressAnimation) {
-        try {
-          toast._progressAnimation.cancel();
-        } catch {}
-        toast._progressAnimation = null;
+
+    if (newOptions.progress === "indeterminate") {
+      if (progressBar) {
+        if (toast._progressAnimation) {
+          try {
+            toast._progressAnimation.cancel();
+          } catch {}
+          toast._progressAnimation = null;
+        }
+        progressBar.classList.add("toast-progress-bar-indeterminate");
+        if (!getConfig().disableInlineStyles) {
+          progressBar.style.animation = "toast-progress-indeterminate 1.6s cubic-bezier(0.4, 0, 0.2, 1) infinite";
+        }
       }
-      progressBar.style.transition = "width 200ms ease";
-      progressBar.style.width = `${pct}%`;
+    } else {
+      let pct = Number(newOptions.progress);
+      if (!Number.isFinite(pct)) pct = 0;
+      if (pct < 1 && pct > 0) pct = pct * 100;
+      pct = Math.min(100, Math.max(0, pct));
+
+      if (progressBar) {
+        progressBar.classList.remove("toast-progress-bar-indeterminate");
+        progressBar.style.animation = "none";
+        if (toast._progressAnimation) {
+          try {
+            toast._progressAnimation.cancel();
+          } catch {}
+          toast._progressAnimation = null;
+        }
+        progressBar.style.transition = "width 200ms ease";
+        progressBar.style.width = `${pct}%`;
+      }
     }
   } else if (newOptions.showProgressBar === false) {
     const bar = toast.querySelector(".toast-progress-bar");
@@ -1295,6 +1329,7 @@ export async function updateToastByKey(key, newOptions = {}) {
   ) {
     // If it was a persistent loading toast (duration: 0) and transitioned to a resolved state
     // without an explicit duration, start a standard auto-dismiss timer so it doesn't stay permanently stuck on screen.
+    data.options.duration = 2500;
     data.timer?.clear();
     data.timer = createDismissTimer(toast, { duration: 2500 });
     await setupPauseOnHover(data);

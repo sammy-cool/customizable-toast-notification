@@ -15,7 +15,10 @@
       "require": "./dist/index.cjs",
       "default": "./dist/index.umd.js"
     },
-    "./index.css": "./dist/index.css",
+    "./index.css": {
+      "types": "./dist/index.css.d.ts",
+      "default": "./dist/index.css"
+    },
     "./package.json": "./package.json"
   },
   "engines": {

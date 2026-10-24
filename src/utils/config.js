@@ -33,6 +33,7 @@
  * @property {boolean} swipeToDismiss
  * @property {boolean} sound
  * @property {'modern' | 'retro' | 'futuristic' | 'subtle' | 'bell' | string} [soundPreset]
+ * @property {boolean} [icon]
  * @property {boolean} [pauseOnHover]
  * @property {boolean} syncTabs
  * @property {boolean} aiPrioritization
@@ -54,6 +55,7 @@ const DEFAULT_GLOBAL_CONFIG = Object.freeze({
   swipeToDismiss: true,
   sound: true,
   soundPreset: "modern",
+  icon: true,
   pauseOnHover: false,
   syncTabs: false,
   aiPrioritization: false,
@@ -91,6 +93,7 @@ export function setConfig(options = {}) {
     swipeToDismiss,
     sound,
     soundPreset,
+    icon,
     pauseOnHover,
     syncTabs,
     aiPrioritization,
@@ -183,6 +186,10 @@ export function setConfig(options = {}) {
     if (sp) {
       globalConfig.soundPreset = sp;
     }
+  }
+
+  if (icon !== undefined) {
+    globalConfig.icon = Boolean(icon);
   }
 
   if (pauseOnHover !== undefined) {

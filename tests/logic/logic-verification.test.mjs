@@ -3986,6 +3986,102 @@ describe("Audit hardening — sanitizer, priority queues, and immutable options"
     assert.strictEqual(priorityZero.breakdown.duration, 30);
     assert.strictEqual(priorityZero.score, priorityInf.score);
   });
+
+  test("Deep audit: id: 0 stability, alias positions, grad hues, and swipe button guarding", async () => {
+    freshDom();
+    const { createToast, setConfig, resetConfig } = await import("../../src/index.js");
+    const { normalizePositionKey } = await import("../../src/utils/containerRegistry.js");
+    const { getDynamicAccessibleTextColorHex } = await import("../../src/utils/dom.js");
+    const { resetToastManager, updateToastByKey } = await import("../../src/components/ToastManager.js");
+    const { createToastIcon } = await import("../../src/components/icons.js");
+    const { createCTA } = await import("../../src/components/toast-utils-core.js");
+
+    try {
+      // 1. Explicit id: 0 is preserved as key "0" rather than treated as falsy
+      const handleZero = await createToast({ id: 0, message: "ID Zero Toast" });
+      await new Promise((r) => setTimeout(r, 40));
+      assert.strictEqual(handleZero.id, "0");
+      await handleZero.dismiss();
+
+      // 2. Canonical position alias mapping
+      assert.strictEqual(normalizePositionKey("center-top"), "top-center");
+      assert.strictEqual(normalizePositionKey("center-bottom"), "bottom-center");
+      assert.strictEqual(normalizePositionKey("center-left"), "left-center");
+      assert.strictEqual(normalizePositionKey("center-right"), "right-center");
+      assert.strictEqual(normalizePositionKey("top"), "top-center");
+      assert.strictEqual(normalizePositionKey("bottom"), "bottom-center");
+
+      // 3. CSS Color 4 grad (gradian) angle parsing in HSL
+      // 400grad = 360deg = 0deg = Red (#ff0000)
+      const gradRed = getDynamicAccessibleTextColorHex("hsl(400grad, 100%, 50%)");
+      const hexRed = getDynamicAccessibleTextColorHex("#ff0000");
+      assert.strictEqual(gradRed, hexRed);
+
+      // 4. Global config.icon controls default icon generation
+      setConfig({ icon: false });
+      const noIcon = createToastIcon({ type: "success" });
+      assert.strictEqual(noIcon, null, "Global icon: false must suppress default type icon");
+
+      setConfig({ icon: true });
+      const withIcon = createToastIcon({ type: "success" });
+      assert.ok(withIcon, "Global icon: true must render default type icon");
+
+      // 5. 3-digit hex colors in CTA border computation
+      const dummyToast = document.createElement("div");
+      createCTA(dummyToast, {
+        cta: { label: "Click", textColor: "#fff" },
+      });
+      const ctaBtn = dummyToast.querySelector(".toast-cta");
+      assert.ok(ctaBtn);
+      assert.match(ctaBtn.style.border, /rgba\(255,\s*255,\s*255,\s*0\.26[67]\)|#ffffff44/);
+
+      // 6. Indeterminate progress bar update via handle.update
+      const progressToast = await createToast({ message: "Task starting...", progress: 0, showProgressBar: true });
+      await new Promise((r) => setTimeout(r, 40));
+      await updateToastByKey(progressToast.id, { progress: "indeterminate" });
+      const pBar = document.querySelector(".toast-progress-bar");
+      assert.ok(pBar);
+      assert.ok(pBar.classList.contains("toast-progress-bar-indeterminate"));
+
+      // Transition back to percentage progress
+      await updateToastByKey(progressToast.id, { progress: 85 });
+      assert.ok(!pBar.classList.contains("toast-progress-bar-indeterminate"));
+      assert.strictEqual(pBar.style.width, "85%");
+      await progressToast.dismiss();
+    } finally {
+      resetConfig();
+      resetToastManager();
+    }
+  });
+
+  test("Deep audit: toastPromise object loading config respects showLoader: false", async () => {
+    freshDom();
+    const { toastPromise, resetToastManager } = await import("../../src/index.js");
+
+    try {
+      let loadingToastEl = null;
+      const testPromise = new Promise((resolve) => setTimeout(() => resolve("done"), 100));
+
+      const promiseRun = toastPromise(
+        testPromise,
+        {
+          loading: { message: "Fetching without loader..." },
+          success: "Complete!",
+        },
+        { showLoader: false },
+      );
+
+      await new Promise((r) => setTimeout(r, 40));
+      loadingToastEl = document.querySelector(".toast");
+      assert.ok(loadingToastEl);
+      const loader = loadingToastEl.querySelector(".toast-loader");
+      assert.strictEqual(loader, null, "showLoader: false in options must be respected when loading is an object");
+
+      await promiseRun;
+    } finally {
+      resetToastManager();
+    }
+  });
 });
 
 

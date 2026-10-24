@@ -71,6 +71,16 @@ const LOW_PRIORITY_KEYWORDS = [
   'connected', 'disconnected', 'online', 'offline',
 ];
 
+const COMPILED_URGENCY_REGEXES = URGENCY_KEYWORDS.map((keyword) => ({
+  keyword,
+  regex: new RegExp(`\\b${keyword.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}\\b`, 'i'),
+}));
+
+const COMPILED_LOW_PRIORITY_REGEXES = LOW_PRIORITY_KEYWORDS.map((keyword) => ({
+  keyword,
+  regex: new RegExp(`\\b${keyword.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}\\b`, 'i'),
+}));
+
 /**
  * Calculate priority score for toast based on type, message, and context
  * @param {ToastScoringContext} context
@@ -96,19 +106,17 @@ export function calculateToastPriority(context) {
   const messageLower = safeMessage.toLowerCase();
   let urgencyScore = 0;
 
-  // Precompile regexes with word boundaries to prevent substring collisions (e.g. 'debug' matching 'bug', 'download' matching 'down')
-  for (const keyword of URGENCY_KEYWORDS) {
-    const escaped = keyword.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
-    const regex = new RegExp(`\\b${escaped}\\b`, 'i');
+  // Precompiled regexes with word boundaries prevent substring collisions and avoid per-call RegExp instantiation
+  for (let i = 0; i < COMPILED_URGENCY_REGEXES.length; i++) {
+    const { keyword, regex } = COMPILED_URGENCY_REGEXES[i];
     if (regex.test(safeMessage)) {
       detectedKeywords.push(keyword);
       urgencyScore += 2; // +2 points per urgency keyword
     }
   }
 
-  for (const keyword of LOW_PRIORITY_KEYWORDS) {
-    const escaped = keyword.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
-    const regex = new RegExp(`\\b${escaped}\\b`, 'i');
+  for (let j = 0; j < COMPILED_LOW_PRIORITY_REGEXES.length; j++) {
+    const { keyword, regex } = COMPILED_LOW_PRIORITY_REGEXES[j];
     if (regex.test(safeMessage)) {
       detectedKeywords.push(keyword);
       urgencyScore -= 1; // -1 point per low-priority keyword
