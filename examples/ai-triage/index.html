@@ -4,7 +4,7 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>TypeSafe AI Smart Toast Triage Demo</title>
-  <link rel="stylesheet" href="../../dist/index.css">
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/customizable-toast-notification@latest/dist/index.css" onerror="this.onerror=null;this.href='../../dist/index.css';">
   <style>
     body {
       font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
@@ -128,7 +128,8 @@
     <div class="plan-box" id="planOutput">// Click 'Triage & Notify' to see structured triage judgment</div>
   </div>
 
-  <script src="../../dist/index.umd.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/customizable-toast-notification@latest/dist/index.umd.js"></script>
+  <script>if (typeof window.customizableToast === "undefined") { document.write('<script src="../../dist/index.umd.js"><\/script>'); }</script>
   <script type="module">
     import { triageNotification } from "./smart-triage.js";
 

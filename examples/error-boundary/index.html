@@ -4,7 +4,7 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Global Error Boundary Auto-Toast Recipe — Customizable Toast Notification</title>
-  <link rel="stylesheet" href="../../dist/index.css">
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/customizable-toast-notification@latest/dist/index.css" onerror="this.onerror=null;this.href='../../dist/index.css';">
   <style>
     :root {
       --bg: #0f172a;
@@ -105,7 +105,8 @@ window.addEventListener('error', (e) => notifyError(e.error || e.message));
 window.addEventListener('unhandledrejection', (e) => notifyError(e.reason));</code></pre>
   </div>
 
-  <script src="../../dist/index.umd.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/customizable-toast-notification@latest/dist/index.umd.js"></script>
+  <script>if (typeof window.customizableToast === "undefined") { document.write('<script src="../../dist/index.umd.js"><\/script>'); }</script>
   <script>
     const { createToast } = window.customizableToast;
 

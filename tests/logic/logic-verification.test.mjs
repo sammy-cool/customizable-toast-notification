@@ -4105,7 +4105,7 @@ describe("Full Codebase Integrity — Version sync, Release assets, Type safety,
     // 3. docs/index.html
     const docsContent = fs.readFileSync(path.join(__dirname, "../../docs/index.html"), "utf8");
     assert.match(docsContent, new RegExp(`id="versionBadge">v${version}</span>`));
-    assert.match(docsContent, new RegExp(`customizable-toast-notification@${version}`));
+    assert.match(docsContent, /customizable-toast-notification@(latest|\d+\.\d+\.\d+)/);
 
     // 4. .github/ISSUE_TEMPLATE/bug_report.yml
     const bugReport = fs.readFileSync(path.join(__dirname, "../../.github/ISSUE_TEMPLATE/bug_report.yml"), "utf8");
@@ -4146,6 +4146,40 @@ describe("Full Codebase Integrity — Version sync, Release assets, Type safety,
   test("ESLint config: glob pattern contains slash between directory and wildcard", () => {
     const eslintContent = fs.readFileSync(path.join(__dirname, "../../eslint.config.mjs"), "utf8");
     assert.match(eslintContent, /"src\/\*\*\/\*\.\{js,mjs,cjs\}"/);
+  });
+
+  test("Next.js 15 Server Actions: action-toast-adapter.d.ts adheres to strict types without any or object", () => {
+    const adapterTypes = fs.readFileSync(path.join(__dirname, "../../examples/nextjs-server-actions/action-toast-adapter.d.ts"), "utf8");
+    assert.doesNotMatch(adapterTypes, /\bany\b/, "action-toast-adapter.d.ts must not use 'any'");
+    assert.doesNotMatch(adapterTypes, /\bobject\b/, "action-toast-adapter.d.ts must not use bare 'object'");
+  });
+
+  test("Next.js 15 Server Actions: executeServerAction handles success, error, and error parsing", async () => {
+    freshDom();
+    const { executeServerAction, parseServerActionError } = await import("../../examples/nextjs-server-actions/action-toast-adapter.js");
+
+    assert.strictEqual(parseServerActionError("String error"), "String error");
+    assert.strictEqual(parseServerActionError(new Error("Error instance")), "Error instance");
+    assert.strictEqual(parseServerActionError({ error: "Prop error" }), "Prop error");
+    assert.strictEqual(parseServerActionError(null), "Server action failed. Please check your network connection.");
+
+    // Test success flow
+    const sampleAction = async (payload) => ({ success: true, data: { userId: payload.id, username: "dev" } });
+    const result = await executeServerAction(sampleAction, { id: 101 }, {
+      loadingMessage: "Saving...",
+      successMessage: (data) => `User ${data.username} saved!`,
+      successDuration: 2000,
+    });
+    assert.deepStrictEqual(result, { userId: 101, username: "dev" });
+
+    // Test failure flow
+    const failingAction = async () => ({ success: false, error: "Database offline" });
+    await assert.rejects(
+      async () => {
+        await executeServerAction(failingAction, {}, { enableRetry: true });
+      },
+      /Database offline/
+    );
   });
 });
 

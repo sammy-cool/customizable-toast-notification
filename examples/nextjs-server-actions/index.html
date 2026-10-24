@@ -1,0 +1,213 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Next.js 15 Server Actions Toast Adapter Demo</title>
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/customizable-toast-notification@latest/dist/index.css" onerror="this.onerror=null;this.href='../../dist/index.css';">
+  <style>
+    :root {
+      --bg: #090d16;
+      --card: #131a29;
+      --border: #232f46;
+      --text: #f1f5f9;
+      --text-muted: #94a3b8;
+      --primary: #3b82f6;
+      --success: #10b981;
+      --error: #ef4444;
+      --warning: #f59e0b;
+    }
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+      background: var(--bg);
+      color: var(--text);
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      min-height: 100vh;
+      margin: 0;
+      padding: 20px;
+      box-sizing: border-box;
+    }
+    .card {
+      background: var(--card);
+      border: 1px solid var(--border);
+      padding: 32px;
+      border-radius: 14px;
+      max-width: 540px;
+      width: 100%;
+      box-shadow: 0 10px 30px rgba(0,0,0,0.5);
+    }
+    .badge {
+      display: inline-block;
+      padding: 3px 8px;
+      border-radius: 4px;
+      font-size: 11px;
+      font-weight: 700;
+      background: rgba(59, 130, 246, 0.2);
+      color: #60a5fa;
+      margin-bottom: 12px;
+    }
+    h2 {
+      margin: 0 0 8px 0;
+      font-size: 22px;
+    }
+    p {
+      color: var(--text-muted);
+      font-size: 14px;
+      line-height: 1.5;
+      margin-top: 0;
+    }
+    .btn-stack {
+      display: flex;
+      flex-direction: column;
+      gap: 12px;
+      margin-top: 24px;
+    }
+    button {
+      padding: 14px 18px;
+      border-radius: 8px;
+      font-weight: 600;
+      font-size: 13px;
+      cursor: pointer;
+      border: 1px solid transparent;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      transition: all 0.2s;
+    }
+    button:hover {
+      transform: translateY(-1px);
+      filter: brightness(1.1);
+    }
+    .btn-success { background: rgba(16, 185, 129, 0.15); color: #34d399; border-color: rgba(16, 185, 129, 0.3); }
+    .btn-error { background: rgba(239, 68, 68, 0.15); color: #f87171; border-color: rgba(239, 68, 68, 0.3); }
+    .btn-undo { background: rgba(245, 158, 11, 0.15); color: #fbbf24; border-color: rgba(245, 158, 11, 0.3); }
+    .btn-shimmer { background: rgba(59, 130, 246, 0.15); color: #93c5fd; border-color: rgba(59, 130, 246, 0.3); }
+    .subtext { font-size: 11px; opacity: 0.8; font-weight: 400; }
+  </style>
+  <script src="https://cdn.jsdelivr.net/npm/customizable-toast-notification@latest/dist/index.umd.js"></script>
+  <script>if (typeof window.customizableToast === "undefined") { document.write('<script src="../../dist/index.umd.js"><\/script>'); }</script>
+</head>
+<body>
+  <div class="card">
+    <div class="badge">Next.js 15 App Router &bull; Server Actions</div>
+    <h2>Next.js 15 Server Action Toast Adapter</h2>
+    <p>Simulating asynchronous Server Actions with automatic loading shimmer, server error boundary with retry CTA, and action undo.</p>
+
+    <div class="btn-stack">
+      <button class="btn-success" id="actionSuccessBtn">
+        <span>Save User Profile</span>
+        <span class="subtext">Simulates 'use server' success</span>
+      </button>
+
+      <button class="btn-error" id="actionErrorBtn">
+        <span>Payment Gateway Authorization</span>
+        <span class="subtext">Simulates Server 500 + Retry CTA</span>
+      </button>
+
+      <button class="btn-shimmer" id="actionPipelineBtn">
+        <span>Heavy Cloud Compute Pipeline</span>
+        <span class="subtext">Indeterminate Shimmer ➔ Live Sync</span>
+      </button>
+
+      <button class="btn-undo" id="actionUndoBtn">
+        <span>Purge Tenant Data Cluster</span>
+        <span class="subtext">Destructive with 7s Undo Decay</span>
+      </button>
+    </div>
+  </div>
+
+  <script>
+    const { createToast } = window.customizableToast;
+
+    // 1. Success Simulation
+    document.getElementById("actionSuccessBtn").addEventListener("click", async () => {
+      const handle = await createToast({
+        message: "Executing server action: updateProfileSettings...",
+        type: "info",
+        progress: "indeterminate",
+        duration: 0,
+        showLoader: true,
+      });
+
+      setTimeout(() => {
+        handle.update({
+          message: "Profile settings synchronized to PostgreSQL database! 🛡️",
+          type: "success",
+          progress: 100,
+          duration: 3500,
+          showLoader: false,
+        });
+      }, 1600);
+    });
+
+    // 2. Server Error + Retry CTA Simulation
+    function runPaymentAction() {
+      createToast({
+        message: "Contacting Stripe API via Server Action...",
+        type: "info",
+        progress: "indeterminate",
+        duration: 0,
+        showLoader: true,
+      }).then((handle) => {
+        setTimeout(() => {
+          handle.update({
+            message: "Payment Gateway Error: Card declined (insufficient funds)",
+            type: "error",
+            duration: 6000,
+            showLoader: false,
+            cta: {
+              label: "Retry Payment",
+              autoClose: true,
+              onClick: () => runPaymentAction(),
+            },
+          });
+        }, 1800);
+      });
+    }
+    document.getElementById("actionErrorBtn").addEventListener("click", runPaymentAction);
+
+    // 3. Multi-stage Shimmer Pipeline
+    document.getElementById("actionPipelineBtn").addEventListener("click", async () => {
+      const handle = await createToast({
+        message: "Provisioning serverless instances... (Shimmer)",
+        type: "info",
+        progress: "indeterminate",
+        duration: 0,
+      });
+
+      setTimeout(() => {
+        handle.update({ message: "Syncing data shards: 45%", progress: 45 });
+      }, 1800);
+
+      setTimeout(() => {
+        handle.update({ message: "Verifying cryptographic hashes: 88%", progress: 88 });
+      }, 3400);
+
+      setTimeout(() => {
+        handle.update({
+          message: "Serverless pipeline finished with 0 errors! 🚀",
+          type: "success",
+          progress: 100,
+          duration: 3000,
+        });
+      }, 5000);
+    });
+
+    // 4. Destructive Action with Decaying Undo Badge
+    document.getElementById("actionUndoBtn").addEventListener("click", () => {
+      createToast.warning("Tenant database cluster 'production-us-east' scheduled for deletion.", {
+        duration: 7000,
+        undo: {
+          label: "Undo",
+          countdown: 7,
+          onUndo: () => {
+            createToast.success("Cluster deletion cancelled. Your data is safe! 🛡️");
+          },
+        },
+      });
+    });
+  </script>
+</body>
+</html>

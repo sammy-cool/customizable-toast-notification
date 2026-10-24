@@ -14,7 +14,7 @@
       href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500;600&display=swap"
       rel="stylesheet"
     />
-    <link rel="stylesheet" href="../dist/index.css" onerror="this.onerror=null;this.href='https://cdn.jsdelivr.net/npm/customizable-toast-notification@latest/dist/index.css';" />
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/customizable-toast-notification@latest/dist/index.css" onerror="this.onerror=null;this.href='../dist/index.css';" />
 
     <style>
       :root {
@@ -849,6 +849,7 @@
           <button class="quick-btn" id="quickLoadingBtn">⏳ Loading & Update</button>
           <button class="quick-btn" id="quickPromiseBtn">🔄 Async Promise</button>
           <button class="quick-btn" id="quickUndoBtn">↩ Action Undo (5s)</button>
+          <button class="quick-btn" id="quickShimmerBtn">🌊 Shimmer Progress</button>
           <button class="quick-btn" id="quickStackedBtn">📚 iOS Card Stack</button>
           <button class="quick-btn" id="quickBouncyBtn">💫 Bouncy Spring</button>
           <button class="quick-btn primary" id="quickFloodBtn">⚡ 50x Burst Flood</button>
@@ -1087,6 +1088,25 @@
               </div>
             </div>
           </div>
+
+          <!-- Interactive Indeterminate Shimmer Showcase -->
+          <div style="margin-top: 14px; padding: 12px; background: var(--bg-card-subtle); border-radius: 8px; border: 1px solid var(--border-subtle);">
+            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px;">
+              <span style="font-size: 12px; font-weight: 700; color: var(--text-main);">✨ Live Showcase: Indeterminate Shimmer & Pipeline</span>
+              <span class="value-badge" style="background: rgba(59, 130, 246, 0.15); color: #3b82f6;">Streaming API</span>
+            </div>
+            <p style="font-size: 11px; color: var(--text-muted); margin: 0 0 10px 0;">
+              Zero-asset gradient shimmer that dynamically morphs into real-time progress percentages via <code>handle.update()</code> and plays a completion chime.
+            </p>
+            <div style="display: flex; gap: 8px; flex-wrap: wrap;">
+              <button class="quick-btn primary" id="demoShimmerPipelineBtn" style="flex: 1; padding: 6px 12px; font-size: 11px;">
+                ⚡ Heavy Task (Shimmer ➔ 45% ➔ 85% ➔ Complete)
+              </button>
+              <button class="quick-btn" id="demoShimmerSingleBtn" style="padding: 6px 12px; font-size: 11px;">
+                🌊 Pure Shimmer Toast
+              </button>
+            </div>
+          </div>
         </section>
 
         <!-- 5. Actions, Undo & Gestures -->
@@ -1124,6 +1144,20 @@
               <label class="form-label" for="undoLabelInput">Undo Button Label</label>
               <input type="text" id="undoLabelInput" class="input-text" value="Undo" />
             </div>
+          </div>
+
+          <!-- Interactive Undo Countdown Showcase -->
+          <div style="margin-top: 14px; padding: 12px; background: var(--bg-card-subtle); border-radius: 8px; border: 1px solid var(--border-subtle);">
+            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px;">
+              <span style="font-size: 12px; font-weight: 700; color: var(--text-main);">↩ Live Showcase: Action Undo with Decaying Badge</span>
+              <span class="value-badge" style="background: rgba(245, 158, 11, 0.15); color: #f59e0b;">Decay Badge [7s]</span>
+            </div>
+            <p style="font-size: 11px; color: var(--text-muted); margin: 0 0 10px 0;">
+              Destructive action safety: Features an active decaying seconds countdown badge, timer pause on hover, and one-click undo restoration.
+            </p>
+            <button class="quick-btn warning" id="demoDestructiveUndoBtn" style="width: 100%; padding: 7px 12px; font-size: 11px; font-weight: 600;">
+              🗑️ Delete Production Database (Simulate 7s Undo)
+            </button>
           </div>
         </section>
 
@@ -1376,13 +1410,18 @@ createToast({
       </div>
     </footer>
 
-    <!-- Load Customizable Toast UMD -->
-    <script src="../dist/index.umd.js"></script>
+    <!-- Load Customizable Toast UMD (Live @latest) -->
+    <script src="https://cdn.jsdelivr.net/npm/customizable-toast-notification@latest/dist/index.umd.js"></script>
     <script>
-      // Fallback loader if local dist not present
+      // Fallback loader if primary CDN unreachable
       if (typeof window.customizableToast === "undefined") {
         var s = document.createElement("script");
-        s.src = "https://cdn.jsdelivr.net/npm/customizable-toast-notification@latest/dist/index.umd.js";
+        s.src = "https://unpkg.com/customizable-toast-notification@latest/dist/index.umd.js";
+        s.onerror = function () {
+          var loc = document.createElement("script");
+          loc.src = "../dist/index.umd.js";
+          document.head.appendChild(loc);
+        };
         document.head.appendChild(s);
       }
     </script>
@@ -1767,9 +1806,9 @@ createToast({
               '  function notify() {\n    createToast(' + JSON.stringify(opts, null, 4) + ');\n  }\n<\/script>\n\n<button onclick={notify}>Fire Toast</button>';
           } else if (activeCodeLang === "cdn") {
             codeFilename.textContent = "index.html";
-            snippet = '<!-- 1. Include CSS and UMD JS -->\n' +
-              '<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/customizable-toast-notification@3.18.2/dist/index.css" />\n' +
-              '<script src="https://cdn.jsdelivr.net/npm/customizable-toast-notification@3.18.2/dist/index.umd.js"><\/script>\n\n' +
+            snippet = '<!-- 1. Include CSS and UMD JS (Latest Version) -->\n' +
+              '<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/customizable-toast-notification@latest/dist/index.css" />\n' +
+              '<script src="https://cdn.jsdelivr.net/npm/customizable-toast-notification@latest/dist/index.umd.js"><\/script>\n\n' +
               '<script>\n  customizableToast.createToast(' + JSON.stringify(opts, null, 2) + ');\n<\/script>';
           }
 
@@ -1886,6 +1925,96 @@ createToast({
             }
           });
         });
+
+        document.getElementById("quickShimmerBtn").addEventListener("click", function () {
+          fireToast({
+            type: "info",
+            message: "Optimizing cloud assets with indeterminate shimmer...",
+            progress: "indeterminate",
+            duration: 5000,
+            sound: true,
+            soundPreset: "futuristic"
+          });
+        });
+
+        // Interactive Indeterminate Shimmer Showcase
+        var shimmerPipelineBtn = document.getElementById("demoShimmerPipelineBtn");
+        if (shimmerPipelineBtn) {
+          shimmerPipelineBtn.addEventListener("click", function () {
+            if (!window.customizableToast) return;
+            window.customizableToast.createToast({
+              message: "1/3 Provisioning microservice containers... (Shimmer)",
+              type: "info",
+              progress: "indeterminate",
+              duration: 0,
+              sound: true,
+              soundPreset: "futuristic",
+              position: currentPosition
+            }).then(function (handle) {
+              setTimeout(function () {
+                handle.update({
+                  message: "2/3 Streaming database partitions: 48%",
+                  progress: 48,
+                  type: "info"
+                });
+              }, 2200);
+
+              setTimeout(function () {
+                handle.update({
+                  message: "3/3 Running integrity checksums: 88%",
+                  progress: 88
+                });
+              }, 4200);
+
+              setTimeout(function () {
+                handle.update({
+                  message: "Cloud cluster deployed successfully! 🚀",
+                  type: "success",
+                  progress: 100,
+                  duration: 3500
+                });
+              }, 6000);
+            });
+          });
+        }
+
+        var shimmerSingleBtn = document.getElementById("demoShimmerSingleBtn");
+        if (shimmerSingleBtn) {
+          shimmerSingleBtn.addEventListener("click", function () {
+            fireToast({
+              type: "info",
+              message: "Indexing vector embeddings in background...",
+              progress: "indeterminate",
+              duration: 5000,
+              sound: true,
+              soundPreset: "subtle"
+            });
+          });
+        }
+
+        // Interactive Undo Countdown Showcase
+        var destructiveUndoBtn = document.getElementById("demoDestructiveUndoBtn");
+        if (destructiveUndoBtn) {
+          destructiveUndoBtn.addEventListener("click", function () {
+            if (!window.customizableToast) return;
+            window.customizableToast.createToast.warning("Production database 'aurora-cluster-01' deleted.", {
+              duration: 7000,
+              position: currentPosition,
+              sound: true,
+              soundPreset: "retro",
+              undo: {
+                label: "Undo",
+                countdown: 7,
+                onUndo: function () {
+                  window.customizableToast.createToast.success("Database restored! No data was lost. 🛡️", {
+                    position: currentPosition,
+                    soundPreset: "bell"
+                  });
+                }
+              }
+            });
+          });
+        }
 
         document.getElementById("quickStackedBtn").addEventListener("click", function () {
           fireToast({ type: "info", message: "System notice 1: Background backup initiated.", stacked: true });
