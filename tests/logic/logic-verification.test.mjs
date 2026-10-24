@@ -4183,5 +4183,179 @@ describe("Full Codebase Integrity — Version sync, Release assets, Type safety,
   });
 });
 
+describe("toast-utils-core.js & ToastManager.js — Exhaustive Progress Bar Fixes & Hardening", { concurrency: 1 }, () => {
+  test("FIXED: createToast.loading followed by handle.update({ progress }) mounts progress bar", async () => {
+    freshDom();
+    const { createToast, resetToastManager } = await import("../../src/index.js");
+    resetToastManager();
+
+    const position = "test-pb-loading-" + Date.now();
+    const handle = await createToast.loading("Uploading files...", { position });
+    await new Promise((r) => setTimeout(r, 60));
+    const container = document.getElementById(`toast-container-${position}`);
+    const toast = container?.querySelector(".toast");
+    assert.ok(toast);
+    assert.strictEqual(toast.querySelector(".toast-progress-bar"), null);
+
+    await handle.update({ progress: 40, message: "Uploading... 40%" });
+    await new Promise((r) => setTimeout(r, 60));
+    const bar = toast.querySelector(".toast-progress-bar");
+    assert.ok(bar, "Progress bar must be mounted upon update({ progress })");
+    assert.strictEqual(bar.style.width, "40%");
+    await handle.dismiss();
+    resetToastManager();
+  });
+
+  test("FIXED: hover pause/resume on toast with manual determinate progress preserves width", async () => {
+    freshDom();
+    const { createToast, resetToastManager } = await import("../../src/index.js");
+    resetToastManager();
+
+    const position = "test-pb-hover-" + Date.now();
+    const handle = await createToast({ message: "In progress", progress: 60, pauseOnHover: true, position });
+    await new Promise((r) => setTimeout(r, 60));
+    const container = document.getElementById(`toast-container-${position}`);
+    const toast = container?.querySelector(".toast");
+    assert.ok(toast);
+    const bar = toast.querySelector(".toast-progress-bar");
+    assert.ok(bar);
+    assert.strictEqual(bar.style.width, "60%");
+
+    const outerWrapper = toast.closest(".toast-outer-wrapper");
+    assert.ok(outerWrapper);
+
+    // Mock browser getComputedStyle returning pixel width
+    global.window.getComputedStyle = () => ({ width: "180px" });
+
+    // Trigger hover pause and resume
+    outerWrapper.dispatchEvent(new global.window.MouseEvent("mouseenter"));
+    assert.strictEqual(bar.style.width, "60%");
+
+    outerWrapper.dispatchEvent(new global.window.MouseEvent("mouseleave"));
+    assert.strictEqual(bar.style.width, "60%", "Manual progress width must NOT be wiped to 0% on hover resume");
+
+    await handle.dismiss();
+    resetToastManager();
+  });
+
+  test("FIXED: hover pause/resume on indeterminate toast toggles animationPlayState without wiping width", async () => {
+    freshDom();
+    const { createToast, resetToastManager } = await import("../../src/index.js");
+    resetToastManager();
+
+    const position = "test-pb-indet-" + Date.now();
+    const handle = await createToast({ message: "Processing...", progress: "indeterminate", pauseOnHover: true, position });
+    await new Promise((r) => setTimeout(r, 60));
+    const container = document.getElementById(`toast-container-${position}`);
+    const toast = container?.querySelector(".toast");
+    assert.ok(toast);
+    const bar = toast.querySelector(".toast-progress-bar");
+    assert.ok(bar);
+    assert.ok(bar.classList.contains("toast-progress-bar-indeterminate"));
+    const initialWidth = bar.style.width;
+    assert.ok(initialWidth && initialWidth !== "0%");
+
+    const outerWrapper = toast.closest(".toast-outer-wrapper");
+    global.window.getComputedStyle = () => ({ width: "180px" });
+
+    outerWrapper.dispatchEvent(new global.window.MouseEvent("mouseenter"));
+    assert.strictEqual(bar.style.animationPlayState, "paused");
+
+    outerWrapper.dispatchEvent(new global.window.MouseEvent("mouseleave"));
+    assert.strictEqual(bar.style.animationPlayState, "running");
+    assert.strictEqual(bar.style.width, initialWidth, "Indeterminate progress width must be preserved");
+
+    await handle.dismiss();
+    resetToastManager();
+  });
+
+  test("FIXED: string percentages like '75%' and '100%' parse accurately", async () => {
+    freshDom();
+    const { createToast, resetToastManager } = await import("../../src/index.js");
+    resetToastManager();
+
+    const position = "test-pb-str-" + Date.now();
+    const handle = await createToast({ message: "Upload", progress: "75%", position });
+    await new Promise((r) => setTimeout(r, 60));
+    const container = document.getElementById(`toast-container-${position}`);
+    const toast = container?.querySelector(".toast");
+    const bar = toast.querySelector(".toast-progress-bar");
+    assert.ok(bar);
+    assert.strictEqual(bar.style.width, "75%");
+
+    await handle.update({ progress: "100%" });
+    assert.strictEqual(bar.style.width, "100%");
+
+    await handle.dismiss();
+    resetToastManager();
+  });
+
+  test("FIXED: normalized streaming progress reaching completion (1.0) scales to 100% instead of 1%", async () => {
+    freshDom();
+    const { createToast, resetToastManager } = await import("../../src/index.js");
+    resetToastManager();
+
+    const position = "test-pb-norm-" + Date.now();
+    const handle = await createToast({ message: "Stream", progress: 0.99, position });
+    await new Promise((r) => setTimeout(r, 60));
+    const container = document.getElementById(`toast-container-${position}`);
+    const toast = container?.querySelector(".toast");
+    const bar = toast.querySelector(".toast-progress-bar");
+    assert.ok(bar);
+    assert.strictEqual(bar.style.width, "99%");
+
+    await handle.update({ progress: 1 });
+    assert.strictEqual(bar.style.width, "100%", "Stream completion at 1 / 1.0 must scale to 100%");
+
+    await handle.dismiss();
+    resetToastManager();
+  });
+
+  test("FIXED: handle.update({ showProgressBar: true }) dynamically mounts progress bar", async () => {
+    freshDom();
+    const { createToast, resetToastManager } = await import("../../src/index.js");
+    resetToastManager();
+
+    const position = "test-pb-toggle-" + Date.now();
+    const handle = await createToast({ message: "No bar initially", showProgressBar: false, position });
+    await new Promise((r) => setTimeout(r, 60));
+    const container = document.getElementById(`toast-container-${position}`);
+    const toast = container?.querySelector(".toast");
+    assert.strictEqual(toast.querySelector(".toast-progress-bar"), null);
+
+    await handle.update({ showProgressBar: true });
+    await new Promise((r) => setTimeout(r, 60));
+    const bar = toast.querySelector(".toast-progress-bar");
+    assert.ok(bar, "Progress bar should mount when updated with showProgressBar: true");
+
+    await handle.update({ showProgressBar: false });
+    assert.strictEqual(toast.querySelector(".toast-progress-bar"), null, "Progress bar should unmount when updated with showProgressBar: false");
+    assert.strictEqual(toast._progressBar, null, "toast._progressBar reference must be cleared");
+
+    await handle.dismiss();
+    resetToastManager();
+  });
+
+  test("FIXED: RTL progress bar positioning anchors right edge and sets left: auto", async () => {
+    freshDom();
+    const { createToast, resetToastManager } = await import("../../src/index.js");
+    resetToastManager();
+
+    const position = "test-pb-rtl-" + Date.now();
+    const handle = await createToast({ message: "مرحبا", fontDirection: "rtl", showProgressBar: true, position });
+    await new Promise((r) => setTimeout(r, 60));
+    const container = document.getElementById(`toast-container-${position}`);
+    const toast = container?.querySelector(".toast");
+    const bar = toast.querySelector(".toast-progress-bar");
+    assert.ok(bar);
+    assert.strictEqual(bar.style.left, "auto");
+    assert.strictEqual(bar.style.right, "8px");
+
+    await handle.dismiss();
+    resetToastManager();
+  });
+});
+
+
 
 
