@@ -1,3 +1,11 @@
+## [3.18.2](https://github.com/sammy-cool/customizable-toast-notification/compare/v3.18.1...v3.18.2) (2026-10-24)
+
+
+### Bug Fixes
+
+* **core:** harden icons, loader, audio teardown, and css type declarations ([4c2ff53](https://github.com/sammy-cool/customizable-toast-notification/commit/4c2ff5350b3bddda6b8a3aa09538183833fbf2a9))
+* **core:** harden priority queue eviction, html sanitizer parity, and css color parsing ([b621673](https://github.com/sammy-cool/customizable-toast-notification/commit/b621673e6c35b925b62c8f955021335f7e2c1ccc))
+
 ## [3.18.1](https://github.com/sammy-cool/customizable-toast-notification/compare/v3.18.0...v3.18.1) (2026-10-11)
 
 
