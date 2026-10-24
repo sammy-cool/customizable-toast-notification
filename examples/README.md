@@ -45,4 +45,5 @@ Zero-bloat, drop-in adapters with 100% strict TypeScript types:
 - **Notification Center Drawer**: [`examples/notification-center/index.html`](./notification-center/index.html) — persistent slide-over notification history tray with unread badge counter.
 - **Network Status Monitor**: [`examples/network-status/index.html`](./network-status/index.html) — online/offline connection state tracking with retry CTA.
 - **Global Error Boundary**: [`examples/error-boundary/index.html`](./error-boundary/index.html) — window uncaught exception & rejection auto-toast with copy stack trace CTA.
+- **Next.js 15 App Router Server Actions**: [`examples/nextjs-server-actions/`](./nextjs-server-actions/) — type-safe Server Action wrapper (`executeServerAction`) with automatic loading shimmer, server error boundary with retry CTA, and action undo.
 - **Developer Cookbook**: Full production recipes guide in [`docs/COOKBOOK.md`](../docs/COOKBOOK.md).

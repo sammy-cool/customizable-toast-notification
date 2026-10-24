@@ -333,7 +333,7 @@ export function getDynamicAccessibleTextColorHex(toastBg) {
             .getPropertyValue(propName)
             .trim();
         }
-      } catch (e) {}
+      } catch { /* ignore */ }
 
       if (resolved) {
         current = resolved;
@@ -407,6 +407,8 @@ export function getDynamicAccessibleTextColorHex(toastBg) {
       if (!Number.isFinite(raw)) return 0;
       if (trimmed.endsWith("turn")) {
         raw = raw * 360;
+      } else if (trimmed.endsWith("grad")) {
+        raw = (raw * 360) / 400;
       } else if (trimmed.endsWith("rad")) {
         raw = (raw * 180) / Math.PI;
       }
@@ -414,10 +416,10 @@ export function getDynamicAccessibleTextColorHex(toastBg) {
     };
 
     const hslMatch = value?.match(
-      /hsla?\(\s*(-?[\d.]+(?:deg|rad|turn)?)\s*,\s*([\d.]+)%\s*,\s*([\d.]+)%(?:\s*,\s*[\d.%]+)?\s*\)/i,
+      /hsla?\(\s*(-?[\d.]+(?:deg|grad|rad|turn)?)\s*,\s*([\d.]+)%\s*,\s*([\d.]+)%(?:\s*,\s*[\d.%]+)?\s*\)/i,
     );
     const hslSpaceMatch = !hslMatch && value?.match(
-      /hsla?\(\s*(-?[\d.]+(?:deg|rad|turn)?)\s+([\d.]+)%\s+([\d.]+)%(?:\s*\/\s*[\d.%]+)?\s*\)/i,
+      /hsla?\(\s*(-?[\d.]+(?:deg|grad|rad|turn)?)\s+([\d.]+)%\s+([\d.]+)%(?:\s*\/\s*[\d.%]+)?\s*\)/i,
     );
 
     const activeHslMatch = hslMatch || hslSpaceMatch;

@@ -16,10 +16,21 @@ export function normalizePositionKey(position) {
   const raw = position.toLowerCase().trim();
   if (!raw) return "bottom-right";
   const aliased = raw.replace(/\bbelow\b/g, "bottom");
-  return aliased
+  const normalized = aliased
     .replace(/\s+/g, "-")
     .replace(/[^a-z0-9-]/g, "-")
     .replace(/-{2,}/g, "-");
+
+  const canonicalAliases = {
+    "center-top": "top-center",
+    "center-bottom": "bottom-center",
+    "center-left": "left-center",
+    "center-right": "right-center",
+    "top": "top-center",
+    "bottom": "bottom-center",
+  };
+
+  return canonicalAliases[normalized] || normalized;
 }
 
 /**

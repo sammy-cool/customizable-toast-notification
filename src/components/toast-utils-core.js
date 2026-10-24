@@ -57,8 +57,15 @@ export function createCTA(toast, options, onClose) {
         ? getContrastBackground(options.backgroundColor)
         : "rgba(255,255,255,0.15)");
 
-    const isHex6 = typeof ctaTextColor === "string" && /^#[0-9a-fA-F]{6}$/.test(ctaTextColor.trim());
-    const ctaBorderColor = isHex6 ? `${ctaTextColor.trim()}44` : "rgba(128, 128, 128, 0.3)";
+    const trimmedColor = typeof ctaTextColor === "string" ? ctaTextColor.trim() : "";
+    const hexMatch = trimmedColor.match(/^#([0-9a-fA-F]{3}|[0-9a-fA-F]{6})$/);
+    let ctaBorderColor = "rgba(128, 128, 128, 0.3)";
+    if (hexMatch) {
+      const h = hexMatch[1].length === 3
+        ? `#${hexMatch[1][0]}${hexMatch[1][0]}${hexMatch[1][1]}${hexMatch[1][1]}${hexMatch[1][2]}${hexMatch[1][2]}`
+        : `#${hexMatch[1]}`;
+      ctaBorderColor = `${h}44`;
+    }
 
     el.className = "toast-cta";
     if (!getConfig().disableInlineStyles) {
@@ -172,12 +179,15 @@ export function createUndoAction(toast, options, onClose) {
     ? getContrastBackground(options.backgroundColor)
     : "rgba(255,255,255,0.18)";
 
-  const isHex6 =
-    typeof textColor === "string" &&
-    /^#[0-9a-fA-F]{6}$/.test(textColor.trim());
-  const borderColor = isHex6
-    ? `${textColor.trim()}55`
-    : "rgba(128, 128, 128, 0.35)";
+  const trimmedText = typeof textColor === "string" ? textColor.trim() : "";
+  const hexMatchUndo = trimmedText.match(/^#([0-9a-fA-F]{3}|[0-9a-fA-F]{6})$/);
+  let borderColor = "rgba(128, 128, 128, 0.35)";
+  if (hexMatchUndo) {
+    const h = hexMatchUndo[1].length === 3
+      ? `#${hexMatchUndo[1][0]}${hexMatchUndo[1][0]}${hexMatchUndo[1][1]}${hexMatchUndo[1][1]}${hexMatchUndo[1][2]}${hexMatchUndo[1][2]}`
+      : `#${hexMatchUndo[1]}`;
+    borderColor = `${h}55`;
+  }
 
   if (!getConfig().disableInlineStyles) {
     Object.assign(btn.style, {
@@ -322,7 +332,7 @@ function getContrastBackground(bgColor) {
   return "rgba(255,255,255,0.15)";
 }
 
-function ensureProgressIndeterminateStyles() {
+export function ensureProgressIndeterminateStyles() {
   if (typeof document === "undefined" || document.getElementById("toast-progress-indeterminate-styles")) {
     return;
   }
@@ -334,15 +344,67 @@ function ensureProgressIndeterminateStyles() {
       50% { left: 20%; width: 60%; }
       100% { left: 100%; width: 0%; }
     }
+    @keyframes toast-progress-indeterminate-rtl {
+      0% { right: 0%; width: 0%; }
+      50% { right: 20%; width: 60%; }
+      100% { right: 100%; width: 0%; }
+    }
     .toast-progress-bar-indeterminate {
       animation: toast-progress-indeterminate 1.6s cubic-bezier(0.4, 0, 0.2, 1) infinite !important;
+    }
+    .toast-progress-bar-indeterminate-rtl {
+      animation: toast-progress-indeterminate-rtl 1.6s cubic-bezier(0.4, 0, 0.2, 1) infinite !important;
     }
   `;
   const target = document.head || document.documentElement;
   if (target) target.appendChild(st);
 }
 
+/**
+ * Safely parses and normalizes a progress value (number, percentage string, or normalized ratio).
+ * Handles string percentages ("75%"), normalized streams (0.0 to 1.0), and NaN / out-of-bound defense.
+ * @param {number | string | undefined | null} rawProgress
+ * @param {HTMLElement} [toast]
+ * @param {Object} [options]
+ * @returns {number | "indeterminate" | null}
+ */
+export function parseProgressValue(rawProgress, toast, options = {}) {
+  if (rawProgress === undefined || rawProgress === null) return null;
+  if (rawProgress === "indeterminate") return "indeterminate";
+
+  let pct;
+  if (typeof rawProgress === "string") {
+    const trimmed = rawProgress.trim();
+    if (trimmed.endsWith("%")) {
+      pct = parseFloat(trimmed);
+    } else {
+      pct = parseFloat(trimmed);
+    }
+  } else {
+    pct = Number(rawProgress);
+  }
+
+  if (!Number.isFinite(pct)) return 0;
+
+  // Normalized mode (0.0 to 1.0):
+  // If explicitly requested via options.progressNormalized, or if value was a fraction (0 < pct < 1),
+  // remember ratio mode on toast so that completion (1 or 1.0) scales to 100%.
+  if (toast && pct > 0 && pct < 1) {
+    toast._progressRatioMode = true;
+  }
+
+  const isNormalized = Boolean(options.progressNormalized) || Boolean(toast?._progressRatioMode);
+  if (isNormalized && pct > 0 && pct <= 1) {
+    pct = pct * 100;
+  } else if (pct > 0 && pct < 1) {
+    pct = pct * 100;
+  }
+
+  return Math.min(100, Math.max(0, pct));
+}
+
 export function createProgressBar(toast, options = {}) {
+  if (!toast) return;
   const progressBar = document.createElement("div");
   progressBar.className = "toast-progress-bar";
   toast._progressBar = progressBar;
@@ -378,16 +440,20 @@ export function createProgressBar(toast, options = {}) {
     : "100%";
 
   const isReverse = options.progressDirection === "reverse" || options.progressDirection === "increasing" || options.progressDirection === "ltr";
+  const isRtl = options.fontDirection === "rtl" || options.progressDirection === "rtl" || toast?.style?.direction === "rtl";
+
   progressBar._leftOffset = leftOffset;
   progressBar._finalWidth = finalWidth;
   progressBar._isReverse = isReverse;
+  progressBar._isRtl = isRtl;
 
   const progressBg = options.progressBarColor || options.progressColor || "currentColor";
 
   if (!getConfig().disableInlineStyles) {
     Object.assign(progressBar.style, {
       position: "absolute",
-      left: `${leftOffset}px`,
+      left: isRtl ? "auto" : `${leftOffset}px`,
+      right: isRtl ? `${leftOffset}px` : "auto",
       height: progressHeightStyle,
       background: progressBg,
       width: isReverse ? "0%" : `${finalWidth}`,
@@ -406,11 +472,18 @@ export function createProgressBar(toast, options = {}) {
   const isIndeterminate = options.progress === "indeterminate" ||
     (Boolean(options.showProgressBar) && (options.duration === 0 || options.duration === Infinity) && options.progress === undefined);
 
+  progressBar._isIndeterminate = isIndeterminate;
+  progressBar._isManualProgress = options.progress !== undefined && options.progress !== "indeterminate";
+
   if (isIndeterminate) {
     progressBar.classList.add("toast-progress-bar-indeterminate");
+    if (isRtl) {
+      progressBar.classList.add("toast-progress-bar-indeterminate-rtl");
+    }
     if (!getConfig().disableInlineStyles) {
       ensureProgressIndeterminateStyles();
-      progressBar.style.animation = "toast-progress-indeterminate 1.6s cubic-bezier(0.4, 0, 0.2, 1) infinite";
+      const animName = isRtl ? "toast-progress-indeterminate-rtl" : "toast-progress-indeterminate";
+      progressBar.style.animation = `${animName} 1.6s cubic-bezier(0.4, 0, 0.2, 1) infinite`;
     }
     progressBar.style.width = finalWidth;
     return;
@@ -418,10 +491,7 @@ export function createProgressBar(toast, options = {}) {
 
   // 2. Explicit manual percentage progress (determinate)
   if (options.progress !== undefined) {
-    let pct = Number(options.progress);
-    if (!Number.isFinite(pct)) pct = 0;
-    if (pct < 1 && pct > 0) pct = pct * 100;
-    pct = Math.min(100, Math.max(0, pct));
+    const pct = parseProgressValue(options.progress, toast, options);
     progressBar.style.width = `${pct}%`;
     progressBar.style.transition = "width 200ms ease";
     return;
@@ -522,6 +592,7 @@ export function attachSwipeToDismiss(toast, onClose) {
 
   const onPointerDown = (e) => {
     if (!e) return;
+    if (e.button !== undefined && e.button !== 0) return;
     const target = e.target;
     if (
       target &&

@@ -208,9 +208,6 @@ export function calculateSpringSettlingDuration(config, threshold = 0.005) {
   const c = Math.max(0.001, config.damping || 10);
   const m = Math.max(0.001, config.mass || 1);
 
-  const omega0 = Math.sqrt(k / m);
-  const zeta = c / (2 * Math.sqrt(k * m));
-
   // Search forward up to 3 seconds in 10ms steps
   const maxSeconds = 3.0;
   const step = 0.01;

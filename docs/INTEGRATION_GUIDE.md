@@ -165,6 +165,36 @@ export function ToastProvider({ children }: { children: React.ReactNode }) {
 }
 ```
 
+### Next.js 15 Server Actions Integration
+
+Next.js 15 App Router Server Actions run asynchronously on the server. Wrap your action calls with `executeServerAction` for an automatic loading shimmer, server error boundary, and retry CTA:
+
+```typescript
+// app/settings/page.tsx
+'use client';
+
+import { executeServerAction } from 'customizable-toast-notification/examples/nextjs-server-actions/action-toast-adapter';
+import { updateProfileSettings } from './actions';
+
+export function ProfileForm() {
+  async function handleSubmit(formData: FormData) {
+    await executeServerAction(updateProfileSettings, formData, {
+      loadingMessage: "Saving profile changes...",
+      successMessage: (data) => `Settings updated successfully for ${data.username}!`,
+      enableRetry: true,
+      retryLabel: "Retry Action",
+    });
+  }
+
+  return (
+    <form action={handleSubmit}>
+      <input name="username" defaultValue="alex" />
+      <button type="submit">Save Settings</button>
+    </form>
+  );
+}
+```
+
 ---
 
 ## Vue 3 & Nuxt

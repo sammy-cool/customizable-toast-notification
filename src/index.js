@@ -135,7 +135,8 @@ import {
  * @property {SoundPreset} [soundPreset]
  * @property {boolean | string | HTMLElement | ((options: ToastOptions) => boolean | string | HTMLElement | null | undefined)} [icon]
  * @property {boolean} [swipeToDismiss]
- * @property {number | 'indeterminate'} [progress]
+ * @property {number | string | 'indeterminate'} [progress]
+ * @property {boolean} [progressNormalized]
  * @property {boolean} [syncTabs]
  * @property {boolean} [aiPrioritization]
  * @property {number} [priority]
@@ -368,14 +369,18 @@ async function sanitizeToastOptions(rawOptions) {
 
   try {
     if (!final.backgroundColor) {
+      const prefersDark =
+        typeof window !== "undefined" &&
+        typeof window.matchMedia === "function" &&
+        window.matchMedia("(prefers-color-scheme: dark)")?.matches;
       final.backgroundColor =
-        defaultColors?.[final.type] ??
-        (window.matchMedia("(prefers-color-scheme: dark)").matches
-          ? "#f5f5f5"
-          : "#111111");
+        defaultColors?.[final.type] ?? (prefersDark ? "#f5f5f5" : "#111111");
     }
   } catch (error) {
     console.warn("Background color resolution failed:", error);
+    if (!final.backgroundColor) {
+      final.backgroundColor = "#111111";
+    }
   }
 
   try {
@@ -673,7 +678,7 @@ async function toastPromise(promiseOrFn, messages = {}, options = {}) {
           duration: TOAST_PROMISE_LOADING_DURATION_MS,
           showProgressBar: false,
           pauseOnHover: false,
-          showLoader: true,
+          showLoader: safeOptions.showLoader ?? true,
           ...loadingInput,
         }
       : {
@@ -819,7 +824,8 @@ if (typeof window !== "undefined" && typeof document !== "undefined") {
         })();
       } else if (e.key === "F6" || ((e.altKey || e.metaKey) && (e.key === "t" || e.key === "T"))) {
         // Accessible landmark navigation: focus the most recent active toast
-        const activeToasts = document.querySelectorAll('[id^="toast-container-"] [id^="toast-"]');
+        const root = (getConfig().targetNode && typeof getConfig().targetNode.querySelectorAll === "function") ? getConfig().targetNode : document;
+        const activeToasts = root.querySelectorAll('[id^="toast-container-"] [id^="toast-"]');
         if (activeToasts.length > 0) {
           const targetToast = activeToasts[activeToasts.length - 1];
           // Try focusing the interactive CTA, undo, or close button inside the toast first

@@ -1,8 +1,13 @@
 import { test, describe, beforeEach } from "node:test";
 import assert from "node:assert/strict";
+import fs from "node:fs";
+import path from "node:path";
+import { fileURLToPath } from "node:url";
 import { JSDOM } from "jsdom";
 import { resetToastManager } from "../../src/components/ToastManager.js";
 import { resetContainerRegistry } from "../../src/utils/containerRegistry.js";
+
+const __dirname = path.dirname(fileURLToPath(import.meta.url));
 
 function freshDom() {
   resetToastManager();
@@ -3986,6 +3991,371 @@ describe("Audit hardening — sanitizer, priority queues, and immutable options"
     assert.strictEqual(priorityZero.breakdown.duration, 30);
     assert.strictEqual(priorityZero.score, priorityInf.score);
   });
+
+  test("Deep audit: id: 0 stability, alias positions, grad hues, and swipe button guarding", async () => {
+    freshDom();
+    const { createToast, setConfig, resetConfig } = await import("../../src/index.js");
+    const { normalizePositionKey } = await import("../../src/utils/containerRegistry.js");
+    const { getDynamicAccessibleTextColorHex } = await import("../../src/utils/dom.js");
+    const { resetToastManager, updateToastByKey } = await import("../../src/components/ToastManager.js");
+    const { createToastIcon } = await import("../../src/components/icons.js");
+    const { createCTA } = await import("../../src/components/toast-utils-core.js");
+
+    try {
+      // 1. Explicit id: 0 is preserved as key "0" rather than treated as falsy
+      const handleZero = await createToast({ id: 0, message: "ID Zero Toast" });
+      await new Promise((r) => setTimeout(r, 40));
+      assert.strictEqual(handleZero.id, "0");
+      await handleZero.dismiss();
+
+      // 2. Canonical position alias mapping
+      assert.strictEqual(normalizePositionKey("center-top"), "top-center");
+      assert.strictEqual(normalizePositionKey("center-bottom"), "bottom-center");
+      assert.strictEqual(normalizePositionKey("center-left"), "left-center");
+      assert.strictEqual(normalizePositionKey("center-right"), "right-center");
+      assert.strictEqual(normalizePositionKey("top"), "top-center");
+      assert.strictEqual(normalizePositionKey("bottom"), "bottom-center");
+
+      // 3. CSS Color 4 grad (gradian) angle parsing in HSL
+      // 400grad = 360deg = 0deg = Red (#ff0000)
+      const gradRed = getDynamicAccessibleTextColorHex("hsl(400grad, 100%, 50%)");
+      const hexRed = getDynamicAccessibleTextColorHex("#ff0000");
+      assert.strictEqual(gradRed, hexRed);
+
+      // 4. Global config.icon controls default icon generation
+      setConfig({ icon: false });
+      const noIcon = createToastIcon({ type: "success" });
+      assert.strictEqual(noIcon, null, "Global icon: false must suppress default type icon");
+
+      setConfig({ icon: true });
+      const withIcon = createToastIcon({ type: "success" });
+      assert.ok(withIcon, "Global icon: true must render default type icon");
+
+      // 5. 3-digit hex colors in CTA border computation
+      const dummyToast = document.createElement("div");
+      createCTA(dummyToast, {
+        cta: { label: "Click", textColor: "#fff" },
+      });
+      const ctaBtn = dummyToast.querySelector(".toast-cta");
+      assert.ok(ctaBtn);
+      assert.match(ctaBtn.style.border, /rgba\(255,\s*255,\s*255,\s*0\.26[67]\)|#ffffff44/);
+
+      // 6. Indeterminate progress bar update via handle.update
+      const progressToast = await createToast({ message: "Task starting...", progress: 0, showProgressBar: true });
+      await new Promise((r) => setTimeout(r, 40));
+      await updateToastByKey(progressToast.id, { progress: "indeterminate" });
+      const pBar = document.querySelector(".toast-progress-bar");
+      assert.ok(pBar);
+      assert.ok(pBar.classList.contains("toast-progress-bar-indeterminate"));
+
+      // Transition back to percentage progress
+      await updateToastByKey(progressToast.id, { progress: 85 });
+      assert.ok(!pBar.classList.contains("toast-progress-bar-indeterminate"));
+      assert.strictEqual(pBar.style.width, "85%");
+      await progressToast.dismiss();
+    } finally {
+      resetConfig();
+      resetToastManager();
+    }
+  });
+
+  test("Deep audit: toastPromise object loading config respects showLoader: false", async () => {
+    freshDom();
+    const { toastPromise, resetToastManager } = await import("../../src/index.js");
+
+    try {
+      let loadingToastEl = null;
+      const testPromise = new Promise((resolve) => setTimeout(() => resolve("done"), 100));
+
+      const promiseRun = toastPromise(
+        testPromise,
+        {
+          loading: { message: "Fetching without loader..." },
+          success: "Complete!",
+        },
+        { showLoader: false },
+      );
+
+      await new Promise((r) => setTimeout(r, 40));
+      loadingToastEl = document.querySelector(".toast");
+      assert.ok(loadingToastEl);
+      const loader = loadingToastEl.querySelector(".toast-loader");
+      assert.strictEqual(loader, null, "showLoader: false in options must be respected when loading is an object");
+
+      await promiseRun;
+    } finally {
+      resetToastManager();
+    }
+  });
 });
+
+describe("Full Codebase Integrity — Version sync, Release assets, Type safety, and CDN fallbacks", () => {
+  test("Version synchronization: package.json version matches docs, README, and bug report template", () => {
+    const pkg = JSON.parse(fs.readFileSync(path.join(__dirname, "../../package.json"), "utf8"));
+    const version = pkg.version;
+
+    // 1. src/index.js
+    const indexContent = fs.readFileSync(path.join(__dirname, "../../src/index.js"), "utf8");
+    assert.match(indexContent, new RegExp(`"${version}"`));
+
+    // 2. README.md
+    const readmeContent = fs.readFileSync(path.join(__dirname, "../../README.md"), "utf8");
+    assert.match(readmeContent, new RegExp(`customizable-toast-notification@${version}`));
+
+    // 3. docs/index.html
+    const docsContent = fs.readFileSync(path.join(__dirname, "../../docs/index.html"), "utf8");
+    assert.match(docsContent, new RegExp(`id="versionBadge">v${version}</span>`));
+    assert.match(docsContent, /customizable-toast-notification@(latest|\d+\.\d+\.\d+)/);
+
+    // 4. .github/ISSUE_TEMPLATE/bug_report.yml
+    const bugReport = fs.readFileSync(path.join(__dirname, "../../.github/ISSUE_TEMPLATE/bug_report.yml"), "utf8");
+    assert.match(bugReport, new RegExp(`placeholder:\\s*"${version}"`));
+  });
+
+  test("Release assets: .releaserc.json includes all synced documentation and template files", () => {
+    const releaserc = JSON.parse(fs.readFileSync(path.join(__dirname, "../../.releaserc.json"), "utf8"));
+    const gitPlugin = releaserc.plugins.find((p) => Array.isArray(p) && p[0] === "@semantic-release/git");
+    assert.ok(gitPlugin, "@semantic-release/git plugin must be defined");
+    const assets = gitPlugin[1].assets;
+
+    assert.ok(assets.includes("README.md"), "README.md must be committed on release");
+    assert.ok(assets.includes("docs/index.html"), "docs/index.html must be committed on release");
+    assert.ok(assets.includes(".github/ISSUE_TEMPLATE/bug_report.yml"), "bug_report.yml must be committed on release");
+    assert.ok(assets.includes("src/index.js"), "src/index.js must be committed on release");
+    assert.ok(assets.includes("package.json"), "package.json must be committed on release");
+  });
+
+  test("Strict type-safety: React and Vue examples do not use 'any' in dismiss signature", () => {
+    const reactTypes = fs.readFileSync(path.join(__dirname, "../../examples/react/useToast.d.ts"), "utf8");
+    const vueTypes = fs.readFileSync(path.join(__dirname, "../../examples/vue/useToast.d.ts"), "utf8");
+
+    assert.doesNotMatch(reactTypes, /dismiss:\s*\(target\?:\s*any\)/, "React useToast must not use 'any'");
+    assert.doesNotMatch(vueTypes, /dismiss:\s*\(target\?:\s*any\)/, "Vue useToast must not use 'any'");
+  });
+
+  test("Strict type-safety: AI triage example does not use bare 'object' type", () => {
+    const aiTypes = fs.readFileSync(path.join(__dirname, "../../examples/ai-triage/smart-triage.d.ts"), "utf8");
+    assert.doesNotMatch(aiTypes, /event:\s*(?:string\s*\|\s*)?object\b/, "smart-triage.d.ts must not use bare 'object'");
+  });
+
+  test("Playground resilience: docs/index.html includes CSS fallback attribute", () => {
+    const docsContent = fs.readFileSync(path.join(__dirname, "../../docs/index.html"), "utf8");
+    assert.match(docsContent, /<link rel="stylesheet"[^>]+onerror="this\.onerror=null;this\.href=/);
+  });
+
+  test("ESLint config: glob pattern contains slash between directory and wildcard", () => {
+    const eslintContent = fs.readFileSync(path.join(__dirname, "../../eslint.config.mjs"), "utf8");
+    assert.match(eslintContent, /"src\/\*\*\/\*\.\{js,mjs,cjs\}"/);
+  });
+
+  test("Next.js 15 Server Actions: action-toast-adapter.d.ts adheres to strict types without any or object", () => {
+    const adapterTypes = fs.readFileSync(path.join(__dirname, "../../examples/nextjs-server-actions/action-toast-adapter.d.ts"), "utf8");
+    assert.doesNotMatch(adapterTypes, /\bany\b/, "action-toast-adapter.d.ts must not use 'any'");
+    assert.doesNotMatch(adapterTypes, /\bobject\b/, "action-toast-adapter.d.ts must not use bare 'object'");
+  });
+
+  test("Next.js 15 Server Actions: executeServerAction handles success, error, and error parsing", async () => {
+    freshDom();
+    const { executeServerAction, parseServerActionError } = await import("../../examples/nextjs-server-actions/action-toast-adapter.js");
+
+    assert.strictEqual(parseServerActionError("String error"), "String error");
+    assert.strictEqual(parseServerActionError(new Error("Error instance")), "Error instance");
+    assert.strictEqual(parseServerActionError({ error: "Prop error" }), "Prop error");
+    assert.strictEqual(parseServerActionError(null), "Server action failed. Please check your network connection.");
+
+    // Test success flow
+    const sampleAction = async (payload) => ({ success: true, data: { userId: payload.id, username: "dev" } });
+    const result = await executeServerAction(sampleAction, { id: 101 }, {
+      loadingMessage: "Saving...",
+      successMessage: (data) => `User ${data.username} saved!`,
+      successDuration: 2000,
+    });
+    assert.deepStrictEqual(result, { userId: 101, username: "dev" });
+
+    // Test failure flow
+    const failingAction = async () => ({ success: false, error: "Database offline" });
+    await assert.rejects(
+      async () => {
+        await executeServerAction(failingAction, {}, { enableRetry: true });
+      },
+      /Database offline/
+    );
+  });
+});
+
+describe("toast-utils-core.js & ToastManager.js — Exhaustive Progress Bar Fixes & Hardening", { concurrency: 1 }, () => {
+  test("FIXED: createToast.loading followed by handle.update({ progress }) mounts progress bar", async () => {
+    freshDom();
+    const { createToast, resetToastManager } = await import("../../src/index.js");
+    resetToastManager();
+
+    const position = "test-pb-loading-" + Date.now();
+    const handle = await createToast.loading("Uploading files...", { position });
+    await new Promise((r) => setTimeout(r, 60));
+    const container = document.getElementById(`toast-container-${position}`);
+    const toast = container?.querySelector(".toast");
+    assert.ok(toast);
+    assert.strictEqual(toast.querySelector(".toast-progress-bar"), null);
+
+    await handle.update({ progress: 40, message: "Uploading... 40%" });
+    await new Promise((r) => setTimeout(r, 60));
+    const bar = toast.querySelector(".toast-progress-bar");
+    assert.ok(bar, "Progress bar must be mounted upon update({ progress })");
+    assert.strictEqual(bar.style.width, "40%");
+    await handle.dismiss();
+    resetToastManager();
+  });
+
+  test("FIXED: hover pause/resume on toast with manual determinate progress preserves width", async () => {
+    freshDom();
+    const { createToast, resetToastManager } = await import("../../src/index.js");
+    resetToastManager();
+
+    const position = "test-pb-hover-" + Date.now();
+    const handle = await createToast({ message: "In progress", progress: 60, pauseOnHover: true, position });
+    await new Promise((r) => setTimeout(r, 60));
+    const container = document.getElementById(`toast-container-${position}`);
+    const toast = container?.querySelector(".toast");
+    assert.ok(toast);
+    const bar = toast.querySelector(".toast-progress-bar");
+    assert.ok(bar);
+    assert.strictEqual(bar.style.width, "60%");
+
+    const outerWrapper = toast.closest(".toast-outer-wrapper");
+    assert.ok(outerWrapper);
+
+    // Mock browser getComputedStyle returning pixel width
+    global.window.getComputedStyle = () => ({ width: "180px" });
+
+    // Trigger hover pause and resume
+    outerWrapper.dispatchEvent(new global.window.MouseEvent("mouseenter"));
+    assert.strictEqual(bar.style.width, "60%");
+
+    outerWrapper.dispatchEvent(new global.window.MouseEvent("mouseleave"));
+    assert.strictEqual(bar.style.width, "60%", "Manual progress width must NOT be wiped to 0% on hover resume");
+
+    await handle.dismiss();
+    resetToastManager();
+  });
+
+  test("FIXED: hover pause/resume on indeterminate toast toggles animationPlayState without wiping width", async () => {
+    freshDom();
+    const { createToast, resetToastManager } = await import("../../src/index.js");
+    resetToastManager();
+
+    const position = "test-pb-indet-" + Date.now();
+    const handle = await createToast({ message: "Processing...", progress: "indeterminate", pauseOnHover: true, position });
+    await new Promise((r) => setTimeout(r, 60));
+    const container = document.getElementById(`toast-container-${position}`);
+    const toast = container?.querySelector(".toast");
+    assert.ok(toast);
+    const bar = toast.querySelector(".toast-progress-bar");
+    assert.ok(bar);
+    assert.ok(bar.classList.contains("toast-progress-bar-indeterminate"));
+    const initialWidth = bar.style.width;
+    assert.ok(initialWidth && initialWidth !== "0%");
+
+    const outerWrapper = toast.closest(".toast-outer-wrapper");
+    global.window.getComputedStyle = () => ({ width: "180px" });
+
+    outerWrapper.dispatchEvent(new global.window.MouseEvent("mouseenter"));
+    assert.strictEqual(bar.style.animationPlayState, "paused");
+
+    outerWrapper.dispatchEvent(new global.window.MouseEvent("mouseleave"));
+    assert.strictEqual(bar.style.animationPlayState, "running");
+    assert.strictEqual(bar.style.width, initialWidth, "Indeterminate progress width must be preserved");
+
+    await handle.dismiss();
+    resetToastManager();
+  });
+
+  test("FIXED: string percentages like '75%' and '100%' parse accurately", async () => {
+    freshDom();
+    const { createToast, resetToastManager } = await import("../../src/index.js");
+    resetToastManager();
+
+    const position = "test-pb-str-" + Date.now();
+    const handle = await createToast({ message: "Upload", progress: "75%", position });
+    await new Promise((r) => setTimeout(r, 60));
+    const container = document.getElementById(`toast-container-${position}`);
+    const toast = container?.querySelector(".toast");
+    const bar = toast.querySelector(".toast-progress-bar");
+    assert.ok(bar);
+    assert.strictEqual(bar.style.width, "75%");
+
+    await handle.update({ progress: "100%" });
+    assert.strictEqual(bar.style.width, "100%");
+
+    await handle.dismiss();
+    resetToastManager();
+  });
+
+  test("FIXED: normalized streaming progress reaching completion (1.0) scales to 100% instead of 1%", async () => {
+    freshDom();
+    const { createToast, resetToastManager } = await import("../../src/index.js");
+    resetToastManager();
+
+    const position = "test-pb-norm-" + Date.now();
+    const handle = await createToast({ message: "Stream", progress: 0.99, position });
+    await new Promise((r) => setTimeout(r, 60));
+    const container = document.getElementById(`toast-container-${position}`);
+    const toast = container?.querySelector(".toast");
+    const bar = toast.querySelector(".toast-progress-bar");
+    assert.ok(bar);
+    assert.strictEqual(bar.style.width, "99%");
+
+    await handle.update({ progress: 1 });
+    assert.strictEqual(bar.style.width, "100%", "Stream completion at 1 / 1.0 must scale to 100%");
+
+    await handle.dismiss();
+    resetToastManager();
+  });
+
+  test("FIXED: handle.update({ showProgressBar: true }) dynamically mounts progress bar", async () => {
+    freshDom();
+    const { createToast, resetToastManager } = await import("../../src/index.js");
+    resetToastManager();
+
+    const position = "test-pb-toggle-" + Date.now();
+    const handle = await createToast({ message: "No bar initially", showProgressBar: false, position });
+    await new Promise((r) => setTimeout(r, 60));
+    const container = document.getElementById(`toast-container-${position}`);
+    const toast = container?.querySelector(".toast");
+    assert.strictEqual(toast.querySelector(".toast-progress-bar"), null);
+
+    await handle.update({ showProgressBar: true });
+    await new Promise((r) => setTimeout(r, 60));
+    const bar = toast.querySelector(".toast-progress-bar");
+    assert.ok(bar, "Progress bar should mount when updated with showProgressBar: true");
+
+    await handle.update({ showProgressBar: false });
+    assert.strictEqual(toast.querySelector(".toast-progress-bar"), null, "Progress bar should unmount when updated with showProgressBar: false");
+    assert.strictEqual(toast._progressBar, null, "toast._progressBar reference must be cleared");
+
+    await handle.dismiss();
+    resetToastManager();
+  });
+
+  test("FIXED: RTL progress bar positioning anchors right edge and sets left: auto", async () => {
+    freshDom();
+    const { createToast, resetToastManager } = await import("../../src/index.js");
+    resetToastManager();
+
+    const position = "test-pb-rtl-" + Date.now();
+    const handle = await createToast({ message: "مرحبا", fontDirection: "rtl", showProgressBar: true, position });
+    await new Promise((r) => setTimeout(r, 60));
+    const container = document.getElementById(`toast-container-${position}`);
+    const toast = container?.querySelector(".toast");
+    const bar = toast.querySelector(".toast-progress-bar");
+    assert.ok(bar);
+    assert.strictEqual(bar.style.left, "auto");
+    assert.strictEqual(bar.style.right, "8px");
+
+    await handle.dismiss();
+    resetToastManager();
+  });
+});
+
+
 
 

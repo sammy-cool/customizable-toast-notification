@@ -161,6 +161,12 @@ const ICON_SVGS = {
 export function createToastIcon(options = {}) {
   const safeOptions = options && typeof options === "object" && !Array.isArray(options) ? options : {};
   let iconOpt = safeOptions.icon;
+  if (iconOpt === undefined) {
+    const globalIcon = getConfig().icon;
+    if (globalIcon !== undefined) {
+      iconOpt = globalIcon;
+    }
+  }
   if (typeof iconOpt === "function") {
     try {
       iconOpt = iconOpt(safeOptions);
@@ -192,8 +198,14 @@ export function createToastIcon(options = {}) {
     });
   }
 
-  // 1. Custom DOM node provided (with cross-realm/iframe support)
-  if (iconOpt && (typeof iconOpt === "object" && (iconOpt.nodeType === 1 || (typeof HTMLElement !== "undefined" && iconOpt instanceof HTMLElement)))) {
+  // 1. Custom DOM node provided (with cross-realm/iframe/fragment support)
+  if (
+    iconOpt &&
+    typeof iconOpt === "object" &&
+    (iconOpt.nodeType === 1 ||
+      iconOpt.nodeType === 11 ||
+      (typeof HTMLElement !== "undefined" && iconOpt instanceof HTMLElement))
+  ) {
     if (typeof iconOpt.cloneNode === "function") {
       iconTag.appendChild(iconOpt.cloneNode(true));
       return iconTag;

@@ -17,7 +17,7 @@ export interface UseToastComposable {
     messages: ToastPromiseMessages,
     options?: Partial<ToastOptions>
   ) => Promise<T>;
-  dismiss: (target?: any) => Promise<void>;
+  dismiss: (target?: string | ToastHandle | HTMLElement | Promise<ToastHandle>) => Promise<void>;
   dismissAll: () => Promise<void>;
   resetStats: () => void;
   setConfig: (options?: Partial<ToastGlobalConfig>) => ToastGlobalConfig;

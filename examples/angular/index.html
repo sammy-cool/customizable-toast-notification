@@ -4,7 +4,7 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Angular Toast Service Demo</title>
-  <link rel="stylesheet" href="../../dist/index.css">
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/customizable-toast-notification@latest/dist/index.css" onerror="this.onerror=null;this.href='../../dist/index.css';">
   <style>
     body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; background: #0f172a; color: white; display: flex; justify-content: center; align-items: center; min-height: 100vh; margin: 0; }
     .card { background: #1e293b; border: 1px solid #334155; padding: 30px; border-radius: 12px; max-width: 480px; width: 100%; text-align: center; }
@@ -13,7 +13,8 @@
     .angular-btn { background: #dd0031; color: white; }
     .outline-btn { background: transparent; border: 1px solid #dd0031; color: #dd0031; }
   </style>
-  <script src="../../dist/index.umd.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/customizable-toast-notification@latest/dist/index.umd.js"></script>
+  <script>if (typeof window.customizableToast === "undefined") { document.write('<script src="../../dist/index.umd.js"><\/script>'); }</script>
 </head>
 <body>
   <div class="card">

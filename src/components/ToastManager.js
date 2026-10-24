@@ -8,7 +8,7 @@ import { setPosition } from "../utils/position.js";
 import { PausableTimer } from "../utils/PausableTimer.js";
 import { sanitizeHtml } from "../utils/html-sanitizer.js";
 import { playTone } from "../utils/audio.js";
-import { createProgressBar, createCTA, createUndoAction, createCloseButton, runToastAnimation } from "./toast-utils-core.js";
+import { createProgressBar, createCTA, createUndoAction, createCloseButton, runToastAnimation, parseProgressValue, ensureProgressIndeterminateStyles } from "./toast-utils-core.js";
 import { createLoader } from "./loader.js";
 import { createToastIcon } from "./icons.js";
 import { getConfig, shouldReduceMotion } from "../utils/config.js";
@@ -269,7 +269,7 @@ function hashString(str) {
 
 function makeKey(options = {}) {
   const safe = options && typeof options === "object" ? options : {};
-  if (safe.id) return String(safe.id);
+  if (safe.id !== undefined && safe.id !== null && safe.id !== "") return String(safe.id);
   const type = String(safe.type || "info").trim().toLowerCase();
   const messageHash = hashString(String(safe.message || "")).toString(16);
   const position = normalizePositionKey(safe.position || "bottom-right");
@@ -319,6 +319,17 @@ export async function showToast(options = {}) {
         const maxQ = getConfig().maxQueueSize ?? 100;
         if (maxQ <= 0) {
           droppedCount++;
+          emitMetrics();
+          return;
+        }
+
+        const existingQueued = queue.find((queuedItem) => queuedItem.key === key);
+        if (existingQueued) {
+          existingQueued.count += current.count;
+          if (typeof current.options?.priority === "number") {
+            existingQueued.options = { ...existingQueued.options, ...current.options };
+            existingQueued.priority = calculateToastPriority(existingQueued.options);
+          }
           emitMetrics();
           return;
         }
@@ -628,10 +639,16 @@ async function setupPauseOnHover(data) {
       } catch {}
     } else if (toast?._progressBar) {
       try {
-        const computedWidth = window.getComputedStyle(toast._progressBar).width;
-        toast._progressBar._pausedWidth = computedWidth;
-        toast._progressBar.style.transition = "none";
-        toast._progressBar.style.width = computedWidth;
+        if (toast._progressBar._isIndeterminate) {
+          toast._progressBar.style.animationPlayState = "paused";
+        } else if (toast._progressBar._isManualProgress) {
+          // Manual determinate progress: do NOT pause or overwrite manual width
+        } else {
+          const computedWidth = window.getComputedStyle(toast._progressBar).width;
+          toast._progressBar._pausedWidth = computedWidth;
+          toast._progressBar.style.transition = "none";
+          toast._progressBar.style.width = computedWidth;
+        }
       } catch {}
     }
   };
@@ -641,14 +658,20 @@ async function setupPauseOnHover(data) {
       try {
         toast._progressAnimation.play();
       } catch {}
-    } else if (toast?._progressBar && toast._progressBar._pausedWidth) {
+    } else if (toast?._progressBar) {
       try {
-        const remainingMs = timer.getRemainingTime?.() ?? 1000;
-        const isReverse = toast._progressBar._isReverse;
-        const finalWidth = toast._progressBar._finalWidth || "100%";
-        toast._progressBar.style.transition = `width ${Math.max(0, remainingMs)}ms linear`;
-        toast._progressBar.style.width = isReverse ? finalWidth : "0%";
-        toast._progressBar._pausedWidth = null;
+        if (toast._progressBar._isIndeterminate) {
+          toast._progressBar.style.animationPlayState = "running";
+        } else if (toast._progressBar._isManualProgress) {
+          // Manual determinate progress: preserve current manual width
+        } else if (toast._progressBar._pausedWidth) {
+          const remainingMs = timer.getRemainingTime?.() ?? 1000;
+          const isReverse = toast._progressBar._isReverse;
+          const finalWidth = toast._progressBar._finalWidth || "100%";
+          toast._progressBar.style.transition = `width ${Math.max(0, remainingMs)}ms linear`;
+          toast._progressBar.style.width = isReverse ? finalWidth : "0%";
+          toast._progressBar._pausedWidth = null;
+        }
       } catch {}
     }
   };
@@ -903,6 +926,11 @@ async function removeWithTransition(el, targetEl, animationDurationMs = 400) {
       removeElement(el);
       resolve();
     };
+
+    if (shouldReduceMotion() || animationDurationMs <= 0) {
+      finish();
+      return;
+    }
 
     const onEnd = (e) => {
       try {
@@ -1219,55 +1247,86 @@ export async function updateToastByKey(key, newOptions = {}) {
       toast.classList.add(...newOptions.className.trim().split(/\s+/));
     }
   }
-  if (newOptions.progress !== undefined) {
-    let pct = Number(newOptions.progress);
-    if (!Number.isFinite(pct)) pct = 0;
-    if (pct < 1 && pct > 0) pct = pct * 100;
-    pct = Math.min(100, Math.max(0, pct));
+  // 4. Progress bar updates
+  let progressBar = toast.querySelector(".toast-progress-bar");
 
-    let progressBar = toast.querySelector(".toast-progress-bar");
-    if (
-      !progressBar &&
-      (newOptions.showProgressBar || data.options.showProgressBar)
-    ) {
-      createProgressBar(toast, { ...data.options, ...newOptions });
-      progressBar = toast.querySelector(".toast-progress-bar");
+  if (newOptions.showProgressBar === false) {
+    if (toast._progressAnimation) {
+      try {
+        toast._progressAnimation.cancel();
+      } catch {}
+      toast._progressAnimation = null;
     }
     if (progressBar) {
-      if (toast._progressAnimation) {
-        try {
-          toast._progressAnimation.cancel();
-        } catch {}
-        toast._progressAnimation = null;
+      progressBar.remove();
+    }
+    toast._progressBar = null;
+    progressBar = null;
+  } else if (
+    !progressBar &&
+    newOptions.showProgressBar !== false &&
+    (newOptions.progress !== undefined || newOptions.showProgressBar === true)
+  ) {
+    createProgressBar(toast, {
+      ...data.options,
+      ...newOptions,
+      showProgressBar: true,
+    });
+    progressBar = toast.querySelector(".toast-progress-bar");
+  }
+
+  if (progressBar) {
+    if (newOptions.progress !== undefined) {
+      if (newOptions.progress === "indeterminate") {
+        progressBar._isIndeterminate = true;
+        progressBar._isManualProgress = false;
+        if (toast._progressAnimation) {
+          try {
+            toast._progressAnimation.cancel();
+          } catch {}
+          toast._progressAnimation = null;
+        }
+        progressBar.classList.add("toast-progress-bar-indeterminate");
+        const isRtl = progressBar._isRtl || newOptions.fontDirection === "rtl" || newOptions.progressDirection === "rtl";
+        if (isRtl) {
+          progressBar.classList.add("toast-progress-bar-indeterminate-rtl");
+        }
+        if (!getConfig().disableInlineStyles) {
+          ensureProgressIndeterminateStyles();
+          const animName = isRtl ? "toast-progress-indeterminate-rtl" : "toast-progress-indeterminate";
+          progressBar.style.animation = `${animName} 1.6s cubic-bezier(0.4, 0, 0.2, 1) infinite`;
+        }
+        progressBar.style.width = progressBar._finalWidth || "100%";
+      } else {
+        const pct = parseProgressValue(newOptions.progress, toast, { ...data.options, ...newOptions });
+        progressBar._isIndeterminate = false;
+        progressBar._isManualProgress = true;
+        progressBar.classList.remove("toast-progress-bar-indeterminate");
+        progressBar.classList.remove("toast-progress-bar-indeterminate-rtl");
+        progressBar.style.animation = "none";
+        if (toast._progressAnimation) {
+          try {
+            toast._progressAnimation.cancel();
+          } catch {}
+          toast._progressAnimation = null;
+        }
+        progressBar.style.transition = "width 200ms ease";
+        progressBar.style.width = `${pct}%`;
       }
-      progressBar.style.transition = "width 200ms ease";
-      progressBar.style.width = `${pct}%`;
     }
-  } else if (newOptions.showProgressBar === false) {
-    const bar = toast.querySelector(".toast-progress-bar");
-    if (bar) bar.remove();
-  }
 
-  if (newOptions.progressBarColor || newOptions.progressColor) {
-    const bar = toast.querySelector(".toast-progress-bar");
-    if (bar) {
-      bar.style.background = newOptions.progressBarColor || newOptions.progressColor;
+    if (newOptions.progressBarColor || newOptions.progressColor) {
+      progressBar.style.background = newOptions.progressBarColor || newOptions.progressColor;
     }
-  }
 
-  if (newOptions.progressPosition) {
-    const bar = toast.querySelector(".toast-progress-bar");
-    if (bar) {
-      bar.style.top = newOptions.progressPosition === "top" ? "0" : "auto";
-      bar.style.bottom = newOptions.progressPosition === "bottom" ? "0" : "auto";
+    if (newOptions.progressPosition) {
+      progressBar.style.top = newOptions.progressPosition === "top" ? "0" : "auto";
+      progressBar.style.bottom = newOptions.progressPosition === "bottom" ? "0" : "auto";
     }
-  }
 
-  if (newOptions.progressHeight !== undefined) {
-    const bar = toast.querySelector(".toast-progress-bar");
-    if (bar) {
+    if (newOptions.progressHeight !== undefined) {
       const ph = typeof newOptions.progressHeight === "number" ? `${newOptions.progressHeight}px` : newOptions.progressHeight;
-      bar.style.height = ph;
+      progressBar.style.height = ph;
     }
   }
 
@@ -1283,8 +1342,39 @@ export async function updateToastByKey(key, newOptions = {}) {
     if (Number.isFinite(raw) && raw > 0) {
       data.timer = createDismissTimer(toast, { duration: raw });
       await setupPauseOnHover(data);
+      if (progressBar && !progressBar._isManualProgress && !progressBar._isIndeterminate) {
+        const newDuration = raw + 5;
+        if (toast._progressAnimation) {
+          try {
+            toast._progressAnimation.cancel();
+          } catch {}
+          const isReverse = progressBar._isReverse;
+          const finalWidth = progressBar._finalWidth || "100%";
+          const keyframes = isReverse
+            ? [{ width: "0%" }, { width: finalWidth }]
+            : [{ width: finalWidth }, { width: "0%" }];
+          toast._progressAnimation = progressBar.animate(keyframes, {
+            duration: newDuration,
+            easing: "linear",
+            fill: "forwards",
+            delay: 0,
+          });
+        } else {
+          progressBar.style.transition = `width ${newDuration}ms linear`;
+          const isReverse = progressBar._isReverse;
+          const finalWidth = progressBar._finalWidth || "100%";
+          progressBar.style.width = isReverse ? finalWidth : "0%";
+        }
+      }
     } else {
       data.timer = null;
+      if (progressBar && !progressBar._isManualProgress && !progressBar._isIndeterminate) {
+        if (toast._progressAnimation) {
+          try { toast._progressAnimation.cancel(); } catch {}
+          toast._progressAnimation = null;
+        }
+        progressBar.style.width = "0%";
+      }
     }
   } else if (
     (data.options.duration === 0 || !data.timer) &&
@@ -1295,6 +1385,7 @@ export async function updateToastByKey(key, newOptions = {}) {
   ) {
     // If it was a persistent loading toast (duration: 0) and transitioned to a resolved state
     // without an explicit duration, start a standard auto-dismiss timer so it doesn't stay permanently stuck on screen.
+    data.options.duration = 2500;
     data.timer?.clear();
     data.timer = createDismissTimer(toast, { duration: 2500 });
     await setupPauseOnHover(data);
