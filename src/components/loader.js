@@ -2,10 +2,12 @@
 import { getConfig, shouldReduceMotion } from "../utils/config.js";
 
 export function createLoader(opts = {}) {
+  if (typeof document === "undefined") return null;
   const safeOpts = opts && typeof opts === "object" && !Array.isArray(opts) ? opts : {};
   const rawSize = Number(safeOpts.size);
   const size = Number.isFinite(rawSize) && rawSize > 0 ? rawSize : 14;
-  const color = typeof safeOpts.color === "string" && safeOpts.color.trim() ? safeOpts.color.trim() : "currentColor";
+  const rawColor = typeof safeOpts.color === "string" && safeOpts.color.trim() ? safeOpts.color.trim() : "currentColor";
+  const color = (/[\r\n<>"';]/.test(rawColor) || /^\s*javascript:/i.test(rawColor)) ? "currentColor" : rawColor;
   const labelText = typeof safeOpts.text === "string" ? safeOpts.text : "";
   const wrapper = document.createElement("span");
   wrapper.className = "toast-loader";
@@ -58,11 +60,15 @@ export function createLoader(opts = {}) {
   }
 
   if (!config.disableInlineStyles && typeof document !== "undefined" && !document.getElementById("toast-spinner-styles")) {
-    const st = document.createElement("style");
-    st.id = "toast-spinner-styles";
-    st.textContent = `@keyframes toast-spinner { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }`;
-    const target = document.head || document.documentElement;
-    if (target) target.appendChild(st);
+    try {
+      const st = document.createElement("style");
+      st.id = "toast-spinner-styles";
+      st.textContent = `@keyframes toast-spinner { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }`;
+      const target = document.head || document.documentElement;
+      if (target) target.appendChild(st);
+    } catch {
+      // In strict CSP environments where style element appending is blocked
+    }
   }
 
   return wrapper;

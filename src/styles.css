@@ -503,6 +503,11 @@
   margin-left: 10px;
   font-weight: bold;
   cursor: pointer;
+  background: transparent;
+  border: none;
+  color: inherit;
+  padding: 0;
+  font: inherit;
 }
 
 /* ========== ANIMATIONS ========== */

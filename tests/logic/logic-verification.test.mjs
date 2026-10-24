@@ -3946,6 +3946,46 @@ describe("Audit hardening — sanitizer, priority queues, and immutable options"
     assert.equal(container.style.maxWidth, "100vw");
   });
 
+  test("icons, loader, emergency toast, and priority scoring edge-case hardening", async () => {
+    freshDom();
+    const { createToastIcon } = await import("../../src/components/icons.js");
+    const { createLoader } = await import("../../src/components/loader.js");
+    const { createEmergencyToast } = await import("../../src/components/toast-utils.js");
+    const { calculateToastPriority } = await import("../../src/utils/ai-scorer.js");
+
+    // 1. createToastIcon handles null and non-objects gracefully
+    assert.strictEqual(createToastIcon(null), null);
+    assert.strictEqual(createToastIcon(undefined), null);
+
+    // 2. createToastIcon sanitizes unsafe external SVG <use> tags
+    const svgWithExtUse = `<svg width="18" height="18"><use href="https://malicious.com/evil.svg#icon"></use></svg>`;
+    const iconEl = createToastIcon({ icon: svgWithExtUse });
+    assert.ok(iconEl);
+    const useEl = iconEl.querySelector("use");
+    assert.ok(useEl);
+    assert.strictEqual(useEl.getAttribute("href"), null, "External use href must be stripped");
+
+    // 3. createLoader sanitizes color strings with control/injection characters
+    const loader = createLoader({ color: "red; background: url(javascript:alert(1))" });
+    assert.ok(loader);
+    const circle = loader.querySelector("circle");
+    assert.strictEqual(circle.getAttribute("stroke"), "currentColor", "Unsafe stroke color must fallback to currentColor");
+
+    // 4. createEmergencyToast renders semantic <button type='button'> for keyboard a11y
+    const emergency = await createEmergencyToast({ message: "Emergency alert" }, () => {});
+    assert.ok(emergency);
+    const closeBtn = emergency.querySelector(".toast-emergency-close");
+    assert.ok(closeBtn);
+    assert.strictEqual(closeBtn.tagName.toLowerCase(), "button");
+    assert.strictEqual(closeBtn.getAttribute("type"), "button");
+    emergency.remove();
+
+    // 5. calculateToastPriority grants maximum duration score to persistent manual alerts (duration: 0)
+    const priorityZero = calculateToastPriority({ type: "info", message: "Manual alert", duration: 0 });
+    const priorityInf = calculateToastPriority({ type: "info", message: "Manual alert", duration: Infinity });
+    assert.strictEqual(priorityZero.breakdown.duration, 30);
+    assert.strictEqual(priorityZero.score, priorityInf.score);
+  });
 });
 
 

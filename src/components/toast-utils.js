@@ -339,17 +339,21 @@ export async function createEmergencyToast(options = {}, onClose) {
     }
     innerWrapper.appendChild(msgEl);
 
-    const closeSpan = document.createElement("span");
+    const closeSpan = document.createElement("button");
+    closeSpan.type = "button";
     closeSpan.className = "toast-emergency-close";
-    closeSpan.setAttribute("role", "button");
     closeSpan.setAttribute("aria-label", "Close emergency notification");
-    closeSpan.tabIndex = 0;
     if (!config.disableInlineStyles) {
       Object.assign(closeSpan.style, {
         float: "right",
         marginLeft: "10px",
         fontWeight: "bold",
         cursor: "pointer",
+        background: "transparent",
+        border: "none",
+        color: "inherit",
+        padding: "0",
+        font: "inherit",
       });
     }
     closeSpan.textContent = "×";

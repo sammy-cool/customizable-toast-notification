@@ -309,7 +309,7 @@ export function createGestureDetector(element, options = {}) {
 
   return {
     attach() {
-      if (!element) return;
+      if (!element || typeof element.addEventListener !== "function") return;
       element.addEventListener('touchstart', handlers.onTouchStart, { passive: true });
       element.addEventListener('touchmove', handlers.onTouchMove, { passive: true });
       element.addEventListener('touchend', handlers.onTouchEnd, { passive: true });
@@ -317,7 +317,7 @@ export function createGestureDetector(element, options = {}) {
     },
 
     detach() {
-      if (!element) return;
+      if (!element || typeof element.removeEventListener !== "function") return;
       element.removeEventListener('touchstart', handlers.onTouchStart);
       element.removeEventListener('touchmove', handlers.onTouchMove);
       element.removeEventListener('touchend', handlers.onTouchEnd);

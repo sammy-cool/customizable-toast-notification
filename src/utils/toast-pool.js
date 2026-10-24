@@ -37,6 +37,17 @@ class ToastElementPool {
    * @returns {HTMLElement}
    */
   _createToastElement() {
+    if (typeof document === "undefined") {
+      return {
+        className: "toast",
+        setAttribute() {},
+        removeAttribute() {},
+        appendChild() {},
+        removeChild() {},
+        style: {},
+        childNodes: [],
+      };
+    }
     const div = document.createElement('div');
     div.className = 'toast';
     div.setAttribute('role', 'alert');

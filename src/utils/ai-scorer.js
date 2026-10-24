@@ -119,7 +119,7 @@ export function calculateToastPriority(context) {
   score += breakdown.urgency;
 
   // Factor 3: Duration (shorter or persistent manual = higher priority)
-  if (duration === Infinity) {
+  if (duration === Infinity || duration === 0) {
     breakdown.duration = 30; // Maximum priority for persistent alerts
     score += 15;
   } else if (typeof duration === 'number' && Number.isFinite(duration) && duration > 0) {
