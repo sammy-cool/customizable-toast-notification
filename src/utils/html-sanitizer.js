@@ -72,7 +72,7 @@ export function hasDOMPurify() {
       window.DOMPurify &&
       typeof window.DOMPurify.sanitize === "function"
     );
-  } catch (e) {}
+  } catch { /* ignore */ }
   return false;
 }
 

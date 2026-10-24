@@ -14,7 +14,7 @@
       href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500;600&display=swap"
       rel="stylesheet"
     />
-    <link rel="stylesheet" href="../dist/index.css" />
+    <link rel="stylesheet" href="../dist/index.css" onerror="this.onerror=null;this.href='https://cdn.jsdelivr.net/npm/customizable-toast-notification@latest/dist/index.css';" />
 
     <style>
       :root {
@@ -797,7 +797,7 @@
           <div class="brand-logo">T</div>
           <div class="brand-title">
             customizable-toast
-            <span class="brand-badge" id="versionBadge">v3.17.0</span>
+            <span class="brand-badge" id="versionBadge">v3.18.2</span>
           </div>
         </a>
         <div class="nav-actions">
@@ -1768,8 +1768,8 @@ createToast({
           } else if (activeCodeLang === "cdn") {
             codeFilename.textContent = "index.html";
             snippet = '<!-- 1. Include CSS and UMD JS -->\n' +
-              '<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/customizable-toast-notification@3.17.0/dist/index.css" />\n' +
-              '<script src="https://cdn.jsdelivr.net/npm/customizable-toast-notification@3.17.0/dist/index.umd.js"><\/script>\n\n' +
+              '<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/customizable-toast-notification@3.18.2/dist/index.css" />\n' +
+              '<script src="https://cdn.jsdelivr.net/npm/customizable-toast-notification@3.18.2/dist/index.umd.js"><\/script>\n\n' +
               '<script>\n  customizableToast.createToast(' + JSON.stringify(opts, null, 2) + ');\n<\/script>';
           }
 

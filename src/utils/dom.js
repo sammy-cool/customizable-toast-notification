@@ -333,7 +333,7 @@ export function getDynamicAccessibleTextColorHex(toastBg) {
             .getPropertyValue(propName)
             .trim();
         }
-      } catch (e) {}
+      } catch { /* ignore */ }
 
       if (resolved) {
         current = resolved;

@@ -1,8 +1,13 @@
 import { test, describe, beforeEach } from "node:test";
 import assert from "node:assert/strict";
+import fs from "node:fs";
+import path from "node:path";
+import { fileURLToPath } from "node:url";
 import { JSDOM } from "jsdom";
 import { resetToastManager } from "../../src/components/ToastManager.js";
 import { resetContainerRegistry } from "../../src/utils/containerRegistry.js";
+
+const __dirname = path.dirname(fileURLToPath(import.meta.url));
 
 function freshDom() {
   resetToastManager();
@@ -4083,5 +4088,66 @@ describe("Audit hardening — sanitizer, priority queues, and immutable options"
     }
   });
 });
+
+describe("Full Codebase Integrity — Version sync, Release assets, Type safety, and CDN fallbacks", () => {
+  test("Version synchronization: package.json version matches docs, README, and bug report template", () => {
+    const pkg = JSON.parse(fs.readFileSync(path.join(__dirname, "../../package.json"), "utf8"));
+    const version = pkg.version;
+
+    // 1. src/index.js
+    const indexContent = fs.readFileSync(path.join(__dirname, "../../src/index.js"), "utf8");
+    assert.match(indexContent, new RegExp(`"${version}"`));
+
+    // 2. README.md
+    const readmeContent = fs.readFileSync(path.join(__dirname, "../../README.md"), "utf8");
+    assert.match(readmeContent, new RegExp(`customizable-toast-notification@${version}`));
+
+    // 3. docs/index.html
+    const docsContent = fs.readFileSync(path.join(__dirname, "../../docs/index.html"), "utf8");
+    assert.match(docsContent, new RegExp(`id="versionBadge">v${version}</span>`));
+    assert.match(docsContent, new RegExp(`customizable-toast-notification@${version}`));
+
+    // 4. .github/ISSUE_TEMPLATE/bug_report.yml
+    const bugReport = fs.readFileSync(path.join(__dirname, "../../.github/ISSUE_TEMPLATE/bug_report.yml"), "utf8");
+    assert.match(bugReport, new RegExp(`placeholder:\\s*"${version}"`));
+  });
+
+  test("Release assets: .releaserc.json includes all synced documentation and template files", () => {
+    const releaserc = JSON.parse(fs.readFileSync(path.join(__dirname, "../../.releaserc.json"), "utf8"));
+    const gitPlugin = releaserc.plugins.find((p) => Array.isArray(p) && p[0] === "@semantic-release/git");
+    assert.ok(gitPlugin, "@semantic-release/git plugin must be defined");
+    const assets = gitPlugin[1].assets;
+
+    assert.ok(assets.includes("README.md"), "README.md must be committed on release");
+    assert.ok(assets.includes("docs/index.html"), "docs/index.html must be committed on release");
+    assert.ok(assets.includes(".github/ISSUE_TEMPLATE/bug_report.yml"), "bug_report.yml must be committed on release");
+    assert.ok(assets.includes("src/index.js"), "src/index.js must be committed on release");
+    assert.ok(assets.includes("package.json"), "package.json must be committed on release");
+  });
+
+  test("Strict type-safety: React and Vue examples do not use 'any' in dismiss signature", () => {
+    const reactTypes = fs.readFileSync(path.join(__dirname, "../../examples/react/useToast.d.ts"), "utf8");
+    const vueTypes = fs.readFileSync(path.join(__dirname, "../../examples/vue/useToast.d.ts"), "utf8");
+
+    assert.doesNotMatch(reactTypes, /dismiss:\s*\(target\?:\s*any\)/, "React useToast must not use 'any'");
+    assert.doesNotMatch(vueTypes, /dismiss:\s*\(target\?:\s*any\)/, "Vue useToast must not use 'any'");
+  });
+
+  test("Strict type-safety: AI triage example does not use bare 'object' type", () => {
+    const aiTypes = fs.readFileSync(path.join(__dirname, "../../examples/ai-triage/smart-triage.d.ts"), "utf8");
+    assert.doesNotMatch(aiTypes, /event:\s*(?:string\s*\|\s*)?object\b/, "smart-triage.d.ts must not use bare 'object'");
+  });
+
+  test("Playground resilience: docs/index.html includes CSS fallback attribute", () => {
+    const docsContent = fs.readFileSync(path.join(__dirname, "../../docs/index.html"), "utf8");
+    assert.match(docsContent, /<link rel="stylesheet"[^>]+onerror="this\.onerror=null;this\.href=/);
+  });
+
+  test("ESLint config: glob pattern contains slash between directory and wildcard", () => {
+    const eslintContent = fs.readFileSync(path.join(__dirname, "../../eslint.config.mjs"), "utf8");
+    assert.match(eslintContent, /"src\/\*\*\/\*\.\{js,mjs,cjs\}"/);
+  });
+});
+
 
 

@@ -233,7 +233,7 @@ export function shouldDismissOnSwipe(swipe, velocityThreshold = 0.3, distanceThr
  * @param {number} [containerWidth=400] - Width of container in pixels
  * @returns {SnapBackResult} - Animation { targetOffset, duration, easing }
  */
-export function calculateSnapBack(currentOffset, containerWidth = 400) {
+export function calculateSnapBack(currentOffset, _containerWidth = 400) {
   const targetOffset = 0;
   const distance = Math.abs(currentOffset - targetOffset);
 
@@ -280,7 +280,7 @@ export function createGestureDetector(element, options = {}) {
       gestureState = updateGestureState(gestureState, e);
     },
 
-    onTouchEnd: (e) => {
+    onTouchEnd: (_e) => {
       if (!isTracking || !gestureState) return;
       isTracking = false;
 

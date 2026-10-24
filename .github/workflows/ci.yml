@@ -27,7 +27,7 @@ jobs:
     # docker step) means every later step — build, tests, everything —
     # runs in that same known-good environment.
     #
-    # IMPORTANT: the version tag (v1.57.0) MUST match the @playwright/test
+    # IMPORTANT: the version tag (v1.63.0) MUST match the @playwright/test
     # version actually resolved in your package-lock.json. Microsoft's own
     # docs are explicit about this: a mismatched image/package version
     # means Playwright can't find the browser executables it expects.

@@ -16,7 +16,7 @@
  * Deterministic offline rule-based triage classifier.
  * Evaluates event text and metadata to produce a typed notification plan.
  *
- * @param {string | object} event
+ * @param {import('./smart-triage').EventInput} event
  * @returns {import('./smart-triage').SmartToastPlan}
  */
 export function classifyEventDeterministic(event) {
@@ -98,8 +98,8 @@ export function classifyEventDeterministic(event) {
  * Intelligent Triage function that executes TypeSafe AI System One models
  * with automatic deterministic offline fallback.
  *
- * @param {string | object} event
- * @param {{ apiKey?: string, customFallback?: (event: any) => import('./smart-triage').SmartToastPlan }} [options]
+ * @param {import('./smart-triage').EventInput} event
+ * @param {{ apiKey?: string, customFallback?: (event: import('./smart-triage').EventInput) => import('./smart-triage').SmartToastPlan }} [options]
  * @returns {Promise<import('./smart-triage').SmartToastPlan>}
  */
 export async function triageNotification(event, options = {}) {

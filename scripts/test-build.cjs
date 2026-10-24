@@ -2,6 +2,7 @@
 const fs = require("fs");
 const path = require("path");
 const vm = require("vm");
+const zlib = require("zlib");
 
 const distDir = path.join(__dirname, "..", "dist");
 
@@ -120,6 +121,14 @@ try {
 
     console.log("✅ UMD build works");
     console.log("   Exports:", Object.keys(customizableToast).join(", "));
+
+    // Verify UMD gzipped bundle size does not exceed 50KB mandate
+    const gzippedUmd = zlib.gzipSync(umdCode);
+    const umdGzipKb = (gzippedUmd.length / 1024).toFixed(1);
+    if (gzippedUmd.length > 50 * 1024) {
+      throw new Error(`UMD bundle size exceeds 50KB budget: ${umdGzipKb}KB`);
+    }
+    console.log(`✅ UMD bundle within budget: ${umdGzipKb}KB gzipped (< 50KB budget)`);
   } catch (error) {
     console.error("❌ UMD build failed:", error.message);
     process.exit(1);
