@@ -1055,6 +1055,7 @@
                 <option value="futuristic">futuristic (Resonant FM sweep)</option>
                 <option value="subtle">subtle (Haptic micro-click)</option>
                 <option value="bell">bell (Crystal harmonic chimes)</option>
+                <option value="none">none (Muted / No sound)</option>
               </select>
             </div>
             <div class="form-group" style="margin: 0;">
@@ -1244,11 +1245,12 @@ createToast({
 
         <!-- 8. Complete Options Reference Table -->
         <section class="card col-12">
-          <div class="card-header">
+          <div class="card-header" style="flex-wrap: wrap; gap: 10px;">
             <div>
               <div class="card-title">Comprehensive API Reference</div>
               <div class="card-subtitle">Every option, parameter, and method exposed by customizable-toast-notification</div>
             </div>
+            <input type="text" id="optionsSearchInput" class="input-text" placeholder="Search API options..." style="max-width: 220px; padding: 4px 10px; font-size: 11px;" />
           </div>
 
           <div class="table-wrapper">
@@ -1376,6 +1378,72 @@ createToast({
                   <td class="opt-default">false</td>
                   <td>High-throughput element recycling pool preventing garbage collection pressure.</td>
                 </tr>
+                <tr>
+                  <td class="opt-name">showLoader</td>
+                  <td class="opt-type">boolean</td>
+                  <td class="opt-default">false</td>
+                  <td>Renders an inline SVG loading spinner before the message text.</td>
+                </tr>
+                <tr>
+                  <td class="opt-name">loader</td>
+                  <td class="opt-type">ToastLoaderOptions</td>
+                  <td class="opt-default">{ size: 14, color: 'currentColor' }</td>
+                  <td>Customizes spinner dimensions, stroke color, and adjacent text.</td>
+                </tr>
+                <tr>
+                  <td class="opt-name">icon</td>
+                  <td class="opt-type">boolean | string | HTMLElement | Function</td>
+                  <td class="opt-default">true</td>
+                  <td>Controls the built-in SVG status icon or renders custom SVG / HTML markup.</td>
+                </tr>
+                <tr>
+                  <td class="opt-name">showCloseButton</td>
+                  <td class="opt-type">boolean</td>
+                  <td class="opt-default">true</td>
+                  <td>Displays accessible '×' dismissal button with tab focus.</td>
+                </tr>
+                <tr>
+                  <td class="opt-name">pauseOnHover</td>
+                  <td class="opt-type">boolean</td>
+                  <td class="opt-default">true (CTA/Undo) / false</td>
+                  <td>Pauses the auto-dismiss timer and freezes the progress bar on cursor hover or focus.</td>
+                </tr>
+                <tr>
+                  <td class="opt-name">allowHtml</td>
+                  <td class="opt-type">boolean</td>
+                  <td class="opt-default">false</td>
+                  <td>Permits safe HTML elements in message string with strict XSS sanitization.</td>
+                </tr>
+                <tr>
+                  <td class="opt-name">sanitizeHtml</td>
+                  <td class="opt-type">boolean</td>
+                  <td class="opt-default">true</td>
+                  <td>Enforces parity security sanitization (stripping dangerous scripts, styles, objects).</td>
+                </tr>
+                <tr>
+                  <td class="opt-name">borderRadius</td>
+                  <td class="opt-type">string | number</td>
+                  <td class="opt-default">'50px'</td>
+                  <td>Corner radius for pill or modern rounded card presentation.</td>
+                </tr>
+                <tr>
+                  <td class="opt-name">maxWidth</td>
+                  <td class="opt-type">string | number</td>
+                  <td class="opt-default">'400px' / '100vw'</td>
+                  <td>Maximum allowable width of notification container.</td>
+                </tr>
+                <tr>
+                  <td class="opt-name">fontDirection</td>
+                  <td class="opt-type">'auto' | 'ltr' | 'rtl'</td>
+                  <td class="opt-default">'auto'</td>
+                  <td>Text writing direction for full bidirectional and RTL language accessibility.</td>
+                </tr>
+                <tr>
+                  <td class="opt-name">wrapText</td>
+                  <td class="opt-type">'normal' | 'truncate' | 'ellipsis' | boolean</td>
+                  <td class="opt-default">'normal'</td>
+                  <td>Text display behavior: 'normal' for full multi-line text, or 'truncate' for 3-line clamp.</td>
+                </tr>
               </tbody>
             </table>
           </div>
@@ -1476,10 +1544,32 @@ createToast({
           updateCodeSnippet();
         });
 
+        function checkSpringPresetMatch() {
+          var k = parseFloat(stiffnessSlider.value) || 100;
+          var c = parseFloat(dampingSlider.value) || 10;
+          var m = parseFloat(massSlider.value) || 1;
+          var presets = {
+            default: { k: 100, c: 10, m: 1 },
+            gentle: { k: 120, c: 14, m: 1 },
+            wobbly: { k: 180, c: 12, m: 1 },
+            stiff: { k: 210, c: 20, m: 1 },
+            bouncy: { k: 300, c: 15, m: 1.2 }
+          };
+          for (var p in presets) {
+            if (presets[p].k === k && presets[p].c === c && Math.abs(presets[p].m - m) < 0.05) {
+              springPresetSelect.value = p;
+              springPresetBadge.textContent = p;
+              return;
+            }
+          }
+          springPresetBadge.textContent = "custom";
+        }
+
         var stiffnessSlider = document.getElementById("stiffnessSlider");
         var stiffnessVal = document.getElementById("stiffnessVal");
         stiffnessSlider.addEventListener("input", function () {
           stiffnessVal.textContent = stiffnessSlider.value;
+          checkSpringPresetMatch();
           renderSpringGraph();
           updateCodeSnippet();
         });
@@ -1488,6 +1578,7 @@ createToast({
         var dampingVal = document.getElementById("dampingVal");
         dampingSlider.addEventListener("input", function () {
           dampingVal.textContent = dampingSlider.value;
+          checkSpringPresetMatch();
           renderSpringGraph();
           updateCodeSnippet();
         });
@@ -1496,6 +1587,7 @@ createToast({
         var massVal = document.getElementById("massVal");
         massSlider.addEventListener("input", function () {
           massVal.textContent = massSlider.value;
+          checkSpringPresetMatch();
           renderSpringGraph();
           updateCodeSnippet();
         });
@@ -1601,8 +1693,13 @@ createToast({
 
         function initOscilloscope() {
           if (!scopeCanvas || !scopeCtx) return;
-          scopeCanvas.width = scopeCanvas.parentElement.clientWidth || 400;
-          scopeCanvas.height = scopeCanvas.parentElement.clientHeight || 110;
+          function resizeScope() {
+            if (!scopeCanvas || !scopeCanvas.parentElement) return;
+            scopeCanvas.width = scopeCanvas.parentElement.clientWidth || 400;
+            scopeCanvas.height = scopeCanvas.parentElement.clientHeight || 110;
+          }
+          resizeScope();
+          window.addEventListener("resize", resizeScope);
 
           function draw() {
             animFrameId = requestAnimationFrame(draw);
@@ -1646,11 +1743,19 @@ createToast({
 
         document.getElementById("testToneBtn").addEventListener("click", function () {
           if (window.customizableToast) {
+            var preset = document.getElementById("soundPresetSelect").value;
+            if (preset === "none") {
+              var fst = document.getElementById("footerStatusText");
+              if (fst) {
+                fst.textContent = "Audio is muted (Preset set to 'none')";
+                setTimeout(function () { fst.textContent = "Ready • Click to trigger"; }, 2000);
+              }
+              return;
+            }
             window.customizableToast.setAudioEnabled(true);
             if (typeof window.customizableToast.getAudioAnalyser === "function") {
               analyser = window.customizableToast.getAudioAnalyser();
             }
-            var preset = document.getElementById("soundPresetSelect").value;
             window.customizableToast.playTone("success", preset);
           }
         });
@@ -1723,7 +1828,15 @@ createToast({
           };
 
           if (animType === "spring") {
-            opts.spring = springPreset;
+            if (springPresetBadge && springPresetBadge.textContent === "custom") {
+              opts.spring = {
+                stiffness: parseFloat(stiffnessSlider.value) || 100,
+                damping: parseFloat(dampingSlider.value) || 10,
+                mass: parseFloat(massSlider.value) || 1,
+              };
+            } else {
+              opts.spring = springPreset;
+            }
           } else {
             opts.animationType = animType;
           }
@@ -1731,14 +1844,19 @@ createToast({
           if (document.getElementById("toggleCloseBtn").checked === false) opts.showCloseButton = false;
           if (document.getElementById("togglePauseOnHover").checked === false) opts.pauseOnHover = false;
           if (document.getElementById("toggleSwipeToDismiss").checked === false) opts.swipeToDismiss = false;
+          if (document.getElementById("toggleIcon").checked === false) opts.icon = false;
           if (document.getElementById("toggleAllowHtml").checked) opts.allowHtml = true;
           if (document.getElementById("toggleStacked").checked) opts.stacked = true;
           if (document.getElementById("toggleSyncTabs").checked) opts.syncTabs = true;
           if (document.getElementById("toggleAiScorer").checked) opts.aiPrioritization = true;
           if (document.getElementById("togglePool").checked) opts.usePool = true;
 
-          opts.sound = true;
-          opts.soundPreset = soundPreset;
+          if (soundPreset === "none") {
+            opts.sound = false;
+          } else {
+            opts.sound = true;
+            opts.soundPreset = soundPreset;
+          }
 
           if (progMode === "hidden") {
             opts.showProgressBar = false;
@@ -1772,11 +1890,18 @@ createToast({
           if (document.getElementById("toggleUndoAction").checked) {
             opts.undo = {
               label: document.getElementById("undoLabelInput").value,
+              showCountdown: true,
               onUndo: "() => console.log('Undone!')"
             };
           }
 
           return opts;
+        }
+
+        function formatSnippet(str) {
+          return str
+            .replace(/"onClick":\s*"([^"]+)"/g, 'onClick: $1')
+            .replace(/"onUndo":\s*"([^"]+)"/g, 'onUndo: $1');
         }
 
         function updateCodeSnippet() {
@@ -1812,7 +1937,7 @@ createToast({
               '<script>\n  customizableToast.createToast(' + JSON.stringify(opts, null, 2) + ');\n<\/script>';
           }
 
-          codeOutput.textContent = snippet;
+          codeOutput.textContent = formatSnippet(snippet);
         }
 
         // Copy Code Button
@@ -1857,6 +1982,11 @@ createToast({
             analyser = window.customizableToast.getAudioAnalyser();
           }
 
+          var footerStatus = document.getElementById("footerStatusText");
+          if (footerStatus) {
+            footerStatus.textContent = "Dispatched " + (opts.type || "info") + " notification at " + new Date().toLocaleTimeString();
+          }
+
           window.customizableToast.createToast(opts);
         }
 
@@ -1867,26 +1997,100 @@ createToast({
         document.getElementById("dismissAllBtn").addEventListener("click", function () {
           if (window.customizableToast) {
             window.customizableToast.dismissAll();
+            var footerStatus = document.getElementById("footerStatusText");
+            if (footerStatus) {
+              footerStatus.textContent = "All notifications dismissed at " + new Date().toLocaleTimeString();
+              setTimeout(function () { footerStatus.textContent = "Ready • Click to trigger"; }, 2500);
+            }
           }
         });
 
+        // Configurator Reset Button
+        var resetConfigBtn = document.getElementById("resetConfigBtn");
+        if (resetConfigBtn) {
+          resetConfigBtn.addEventListener("click", function () {
+            document.getElementById("toastMessageInput").value = "Notification message";
+            document.getElementById("toastTypeSelect").value = "info";
+            durationSlider.value = "2500";
+            durationBadge.textContent = "2500ms";
+            document.getElementById("toastBgColor").value = "";
+            document.getElementById("toastTextColor").value = "";
+            document.getElementById("toggleCloseBtn").checked = true;
+            document.getElementById("togglePauseOnHover").checked = true;
+            document.getElementById("toggleSwipeToDismiss").checked = true;
+            document.getElementById("toggleIcon").checked = true;
+            document.getElementById("toggleAllowHtml").checked = false;
+            document.getElementById("toggleStacked").checked = false;
+            document.getElementById("toggleSyncTabs").checked = false;
+            document.getElementById("toggleAiScorer").checked = false;
+            document.getElementById("togglePool").checked = true;
+            document.getElementById("toggleUndoAction").checked = false;
+            document.getElementById("animationTypeSelect").value = "spring";
+            springPresetSelect.value = "bouncy";
+            springPresetBadge.textContent = "bouncy";
+            stiffnessSlider.value = "300";
+            stiffnessVal.textContent = "300";
+            dampingSlider.value = "15";
+            dampingVal.textContent = "15";
+            massSlider.value = "1.2";
+            massVal.textContent = "1.2";
+            document.getElementById("soundPresetSelect").value = "modern";
+            document.getElementById("progressTypeSelect").value = "auto";
+            manualProgressSlider.value = "65";
+            manualProgressVal.textContent = "65%";
+            document.getElementById("progressBarColorInput").value = "";
+            document.getElementById("progressBarHeightSelect").value = "4px";
+            currentPosition = "bottom-right";
+            posCells.forEach(function (c) {
+              if (c.getAttribute("data-pos") === "bottom-right") c.classList.add("active");
+              else c.classList.remove("active");
+            });
+            currentPosBadge.textContent = "bottom-right";
+            currentCta = "none";
+            ctaBtns.forEach(function (b) {
+              if (b.getAttribute("data-cta") === "none") b.classList.add("active");
+              else b.classList.remove("active");
+            });
+            renderSpringGraph();
+            updateCodeSnippet();
+            var fst = document.getElementById("footerStatusText");
+            if (fst) {
+              fst.textContent = "Configurator reset to default settings";
+              setTimeout(function () { fst.textContent = "Ready • Click to trigger"; }, 2500);
+            }
+          });
+        }
+
+        // Search Filter for API Reference Table
+        var optionsSearchInput = document.getElementById("optionsSearchInput");
+        if (optionsSearchInput) {
+          optionsSearchInput.addEventListener("input", function () {
+            var q = optionsSearchInput.value.toLowerCase().trim();
+            var rows = document.querySelectorAll(".options-table tbody tr");
+            rows.forEach(function (r) {
+              var txt = r.textContent.toLowerCase();
+              r.style.display = txt.includes(q) ? "" : "none";
+            });
+          });
+        }
+
         // Quick Preset Buttons
         document.getElementById("quickSuccessBtn").addEventListener("click", function () {
-          fireToast({ type: "success", message: "Deployment pipeline succeeded in 42s!", sound: true, soundPreset: "bell", spring: "bouncy" });
+          fireToast({ type: "success", message: "Deployment pipeline succeeded in 42s!", sound: true, soundPreset: "bell", spring: "bouncy", position: currentPosition });
         });
         document.getElementById("quickErrorBtn").addEventListener("click", function () {
-          fireToast({ type: "error", message: "Database connection failed. Retrying in 5s...", sound: true, soundPreset: "retro", spring: "stiff" });
+          fireToast({ type: "error", message: "Database connection failed. Retrying in 5s...", sound: true, soundPreset: "retro", spring: "stiff", position: currentPosition });
         });
         document.getElementById("quickWarningBtn").addEventListener("click", function () {
-          fireToast({ type: "warning", message: "Disk usage at 91%. Cleanup recommended.", sound: true, soundPreset: "modern" });
+          fireToast({ type: "warning", message: "Disk usage at 91%. Cleanup recommended.", sound: true, soundPreset: "modern", position: currentPosition });
         });
         document.getElementById("quickInfoBtn").addEventListener("click", function () {
-          fireToast({ type: "info", message: "New security updates are available for your system.", sound: true, soundPreset: "subtle" });
+          fireToast({ type: "info", message: "New security updates are available for your system.", sound: true, soundPreset: "subtle", position: currentPosition });
         });
 
         document.getElementById("quickLoadingBtn").addEventListener("click", function () {
           if (!window.customizableToast) return;
-          window.customizableToast.createToast.loading("Uploading production artifacts (0%)...").then(function (h) {
+          window.customizableToast.createToast.loading("Uploading production artifacts (0%)...", { position: currentPosition }).then(function (h) {
             var pct = 0;
             var iv = setInterval(function () {
               pct += 25;
@@ -1909,7 +2113,7 @@ createToast({
             loading: "Generating cryptographic invoice PDF...",
             success: function (data) { return "Invoice " + data.id + " generated successfully!"; },
             error: "Failed to generate invoice."
-          });
+          }, { position: currentPosition });
         });
 
         document.getElementById("quickUndoBtn").addEventListener("click", function () {
@@ -1917,10 +2121,12 @@ createToast({
             type: "warning",
             message: "Project 'alpha-v2' moved to trash.",
             duration: 5000,
+            position: currentPosition,
             undo: {
               label: "Undo",
+              showCountdown: true,
               onUndo: function () {
-                window.customizableToast.createToast.success("Project 'alpha-v2' restored!");
+                window.customizableToast.createToast.success("Project 'alpha-v2' restored!", { position: currentPosition });
               }
             }
           });
@@ -1933,7 +2139,8 @@ createToast({
             progress: "indeterminate",
             duration: 5000,
             sound: true,
-            soundPreset: "futuristic"
+            soundPreset: "futuristic",
+            position: currentPosition
           });
         });
 
@@ -1987,7 +2194,8 @@ createToast({
               progress: "indeterminate",
               duration: 5000,
               sound: true,
-              soundPreset: "subtle"
+              soundPreset: "subtle",
+              position: currentPosition
             });
           });
         }
@@ -2004,7 +2212,7 @@ createToast({
               soundPreset: "retro",
               undo: {
                 label: "Undo",
-                countdown: 7,
+                showCountdown: true,
                 onUndo: function () {
                   window.customizableToast.createToast.success("Database restored! No data was lost. 🛡️", {
                     position: currentPosition,
@@ -2017,13 +2225,13 @@ createToast({
         }
 
         document.getElementById("quickStackedBtn").addEventListener("click", function () {
-          fireToast({ type: "info", message: "System notice 1: Background backup initiated.", stacked: true });
-          setTimeout(function () { fireToast({ type: "warning", message: "System notice 2: High CPU threshold reached.", stacked: true }); }, 300);
-          setTimeout(function () { fireToast({ type: "success", message: "System notice 3: Backup completed safely.", stacked: true }); }, 600);
+          fireToast({ type: "info", message: "System notice 1: Background backup initiated.", stacked: true, position: currentPosition });
+          setTimeout(function () { fireToast({ type: "warning", message: "System notice 2: High CPU threshold reached.", stacked: true, position: currentPosition }); }, 300);
+          setTimeout(function () { fireToast({ type: "success", message: "System notice 3: Backup completed safely.", stacked: true, position: currentPosition }); }, 600);
         });
 
         document.getElementById("quickBouncyBtn").addEventListener("click", function () {
-          fireToast({ type: "success", message: "Bouncy dynamic spring physics!", spring: "bouncy", animationType: "spring" });
+          fireToast({ type: "success", message: "Bouncy dynamic spring physics!", spring: "bouncy", animationType: "spring", position: currentPosition });
         });
 
         document.getElementById("quickFloodBtn").addEventListener("click", function () {
@@ -2035,7 +2243,7 @@ createToast({
                   message: "Burst notification #" + idx + " of 50",
                   type: idx % 3 === 0 ? "success" : (idx % 3 === 1 ? "info" : "warning"),
                   duration: 2000,
-                  position: "bottom-right",
+                  position: currentPosition,
                   usePool: true
                 });
               }, idx * 25);
@@ -2046,8 +2254,9 @@ createToast({
         // Initialize Snippet on load
         updateCodeSnippet();
 
-        // Listen for all inputs to re-generate code
+        // Listen for all inputs to re-generate code instantly
         document.querySelectorAll("input, select").forEach(function (el) {
+          el.addEventListener("input", updateCodeSnippet);
           el.addEventListener("change", updateCodeSnippet);
         });
       })();
