@@ -1,3 +1,18 @@
+# [3.19.0](https://github.com/sammy-cool/customizable-toast-notification/compare/v3.18.2...v3.19.0) (2026-10-24)
+
+
+### Bug Fixes
+
+* **core:** resolve position aliases, loader options, grad hue and a11y ([a876626](https://github.com/sammy-cool/customizable-toast-notification/commit/a876626e45544eae3be7f458c9930facd2277186))
+* **core:** resolve progress bar hover wipe, loading update, rtl, and string parsing ([07ab85a](https://github.com/sammy-cool/customizable-toast-notification/commit/07ab85a86b2caad63d80b2a7eca8c6b14852c49d))
+* **dx:** synchronize versions across docs, harden types and audit non-src ([9b62edc](https://github.com/sammy-cool/customizable-toast-notification/commit/9b62edc5474ed20df8855a8202d888a484591d15))
+* **playground:** resolve unhandled controls, spring tuning, and api options search ([76c4cf0](https://github.com/sammy-cool/customizable-toast-notification/commit/76c4cf045ba6b1e416eaca6b3a083df6647533d2)), closes [#resetConfigBtn](https://github.com/sammy-cool/customizable-toast-notification/issues/resetConfigBtn) [#toggleIcon](https://github.com/sammy-cool/customizable-toast-notification/issues/toggleIcon) [#optionsSearchInput](https://github.com/sammy-cool/customizable-toast-notification/issues/optionsSearchInput)
+
+
+### Features
+
+* **playground:** add shimmer and undo showcase cards with nextjs 15 adapter ([5be77bc](https://github.com/sammy-cool/customizable-toast-notification/commit/5be77bce63793b844dd3a22cca8e7db40720b667))
+
 ## [3.18.2](https://github.com/sammy-cool/customizable-toast-notification/compare/v3.18.1...v3.18.2) (2026-10-24)
 
 
