@@ -146,6 +146,7 @@ function playModernPreset(ctx, tone, now) {
 
       osc.connect(gain);
       routeAudio(ctx, gain);
+      registerNodeCleanup(osc, gain);
 
       osc.start(now + idx * 0.08);
       osc.stop(now + idx * 0.08 + 0.36);
@@ -165,6 +166,7 @@ function playModernPreset(ctx, tone, now) {
 
       osc.connect(gain);
       routeAudio(ctx, gain);
+      registerNodeCleanup(osc, gain);
 
       osc.start(now + idx * 0.1);
       osc.stop(now + idx * 0.1 + 0.23);
@@ -183,6 +185,7 @@ function playModernPreset(ctx, tone, now) {
 
     osc.connect(gain);
     routeAudio(ctx, gain);
+    registerNodeCleanup(osc, gain);
 
     osc.start(now);
     osc.stop(now + 0.3);
@@ -201,6 +204,7 @@ function playModernPreset(ctx, tone, now) {
 
     osc.connect(gain);
     routeAudio(ctx, gain);
+    registerNodeCleanup(osc, gain);
 
     osc.start(now);
     osc.stop(now + 0.13);
@@ -230,6 +234,7 @@ function playRetroPreset(ctx, tone, now) {
 
       osc.connect(gain);
       routeAudio(ctx, gain);
+      registerNodeCleanup(osc, gain);
 
       osc.start(start);
       osc.stop(start + 0.045);
@@ -248,6 +253,7 @@ function playRetroPreset(ctx, tone, now) {
 
     osc.connect(gain);
     routeAudio(ctx, gain);
+    registerNodeCleanup(osc, gain);
 
     osc.start(now);
     osc.stop(now + 0.23);
@@ -266,6 +272,7 @@ function playRetroPreset(ctx, tone, now) {
 
       osc.connect(gain);
       routeAudio(ctx, gain);
+      registerNodeCleanup(osc, gain);
 
       osc.start(start);
       osc.stop(start + 0.055);
@@ -286,6 +293,7 @@ function playRetroPreset(ctx, tone, now) {
 
       osc.connect(gain);
       routeAudio(ctx, gain);
+      registerNodeCleanup(osc, gain);
 
       osc.start(start);
       osc.stop(start + 0.04);
@@ -314,6 +322,7 @@ function playFuturisticPreset(ctx, tone, now) {
 
     osc.connect(gain);
     routeAudio(ctx, gain);
+    registerNodeCleanup(osc, gain);
 
     osc.start(now);
     osc.stop(now + 0.33);
@@ -331,6 +340,7 @@ function playFuturisticPreset(ctx, tone, now) {
 
     osc.connect(gain);
     routeAudio(ctx, gain);
+    registerNodeCleanup(osc, gain);
 
     osc.start(now);
     osc.stop(now + 0.26);
@@ -351,6 +361,7 @@ function playFuturisticPreset(ctx, tone, now) {
 
       osc.connect(gain);
       routeAudio(ctx, gain);
+      registerNodeCleanup(osc, gain);
 
       osc.start(now);
       osc.stop(now + 0.26);
@@ -370,6 +381,7 @@ function playFuturisticPreset(ctx, tone, now) {
 
     osc.connect(gain);
     routeAudio(ctx, gain);
+    registerNodeCleanup(osc, gain);
 
     osc.start(now);
     osc.stop(now + 0.13);
@@ -398,6 +410,7 @@ function playSubtlePreset(ctx, tone, now) {
 
       osc.connect(gain);
       routeAudio(ctx, gain);
+      registerNodeCleanup(osc, gain);
 
       osc.start(start);
       osc.stop(start + 0.03);
@@ -417,6 +430,7 @@ function playSubtlePreset(ctx, tone, now) {
 
       osc.connect(gain);
       routeAudio(ctx, gain);
+      registerNodeCleanup(osc, gain);
 
       osc.start(start);
       osc.stop(start + 0.04);
@@ -434,6 +448,7 @@ function playSubtlePreset(ctx, tone, now) {
 
     osc.connect(gain);
     routeAudio(ctx, gain);
+    registerNodeCleanup(osc, gain);
 
     osc.start(now);
     osc.stop(now + 0.03);
@@ -450,6 +465,7 @@ function playSubtlePreset(ctx, tone, now) {
 
     osc.connect(gain);
     routeAudio(ctx, gain);
+    registerNodeCleanup(osc, gain);
 
     osc.start(now);
     osc.stop(now + 0.025);
@@ -479,6 +495,7 @@ function playBellPreset(ctx, tone, now) {
 
       osc.connect(gain);
       routeAudio(ctx, gain);
+      registerNodeCleanup(osc, gain);
 
       osc.start(now);
       osc.stop(now + 0.58);
@@ -498,6 +515,7 @@ function playBellPreset(ctx, tone, now) {
 
       osc.connect(gain);
       routeAudio(ctx, gain);
+      registerNodeCleanup(osc, gain);
 
       osc.start(now);
       osc.stop(now + 0.4);
@@ -515,6 +533,7 @@ function playBellPreset(ctx, tone, now) {
 
     osc.connect(gain);
     routeAudio(ctx, gain);
+    registerNodeCleanup(osc, gain);
 
     osc.start(now);
     osc.stop(now + 0.48);
@@ -531,6 +550,7 @@ function playBellPreset(ctx, tone, now) {
 
     osc.connect(gain);
     routeAudio(ctx, gain);
+    registerNodeCleanup(osc, gain);
 
     osc.start(now);
     osc.stop(now + 0.3);
@@ -603,6 +623,7 @@ export function playTone(toneType = "info", preset) {
 
       osc.connect(gain);
       routeAudio(ctx, gain);
+      registerNodeCleanup(osc, gain);
 
       osc.start(now);
       osc.stop(now + 0.36);

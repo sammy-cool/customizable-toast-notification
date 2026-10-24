@@ -322,16 +322,49 @@ export async function showToast(options = {}) {
           emitMetrics();
           return;
         }
+        const usesPriority =
+          getConfig().aiPrioritization ||
+          current.options?.aiPrioritization ||
+          typeof current.options?.priority === "number" ||
+          queue.some((queuedItem) =>
+            queuedItem?.options?.aiPrioritization ||
+            typeof queuedItem?.options?.priority === "number",
+          );
+
+        if (usesPriority) {
+          item.priority = calculateToastPriority(current.options);
+        }
+
         if (queue.length >= maxQ) {
-          queue.shift();
+          if (usesPriority) {
+            const incomingPriority = getItemPriority(item);
+            let lowestIndex = 0;
+            let lowestPriority = getItemPriority(queue[0]);
+
+            for (let index = 1; index < queue.length; index++) {
+              const candidatePriority = getItemPriority(queue[index]);
+              if (candidatePriority < lowestPriority) {
+                lowestIndex = index;
+                lowestPriority = candidatePriority;
+              }
+            }
+
+            if (incomingPriority <= lowestPriority) {
+              droppedCount++;
+              emitMetrics();
+              return;
+            }
+
+            queue.splice(lowestIndex, 1);
+          } else {
+            queue.shift();
+          }
           droppedCount++;
         }
-        if (getConfig().aiPrioritization || current.options?.aiPrioritization) {
-          item.priority = calculateToastPriority(current.options);
-          queue.push(item);
+
+        queue.push(item);
+        if (usesPriority) {
           queue.sort((a, b) => getItemPriority(b) - getItemPriority(a));
-        } else {
-          queue.push(item);
         }
         emitMetrics();
         await drainQueue();

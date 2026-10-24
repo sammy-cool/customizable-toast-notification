@@ -312,31 +312,38 @@ export function getDynamicAccessibleTextColorHex(toastBg) {
   // reasonable, never actively wrong in a random direction.
   function resolveCssCustomProperty(value) {
     if (typeof value !== "string") return value;
-    const trimmed = value.trim();
-    if (!trimmed.toLowerCase().startsWith("var(") || !trimmed.endsWith(")")) {
-      return value;
-    }
-    const inner = trimmed.slice(4, -1).trim();
-    const commaIndex = inner.indexOf(",");
-    const propName = (commaIndex === -1 ? inner : inner.slice(0, commaIndex)).trim();
-    const fallbackVal = commaIndex === -1 ? "" : inner.slice(commaIndex + 1).trim();
+    let current = value.trim();
+    let depth = 0;
+    while (current.toLowerCase().startsWith("var(") && current.endsWith(")") && depth < 5) {
+      depth++;
+      const inner = current.slice(4, -1).trim();
+      const commaIndex = inner.indexOf(",");
+      const propName = (commaIndex === -1 ? inner : inner.slice(0, commaIndex)).trim();
+      const fallbackVal = commaIndex === -1 ? "" : inner.slice(commaIndex + 1).trim();
 
-    if (!propName.startsWith("--")) return value;
+      if (!propName.startsWith("--")) return current;
 
-    try {
-      if (
-        typeof document !== "undefined" &&
-        typeof getComputedStyle === "function"
-      ) {
-        const resolved = getComputedStyle(document.documentElement)
-          .getPropertyValue(propName)
-          .trim();
-        if (resolved) return resolved;
+      let resolved = "";
+      try {
+        if (
+          typeof document !== "undefined" &&
+          typeof getComputedStyle === "function"
+        ) {
+          resolved = getComputedStyle(document.documentElement)
+            .getPropertyValue(propName)
+            .trim();
+        }
+      } catch (e) {}
+
+      if (resolved) {
+        current = resolved;
+      } else if (fallbackVal) {
+        current = fallbackVal;
+      } else {
+        break;
       }
-    } catch (e) {}
-    // Fall back to the var()'s own declared fallback value, if it had one
-    // (e.g. var(--brand, #336699)), before giving up entirely.
-    return fallbackVal || value;
+    }
+    return current;
   }
 
   function parseToRgb(value) {
@@ -361,45 +368,74 @@ export function getDynamicAccessibleTextColorHex(toastBg) {
       return null;
     }
 
+    const parseComponent = (c) => {
+      if (typeof c !== "string") return Number(c);
+      const trimmed = c.trim();
+      if (trimmed.endsWith("%")) {
+        return Math.round((parseFloat(trimmed) / 100) * 255);
+      }
+      return Number(trimmed);
+    };
+
     const rgbMatch = value?.match(
-      /rgba?\((\d+),\s*(\d+),\s*(\d+)(?:,\s*[\d.]+)?\)/i,
+      /rgba?\(\s*([\d.]+%?)\s*,\s*([\d.]+%?)\s*,\s*([\d.]+%?)(?:\s*,\s*[\d.%]+)?\s*\)/i,
     );
     if (rgbMatch) {
-      return {
-        r: Number(rgbMatch[1]),
-        g: Number(rgbMatch[2]),
-        b: Number(rgbMatch[3]),
-      };
+      const r = Math.min(255, Math.max(0, parseComponent(rgbMatch[1])));
+      const g = Math.min(255, Math.max(0, parseComponent(rgbMatch[2])));
+      const b = Math.min(255, Math.max(0, parseComponent(rgbMatch[3])));
+      if (Number.isFinite(r) && Number.isFinite(g) && Number.isFinite(b)) {
+        return { r, g, b };
+      }
     }
 
     const rgbSpaceMatch = value?.match(
-      /rgba?\(\s*(\d+)\s+(\d+)\s+(\d+)(?:\s*\/\s*[\d.%]+)?\s*\)/i,
+      /rgba?\(\s*([\d.]+%?)\s+([\d.]+%?)\s+([\d.]+%?)(?:\s*\/\s*[\d.%]+)?\s*\)/i,
     );
     if (rgbSpaceMatch) {
-      return {
-        r: Number(rgbSpaceMatch[1]),
-        g: Number(rgbSpaceMatch[2]),
-        b: Number(rgbSpaceMatch[3]),
-      };
+      const r = Math.min(255, Math.max(0, parseComponent(rgbSpaceMatch[1])));
+      const g = Math.min(255, Math.max(0, parseComponent(rgbSpaceMatch[2])));
+      const b = Math.min(255, Math.max(0, parseComponent(rgbSpaceMatch[3])));
+      if (Number.isFinite(r) && Number.isFinite(g) && Number.isFinite(b)) {
+        return { r, g, b };
+      }
     }
 
+    const parseHue = (hStr) => {
+      const trimmed = hStr.trim().toLowerCase();
+      let raw = parseFloat(trimmed);
+      if (!Number.isFinite(raw)) return 0;
+      if (trimmed.endsWith("turn")) {
+        raw = raw * 360;
+      } else if (trimmed.endsWith("rad")) {
+        raw = (raw * 180) / Math.PI;
+      }
+      return (((raw % 360) + 360) % 360) / 360;
+    };
+
     const hslMatch = value?.match(
-      /hsla?\(\s*([\d.]+)(?:deg)?\s*,\s*([\d.]+)%\s*,\s*([\d.]+)%(?:\s*,\s*[\d.]+)?\)/i,
+      /hsla?\(\s*(-?[\d.]+(?:deg|rad|turn)?)\s*,\s*([\d.]+)%\s*,\s*([\d.]+)%(?:\s*,\s*[\d.%]+)?\s*\)/i,
     );
-    if (hslMatch) {
-      const h = Number(hslMatch[1]) / 360;
-      const s = Number(hslMatch[2]) / 100;
-      const l = Number(hslMatch[3]) / 100;
+    const hslSpaceMatch = !hslMatch && value?.match(
+      /hsla?\(\s*(-?[\d.]+(?:deg|rad|turn)?)\s+([\d.]+)%\s+([\d.]+)%(?:\s*\/\s*[\d.%]+)?\s*\)/i,
+    );
+
+    const activeHslMatch = hslMatch || hslSpaceMatch;
+    if (activeHslMatch) {
+      const h = parseHue(activeHslMatch[1]);
+      const s = Math.min(1, Math.max(0, Number(activeHslMatch[2]) / 100));
+      const l = Math.min(1, Math.max(0, Number(activeHslMatch[3]) / 100));
       if (s === 0) {
         const gray = Math.round(l * 255);
         return { r: gray, g: gray, b: gray };
       }
       const hue2rgb = (p, q, t) => {
-        if (t < 0) t += 1;
-        if (t > 1) t -= 1;
-        if (t < 1 / 6) return p + (q - p) * 6 * t;
-        if (t < 1 / 2) return q;
-        if (t < 2 / 3) return p + (q - p) * (2 / 3 - t) * 6;
+        let val = t;
+        if (val < 0) val += 1;
+        if (val > 1) val -= 1;
+        if (val < 1 / 6) return p + (q - p) * 6 * val;
+        if (val < 1 / 2) return q;
+        if (val < 2 / 3) return p + (q - p) * (2 / 3 - val) * 6;
         return p;
       };
       const q = l < 0.5 ? l * (1 + s) : l + s - l * s;

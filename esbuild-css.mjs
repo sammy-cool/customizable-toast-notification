@@ -43,8 +43,23 @@ function extractCssClasses(cssContent) {
  * @returns {string} - TypeScript declaration content
  */
 function generateCssTypeDeclarations(classNames) {
-  const declarations = classNames
-    .map(className => `export const ${className}: string;`)
+  const toCamel = (str) => str.replace(/-([a-z0-9])/g, (_, c) => c.toUpperCase());
+
+  // Named exports must be valid JS identifiers (TS error TS1005 if hyphens used in `export const`)
+  const namedExports = new Set();
+  classNames.forEach((name) => {
+    if (/^[a-zA-Z_$][a-zA-Z0-9_$]*$/.test(name)) {
+      namedExports.add(`export const ${name}: string;`);
+    } else {
+      const camel = toCamel(name);
+      if (/^[a-zA-Z_$][a-zA-Z0-9_$]*$/.test(camel)) {
+        namedExports.add(`export const ${camel}: string;`);
+      }
+    }
+  });
+
+  const propertyDeclarations = classNames
+    .map(className => `  readonly "${className}": string;`)
     .join('\n');
 
   return `/**
@@ -52,13 +67,18 @@ function generateCssTypeDeclarations(classNames) {
  * Generated at build time - do not edit manually
  *
  * Usage:
- *   import { toast, toastMessage, toastCta } from 'customizable-toast-notification/index.css';
+ *   import styles, { toast, toastCloseBtn } from 'customizable-toast-notification/index.css';
  */
 
-${declarations}
+${Array.from(namedExports).sort().join('\n')}
 
-declare const css: string;
-export default css;
+export interface CssClasses {
+  readonly [key: string]: string;
+${propertyDeclarations}
+}
+
+declare const styles: CssClasses;
+export default styles;
 `;
 }
 

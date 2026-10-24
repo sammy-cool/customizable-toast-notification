@@ -38,6 +38,8 @@ const requiredFiles = [
   "index.cjs",
   "index.umd.js",
   "index.d.ts",
+  "index.css",
+  "index.css.d.ts",
 ];
 
 requiredFiles.forEach(assertFileExists);

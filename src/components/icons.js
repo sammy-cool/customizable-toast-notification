@@ -98,8 +98,9 @@ function sanitizeInlineSvg(svgText) {
 
           if (lowerName.startsWith("on")) continue;
           if (!ALLOWED_SVG_ATTRS.has(lowerName)) continue;
-          if ((lowerName === "href" || lowerName === "xlink:href") && isUnsafeUrl(value)) {
-            continue;
+          if ((lowerName === "href" || lowerName === "xlink:href")) {
+            if (isUnsafeUrl(value)) continue;
+            if (tag === "use" && value && !value.startsWith("#")) continue;
           }
           safeEl.setAttribute(name, value);
         }
@@ -158,10 +159,11 @@ const ICON_SVGS = {
  * @returns {HTMLElement | null}
  */
 export function createToastIcon(options = {}) {
-  let iconOpt = options.icon;
+  const safeOptions = options && typeof options === "object" && !Array.isArray(options) ? options : {};
+  let iconOpt = safeOptions.icon;
   if (typeof iconOpt === "function") {
     try {
-      iconOpt = iconOpt(options);
+      iconOpt = iconOpt(safeOptions);
     } catch (err) {
       console.warn("options.icon callback error:", err);
       iconOpt = null;
@@ -169,8 +171,9 @@ export function createToastIcon(options = {}) {
   }
 
   if (iconOpt === false || iconOpt === "" || iconOpt === null) return null;
+  if (typeof document === "undefined") return null;
 
-  const type = options.type;
+  const type = safeOptions.type;
   const config = getConfig();
 
   const iconTag = document.createElement("i");
