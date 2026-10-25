@@ -128,4 +128,37 @@ export default [
     ],
     plugins: [...getCommonPlugins("cjs")],
   },
+
+  {
+    input: "src/react/index.js",
+    output: {
+      file: "dist/react.esm.mjs",
+      format: "esm",
+      sourcemap: true,
+      banner: '"use client";\n' + banner,
+    },
+    external: [
+      "react",
+      ...Object.keys(pkg.dependencies || {}),
+      ...Object.keys(pkg.peerDependencies || {}),
+    ],
+    plugins: [...getCommonPlugins("esm")],
+  },
+
+  {
+    input: "src/react/index.js",
+    output: {
+      file: "dist/react.cjs",
+      format: "cjs",
+      exports: "named",
+      sourcemap: true,
+      banner: '"use client";\n' + banner,
+    },
+    external: [
+      "react",
+      ...Object.keys(pkg.dependencies || {}),
+      ...Object.keys(pkg.peerDependencies || {}),
+    ],
+    plugins: [...getCommonPlugins("cjs")],
+  },
 ];

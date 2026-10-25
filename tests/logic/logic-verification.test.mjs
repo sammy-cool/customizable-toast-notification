@@ -4545,6 +4545,235 @@ describe("Subsystems & Option Matrix Conflict Fortification", { concurrency: 1 }
   });
 });
 
+describe("Omni-Channel Upgrades: i18n, Multi-Tab Queue Sync, React Adapter, and A11y", { concurrency: 1 }, () => {
+  test("i18n engine: setLocale, getLocale, getAvailableLocales, registerLocale, and isRtlLocale", async () => {
+    freshDom();
+    const {
+      setLocale,
+      getLocale,
+      getAvailableLocales,
+      registerLocale,
+      isRtlLocale,
+      resetLocale,
+    } = await import("../../src/utils/i18n.js");
+
+    resetLocale();
+    assert.strictEqual(getLocale(), "en");
+    assert.strictEqual(isRtlLocale("en"), false);
+    assert.strictEqual(isRtlLocale("ar"), true);
+    assert.strictEqual(isRtlLocale("he"), true);
+
+    const locales = getAvailableLocales();
+    assert.ok(locales.includes("en"));
+    assert.ok(locales.includes("hi"));
+    assert.ok(locales.includes("es"));
+    assert.ok(locales.includes("fr"));
+    assert.ok(locales.includes("de"));
+    assert.ok(locales.includes("ar"));
+    assert.ok(locales.includes("ja"));
+
+    setLocale("hi");
+    assert.strictEqual(getLocale(), "hi");
+
+    // Custom locale registration
+    registerLocale("it", {
+      success: "Operazione completata con successo!",
+      error: "Si è verificato un errore!",
+    });
+    setLocale("it");
+    assert.strictEqual(getLocale(), "it");
+
+    resetLocale();
+    assert.strictEqual(getLocale(), "en");
+  });
+
+  test("i18n toast integration: Hindi, Arabic auto-RTL, and custom default messages", async () => {
+    freshDom();
+    const {
+      createToast,
+      setLocale,
+      resetLocale,
+      setDefaultMessages,
+      resetToastManager,
+    } = await import("../../src/index.js");
+    resetToastManager();
+    resetLocale();
+
+    // Hindi default message
+    setLocale("hi");
+    const posHi = "test-i18n-hi-" + Date.now();
+    const handleHi = await createToast({ type: "success", position: posHi });
+    await new Promise((r) => setTimeout(r, 60));
+    const containerHi = document.getElementById(`toast-container-${posHi}`);
+    const toastHi = containerHi?.querySelector(".toast");
+    assert.ok(toastHi?.textContent.includes("कार्य सफलतापूर्वक संपन्न हुआ!"));
+    await handleHi.dismiss();
+
+    // Arabic auto-RTL detection
+    setLocale("ar");
+    const posAr = "test-i18n-ar-" + Date.now();
+    const handleAr = await createToast({ type: "warning", position: posAr });
+    await new Promise((r) => setTimeout(r, 60));
+    const containerAr = document.getElementById(`toast-container-${posAr}`);
+    const toastAr = containerAr?.querySelector(".toast");
+    assert.strictEqual(toastAr?.style.direction, "rtl");
+    assert.ok(toastAr?.textContent.includes("تحذير!"));
+    await handleAr.dismiss();
+
+    // Custom setDefaultMessages overrides locale default
+    setDefaultMessages({ success: "Custom Override" });
+    const posCustom = "test-i18n-custom-" + Date.now();
+    const handleCustom = await createToast({ type: "success", position: posCustom });
+    await new Promise((r) => setTimeout(r, 60));
+    const containerCustom = document.getElementById(`toast-container-${posCustom}`);
+    const toastCustom = containerCustom?.querySelector(".toast");
+    assert.ok(toastCustom?.textContent.includes("Custom Override"));
+    await handleCustom.dismiss();
+
+    resetLocale();
+    resetToastManager();
+  });
+
+  test("Multi-tab queue sync: remote dismiss message purges queued toast to prevent ghost popup", async () => {
+    freshDom();
+    const {
+      createToast,
+      setConfig,
+      resetConfig,
+      getToastBroadcaster,
+      resetToastManager,
+    } = await import("../../src/index.js");
+    resetToastManager();
+    resetConfig();
+    setConfig({ syncTabs: true, maxVisible: 1 });
+
+    const position = "top-left";
+    const broadcaster = getToastBroadcaster();
+
+    // Fill active slot (1 toast)
+    const handleActive = await createToast({ message: "Active Toast", position, duration: 20000 });
+    await new Promise((r) => setTimeout(r, 60));
+
+    // Queue second toast (will be buffered in queue because maxVisible is 1)
+    const handleQueued = await createToast({ message: "Queued Toast", position, duration: 20000 });
+    await new Promise((r) => setTimeout(r, 60));
+
+    // Simulate remote tab broadcasting dismissal of the queued toast
+    broadcaster._handleMessage({
+      type: "dismiss",
+      toastId: handleQueued.id,
+      tabId: "other-tab",
+      timestamp: Date.now(),
+      payload: {},
+    });
+
+    // Dismiss active toast -> queue should drain, but the queued toast was purged, so container becomes empty
+    await handleActive.dismiss();
+    await new Promise((r) => setTimeout(r, 550));
+
+    const container = document.getElementById(`toast-container-${position}`);
+    assert.strictEqual(container?.children.length || 0, 0, "Queued toast must be purged, no ghost toast should appear");
+
+    resetConfig();
+    resetToastManager();
+  });
+
+  test("Per-toast syncDismiss: false and syncTabs: false prevent remote tab broadcast", async () => {
+    freshDom();
+    const {
+      createToast,
+      setConfig,
+      resetConfig,
+      getToastBroadcaster,
+      resetToastManager,
+    } = await import("../../src/index.js");
+    resetToastManager();
+    resetConfig();
+    setConfig({ syncTabs: true });
+
+    const broadcaster = getToastBroadcaster();
+    const broadcasts = [];
+    const origBroadcast = broadcaster.broadcast.bind(broadcaster);
+    broadcaster.broadcast = (type, toastId, payload) => {
+      broadcasts.push({ type, toastId, payload });
+      return origBroadcast(type, toastId, payload);
+    };
+
+    // Toast with syncTabs: false should not broadcast 'create'
+    broadcasts.length = 0;
+    const pos1 = "test-sync-tabs-false-" + Date.now();
+    const handle1 = await createToast({ message: "Local Only", syncTabs: false, position: pos1 });
+    await new Promise((r) => setTimeout(r, 60));
+    assert.strictEqual(broadcasts.some((b) => b.type === "create"), false, "syncTabs: false must not broadcast create");
+
+    // Toast with syncDismiss: false should not broadcast 'dismiss'
+    broadcasts.length = 0;
+    const pos2 = "test-sync-dismiss-false-" + Date.now();
+    const handle2 = await createToast({ message: "Local Dismiss Only", syncDismiss: false, position: pos2 });
+    await new Promise((r) => setTimeout(r, 60));
+    await handle2.dismiss();
+    await new Promise((r) => setTimeout(r, 60));
+    assert.strictEqual(broadcasts.some((b) => b.type === "dismiss"), false, "syncDismiss: false must not broadcast dismiss");
+
+    await handle1.dismiss();
+    broadcaster.broadcast = origBroadcast;
+    resetConfig();
+    resetToastManager();
+  });
+
+  test("Accessibility: Error toasts receive role='alert' and aria-live='assertive'", async () => {
+    freshDom();
+    const { createToast, resetToastManager } = await import("../../src/index.js");
+    resetToastManager();
+
+    const pos = "test-a11y-err-" + Date.now();
+    const handleErr = await createToast({ type: "error", message: "Critical failure", position: pos });
+    await new Promise((r) => setTimeout(r, 60));
+
+    const container = document.getElementById(`toast-container-${pos}`);
+    const toast = container?.querySelector(".toast");
+    assert.strictEqual(toast?.getAttribute("role"), "alert");
+    assert.strictEqual(toast?.getAttribute("aria-live"), "assertive");
+
+    await handleErr.dismiss();
+    resetToastManager();
+  });
+
+  test("Accessibility: Emergency fallback toast has tabIndex=0, role='alert', and aria-live='assertive'", async () => {
+    freshDom();
+    const { createEmergencyToast } = await import("../../src/components/toast-utils.js");
+
+    const emergency = await createEmergencyToast({ message: "Emergency alert" });
+    assert.ok(emergency);
+    assert.strictEqual(emergency.tabIndex, 0);
+    assert.strictEqual(emergency.getAttribute("role"), "alert");
+    assert.strictEqual(emergency.getAttribute("aria-live"), "assertive");
+  });
+
+  test("React subpath export & useToast hook returns full memoized API contract", async () => {
+    freshDom();
+    const { useToast } = await import("../../src/react/index.js");
+    const api = useToast();
+
+    assert.ok(typeof api.success === "function");
+    assert.ok(typeof api.error === "function");
+    assert.ok(typeof api.warning === "function");
+    assert.ok(typeof api.info === "function");
+    assert.ok(typeof api.loading === "function");
+    assert.ok(typeof api.custom === "function");
+    assert.ok(typeof api.show === "function");
+    assert.ok(typeof api.promise === "function");
+    assert.ok(typeof api.dismiss === "function");
+    assert.ok(typeof api.dismissAll === "function");
+    assert.ok(typeof api.clear === "function");
+    assert.ok(typeof api.setConfig === "function");
+    assert.ok(typeof api.getConfig === "function");
+    assert.ok(typeof api.resetConfig === "function");
+    assert.ok(typeof api.setLocale === "function");
+    assert.ok(typeof api.getLocale === "function");
+  });
+});
+
 
 
 

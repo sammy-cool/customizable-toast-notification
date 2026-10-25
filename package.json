@@ -19,7 +19,21 @@
       "types": "./dist/index.css.d.ts",
       "default": "./dist/index.css"
     },
+    "./react": {
+      "types": "./dist/react.d.ts",
+      "import": "./dist/react.esm.mjs",
+      "require": "./dist/react.cjs",
+      "default": "./dist/react.esm.mjs"
+    },
     "./package.json": "./package.json"
+  },
+  "peerDependencies": {
+    "react": ">=16.8.0"
+  },
+  "peerDependenciesMeta": {
+    "react": {
+      "optional": true
+    }
   },
   "engines": {
     "node": ">=14.0.0",
@@ -43,7 +57,8 @@
     "build": "npm run build:js && npm run build:css",
     "build:types:emit": "tsc -p tsconfig.types.json",
     "build:types:bundle": "rollup -c rollup.dts.config.mjs",
-    "build:types": "npm run build:types:emit && npm run build:types:bundle",
+    "build:react:types": "cp src/react/index.d.ts dist/react.d.ts",
+    "build:types": "npm run build:types:emit && npm run build:types:bundle && npm run build:react:types",
     "zone-build": "npm run dist:clean && npm run build && npm run build:types && du -h dist/*",
     "test:builds": "node scripts/test-build.cjs",
     "test": "npm run ci:test",

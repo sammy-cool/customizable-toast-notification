@@ -80,6 +80,18 @@ class ToastBroadcaster {
 
       // Become leader if no leader exists
       this._becomeLeadIfNeeded();
+
+      if (typeof window !== "undefined") {
+        const onUnload = () => {
+          if (this.isLeadTab && this.channel) {
+            try {
+              this.broadcast('leader-abdicate', '', { tabId: this.tabId });
+            } catch {}
+          }
+        };
+        window.addEventListener('beforeunload', onUnload);
+        window.addEventListener('pagehide', onUnload);
+      }
     } catch (error) {
       console.warn('[Toast] BroadcastChannel initialization failed:', error);
       this.supportsBroadcastChannel = false;
@@ -162,6 +174,12 @@ class ToastBroadcaster {
         this.leaderTimer = null;
       }
       this.isLeadTab = false;
+      return;
+    }
+
+    if (type === 'leader-abdicate') {
+      this.isLeadTab = false;
+      this._becomeLeadIfNeeded();
       return;
     }
 

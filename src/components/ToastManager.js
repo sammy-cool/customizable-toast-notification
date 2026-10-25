@@ -55,18 +55,19 @@ function emitMetrics() {
 
 
 // Cross-tab toast synchronization
-const broadcaster = getToastBroadcaster();
+let broadcaster = getToastBroadcaster();
 
-// Register getters with broadcaster for sync requests
-broadcaster.registerActiveToastsGetter(() => Array.from(active.keys()));
-broadcaster.registerQueuedToastsGetter(() => queue.map(item => ({
-  key: item.key,
-  options: item.options,
-  count: item.count
-})));
+export function initBroadcastListeners() {
+  broadcaster = getToastBroadcaster();
+  if (!broadcaster.isSupported() || typeof window === 'undefined') return;
 
-// Initialize cross-tab sync listeners if supported
-if (broadcaster.isSupported() && typeof window !== 'undefined') {
+  broadcaster.registerActiveToastsGetter(() => Array.from(active.keys()));
+  broadcaster.registerQueuedToastsGetter(() => queue.map(item => ({
+    key: item.key,
+    options: item.options,
+    count: item.count
+  })));
+
   broadcaster.on('create', ({ toastId, payload }) => {
     if (!getConfig().syncTabs) return;
     // Another tab created a toast - show it in this tab
@@ -93,8 +94,16 @@ if (broadcaster.isSupported() && typeof window !== 'undefined') {
   broadcaster.on('dismiss', ({ toastId }) => {
     if (!getConfig().syncTabs) return;
     // Another tab dismissed a toast - dismiss in this tab without re-broadcasting
-    if (toastId && (active.has(toastId) || pending.has(toastId))) {
+    if (!toastId) return;
+    if (active.has(toastId) || pending.has(toastId)) {
       closeToastByKey(toastId, true);
+    } else {
+      // If the toast was buffered in queue in this tab, purge it so it doesn't pop up later
+      const qIdx = queue.findIndex((item) => item.key === toastId);
+      if (qIdx !== -1) {
+        queue.splice(qIdx, 1);
+        emitMetrics();
+      }
     }
   });
 
@@ -110,6 +119,8 @@ if (broadcaster.isSupported() && typeof window !== 'undefined') {
     }
   });
 }
+
+initBroadcastListeners();
 
 // AI Priority Queue Manager - Initialized with default settings
 
@@ -297,7 +308,7 @@ export async function showToast(options = {}) {
       emitMetrics();
 
       // Broadcast update to other tabs if not from sync
-      if (!options.fromSync && getConfig().syncTabs && broadcaster.isSupported()) {
+      if (!options.fromSync && options.syncTabs !== false && getConfig().syncTabs && broadcaster.isSupported()) {
         broadcaster.broadcast('update', key, { count: data.count });
       }
       return key;
@@ -394,7 +405,7 @@ export async function showToast(options = {}) {
     });
 
     // Broadcast creation to other tabs if not from sync
-    if (!options.fromSync && getConfig().syncTabs && broadcaster.isSupported()) {
+    if (!options.fromSync && options.syncTabs !== false && getConfig().syncTabs && broadcaster.isSupported()) {
       broadcaster.broadcast('create', key, { options });
     }
 
@@ -612,6 +623,7 @@ export function resetToastManager() {
   droppedCount = 0;
   isDraining = false;
   emitMetrics();
+  initBroadcastListeners();
 }
 
 export const dismiss = dismissMostRecent;
@@ -741,8 +753,12 @@ export async function closeToastByKey(key, fromSync = false) {
   try {
     if (!key) return;
 
+    const data = active.get(key);
+    const allowSyncDismiss =
+      data?.options?.syncDismiss !== false && data?.options?.syncTabs !== false;
+
     // Broadcast dismissal to other tabs if not initiated from a remote sync event
-    if (!fromSync && getConfig().syncTabs && broadcaster.isSupported()) {
+    if (!fromSync && allowSyncDismiss && getConfig().syncTabs && broadcaster.isSupported()) {
       broadcaster.broadcast('dismiss', key, {});
     }
 
@@ -779,7 +795,6 @@ export async function closeToastByKey(key, fromSync = false) {
       return;
     }
 
-    const data = active.get(key);
     if (!data) return;
 
     data.timer?.clear();
@@ -1538,7 +1553,13 @@ export async function updateToastByKey(key, newOptions = {}) {
   }
 
   // 8. Cross-tab synchronization
-  if (!newOptions.fromSync && getConfig().syncTabs && broadcaster.isSupported()) {
+  if (
+    !newOptions.fromSync &&
+    data.options?.syncTabs !== false &&
+    newOptions.syncTabs !== false &&
+    getConfig().syncTabs &&
+    broadcaster.isSupported()
+  ) {
     broadcaster.broadcast('update', key, { newOptions });
   }
 }

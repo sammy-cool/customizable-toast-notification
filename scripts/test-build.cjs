@@ -41,6 +41,9 @@ const requiredFiles = [
   "index.d.ts",
   "index.css",
   "index.css.d.ts",
+  "react.esm.mjs",
+  "react.cjs",
+  "react.d.ts",
 ];
 
 requiredFiles.forEach(assertFileExists);

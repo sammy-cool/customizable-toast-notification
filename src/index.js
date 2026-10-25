@@ -40,6 +40,15 @@ import {
   generateSpringLinearEasing,
   getSpringTransition,
 } from "./utils/spring.js";
+import {
+  setLocale,
+  getLocale,
+  getAvailableLocales,
+  registerLocale,
+  getLocaleMessage,
+  isRtlLocale,
+  resetLocale,
+} from "./utils/i18n.js";
 
 /**
  * @typedef {'modern' | 'retro' | 'futuristic' | 'subtle' | 'bell' | string} SoundPreset
@@ -138,6 +147,7 @@ import {
  * @property {number | string | 'indeterminate'} [progress]
  * @property {boolean} [progressNormalized]
  * @property {boolean} [syncTabs]
+ * @property {boolean} [syncDismiss]
  * @property {boolean} [aiPrioritization]
  * @property {number} [priority]
  * @property {boolean} [usePool]
@@ -206,12 +216,7 @@ let defaultColors = {
   info: "#17a2b8",
 };
 
-let defaultMessages = {
-  success: "Operation completed successfully!",
-  error: "Something went wrong!",
-  warning: "Warning message!",
-  info: "Information message!",
-};
+let customDefaultMessages = {};
 
 let domReady = false;
 let domReadyPromise = null;
@@ -385,10 +390,19 @@ async function sanitizeToastOptions(rawOptions) {
 
   try {
     final.message =
-      final.message || defaultMessages?.[final.type] || "No Message Provided!";
+      final.message ||
+      customDefaultMessages[final.type] ||
+      getLocaleMessage(final.type) ||
+      "No Message Provided!";
   } catch (error) {
     console.warn("Default message resolution failed:", error);
   }
+
+  try {
+    if (!final.fontDirection && isRtlLocale()) {
+      final.fontDirection = "rtl";
+    }
+  } catch {}
 
   try {
     if (!final.textColor && final.backgroundColor) {
@@ -458,7 +472,7 @@ function setDefaultMessages(messages) {
         }
       }
       if (Object.keys(validated).length > 0) {
-        defaultMessages = { ...defaultMessages, ...validated };
+        customDefaultMessages = { ...customDefaultMessages, ...validated };
       }
     }
   } catch (error) {
@@ -797,6 +811,11 @@ export {
   getSpringTransition,
   getAudioContext,
   getAudioAnalyser,
+  setLocale,
+  getLocale,
+  getAvailableLocales,
+  registerLocale,
+  resetLocale,
 };
 
 if (typeof window !== "undefined" && typeof document !== "undefined") {
@@ -896,6 +915,11 @@ try {
       getSpringTransition,
       getAudioContext,
       getAudioAnalyser,
+      setLocale,
+      getLocale,
+      getAvailableLocales,
+      registerLocale,
+      resetLocale,
     };
   }
 } catch (error) {
