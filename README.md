@@ -34,13 +34,13 @@
            └──────────────────────────────────────────────────┘
 ```
 
-Toast notifications that work the same everywhere — plain JavaScript, Vue, Svelte, Angular, SolidJS, or a multi-page app. Built with sanitized-by-default HTML rendering, zero runtime dependencies, and 177 automated unit & logic tests plus Playwright cross-browser specifications.
+Toast notifications that work the same everywhere — plain JavaScript, Vue, Svelte, Angular, SolidJS, or a multi-page app. Built with sanitized-by-default HTML rendering, zero runtime dependencies, and 232 automated unit & logic tests plus 80 Playwright cross-browser specifications.
 
 ## ✨ Key Features
 
 - 🌐 **Actually Framework Agnostic** - Not a React library with "vanilla JS support" bolted on — the same API works identically in React, Vue, Angular, Svelte, htmx, or plain HTML with no build step at all
 - 🛡️ **Sanitized by Default** - `allowHtml` content is sanitized before render (DOMPurify if it's on the page, a verified-equivalent fallback if not) — safe to use with content you don't fully control
-- ✅ **Rigorously Tested** - 177 real logic & unit tests plus Playwright end-to-end specifications across Chromium, Firefox, and WebKit — not just "it worked on my machine"
+- ✅ **Rigorously Tested** - 232 real logic & unit tests across 87 suites plus 80 Playwright end-to-end specifications across Chromium, Firefox, and WebKit — not just "it worked on my machine"
 - 🚫 **Zero Runtime Dependencies** - Nothing pulled in when your users load your app
 - 🔧 **Real TypeScript Types** - Full type definitions with real autocomplete and type-checking, not a placeholder `any`
 - 🎨 **Highly Customizable** - Colors, positions, animations, progress bars, and styling
@@ -227,6 +227,9 @@ auto-dismissed on its own — they no-op gracefully rather than throwing. You ca
 | `progressBarColor`  | `string`           | Falls back to `textColor`       | Alias for `progressColor` (accepts hex, rgb, hsl, CSS var)                     |
 | `progress`          | `number \| 'indeterminate'`| `undefined`            | Explicit percentage (0 to 100) or `"indeterminate"` moving gradient            |
 | `usePool`           | `boolean`          | `false`                         | Virtual element pooling for DOM recycling in high-frequency rendering           |
+| `tag` / `groupId`   | `string`           | `undefined`                     | Thread grouping identifier to replace notification in-place instead of stacking |
+| `trapFocus`         | `boolean`          | `false`                         | Modal keyboard focus trap (`Tab`/`Shift+Tab`) cycling for high-priority toasts  |
+| `shadowDom`         | `boolean`          | `false`                         | Render toast container inside isolated Shadow Root to prevent CSS bleed         |
 | `cta`               | `object \| array`   | `null`                          | Call-to-action configuration (see [CTA](#call-to-action))                      |
 | `undo`              | `function \| object`| `null`                         | Action Undo button with live dynamic countdown badge (see [Undo](#️-action-undo-with-live-countdown)) |
 | `spring`            | `boolean \| string \| object`| `null`                | Configurable spring physics animations (see [Spring Physics](#-configurable-spring-physics-animation-engine)) |
@@ -1190,6 +1193,106 @@ document.documentElement.style.setProperty('--toast-success-bg', '#10b981');
 --toast-offset: 10px; /* Distance from viewport edge */
 --toast-z-index: 9999; /* Normal toast z-index */
 --toast-emergency-z-index: 10099; /* Emergency fallback z-index */
+```
+
+## 🧩 First-Class Framework Subpath Adapters
+
+Native, zero-runtime-overhead subpaths with complete TypeScript typings are included for modern web frameworks:
+
+```typescript
+// React & Next.js
+import { useToast } from "customizable-toast-notification/react";
+const { success, error, promise } = useToast();
+
+// Vue 3 & Nuxt
+import { useToast } from "customizable-toast-notification/vue";
+const toast = useToast();
+toast.success("Saved!");
+
+// Svelte & SvelteKit
+import { toastStore } from "customizable-toast-notification/svelte";
+$toastStore.info("Store updated");
+
+// SolidJS
+import { useToast } from "customizable-toast-notification/solid";
+const { success } = useToast();
+
+// Angular 17+ (Signals & Standalone Injectable)
+import { injectToast, ToastService } from "customizable-toast-notification/angular";
+const toast = injectToast();
+```
+
+## 🧵 Threaded Tag Grouping (`tag` / `groupId`)
+
+Replace or update notifications in-place by tag instead of stacking duplicate cards:
+
+```javascript
+// Updates the existing 'upload-123' card in-place and resets the timer
+toast({
+  tag: "upload-123",
+  message: "Uploading: 45%...",
+  showProgressBar: true,
+  progress: 45
+});
+```
+
+## 🔒 Accessible Modal Keyboard Focus Trap (`trapFocus`)
+
+Trap keyboard navigation (`Tab` / `Shift+Tab`) inside high-priority interactive dialogs or action confirmations:
+
+```javascript
+toast.error("Critical: Unsaved changes will be lost", {
+  trapFocus: true,
+  role: "alert",
+  cta: [
+    { label: "Discard", onClick: () => discardChanges() },
+    { label: "Keep Editing", onClick: () => {} }
+  ]
+});
+```
+
+## 🛡️ Shadow DOM Isolation (`shadowDom`)
+
+Render notifications in an isolated Shadow Root to prevent host application CSS collisions:
+
+```javascript
+toast.info("Protected from global styles", {
+  shadowDom: true
+});
+```
+
+## 🌍 Internationalization (i18n) Engine
+
+Built-in multi-locale support with automatic RTL layout switching:
+
+```javascript
+import { setLocale, registerLocale } from "customizable-toast-notification";
+
+// Built-in support for "en", "hi", "ar"
+setLocale("ar"); // Automatically switches to right-to-left layout
+
+// Register custom translations
+registerLocale("fr", {
+  undo: "Annuler",
+  close: "Fermer la notification",
+  success: "Opération réussie"
+});
+```
+
+## 📜 Notification History & Telemetry Ring Buffer
+
+Track and inspect notification delivery, dismissals, and drop telemetry:
+
+```javascript
+import { getToastHistory, clearToastHistory, setHistoryCapacity } from "customizable-toast-notification";
+
+// Set capacity (default 50)
+setHistoryCapacity(100);
+
+// Get immutable snapshot of recent toasts with timestamps, status, and metadata
+const history = getToastHistory();
+console.log(history);
+// Output: [{ id: "...", message: "...", type: "...", status: "active" | "dismissed" | "dropped", timestamp: ... }]
 ```
 
 ## 🤝 Contributing
