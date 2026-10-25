@@ -11,6 +11,7 @@ import {
   createProgressBar,
   runToastAnimation,
   attachSwipeToDismiss,
+  attachFocusTrap,
 } from "./toast-utils-core.js";
 import { playTone } from "../utils/audio.js";
 import { getSpringTransition } from "../utils/spring.js";
@@ -262,6 +263,10 @@ export async function applyRichStyling(toast, options, onClose) {
         : options?.type || "info";
     const preset = options?.soundPreset || config.soundPreset || "modern";
     playTone(tone, preset);
+  }
+
+  if (options?.trapFocus ?? config.trapFocus) {
+    attachFocusTrap(toast);
   }
 
   runToastAnimation(toast);

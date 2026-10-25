@@ -4774,6 +4774,331 @@ describe("Omni-Channel Upgrades: i18n, Multi-Tab Queue Sync, React Adapter, and 
   });
 });
 
+describe("history.js — Notification History & Telemetry Subsystem", () => {
+  test("records, retrieves, and clears toast history entries accurately", async () => {
+    const {
+      recordToastHistory,
+      markToastHistoryDismissed,
+      markToastHistoryDropped,
+      getToastHistory,
+      clearToastHistory,
+      setHistoryCapacity,
+      resetToastHistory,
+    } = await import("../../src/utils/history.js");
+
+    resetToastHistory();
+
+    const entry1 = recordToastHistory("toast-1", { message: "Hello", type: "success" }, "active");
+    assert.strictEqual(entry1.id, "toast-1");
+    assert.strictEqual(entry1.message, "Hello");
+    assert.strictEqual(entry1.type, "success");
+    assert.strictEqual(entry1.status, "active");
+    assert.ok(entry1.timestamp > 0);
+
+    markToastHistoryDismissed("toast-1");
+    let history = getToastHistory();
+    assert.strictEqual(history.length, 1);
+    assert.strictEqual(history[0].status, "dismissed");
+    assert.ok(history[0].dismissedAt > 0);
+
+    markToastHistoryDropped("toast-2", { message: "Dropped item" });
+    history = getToastHistory();
+    assert.strictEqual(history.length, 2);
+    assert.strictEqual(history[0].id, "toast-2");
+    assert.strictEqual(history[0].status, "dropped");
+
+    // Capacity limiting
+    setHistoryCapacity(3);
+    recordToastHistory("toast-3", { message: "Item 3" });
+    recordToastHistory("toast-4", { message: "Item 4" });
+    recordToastHistory("toast-5", { message: "Item 5" });
+    history = getToastHistory();
+    assert.strictEqual(history.length, 3);
+    assert.strictEqual(history[0].id, "toast-5");
+
+    // Immutability of returned array
+    history[0].message = "Tampered";
+    const freshHistory = getToastHistory();
+    assert.strictEqual(freshHistory[0].message, "Item 5");
+
+    clearToastHistory();
+    assert.strictEqual(getToastHistory().length, 0);
+
+    resetToastHistory();
+  });
+
+  test("ToastManager integrates with history automatically on create and dismiss", async () => {
+    freshDom();
+    const { createToast, getToastHistory, resetToastHistory, resetToastManager } = await import("../../src/index.js");
+    resetToastHistory();
+    resetToastManager();
+
+    const handle = await createToast({ message: "History integration test", type: "info" });
+    await new Promise((r) => setTimeout(r, 60));
+
+    let history = getToastHistory();
+    assert.ok(history.length >= 1);
+    const item = history.find((h) => h.message === "History integration test");
+    assert.ok(item);
+    assert.strictEqual(item.status, "active");
+
+    await handle.dismiss();
+    await new Promise((r) => setTimeout(r, 60));
+
+    history = getToastHistory();
+    const dismissedItem = history.find((h) => h.message === "History integration test");
+    assert.strictEqual(dismissedItem.status, "dismissed");
+
+    resetToastHistory();
+    resetToastManager();
+  });
+});
+
+describe("ToastManager.js — Threaded Tag Grouping (tag & groupId)", () => {
+  test("tag groups and replaces message in-place on existing active toast thread", async () => {
+    freshDom();
+    const { createToast, resetToastManager } = await import("../../src/index.js");
+    resetToastManager();
+
+    const handle1 = await createToast({
+      tag: "download-progress",
+      message: "Downloading 10%",
+      duration: 5000,
+      position: "top-right",
+    });
+    await new Promise((r) => setTimeout(r, 60));
+
+    const container = document.getElementById("toast-container-top-right");
+    assert.ok(container);
+    assert.strictEqual(container.querySelectorAll(".toast").length, 1);
+    assert.ok(container.textContent.includes("Downloading 10%"));
+
+    // Second toast with same tag should update existing toast in-place
+    const handle2 = await createToast({
+      tag: "download-progress",
+      message: "Downloading 90%",
+      duration: 5000,
+      position: "top-right",
+    });
+    await new Promise((r) => setTimeout(r, 60));
+
+    assert.strictEqual(container.querySelectorAll(".toast").length, 1);
+    assert.ok(container.textContent.includes("Downloading 90%"));
+
+    // Different tag should create a distinct toast
+    const handle3 = await createToast({
+      tag: "upload-task",
+      message: "Uploading files...",
+      duration: 5000,
+      position: "top-right",
+    });
+    await new Promise((r) => setTimeout(r, 60));
+    assert.strictEqual(container.querySelectorAll(".toast").length, 2);
+
+    await handle1.dismiss();
+    await handle2.dismiss();
+    await handle3.dismiss();
+    resetToastManager();
+  });
+
+  test("groupId aliases tag behavior seamlessly", async () => {
+    freshDom();
+    const { createToast, resetToastManager } = await import("../../src/index.js");
+    resetToastManager();
+
+    const handle1 = await createToast({
+      groupId: "chat-notifications",
+      message: "User A: Hello",
+      duration: 5000,
+      position: "bottom-left",
+    });
+    await new Promise((r) => setTimeout(r, 60));
+
+    const container = document.getElementById("toast-container-bottom-left");
+    assert.ok(container);
+    assert.strictEqual(container.querySelectorAll(".toast").length, 1);
+    assert.ok(container.textContent.includes("User A: Hello"));
+
+    await createToast({
+      groupId: "chat-notifications",
+      message: "User B: Welcome!",
+      duration: 5000,
+      position: "bottom-left",
+    });
+    await new Promise((r) => setTimeout(r, 60));
+
+    assert.strictEqual(container.querySelectorAll(".toast").length, 1);
+    assert.ok(container.textContent.includes("User B: Welcome!"));
+
+    await handle1.dismiss();
+    resetToastManager();
+  });
+});
+
+describe("toast-utils-core.js — Keyboard Focus Trapping (trapFocus)", () => {
+  test("attachFocusTrap cycles Tab and Shift+Tab between interactive elements", async () => {
+    freshDom();
+    const { attachFocusTrap } = await import("../../src/components/toast-utils-core.js");
+
+    const toast = document.createElement("div");
+    const btn1 = document.createElement("button");
+    btn1.textContent = "Action 1";
+    const btn2 = document.createElement("button");
+    btn2.textContent = "Action 2";
+    toast.appendChild(btn1);
+    toast.appendChild(btn2);
+    document.body.appendChild(toast);
+
+    const cleanup = attachFocusTrap(toast);
+    assert.strictEqual(typeof cleanup, "function");
+
+    // Test initial focus timer
+    await new Promise((r) => setTimeout(r, 50));
+    assert.strictEqual(document.activeElement, btn1);
+
+    // Tab from btn2 (last) wraps to btn1 (first)
+    btn2.focus();
+    const tabEvent = new window.KeyboardEvent("keydown", { key: "Tab", bubbles: true, cancelable: true });
+    toast.dispatchEvent(tabEvent);
+    assert.strictEqual(document.activeElement, btn1);
+
+    // Shift+Tab from btn1 (first) wraps to btn2 (last)
+    const shiftTabEvent = new window.KeyboardEvent("keydown", { key: "Tab", shiftKey: true, bubbles: true, cancelable: true });
+    toast.dispatchEvent(shiftTabEvent);
+    assert.strictEqual(document.activeElement, btn2);
+
+    cleanup();
+    toast.remove();
+  });
+
+  test("trapFocus option automatically activates focus trap on rich toast creation", async () => {
+    freshDom();
+    const { createToast, resetToastManager } = await import("../../src/index.js");
+    resetToastManager();
+
+    const handle = await createToast({
+      message: "Focus trap test",
+      trapFocus: true,
+      cta: { label: "Confirm", onClick: () => {} },
+      showCloseButton: true,
+      duration: 5000,
+    });
+    await new Promise((r) => setTimeout(r, 60));
+
+    const toast = document.querySelector(".toast");
+    assert.ok(toast);
+    assert.strictEqual(typeof toast._cleanupFocusTrap, "function");
+
+    await handle.dismiss();
+    resetToastManager();
+  });
+});
+
+describe("containerRegistry.js — Shadow DOM Encapsulation (shadowDom)", () => {
+  test("shadowDom: true encapsulates toast container in shadow root", async () => {
+    freshDom();
+    const { getOrCreateToastContainer, resetContainerRegistry } = await import("../../src/utils/containerRegistry.js");
+    resetContainerRegistry();
+
+    const container = await getOrCreateToastContainer({ shadowDom: true, position: "top-right" });
+    assert.ok(container);
+
+    const shadowHost = document.getElementById("toast-shadow-host");
+    assert.ok(shadowHost, "#toast-shadow-host must be created in document");
+    assert.ok(shadowHost.shadowRoot, "shadowRoot must be attached");
+    assert.strictEqual(container.parentNode, shadowHost.shadowRoot);
+    assert.ok(shadowHost.shadowRoot.querySelector("style[data-toast-shadow-style]"));
+
+    resetContainerRegistry();
+    assert.strictEqual(document.getElementById("toast-shadow-host"), null, "shadow host must be cleaned up on reset");
+  });
+});
+
+describe("Framework Adapters — Vue, Svelte, Solid, and Angular contracts", () => {
+  test("Vue adapter returns full useToast API contract", async () => {
+    const { useToast, toast, createToastAPI } = await import("../../src/vue/index.js");
+    const api = useToast();
+
+    assert.ok(typeof api.success === "function");
+    assert.ok(typeof api.error === "function");
+    assert.ok(typeof api.warning === "function");
+    assert.ok(typeof api.info === "function");
+    assert.ok(typeof api.loading === "function");
+    assert.ok(typeof api.custom === "function");
+    assert.ok(typeof api.show === "function");
+    assert.ok(typeof api.promise === "function");
+    assert.ok(typeof api.dismiss === "function");
+    assert.ok(typeof api.dismissAll === "function");
+    assert.ok(typeof api.clear === "function");
+    assert.ok(typeof api.getHistory === "function");
+    assert.ok(typeof api.clearHistory === "function");
+    assert.strictEqual(toast, api);
+    assert.strictEqual(typeof createToastAPI, "function");
+  });
+
+  test("Svelte adapter provides readable store subscribe contract and methods", async () => {
+    const { toast, useToast, createToastStore } = await import("../../src/svelte/index.js");
+
+    assert.strictEqual(typeof toast.subscribe, "function");
+    let state = null;
+    const unsubscribe = toast.subscribe((val) => {
+      state = val;
+    });
+
+    assert.ok(state);
+    assert.ok(state.metrics);
+    assert.ok(Array.isArray(state.history));
+    assert.strictEqual(typeof unsubscribe, "function");
+    unsubscribe();
+
+    assert.ok(typeof toast.success === "function");
+    assert.ok(typeof toast.error === "function");
+    assert.ok(typeof toast.warning === "function");
+    assert.ok(typeof toast.info === "function");
+    assert.ok(typeof toast.getHistory === "function");
+    assert.ok(typeof toast.clearHistory === "function");
+    assert.strictEqual(useToast(), toast);
+    assert.strictEqual(typeof createToastStore, "function");
+  });
+
+  test("SolidJS adapter returns full useToast API contract", async () => {
+    const { useToast, toast, createToastAPI } = await import("../../src/solid/index.js");
+    const api = useToast();
+
+    assert.ok(typeof api.success === "function");
+    assert.ok(typeof api.error === "function");
+    assert.ok(typeof api.warning === "function");
+    assert.ok(typeof api.info === "function");
+    assert.ok(typeof api.getHistory === "function");
+    assert.strictEqual(toast, api);
+    assert.strictEqual(typeof createToastAPI, "function");
+  });
+
+  test("Angular adapter exposes ToastService class with Ivy metadata and injectToast", async () => {
+    const { ToastService, injectToast, toast } = await import("../../src/angular/index.js");
+
+    assert.strictEqual(typeof ToastService, "function");
+    assert.ok(ToastService.ɵfac);
+    assert.ok(ToastService.ɵprov);
+    assert.strictEqual(ToastService.ɵprov.providedIn, "root");
+
+    const instance = new ToastService();
+    assert.ok(typeof instance.success === "function");
+    assert.ok(typeof instance.error === "function");
+    assert.ok(typeof instance.warning === "function");
+    assert.ok(typeof instance.info === "function");
+    assert.ok(typeof instance.loading === "function");
+    assert.ok(typeof instance.custom === "function");
+    assert.ok(typeof instance.getHistory === "function");
+    assert.ok(typeof instance.clearHistory === "function");
+
+    const injected = injectToast();
+    assert.ok(injected instanceof ToastService);
+    assert.strictEqual(toast, injected);
+  });
+});
+
+
 
 
 

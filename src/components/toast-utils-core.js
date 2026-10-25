@@ -766,3 +766,79 @@ export function attachSwipeToDismiss(toast, onClose) {
   };
 
 }
+
+/**
+ * Constrains keyboard Tab focus inside an active interactive toast.
+ * @param {HTMLElement} toast
+ * @returns {(() => void) | null} Cleanup function
+ */
+export function attachFocusTrap(toast) {
+  if (!toast || typeof toast.querySelectorAll !== "function") return null;
+
+  const getFocusable = () =>
+    Array.from(
+      toast.querySelectorAll(
+        'button:not([disabled]), [href], input:not([disabled]), select:not([disabled]), textarea:not([disabled]), [tabindex]:not([tabindex="-1"])'
+      )
+    ).filter((el) => {
+      try {
+        if (typeof el.offsetWidth === "number" && typeof el.offsetHeight === "number") {
+          const style = typeof window !== "undefined" && window.getComputedStyle ? window.getComputedStyle(el) : null;
+          if (style && (style.display === "none" || style.visibility === "hidden")) return false;
+          const hasRealLayout = typeof document !== "undefined" && document.body && (document.body.offsetWidth > 0 || document.body.offsetHeight > 0);
+          if (hasRealLayout && el.offsetWidth === 0 && el.offsetHeight === 0) {
+            return el === document.activeElement;
+          }
+        }
+        return true;
+      } catch {
+        return true;
+      }
+    });
+
+  const onKeyDown = (e) => {
+    if (e.key !== "Tab") return;
+    if (!toast.isConnected && toast.parentNode !== document.body) return;
+    const focusable = getFocusable();
+    if (focusable.length === 0) return;
+
+    const first = focusable[0];
+    const last = focusable[focusable.length - 1];
+
+    if (e.shiftKey) {
+      if (document.activeElement === first || !toast.contains(document.activeElement)) {
+        last.focus();
+        e.preventDefault();
+      }
+    } else {
+      if (document.activeElement === last || !toast.contains(document.activeElement)) {
+        first.focus();
+        e.preventDefault();
+      }
+    }
+  };
+
+  toast.addEventListener("keydown", onKeyDown);
+  if (typeof document !== "undefined") {
+    document.addEventListener("keydown", onKeyDown);
+  }
+
+  const initialFocusTimer = setTimeout(() => {
+    const focusable = getFocusable();
+    if (focusable.length > 0 && typeof focusable[0].focus === "function") {
+      focusable[0].focus();
+    }
+  }, 30);
+  if (typeof initialFocusTimer?.unref === "function") initialFocusTimer.unref();
+
+  const cleanup = () => {
+    clearTimeout(initialFocusTimer);
+    toast.removeEventListener("keydown", onKeyDown);
+    if (typeof document !== "undefined") {
+      document.removeEventListener("keydown", onKeyDown);
+    }
+  };
+
+  toast._cleanupFocusTrap = cleanup;
+  return cleanup;
+}

@@ -17,6 +17,15 @@ import { getToastBroadcaster } from "../utils/toast-broadcast.js";
 import { calculateToastPriority } from "../utils/ai-scorer.js";
 import { getToastPool } from "../utils/toast-pool.js";
 import { createGestureDetector } from "../utils/multi-touch.js";
+import {
+  recordToastHistory,
+  markToastHistoryDismissed,
+  markToastHistoryDropped,
+  getToastHistory,
+  clearToastHistory,
+  setHistoryCapacity,
+  resetToastHistory,
+} from "../utils/history.js";
 
 
 const active = new Map();
@@ -285,6 +294,14 @@ function hashString(str) {
 function makeKey(options = {}) {
   const safe = options && typeof options === "object" ? options : {};
   if (safe.id !== undefined && safe.id !== null && safe.id !== "") return String(safe.id);
+  if (safe.tag !== undefined && safe.tag !== null && safe.tag !== "") {
+    const position = normalizePositionKey(safe.position || "bottom-right");
+    return `tag:${String(safe.tag).trim()}:${position}`;
+  }
+  if (safe.groupId !== undefined && safe.groupId !== null && safe.groupId !== "") {
+    const position = normalizePositionKey(safe.position || "bottom-right");
+    return `group:${String(safe.groupId).trim()}:${position}`;
+  }
   const type = String(safe.type || "info").trim().toLowerCase();
   const messageHash = hashString(String(safe.message || "")).toString(16);
   const position = normalizePositionKey(safe.position || "bottom-right");
@@ -300,6 +317,12 @@ export async function showToast(options = {}) {
       const data = active.get(key);
       if (!data) throw new Error(`Active toast with key ${key} not found`);
       data.count++;
+
+      // If tagged or grouped thread, update message text in-place to latest update
+      if ((options.tag || options.groupId) && options.message && data.toast?._messageSpan) {
+        data.toast._messageSpan.textContent = String(options.message);
+        data.toast._messageSpan.title = String(options.message);
+      }
 
       data.timer?.clear();
       data.timer = createDismissTimer(data.toast, options);
@@ -377,13 +400,16 @@ export async function showToast(options = {}) {
 
             if (incomingPriority <= lowestPriority) {
               droppedCount++;
+              markToastHistoryDropped(key, current.options);
               emitMetrics();
               return;
             }
 
-            queue.splice(lowestIndex, 1);
+            const removed = queue.splice(lowestIndex, 1)[0];
+            if (removed) markToastHistoryDropped(removed.key, removed.options);
           } else {
-            queue.shift();
+            const removed = queue.shift();
+            if (removed) markToastHistoryDropped(removed.key, removed.options);
           }
           droppedCount++;
         }
@@ -486,6 +512,7 @@ async function createOne(options, key, initialCount) {
     active.set(key, data);
     toast._key = key;
 
+    recordToastHistory(key, options, "active");
     emitMetrics();
 
     if (data.count > 1) await updateBadge(data);
@@ -597,6 +624,7 @@ export function resetToastManager() {
     data.toast?._cleanupCTA?.();
     data.toast?._cleanupUndo?.();
     data.toast?._cleanupSwipe?.();
+    data.toast?._cleanupFocusTrap?.();
     data.toast?._cleanup?.();
     if (data.toast?._progressAnimation) {
       try {
@@ -628,6 +656,7 @@ export function resetToastManager() {
 
 export const dismiss = dismissMostRecent;
 export const noop = closeAllToasts;
+export { getToastHistory, clearToastHistory, setHistoryCapacity, resetToastHistory };
 
 function createDismissTimer(toast, options) {
   const raw = Number(options?.duration);
@@ -797,12 +826,15 @@ export async function closeToastByKey(key, fromSync = false) {
 
     if (!data) return;
 
+    markToastHistoryDismissed(key);
+
     data.timer?.clear();
     data.outer?._pauseCleanup?.();
     data.toast?._cleanupCloseButton?.();
     data.toast?._cleanupCTA?.();
     data.toast?._cleanupUndo?.();
     data.toast?._cleanupSwipe?.();
+    data.toast?._cleanupFocusTrap?.();
     data.toast?._cleanup?.();
     if (data.toast?._progressAnimation) {
       try {

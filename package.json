@@ -25,13 +25,53 @@
       "require": "./dist/react.cjs",
       "default": "./dist/react.esm.mjs"
     },
+    "./vue": {
+      "types": "./dist/vue.d.ts",
+      "import": "./dist/vue.esm.mjs",
+      "require": "./dist/vue.cjs",
+      "default": "./dist/vue.esm.mjs"
+    },
+    "./svelte": {
+      "types": "./dist/svelte.d.ts",
+      "import": "./dist/svelte.esm.mjs",
+      "require": "./dist/svelte.cjs",
+      "default": "./dist/svelte.esm.mjs"
+    },
+    "./solid": {
+      "types": "./dist/solid.d.ts",
+      "import": "./dist/solid.esm.mjs",
+      "require": "./dist/solid.cjs",
+      "default": "./dist/solid.esm.mjs"
+    },
+    "./angular": {
+      "types": "./dist/angular.d.ts",
+      "import": "./dist/angular.esm.mjs",
+      "require": "./dist/angular.cjs",
+      "default": "./dist/angular.esm.mjs"
+    },
     "./package.json": "./package.json"
   },
   "peerDependencies": {
-    "react": ">=16.8.0"
+    "react": ">=16.8.0",
+    "vue": ">=3.0.0",
+    "svelte": ">=3.0.0",
+    "solid-js": ">=1.0.0",
+    "@angular/core": ">=12.0.0"
   },
   "peerDependenciesMeta": {
     "react": {
+      "optional": true
+    },
+    "vue": {
+      "optional": true
+    },
+    "svelte": {
+      "optional": true
+    },
+    "solid-js": {
+      "optional": true
+    },
+    "@angular/core": {
       "optional": true
     }
   },
@@ -57,8 +97,8 @@
     "build": "npm run build:js && npm run build:css",
     "build:types:emit": "tsc -p tsconfig.types.json",
     "build:types:bundle": "rollup -c rollup.dts.config.mjs",
-    "build:react:types": "cp src/react/index.d.ts dist/react.d.ts",
-    "build:types": "npm run build:types:emit && npm run build:types:bundle && npm run build:react:types",
+    "build:adapter:types": "node scripts/copy-adapter-types.cjs",
+    "build:types": "npm run build:types:emit && npm run build:types:bundle && npm run build:adapter:types",
     "zone-build": "npm run dist:clean && npm run build && npm run build:types && du -h dist/*",
     "test:builds": "node scripts/test-build.cjs",
     "test": "npm run ci:test",

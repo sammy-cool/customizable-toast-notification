@@ -49,6 +49,12 @@ import {
   isRtlLocale,
   resetLocale,
 } from "./utils/i18n.js";
+import {
+  getToastHistory,
+  clearToastHistory,
+  setHistoryCapacity,
+  resetToastHistory,
+} from "./utils/history.js";
 
 /**
  * @typedef {'modern' | 'retro' | 'futuristic' | 'subtle' | 'bell' | string} SoundPreset
@@ -151,6 +157,22 @@ import {
  * @property {boolean} [aiPrioritization]
  * @property {number} [priority]
  * @property {boolean} [usePool]
+ * @property {string} [tag] - Optional thread/tag identifier for replacement/updating
+ * @property {string} [groupId] - Optional group identifier for grouping related toasts
+ * @property {boolean} [trapFocus] - Whether to trap keyboard Tab focus within the toast
+ * @property {boolean} [shadowDom] - Whether to isolate the container in an attached Shadow DOM root
+ */
+
+/**
+ * @typedef {Object} ToastHistoryEntry
+ * @property {string} id - Unique toast key or identifier
+ * @property {string} message - Notification text message
+ * @property {ToastType} type - Notification status type
+ * @property {string} position - Toast placement coordinates
+ * @property {number} timestamp - Unix timestamp (ms) when created
+ * @property {number} [dismissedAt] - Unix timestamp (ms) when dismissed
+ * @property {'active' | 'dismissed' | 'dropped'} status - Current lifecycle status
+ * @property {Record<string, unknown>} [options] - Snapshot of configured options
  */
 
 /**
@@ -190,6 +212,8 @@ import {
  * @property {SoundPreset} [soundPreset]
  * @property {boolean} [syncTabs]
  * @property {boolean} [aiPrioritization]
+ * @property {boolean} [shadowDom]
+ * @property {boolean} [trapFocus]
  * @property {boolean} [debug]
  * @property {((context: { type: string, message: string, duration?: number, options?: Record<string, unknown> }) => number | { score: number }) | null} [priorityScorer]
  * @property {((metrics: ToastMetrics) => void) | null} [onMetrics]
@@ -767,6 +791,8 @@ createToastWithPriority.promise = toastPromise;
 createToastWithPriority.dismiss = dismissToast;
 createToastWithPriority.dismissAll = noopAll;
 createToastWithPriority.clear = noopAll;
+createToastWithPriority.getHistory = getToastHistory;
+createToastWithPriority.clearHistory = clearToastHistory;
 
 /** @type {string} */
 const version = typeof __VERSION__ !== "undefined" ? __VERSION__ : "3.19.0";
@@ -816,6 +842,10 @@ export {
   getAvailableLocales,
   registerLocale,
   resetLocale,
+  getToastHistory,
+  clearToastHistory,
+  setHistoryCapacity,
+  resetToastHistory,
 };
 
 if (typeof window !== "undefined" && typeof document !== "undefined") {
@@ -920,6 +950,10 @@ try {
       getAvailableLocales,
       registerLocale,
       resetLocale,
+      getToastHistory,
+      clearToastHistory,
+      setHistoryCapacity,
+      resetToastHistory,
     };
   }
 } catch (error) {

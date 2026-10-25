@@ -37,6 +37,8 @@
  * @property {boolean} [pauseOnHover]
  * @property {boolean} syncTabs
  * @property {boolean} aiPrioritization
+ * @property {boolean} [shadowDom]
+ * @property {boolean} [trapFocus]
  * @property {boolean} [debug]
  * @property {((context: { type: string, message: string, duration?: number, options?: Record<string, unknown> }) => number | { score: number }) | null} [priorityScorer]
  * @property {((metrics: ToastMetrics) => void) | null} [onMetrics]
@@ -59,6 +61,8 @@ const DEFAULT_GLOBAL_CONFIG = Object.freeze({
   pauseOnHover: false,
   syncTabs: false,
   aiPrioritization: false,
+  shadowDom: false,
+  trapFocus: false,
   priorityScorer: null,
   onMetrics: null,
   debug: false,
@@ -97,10 +101,20 @@ export function setConfig(options = {}) {
     pauseOnHover,
     syncTabs,
     aiPrioritization,
+    shadowDom,
+    trapFocus,
     priorityScorer,
     onMetrics,
     debug,
   } = options;
+
+  if (shadowDom !== undefined) {
+    globalConfig.shadowDom = Boolean(shadowDom);
+  }
+
+  if (trapFocus !== undefined) {
+    globalConfig.trapFocus = Boolean(trapFocus);
+  }
 
   if (debug !== undefined) {
     globalConfig.debug = Boolean(debug);
