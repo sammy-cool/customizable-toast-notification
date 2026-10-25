@@ -4356,6 +4356,195 @@ describe("toast-utils-core.js & ToastManager.js — Exhaustive Progress Bar Fixe
   });
 });
 
+describe("Subsystems & Option Matrix Conflict Fortification", { concurrency: 1 }, () => {
+  test("FIXED: CTA rapid clicks are guarded against duplicate concurrent invocations", async () => {
+    freshDom();
+    const { createToast, resetToastManager } = await import("../../src/index.js");
+    resetToastManager();
+
+    const position = "test-cta-guard-" + Date.now();
+    let ctaCalls = 0;
+    const handle = await createToast({
+      message: "CTA Guard Test",
+      position,
+      cta: {
+        label: "Submit",
+        onClick: async () => {
+          ctaCalls++;
+          await new Promise((r) => setTimeout(r, 60));
+        },
+        autoClose: false,
+      },
+    });
+    await new Promise((r) => setTimeout(r, 60));
+    const container = document.getElementById(`toast-container-${position}`);
+    const toast = container?.querySelector(".toast");
+    const ctaBtn = toast?.querySelector(".toast-cta");
+    assert.ok(ctaBtn);
+
+    // Rapid double click
+    ctaBtn.click();
+    ctaBtn.click();
+    await new Promise((r) => setTimeout(r, 100));
+
+    assert.strictEqual(ctaCalls, 1, "CTA onClick must be guarded and not fire concurrently twice");
+    await handle.dismiss();
+    resetToastManager();
+  });
+
+  test("FIXED: Link CTA elements render with display: inline-flex and text-decoration: none", async () => {
+    freshDom();
+    const { createToast, resetToastManager } = await import("../../src/index.js");
+    resetToastManager();
+
+    const position = "test-cta-link-" + Date.now();
+    const handle = await createToast({
+      message: "Check link",
+      position,
+      cta: {
+        label: "Documentation",
+        href: "https://example.com",
+        variant: "link",
+      },
+    });
+    await new Promise((r) => setTimeout(r, 60));
+    const container = document.getElementById(`toast-container-${position}`);
+    const linkCta = container?.querySelector("a.toast-cta");
+    assert.ok(linkCta);
+    assert.strictEqual(linkCta.tagName, "A");
+    assert.strictEqual(linkCta.style.display, "inline-flex");
+    assert.strictEqual(linkCta.style.textDecoration, "none");
+
+    await handle.dismiss();
+    resetToastManager();
+  });
+
+  test("FIXED: numeric sound frequency (sound: 440) passes number directly to synthesizer", async () => {
+    freshDom();
+    const { createToast, resetToastManager } = await import("../../src/index.js");
+    resetToastManager();
+
+    const position = "test-sound-freq-" + Date.now();
+    const handle = await createToast({
+      message: "Tone test",
+      position,
+      sound: 440,
+    });
+    await new Promise((r) => setTimeout(r, 60));
+    const container = document.getElementById(`toast-container-${position}`);
+    assert.ok(container);
+
+    await handle.dismiss();
+    resetToastManager();
+  });
+
+  test("FIXED: dynamic stacked card deck toggle via handle.update({ stacked: true / false })", async () => {
+    freshDom();
+    const { createToast, resetToastManager } = await import("../../src/index.js");
+    resetToastManager();
+
+    const position = "test-stacked-dyn-" + Date.now();
+    const handle1 = await createToast({ message: "Card 1", position });
+    const handle2 = await createToast({ message: "Card 2", position });
+    await new Promise((r) => setTimeout(r, 60));
+
+    const container = document.getElementById(`toast-container-${position}`);
+    assert.ok(container);
+    assert.strictEqual(container.getAttribute("data-stacked"), null);
+
+    // Dynamically stack
+    await handle1.update({ stacked: true });
+    await new Promise((r) => setTimeout(r, 60));
+    assert.strictEqual(container.getAttribute("data-stacked"), "true");
+
+    // Dynamically unstack
+    await handle1.update({ stacked: false });
+    await new Promise((r) => setTimeout(r, 60));
+    assert.strictEqual(container.getAttribute("data-stacked"), null);
+
+    await handle1.dismiss();
+    await handle2.dismiss();
+    resetToastManager();
+  });
+
+  test("FIXED: loading toast transitioning to 'warning' clears the loading spinner", async () => {
+    freshDom();
+    const { createToast, resetToastManager } = await import("../../src/index.js");
+    resetToastManager();
+
+    const position = "test-load-warn-" + Date.now();
+    const handle = await createToast.loading("Loading item...", { position });
+    await new Promise((r) => setTimeout(r, 60));
+
+    const container = document.getElementById(`toast-container-${position}`);
+    const toast = container?.querySelector(".toast");
+    assert.ok(toast?.querySelector(".toast-loader"));
+
+    // Transition to warning
+    await handle.update({ type: "warning", message: "Item has warnings" });
+    await new Promise((r) => setTimeout(r, 60));
+    assert.strictEqual(toast?.querySelector(".toast-loader"), null, "Spinner must be cleared on transition to warning");
+
+    await handle.dismiss();
+    resetToastManager();
+  });
+
+  test("FIXED: handle.update({ wrapText: 'normal' }) dynamically un-truncates message", async () => {
+    freshDom();
+    const { createToast, resetToastManager } = await import("../../src/index.js");
+    resetToastManager();
+
+    const position = "test-wrap-dyn-" + Date.now();
+    const handle = await createToast({ message: "Truncated initially", wrapText: "truncate", position });
+    await new Promise((r) => setTimeout(r, 60));
+
+    const container = document.getElementById(`toast-container-${position}`);
+    const toast = container?.querySelector(".toast");
+    const span = toast?.querySelector(".toast-message");
+    assert.ok(span?.classList.contains("is-truncated"));
+
+    // Dynamically expand text
+    await handle.update({ wrapText: "normal" });
+    await new Promise((r) => setTimeout(r, 60));
+    assert.strictEqual(span?.classList.contains("is-truncated"), false, "is-truncated class must be removed");
+    assert.strictEqual(span?.style.display, "block");
+
+    await handle.dismiss();
+    resetToastManager();
+  });
+
+  test("FIXED: RTL layout applies proper marginRight on CTA, Undo, and Close buttons", async () => {
+    freshDom();
+    const { createToast, resetToastManager } = await import("../../src/index.js");
+    resetToastManager();
+
+    const position = "test-rtl-margins-" + Date.now();
+    const handle = await createToast({
+      message: "رسالة إشعار",
+      fontDirection: "rtl",
+      position,
+      cta: { label: "إجراء" },
+      showCloseButton: true,
+    });
+    await new Promise((r) => setTimeout(r, 60));
+
+    const container = document.getElementById(`toast-container-${position}`);
+    const toast = container?.querySelector(".toast");
+    const ctaBtn = toast?.querySelector(".toast-cta");
+    const closeBtn = toast?.querySelector(".toast-close-btn");
+
+    assert.ok(ctaBtn);
+    assert.ok(closeBtn);
+    assert.strictEqual(ctaBtn.style.marginLeft, "0px");
+    assert.strictEqual(ctaBtn.style.marginRight, "10px");
+    assert.strictEqual(closeBtn.style.marginLeft, "0px");
+    assert.strictEqual(closeBtn.style.marginRight, "10px");
+
+    await handle.dismiss();
+    resetToastManager();
+  });
+});
+
 
 
 

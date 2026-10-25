@@ -68,9 +68,11 @@ export function createCTA(toast, options, onClose) {
     }
 
     el.className = "toast-cta";
+    const isRtl = options.fontDirection === "rtl";
     if (!getConfig().disableInlineStyles) {
       Object.assign(el.style, {
-        marginLeft: idx === 0 ? "10px" : "6px",
+        marginLeft: isRtl ? "0px" : (idx === 0 ? "10px" : "6px"),
+        marginRight: isRtl ? (idx === 0 ? "10px" : "6px") : "0px",
         padding: "6px 10px",
         borderRadius: "6px",
         fontSize: "12px",
@@ -82,12 +84,18 @@ export function createCTA(toast, options, onClose) {
         cursor: "pointer",
         whiteSpace: "nowrap",
         flexShrink: "0",
+        display: "inline-flex",
+        alignItems: "center",
+        textDecoration: "none",
+        outline: "none",
       });
     }
 
     el.textContent = cfg.label;
 
     const onClick = async (e) => {
+      if (el._isExecuting) return;
+      el._isExecuting = true;
       try {
         if (typeof cfg.onClick === "function") {
           const res = cfg.onClick(e);
@@ -96,6 +104,7 @@ export function createCTA(toast, options, onClose) {
       } catch (err) {
         console.error("CTA onClick handler error:", err);
       } finally {
+        el._isExecuting = false;
         if (cfg.autoClose !== false && typeof onClose === "function") {
           onClose(toast);
         }
@@ -189,9 +198,11 @@ export function createUndoAction(toast, options, onClose) {
     borderColor = `${h}55`;
   }
 
+  const isRtl = options.fontDirection === "rtl";
   if (!getConfig().disableInlineStyles) {
     Object.assign(btn.style, {
-      marginLeft: "10px",
+      marginLeft: isRtl ? "0px" : "10px",
+      marginRight: isRtl ? "10px" : "0px",
       padding: "5px 10px",
       borderRadius: "6px",
       fontSize: "12px",
@@ -298,17 +309,23 @@ export function createCloseButton(toast, options, onClose) {
   const closeTextColor = options.textColor || getDynamicAccessibleTextColorHex(options.backgroundColor);
 
   closeBtn.className = "toast-close-btn";
+  const isRtl = options.fontDirection === "rtl";
   if (!getConfig().disableInlineStyles) {
     Object.assign(closeBtn.style, {
-    background: "none",
-    border: "none",
-    color: closeTextColor,
-    fontSize: "18px",
-    marginLeft: "10px",
-    cursor: "pointer",
-    lineHeight: "1",
-    padding: "0 4px",
-  });
+      background: "none",
+      border: "none",
+      color: closeTextColor,
+      fontSize: "18px",
+      marginLeft: isRtl ? "0px" : "10px",
+      marginRight: isRtl ? "10px" : "0px",
+      cursor: "pointer",
+      lineHeight: "1",
+      padding: "0 4px",
+      flexShrink: "0",
+      display: "inline-flex",
+      alignItems: "center",
+      justifyContent: "center",
+    });
   }
 
   const onClick = () => {

@@ -253,7 +253,10 @@ export async function applyRichStyling(toast, options, onClose) {
   // Play audio chime if enabled (global config + per-toast override)
   const shouldPlaySound = options?.sound !== undefined ? options.sound : config.sound;
   if (shouldPlaySound) {
-    const tone = typeof options.sound === "string" ? options.sound : options?.type || "info";
+    const tone =
+      typeof options.sound === "string" || typeof options.sound === "number"
+        ? options.sound
+        : options?.type || "info";
     const preset = options?.soundPreset || config.soundPreset || "modern";
     playTone(tone, preset);
   }

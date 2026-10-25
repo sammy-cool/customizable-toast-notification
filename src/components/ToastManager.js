@@ -8,7 +8,8 @@ import { setPosition } from "../utils/position.js";
 import { PausableTimer } from "../utils/PausableTimer.js";
 import { sanitizeHtml } from "../utils/html-sanitizer.js";
 import { playTone } from "../utils/audio.js";
-import { createProgressBar, createCTA, createUndoAction, createCloseButton, runToastAnimation, parseProgressValue, ensureProgressIndeterminateStyles } from "./toast-utils-core.js";
+import { createProgressBar, createCTA, createUndoAction, createCloseButton, runToastAnimation, parseProgressValue, ensureProgressIndeterminateStyles, attachSwipeToDismiss } from "./toast-utils-core.js";
+import { getSpringTransition } from "../utils/spring.js";
 import { createLoader } from "./loader.js";
 import { createToastIcon } from "./icons.js";
 import { getConfig, shouldReduceMotion } from "../utils/config.js";
@@ -79,9 +80,12 @@ if (broadcaster.isSupported() && typeof window !== 'undefined') {
     // Another tab updated a toast - update in this tab
     if (toastId && payload && active.has(toastId)) {
       const data = active.get(toastId);
-      if (data && data.count !== payload.count) {
+      if (data && payload.count !== undefined && data.count !== payload.count) {
         data.count = payload.count;
         updateBadge(data);
+      }
+      if (payload.newOptions && typeof payload.newOptions === "object") {
+        updateToastByKey(toastId, { ...payload.newOptions, fromSync: true });
       }
     }
   });
@@ -1065,7 +1069,10 @@ export async function updateToastByKey(key, newOptions = {}) {
         : Boolean(data.options.allowHtml);
 
     const isFinishingLoading =
-      (newOptions.type === "success" || newOptions.type === "error") &&
+      (newOptions.type === "success" ||
+        newOptions.type === "error" ||
+        newOptions.type === "warning" ||
+        newOptions.type === "info") &&
       newOptions.showLoader !== true;
 
     if (messageSpan) {
@@ -1105,7 +1112,10 @@ export async function updateToastByKey(key, newOptions = {}) {
 
   // 2. Handle Loader
   const isFinishingLoading =
-    (newOptions.type === "success" || newOptions.type === "error") &&
+    (newOptions.type === "success" ||
+      newOptions.type === "error" ||
+      newOptions.type === "warning" ||
+      newOptions.type === "info") &&
     newOptions.showLoader !== true;
 
   if (
@@ -1231,6 +1241,42 @@ export async function updateToastByKey(key, newOptions = {}) {
     if (messageSpan) messageSpan.style.lineHeight = newOptions.fontLineHeight;
   }
 
+  if (newOptions.fontPadding !== undefined && messageSpan) {
+    messageSpan.style.padding = newOptions.fontPadding;
+  }
+
+  if (newOptions.wrapText !== undefined && messageSpan) {
+    const isTruncate =
+      newOptions.wrapText === "truncate" ||
+      newOptions.wrapText === "ellipsis" ||
+      newOptions.wrapText === false;
+    if (isTruncate || !newOptions.wrapText) {
+      messageSpan.classList.add("is-truncated");
+      if (!getConfig().disableInlineStyles) {
+        Object.assign(messageSpan.style, {
+          display: "-webkit-box",
+          WebkitBoxOrient: "vertical",
+          WebkitLineClamp: "3",
+          whiteSpace: "normal",
+          overflow: "hidden",
+          textOverflow: "ellipsis",
+        });
+      }
+    } else {
+      messageSpan.classList.remove("is-truncated");
+      if (!getConfig().disableInlineStyles) {
+        Object.assign(messageSpan.style, {
+          display: "block",
+          WebkitBoxOrient: "",
+          WebkitLineClamp: "",
+          whiteSpace: "normal",
+          overflow: "visible",
+          textOverflow: "clip",
+        });
+      }
+    }
+  }
+
   if (newOptions.role !== undefined) {
     toast.setAttribute("role", newOptions.role);
   }
@@ -1335,6 +1381,21 @@ export async function updateToastByKey(key, newOptions = {}) {
     toast._animationType = newOptions.animationType;
   }
 
+  if (newOptions.spring !== undefined) {
+    data.options.spring = newOptions.spring;
+    toast._spring = newOptions.spring ? getSpringTransition(newOptions.spring) : null;
+  }
+
+  if (newOptions.swipeToDismiss !== undefined) {
+    data.options.swipeToDismiss = newOptions.swipeToDismiss;
+    if (newOptions.swipeToDismiss === false) {
+      toast._cleanupSwipe?.();
+      toast._cleanupSwipe = null;
+    } else if (newOptions.swipeToDismiss === true && !toast._cleanupSwipe) {
+      attachSwipeToDismiss(toast, closeToast);
+    }
+  }
+
   // 5. Update Duration / Timer
   if (newOptions.duration !== undefined) {
     data.timer?.clear();
@@ -1429,7 +1490,8 @@ export async function updateToastByKey(key, newOptions = {}) {
       }
       if (existingCloseBtn) existingCloseBtn.remove();
     } else if (newOptions.showCloseButton === true && !existingCloseBtn) {
-      createCloseButton(toast, data.options, closeToast);
+      const mergedOpts = { ...data.options, ...newOptions };
+      createCloseButton(toast, mergedOpts, closeToast);
     }
   }
 
@@ -1441,7 +1503,7 @@ export async function updateToastByKey(key, newOptions = {}) {
 
   if (shouldPlayAudio) {
     const tone =
-      typeof newOptions.sound === "string"
+      typeof newOptions.sound === "string" || typeof newOptions.sound === "number"
         ? newOptions.sound
         : newOptions.type || data.options.type || "info";
     const preset =
@@ -1454,8 +1516,30 @@ export async function updateToastByKey(key, newOptions = {}) {
 
   // 7. Stacked update
   const container = toast.closest('[id^="toast-container-"]');
-  if (container && container.getAttribute("data-stacked") === "true") {
-    updateStackedLayout(container);
+  if (container) {
+    if (newOptions.stacked === true) {
+      container.setAttribute("data-stacked", "true");
+      updateStackedLayout(container);
+    } else if (newOptions.stacked === false) {
+      container.removeAttribute("data-stacked");
+      container._stackedCleanup?.();
+      Array.from(container.children).forEach((child) => {
+        child.removeAttribute("data-stacked-depth");
+        child.style.transform = "";
+        child.style.marginTop = "";
+        child.style.marginBottom = "10px";
+        child.style.opacity = "";
+        child.style.zIndex = "";
+        child.style.pointerEvents = "auto";
+      });
+    } else if (container.getAttribute("data-stacked") === "true") {
+      updateStackedLayout(container);
+    }
+  }
+
+  // 8. Cross-tab synchronization
+  if (!newOptions.fromSync && getConfig().syncTabs && broadcaster.isSupported()) {
+    broadcaster.broadcast('update', key, { newOptions });
   }
 }
 
