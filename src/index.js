@@ -423,7 +423,7 @@ async function sanitizeToastOptions(rawOptions) {
   }
 
   try {
-    if (!final.fontDirection && isRtlLocale()) {
+    if ((!final.fontDirection || final.fontDirection === "auto") && isRtlLocale()) {
       final.fontDirection = "rtl";
     }
   } catch {}

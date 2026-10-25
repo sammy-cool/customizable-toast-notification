@@ -5098,6 +5098,104 @@ describe("Framework Adapters — Vue, Svelte, Solid, and Angular contracts", () 
   });
 });
 
+describe("Architecture & Edge-Case Fortification Suite", () => {
+  test("RTL fontDirection auto-detects from active locale and applies to toast container & icon margins", async () => {
+    freshDom();
+    const { createToast, setLocale, resetLocale, resetToastManager } = await import("../../src/index.js");
+    resetToastManager();
+    setLocale("ar");
+
+    const pos = "test-rtl-auto-" + Date.now();
+    const handle = await createToast({ message: "مرحبا", position: pos, icon: true });
+    await new Promise((r) => setTimeout(r, 60));
+
+    const container = document.getElementById(`toast-container-${pos}`);
+    const toast = container?.querySelector(".toast");
+    assert.ok(toast);
+    assert.strictEqual(toast.style.direction, "rtl");
+
+    const icon = toast.querySelector(".toast-icon");
+    assert.ok(icon);
+    assert.strictEqual(icon.style.marginLeft, "8px");
+    assert.strictEqual(icon.style.marginRight, "0px");
+
+    await handle.dismiss();
+    resetLocale();
+    resetToastManager();
+  });
+
+  test("createUndoAction and createCloseButton localize labels and aria-labels via i18n", async () => {
+    freshDom();
+    const { createCloseButton, createUndoAction } = await import("../../src/components/toast-utils-core.js");
+    const { setLocale, resetLocale } = await import("../../src/utils/i18n.js");
+
+    setLocale("hi");
+    const toast = document.createElement("div");
+
+    createCloseButton(toast, {}, () => {});
+    const closeBtn = toast.querySelector(".toast-close-btn");
+    assert.ok(closeBtn);
+    assert.strictEqual(closeBtn.getAttribute("aria-label"), "सूचना बंद करें");
+    assert.strictEqual(closeBtn.getAttribute("title"), "सूचना बंद करें");
+
+    createUndoAction(toast, { duration: 5000, undo: () => {} }, () => {});
+    const undoBtn = toast.querySelector(".toast-undo-btn");
+    assert.ok(undoBtn);
+    assert.ok(undoBtn.textContent.includes("पूर्ववत करें"));
+
+    toast._cleanupCloseButton?.();
+    toast._cleanupUndo?.();
+    resetLocale();
+  });
+
+  test("maxQueueSize: 0 records dropped toasts in history telemetry buffer", async () => {
+    freshDom();
+    const { createToast, setConfig, resetConfig, getToastHistory, resetToastHistory, resetToastManager } = await import("../../src/index.js");
+    resetToastManager();
+    resetToastHistory();
+    setConfig({ maxVisible: 1, maxQueueSize: 0 });
+
+    const pos = "test-drop-history-" + Date.now();
+    const h1 = await createToast({ message: "Showing Toast", position: pos });
+    await new Promise((r) => setTimeout(r, 60));
+
+    await createToast({ message: "Dropped Toast 1", position: pos });
+    await new Promise((r) => setTimeout(r, 60));
+
+    const history = getToastHistory();
+    const droppedItem = history.find((h) => h.message === "Dropped Toast 1");
+    assert.ok(droppedItem, "Dropped toast must be recorded in history when maxQueueSize is 0");
+    assert.strictEqual(droppedItem.status, "dropped");
+
+    await h1.dismiss();
+    resetConfig();
+    resetToastHistory();
+    resetToastManager();
+  });
+
+  test("removeWithTransition for animationType: fade resolves immediately on opacity transitionend", async () => {
+    freshDom();
+    const { createToast, resetToastManager } = await import("../../src/index.js");
+    resetToastManager();
+
+    const pos = "test-fade-exit-" + Date.now();
+    const handle = await createToast({
+      message: "Fade dismiss test",
+      animationType: "fade",
+      animationDuration: "100ms",
+      position: pos,
+    });
+    await new Promise((r) => setTimeout(r, 60));
+
+    const start = Date.now();
+    await handle.dismiss();
+    const elapsed = Date.now() - start;
+
+    assert.ok(elapsed < 400, `Fade exit must resolve quickly (took ${elapsed}ms)`);
+    resetToastManager();
+  });
+});
+
 
 
 

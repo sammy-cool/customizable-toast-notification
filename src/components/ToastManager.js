@@ -341,6 +341,9 @@ export async function showToast(options = {}) {
       const current = pending.get(key);
       if (!current) throw new Error(`Pending toast with key ${key} not found`);
       current.count++;
+      if ((options.tag || options.groupId) && options.message) {
+        current.options = { ...current.options, ...options };
+      }
       return key;
     }
 
@@ -357,6 +360,7 @@ export async function showToast(options = {}) {
         const maxQ = getConfig().maxQueueSize ?? 100;
         if (maxQ <= 0) {
           droppedCount++;
+          markToastHistoryDropped(key, current.options);
           emitMetrics();
           return;
         }
@@ -938,6 +942,12 @@ async function drainQueue() {
       if (active.has(item.key)) {
         const data = active.get(item.key);
         data.count += item.count;
+        if ((item.options.tag || item.options.groupId) && item.options.message && data.toast?._messageSpan) {
+          data.toast._messageSpan.textContent = String(item.options.message);
+          data.toast._messageSpan.title = String(item.options.message);
+          data.timer?.clear();
+          data.timer = createDismissTimer(data.toast, item.options);
+        }
         await updateBadge(data);
         emitMetrics();
         continue;
@@ -988,7 +998,8 @@ async function removeWithTransition(el, targetEl, animationDurationMs = 400) {
         if (e.target !== animEl) return;
         if (
           e.propertyName === "transform" ||
-          (!animEl.style.transform && e.propertyName === "opacity")
+          ((!animEl.style.transform || animEl.style.transform === "none" || animEl.style.transform === "initial") &&
+            e.propertyName === "opacity")
         ) {
           finish();
         }

@@ -186,13 +186,15 @@ export function createToastIcon(options = {}) {
   iconTag.className = "toast-icon";
   iconTag.setAttribute("aria-hidden", "true");
 
+  const isRtl = safeOptions.fontDirection === "rtl";
   if (!config.disableInlineStyles) {
     Object.assign(iconTag.style, {
       display: "inline-flex",
       alignItems: "center",
       justifyContent: "center",
       flexShrink: "0",
-      marginRight: "8px",
+      marginLeft: isRtl ? "8px" : "0px",
+      marginRight: isRtl ? "0px" : "8px",
       lineHeight: "1",
       fontStyle: "normal",
     });

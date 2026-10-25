@@ -1,5 +1,6 @@
 import { getDynamicAccessibleTextColorHex } from "../utils/dom.js";
 import { getConfig, shouldReduceMotion } from "../utils/config.js";
+import { getLocaleMessage } from "../utils/i18n.js";
 
 export function createCTA(toast, options, onClose) {
   const rawCfg = options?.cta;
@@ -168,7 +169,7 @@ export function createUndoAction(toast, options, onClose) {
   const baseLabel =
     typeof undoCfg.label === "string" && undoCfg.label.trim()
       ? undoCfg.label.trim()
-      : "Undo";
+      : (getLocaleMessage("undo") || "Undo");
 
   const totalDuration = Number(options?.duration);
   const showCountdown =
@@ -302,8 +303,9 @@ export function createUndoAction(toast, options, onClose) {
 export function createCloseButton(toast, options, onClose) {
   const closeBtn = document.createElement("button");
   closeBtn.type = "button";
-  closeBtn.setAttribute("aria-label", "Close notification");
-  closeBtn.setAttribute("title", "Close");
+  const closeLabel = getLocaleMessage("close") || "Close notification";
+  closeBtn.setAttribute("aria-label", closeLabel);
+  closeBtn.setAttribute("title", closeLabel);
   closeBtn.textContent = "×";
 
   const closeTextColor = options.textColor || getDynamicAccessibleTextColorHex(options.backgroundColor);
