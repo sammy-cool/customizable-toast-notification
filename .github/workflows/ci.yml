@@ -121,3 +121,12 @@ jobs:
           SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
+      - name: Upload SonarQube Scanner Metadata Artifact
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: sonar-scan-metadata
+          path: .scannerwork/report-task.txt
+          retention-days: 14
+          if-no-files-found: ignore
+
