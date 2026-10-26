@@ -11,6 +11,8 @@ import {
   resetConfig,
   setLocale,
   getLocale,
+  getToastHistory,
+  clearToastHistory,
 } from "../index.js";
 
 /**
@@ -35,6 +37,8 @@ export function createToastAPI() {
     resetConfig,
     setLocale,
     getLocale,
+    getHistory: getToastHistory,
+    clearHistory: clearToastHistory,
   };
 }
 

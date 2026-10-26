@@ -7,6 +7,8 @@
 [![Bundle Size](https://img.shields.io/bundlephobia/minzip/customizable-toast-notification)](https://bundlephobia.com/package/customizable-toast-notification)
 [![TypeScript Strict](https://img.shields.io/badge/TypeScript-Strict%20Types-blue?logo=typescript)](dist/index.d.ts)
 [![CodeQL Security](https://img.shields.io/badge/CodeQL-Protected-success?logo=github)](.github/workflows/codeql.yml)
+[![Quality Gate Status](https://sonarcloud.io/api/project_badges/measure?project=sammy-cool_customizable-toast-notification&metric=alert_status)](https://sonarcloud.io/summary/new_code?id=sammy-cool_customizable-toast-notification)
+[![Security Rating](https://sonarcloud.io/api/project_badges/measure?project=sammy-cool_customizable-toast-notification&metric=security_rating)](https://sonarcloud.io/summary/new_code?id=sammy-cool_customizable-toast-notification)
 [![Open in StackBlitz](https://img.shields.io/badge/StackBlitz-Live%20Sandbox-blue?logo=stackblitz)](https://stackblitz.com/edit/customizable-toast-notification-demo?file=index.html)
 
 **[▶ Try the interactive live playground](https://sammy-cool.github.io/customizable-toast-notification/)** — test damped spring physics, 5 zero-asset Web Audio synthesizer presets, dynamic action undo countdowns, and iOS-style card deck stacking in real time.

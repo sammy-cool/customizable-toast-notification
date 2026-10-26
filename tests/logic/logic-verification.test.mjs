@@ -5015,7 +5015,8 @@ describe("containerRegistry.js — Shadow DOM Encapsulation (shadowDom)", () => 
 });
 
 describe("Framework Adapters — Vue, Svelte, Solid, and Angular contracts", () => {
-  test("Vue adapter returns full useToast API contract", async () => {
+  test("Vue adapter returns full useToast API contract and executes methods", async () => {
+    freshDom();
     const { useToast, toast, createToastAPI } = await import("../../src/vue/index.js");
     const api = useToast();
 
@@ -5034,9 +5035,54 @@ describe("Framework Adapters — Vue, Svelte, Solid, and Angular contracts", () 
     assert.ok(typeof api.clearHistory === "function");
     assert.strictEqual(toast, api);
     assert.strictEqual(typeof createToastAPI, "function");
+
+    const h = await api.success("vue test", { duration: 100 });
+    await h.dismiss();
+    await api.error("vue err", { duration: 100 });
+    await api.warning("vue warn", { duration: 100 });
+    await api.info("vue info", { duration: 100 });
+    await api.loading("vue load", { duration: 100 });
+    await api.custom("vue custom", { duration: 100 });
+    await api.show({ message: "vue show", duration: 100 });
+    api.getConfig();
+    api.setConfig({});
+    api.resetConfig();
+    api.getLocale();
+    api.setLocale("en");
+    api.getHistory();
+    api.clearHistory();
+    await api.dismiss();
+    await api.dismissAll();
+    await api.clear();
+  });
+
+  test("React adapter executes useToast methods", async () => {
+    freshDom();
+    const { useToast, toast } = await import("../../src/react/index.js");
+    const api = useToast();
+
+    const h = await api.success("react test", { duration: 100 });
+    await h.dismiss();
+    await api.error("react err", { duration: 100 });
+    await api.warning("react warn", { duration: 100 });
+    await api.info("react info", { duration: 100 });
+    await api.loading("react load", { duration: 100 });
+    await api.custom("react custom", { duration: 100 });
+    await api.show({ message: "react show", duration: 100 });
+    api.getConfig();
+    api.setConfig({});
+    api.resetConfig();
+    api.getLocale();
+    api.setLocale("en");
+    api.getHistory();
+    api.clearHistory();
+    await api.dismiss();
+    await api.dismissAll();
+    await api.clear();
   });
 
   test("Svelte adapter provides readable store subscribe contract and methods", async () => {
+    freshDom();
     const { toast, useToast, createToastStore } = await import("../../src/svelte/index.js");
 
     assert.strictEqual(typeof toast.subscribe, "function");
@@ -5059,9 +5105,29 @@ describe("Framework Adapters — Vue, Svelte, Solid, and Angular contracts", () 
     assert.ok(typeof toast.clearHistory === "function");
     assert.strictEqual(useToast(), toast);
     assert.strictEqual(typeof createToastStore, "function");
+
+    const h = await toast.success("svelte test", { duration: 100 });
+    await h.dismiss();
+    await toast.error("svelte err", { duration: 100 });
+    await toast.warning("svelte warn", { duration: 100 });
+    await toast.info("svelte info", { duration: 100 });
+    await toast.loading("svelte load", { duration: 100 });
+    await toast.custom("svelte custom", { duration: 100 });
+    await toast.show({ message: "svelte show", duration: 100 });
+    toast.getConfig();
+    toast.setConfig({});
+    toast.resetConfig();
+    toast.getLocale();
+    toast.setLocale("en");
+    toast.getHistory();
+    toast.clearHistory();
+    await toast.dismiss();
+    await toast.dismissAll();
+    await toast.clear();
   });
 
-  test("SolidJS adapter returns full useToast API contract", async () => {
+  test("SolidJS adapter returns full useToast API contract and executes methods", async () => {
+    freshDom();
     const { useToast, toast, createToastAPI } = await import("../../src/solid/index.js");
     const api = useToast();
 
@@ -5072,9 +5138,29 @@ describe("Framework Adapters — Vue, Svelte, Solid, and Angular contracts", () 
     assert.ok(typeof api.getHistory === "function");
     assert.strictEqual(toast, api);
     assert.strictEqual(typeof createToastAPI, "function");
+
+    const h = await api.success("solid test", { duration: 100 });
+    await h.dismiss();
+    await api.error("solid err", { duration: 100 });
+    await api.warning("solid warn", { duration: 100 });
+    await api.info("solid info", { duration: 100 });
+    await api.loading("solid load", { duration: 100 });
+    await api.custom("solid custom", { duration: 100 });
+    await api.show({ message: "solid show", duration: 100 });
+    api.getConfig();
+    api.setConfig({});
+    api.resetConfig();
+    api.getLocale();
+    api.setLocale("en");
+    api.getHistory();
+    api.clearHistory();
+    await api.dismiss();
+    await api.dismissAll();
+    await api.clear();
   });
 
   test("Angular adapter exposes ToastService class with Ivy metadata and injectToast", async () => {
+    freshDom();
     const { ToastService, injectToast, toast } = await import("../../src/angular/index.js");
 
     assert.strictEqual(typeof ToastService, "function");
@@ -5095,6 +5181,25 @@ describe("Framework Adapters — Vue, Svelte, Solid, and Angular contracts", () 
     const injected = injectToast();
     assert.ok(injected instanceof ToastService);
     assert.strictEqual(toast, injected);
+
+    const h = await instance.success("ng test", { duration: 100 });
+    await h.dismiss();
+    await instance.error("ng err", { duration: 100 });
+    await instance.warning("ng warn", { duration: 100 });
+    await instance.info("ng info", { duration: 100 });
+    await instance.loading("ng load", { duration: 100 });
+    await instance.custom("ng custom", { duration: 100 });
+    await instance.show({ message: "ng show", duration: 100 });
+    instance.getConfig();
+    instance.setConfig({});
+    instance.resetConfig();
+    instance.getLocale();
+    instance.setLocale("en");
+    instance.getHistory();
+    instance.clearHistory();
+    await instance.dismiss();
+    await instance.dismissAll();
+    await instance.clear();
   });
 });
 
