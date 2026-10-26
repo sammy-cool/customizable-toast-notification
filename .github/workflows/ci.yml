@@ -103,8 +103,6 @@ jobs:
     name: SonarQube Cloud SAST & Quality Gate
     runs-on: ubuntu-latest
     needs: verify
-    env:
-      SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
     steps:
       - name: Checkout Code
         uses: actions/checkout@v4
@@ -118,13 +116,8 @@ jobs:
           path: coverage/
 
       - name: SonarQube Cloud Scan
-        if: env.SONAR_TOKEN != ''
         uses: SonarSource/sonarqube-scan-action@v7
         env:
           SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-
-      - name: Skip SonarQube Cloud Scan (SONAR_TOKEN missing)
-        if: env.SONAR_TOKEN == ''
-        run: echo "SONAR_TOKEN secret is not set in GitHub repository secrets. Skipping SonarQube Cloud scan."
 
