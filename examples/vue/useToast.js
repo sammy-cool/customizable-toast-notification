@@ -1,4 +1,4 @@
-import { createToast, toastPromise, dismiss, noop, setConfig, getConfig } from 'customizable-toast-notification';
+import { createToast, toastPromise, dismiss, dismissAll, clear, setConfig, getConfig } from 'customizable-toast-notification';
 
 /**
  * A Vue composable for customizable-toast-notification.
@@ -13,8 +13,8 @@ export function useToast() {
     show: (options) => createToast(options),
     promise: toastPromise,
     dismiss,
-    dismissAll: noop,
-    resetStats: noop,
+    dismissAll,
+    clear,
     setConfig,
     getConfig,
   };

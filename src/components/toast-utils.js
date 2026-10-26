@@ -11,11 +11,13 @@ import {
   createProgressBar,
   runToastAnimation,
   attachSwipeToDismiss,
+  attachFocusTrap,
 } from "./toast-utils-core.js";
 import { playTone } from "../utils/audio.js";
 import { getSpringTransition } from "../utils/spring.js";
 import { getConfig } from "../utils/config.js";
 import { createToastIcon } from "./icons.js";
+import { isRtlLocale } from "../utils/i18n.js";
 
 /**
  * Applies rich styling and content to a toast element.
@@ -116,12 +118,14 @@ export async function applyRichStyling(toast, options, onClose) {
       direction:
         options?.fontDirection && options.fontDirection !== "auto"
           ? options.fontDirection
+          : isRtlLocale()
+          ? "rtl"
           : undefined,
     });
   }
 
   const isError = options?.type === "error";
-  const role = options?.role || (isError ? "alert" : (options?.role ?? "alert"));
+  const role = options?.role || "alert";
   const ariaLive = options?.ariaLive || (isError ? "assertive" : "polite");
   toast.setAttribute("role", role);
   toast.setAttribute("aria-live", ariaLive);
@@ -253,9 +257,16 @@ export async function applyRichStyling(toast, options, onClose) {
   // Play audio chime if enabled (global config + per-toast override)
   const shouldPlaySound = options?.sound !== undefined ? options.sound : config.sound;
   if (shouldPlaySound) {
-    const tone = typeof options.sound === "string" ? options.sound : options?.type || "info";
+    const tone =
+      typeof options.sound === "string" || typeof options.sound === "number"
+        ? options.sound
+        : options?.type || "info";
     const preset = options?.soundPreset || config.soundPreset || "modern";
     playTone(tone, preset);
+  }
+
+  if (options?.trapFocus ?? config.trapFocus) {
+    attachFocusTrap(toast);
   }
 
   runToastAnimation(toast);
@@ -292,6 +303,9 @@ export async function createEmergencyToast(options = {}, onClose) {
     }
 
     emergency.className = "toast-emergency";
+    emergency.tabIndex = 0;
+    emergency.setAttribute("role", "alert");
+    emergency.setAttribute("aria-live", "assertive");
     if (!config.disableInlineStyles) {
       Object.assign(emergency.style, {
         background: "#333",
@@ -367,7 +381,7 @@ export async function createEmergencyToast(options = {}, onClose) {
       if (timer) clearTimeout(timer);
       closeSpan.removeEventListener("click", onClick);
       emergency.remove();
-      if (typeof onClose === "function") onClose(emergency);
+      if (typeof onClose === "function") void onClose(emergency);
     };
     closeSpan.addEventListener("click", onClick);
 
@@ -375,14 +389,14 @@ export async function createEmergencyToast(options = {}, onClose) {
     timer = setTimeout(() => {
       closeSpan.removeEventListener("click", onClick);
       emergency.remove();
-      if (typeof onClose === "function") onClose(emergency);
+      if (typeof onClose === "function") void onClose(emergency);
     }, duration);
     if (typeof timer?.unref === "function") timer.unref();
 
     return emergency;
   } catch (error) {
     console.error("Emergency toast creation failed:", error);
-    if (typeof onClose === "function") onClose(null);
+    if (typeof onClose === "function") void onClose(null);
     return null;
   }
 }

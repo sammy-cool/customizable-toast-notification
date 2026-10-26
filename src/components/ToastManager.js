@@ -8,7 +8,8 @@ import { setPosition } from "../utils/position.js";
 import { PausableTimer } from "../utils/PausableTimer.js";
 import { sanitizeHtml } from "../utils/html-sanitizer.js";
 import { playTone } from "../utils/audio.js";
-import { createProgressBar, createCTA, createUndoAction, createCloseButton, runToastAnimation, parseProgressValue, ensureProgressIndeterminateStyles } from "./toast-utils-core.js";
+import { createProgressBar, createCTA, createUndoAction, createCloseButton, runToastAnimation, parseProgressValue, ensureProgressIndeterminateStyles, attachSwipeToDismiss } from "./toast-utils-core.js";
+import { getSpringTransition } from "../utils/spring.js";
 import { createLoader } from "./loader.js";
 import { createToastIcon } from "./icons.js";
 import { getConfig, shouldReduceMotion } from "../utils/config.js";
@@ -16,6 +17,15 @@ import { getToastBroadcaster } from "../utils/toast-broadcast.js";
 import { calculateToastPriority } from "../utils/ai-scorer.js";
 import { getToastPool } from "../utils/toast-pool.js";
 import { createGestureDetector } from "../utils/multi-touch.js";
+import {
+  recordToastHistory,
+  markToastHistoryDismissed,
+  markToastHistoryDropped,
+  getToastHistory,
+  clearToastHistory,
+  setHistoryCapacity,
+  resetToastHistory,
+} from "../utils/history.js";
 
 
 const active = new Map();
@@ -54,23 +64,26 @@ function emitMetrics() {
 
 
 // Cross-tab toast synchronization
-const broadcaster = getToastBroadcaster();
+let broadcaster = getToastBroadcaster();
 
-// Register getters with broadcaster for sync requests
-broadcaster.registerActiveToastsGetter(() => Array.from(active.keys()));
-broadcaster.registerQueuedToastsGetter(() => queue.map(item => ({
-  key: item.key,
-  options: item.options,
-  count: item.count
-})));
+export function initBroadcastListeners() {
+  broadcaster = getToastBroadcaster();
+  if (!broadcaster.isSupported() || typeof window === 'undefined') return;
 
-// Initialize cross-tab sync listeners if supported
-if (broadcaster.isSupported() && typeof window !== 'undefined') {
+  broadcaster.registerActiveToastsGetter(() => Array.from(active.keys()));
+  broadcaster.registerQueuedToastsGetter(() => queue.map(item => ({
+    key: item.key,
+    options: item.options,
+    count: item.count
+  })));
+
   broadcaster.on('create', ({ toastId, payload }) => {
     if (!getConfig().syncTabs) return;
     // Another tab created a toast - show it in this tab
     if (toastId && payload && !active.has(toastId) && !pending.has(toastId)) {
-      showToast({ ...payload.options, fromSync: true });
+      void showToast({ ...payload.options, fromSync: true }).catch((err) => {
+        console.error('[Toast] Failed to show synced toast:', err);
+      });
     }
   });
 
@@ -79,9 +92,16 @@ if (broadcaster.isSupported() && typeof window !== 'undefined') {
     // Another tab updated a toast - update in this tab
     if (toastId && payload && active.has(toastId)) {
       const data = active.get(toastId);
-      if (data && data.count !== payload.count) {
+      if (data && payload.count !== undefined && data.count !== payload.count) {
         data.count = payload.count;
-        updateBadge(data);
+        void updateBadge(data).catch((err) => {
+          console.error('[Toast] Failed to update badge:', err);
+        });
+      }
+      if (payload.newOptions && typeof payload.newOptions === "object") {
+        void updateToastByKey(toastId, { ...payload.newOptions, fromSync: true }).catch((err) => {
+          console.error('[Toast] Failed to update synced toast:', err);
+        });
       }
     }
   });
@@ -89,8 +109,18 @@ if (broadcaster.isSupported() && typeof window !== 'undefined') {
   broadcaster.on('dismiss', ({ toastId }) => {
     if (!getConfig().syncTabs) return;
     // Another tab dismissed a toast - dismiss in this tab without re-broadcasting
-    if (toastId && (active.has(toastId) || pending.has(toastId))) {
-      closeToastByKey(toastId, true);
+    if (!toastId) return;
+    if (active.has(toastId) || pending.has(toastId)) {
+      void closeToastByKey(toastId, true).catch((err) => {
+        console.error('[Toast] Failed to dismiss synced toast:', err);
+      });
+    } else {
+      // If the toast was buffered in queue in this tab, purge it so it doesn't pop up later
+      const qIdx = queue.findIndex((item) => item.key === toastId);
+      if (qIdx !== -1) {
+        queue.splice(qIdx, 1);
+        emitMetrics();
+      }
     }
   });
 
@@ -100,12 +130,16 @@ if (broadcaster.isSupported() && typeof window !== 'undefined') {
     if (payload && Array.isArray(payload.queue)) {
       for (const item of payload.queue) {
         if (item?.options && !active.has(item.key) && !pending.has(item.key)) {
-          showToast({ ...item.options, fromSync: true });
+          void showToast({ ...item.options, fromSync: true }).catch((err) => {
+            console.error('[Toast] Failed to show synced queue item:', err);
+          });
         }
       }
     }
   });
 }
+
+initBroadcastListeners();
 
 // AI Priority Queue Manager - Initialized with default settings
 
@@ -270,6 +304,14 @@ function hashString(str) {
 function makeKey(options = {}) {
   const safe = options && typeof options === "object" ? options : {};
   if (safe.id !== undefined && safe.id !== null && safe.id !== "") return String(safe.id);
+  if (safe.tag !== undefined && safe.tag !== null && safe.tag !== "") {
+    const position = normalizePositionKey(safe.position || "bottom-right");
+    return `tag:${String(safe.tag).trim()}:${position}`;
+  }
+  if (safe.groupId !== undefined && safe.groupId !== null && safe.groupId !== "") {
+    const position = normalizePositionKey(safe.position || "bottom-right");
+    return `group:${String(safe.groupId).trim()}:${position}`;
+  }
   const type = String(safe.type || "info").trim().toLowerCase();
   const messageHash = hashString(String(safe.message || "")).toString(16);
   const position = normalizePositionKey(safe.position || "bottom-right");
@@ -286,6 +328,12 @@ export async function showToast(options = {}) {
       if (!data) throw new Error(`Active toast with key ${key} not found`);
       data.count++;
 
+      // If tagged or grouped thread, update message text in-place to latest update
+      if ((options.tag || options.groupId) && options.message && data.toast?._messageSpan) {
+        data.toast._messageSpan.textContent = String(options.message);
+        data.toast._messageSpan.title = String(options.message);
+      }
+
       data.timer?.clear();
       data.timer = createDismissTimer(data.toast, options);
       await setupPauseOnHover(data);
@@ -293,7 +341,7 @@ export async function showToast(options = {}) {
       emitMetrics();
 
       // Broadcast update to other tabs if not from sync
-      if (!options.fromSync && getConfig().syncTabs && broadcaster.isSupported()) {
+      if (!options.fromSync && options.syncTabs !== false && getConfig().syncTabs && broadcaster.isSupported()) {
         broadcaster.broadcast('update', key, { count: data.count });
       }
       return key;
@@ -303,6 +351,9 @@ export async function showToast(options = {}) {
       const current = pending.get(key);
       if (!current) throw new Error(`Pending toast with key ${key} not found`);
       current.count++;
+      if ((options.tag || options.groupId) && options.message) {
+        current.options = { ...current.options, ...options };
+      }
       return key;
     }
 
@@ -319,6 +370,7 @@ export async function showToast(options = {}) {
         const maxQ = getConfig().maxQueueSize ?? 100;
         if (maxQ <= 0) {
           droppedCount++;
+          markToastHistoryDropped(key, current.options);
           emitMetrics();
           return;
         }
@@ -362,13 +414,16 @@ export async function showToast(options = {}) {
 
             if (incomingPriority <= lowestPriority) {
               droppedCount++;
+              markToastHistoryDropped(key, current.options);
               emitMetrics();
               return;
             }
 
-            queue.splice(lowestIndex, 1);
+            const removed = queue.splice(lowestIndex, 1)[0];
+            if (removed) markToastHistoryDropped(removed.key, removed.options);
           } else {
-            queue.shift();
+            const removed = queue.shift();
+            if (removed) markToastHistoryDropped(removed.key, removed.options);
           }
           droppedCount++;
         }
@@ -390,7 +445,7 @@ export async function showToast(options = {}) {
     });
 
     // Broadcast creation to other tabs if not from sync
-    if (!options.fromSync && getConfig().syncTabs && broadcaster.isSupported()) {
+    if (!options.fromSync && options.syncTabs !== false && getConfig().syncTabs && broadcaster.isSupported()) {
       broadcaster.broadcast('create', key, { options });
     }
 
@@ -471,6 +526,7 @@ async function createOne(options, key, initialCount) {
     active.set(key, data);
     toast._key = key;
 
+    recordToastHistory(key, options, "active");
     emitMetrics();
 
     if (data.count > 1) await updateBadge(data);
@@ -582,6 +638,7 @@ export function resetToastManager() {
     data.toast?._cleanupCTA?.();
     data.toast?._cleanupUndo?.();
     data.toast?._cleanupSwipe?.();
+    data.toast?._cleanupFocusTrap?.();
     data.toast?._cleanup?.();
     if (data.toast?._progressAnimation) {
       try {
@@ -608,10 +665,12 @@ export function resetToastManager() {
   droppedCount = 0;
   isDraining = false;
   emitMetrics();
+  initBroadcastListeners();
 }
 
 export const dismiss = dismissMostRecent;
 export const noop = closeAllToasts;
+export { getToastHistory, clearToastHistory, setHistoryCapacity, resetToastHistory };
 
 function createDismissTimer(toast, options) {
   const raw = Number(options?.duration);
@@ -620,7 +679,11 @@ function createDismissTimer(toast, options) {
   }
   const duration = Number.isFinite(raw) && raw > 0 ? raw : 2500;
   const delay = duration + 5;
-  const timer = new PausableTimer(async () => await closeToast(toast), delay);
+  const timer = new PausableTimer(() => {
+    void closeToast(toast).catch((err) => {
+      console.error("[Toast] Timer dismiss failed:", err);
+    });
+  }, delay);
   timer.start();
   return timer;
 }
@@ -737,8 +800,12 @@ export async function closeToastByKey(key, fromSync = false) {
   try {
     if (!key) return;
 
+    const data = active.get(key);
+    const allowSyncDismiss =
+      data?.options?.syncDismiss !== false && data?.options?.syncTabs !== false;
+
     // Broadcast dismissal to other tabs if not initiated from a remote sync event
-    if (!fromSync && getConfig().syncTabs && broadcaster.isSupported()) {
+    if (!fromSync && allowSyncDismiss && getConfig().syncTabs && broadcaster.isSupported()) {
       broadcaster.broadcast('dismiss', key, {});
     }
 
@@ -775,8 +842,9 @@ export async function closeToastByKey(key, fromSync = false) {
       return;
     }
 
-    const data = active.get(key);
     if (!data) return;
+
+    markToastHistoryDismissed(key);
 
     data.timer?.clear();
     data.outer?._pauseCleanup?.();
@@ -784,6 +852,7 @@ export async function closeToastByKey(key, fromSync = false) {
     data.toast?._cleanupCTA?.();
     data.toast?._cleanupUndo?.();
     data.toast?._cleanupSwipe?.();
+    data.toast?._cleanupFocusTrap?.();
     data.toast?._cleanup?.();
     if (data.toast?._progressAnimation) {
       try {
@@ -887,6 +956,12 @@ async function drainQueue() {
       if (active.has(item.key)) {
         const data = active.get(item.key);
         data.count += item.count;
+        if ((item.options.tag || item.options.groupId) && item.options.message && data.toast?._messageSpan) {
+          data.toast._messageSpan.textContent = String(item.options.message);
+          data.toast._messageSpan.title = String(item.options.message);
+          data.timer?.clear();
+          data.timer = createDismissTimer(data.toast, item.options);
+        }
         await updateBadge(data);
         emitMetrics();
         continue;
@@ -937,7 +1012,8 @@ async function removeWithTransition(el, targetEl, animationDurationMs = 400) {
         if (e.target !== animEl) return;
         if (
           e.propertyName === "transform" ||
-          (!animEl.style.transform && e.propertyName === "opacity")
+          ((!animEl.style.transform || animEl.style.transform === "none" || animEl.style.transform === "initial") &&
+            e.propertyName === "opacity")
         ) {
           finish();
         }
@@ -1065,7 +1141,10 @@ export async function updateToastByKey(key, newOptions = {}) {
         : Boolean(data.options.allowHtml);
 
     const isFinishingLoading =
-      (newOptions.type === "success" || newOptions.type === "error") &&
+      (newOptions.type === "success" ||
+        newOptions.type === "error" ||
+        newOptions.type === "warning" ||
+        newOptions.type === "info") &&
       newOptions.showLoader !== true;
 
     if (messageSpan) {
@@ -1105,7 +1184,10 @@ export async function updateToastByKey(key, newOptions = {}) {
 
   // 2. Handle Loader
   const isFinishingLoading =
-    (newOptions.type === "success" || newOptions.type === "error") &&
+    (newOptions.type === "success" ||
+      newOptions.type === "error" ||
+      newOptions.type === "warning" ||
+      newOptions.type === "info") &&
     newOptions.showLoader !== true;
 
   if (
@@ -1231,6 +1313,42 @@ export async function updateToastByKey(key, newOptions = {}) {
     if (messageSpan) messageSpan.style.lineHeight = newOptions.fontLineHeight;
   }
 
+  if (newOptions.fontPadding !== undefined && messageSpan) {
+    messageSpan.style.padding = newOptions.fontPadding;
+  }
+
+  if (newOptions.wrapText !== undefined && messageSpan) {
+    const isTruncate =
+      newOptions.wrapText === "truncate" ||
+      newOptions.wrapText === "ellipsis" ||
+      newOptions.wrapText === false;
+    if (isTruncate || !newOptions.wrapText) {
+      messageSpan.classList.add("is-truncated");
+      if (!getConfig().disableInlineStyles) {
+        Object.assign(messageSpan.style, {
+          display: "-webkit-box",
+          WebkitBoxOrient: "vertical",
+          WebkitLineClamp: "3",
+          whiteSpace: "normal",
+          overflow: "hidden",
+          textOverflow: "ellipsis",
+        });
+      }
+    } else {
+      messageSpan.classList.remove("is-truncated");
+      if (!getConfig().disableInlineStyles) {
+        Object.assign(messageSpan.style, {
+          display: "block",
+          WebkitBoxOrient: "",
+          WebkitLineClamp: "",
+          whiteSpace: "normal",
+          overflow: "visible",
+          textOverflow: "clip",
+        });
+      }
+    }
+  }
+
   if (newOptions.role !== undefined) {
     toast.setAttribute("role", newOptions.role);
   }
@@ -1335,6 +1453,21 @@ export async function updateToastByKey(key, newOptions = {}) {
     toast._animationType = newOptions.animationType;
   }
 
+  if (newOptions.spring !== undefined) {
+    data.options.spring = newOptions.spring;
+    toast._spring = newOptions.spring ? getSpringTransition(newOptions.spring) : null;
+  }
+
+  if (newOptions.swipeToDismiss !== undefined) {
+    data.options.swipeToDismiss = newOptions.swipeToDismiss;
+    if (newOptions.swipeToDismiss === false) {
+      toast._cleanupSwipe?.();
+      toast._cleanupSwipe = null;
+    } else if (newOptions.swipeToDismiss === true && !toast._cleanupSwipe) {
+      attachSwipeToDismiss(toast, closeToast);
+    }
+  }
+
   // 5. Update Duration / Timer
   if (newOptions.duration !== undefined) {
     data.timer?.clear();
@@ -1429,7 +1562,8 @@ export async function updateToastByKey(key, newOptions = {}) {
       }
       if (existingCloseBtn) existingCloseBtn.remove();
     } else if (newOptions.showCloseButton === true && !existingCloseBtn) {
-      createCloseButton(toast, data.options, closeToast);
+      const mergedOpts = { ...data.options, ...newOptions };
+      createCloseButton(toast, mergedOpts, closeToast);
     }
   }
 
@@ -1441,7 +1575,7 @@ export async function updateToastByKey(key, newOptions = {}) {
 
   if (shouldPlayAudio) {
     const tone =
-      typeof newOptions.sound === "string"
+      typeof newOptions.sound === "string" || typeof newOptions.sound === "number"
         ? newOptions.sound
         : newOptions.type || data.options.type || "info";
     const preset =
@@ -1454,8 +1588,36 @@ export async function updateToastByKey(key, newOptions = {}) {
 
   // 7. Stacked update
   const container = toast.closest('[id^="toast-container-"]');
-  if (container && container.getAttribute("data-stacked") === "true") {
-    updateStackedLayout(container);
+  if (container) {
+    if (newOptions.stacked === true) {
+      container.setAttribute("data-stacked", "true");
+      updateStackedLayout(container);
+    } else if (newOptions.stacked === false) {
+      container.removeAttribute("data-stacked");
+      container._stackedCleanup?.();
+      Array.from(container.children).forEach((child) => {
+        child.removeAttribute("data-stacked-depth");
+        child.style.transform = "";
+        child.style.marginTop = "";
+        child.style.marginBottom = "10px";
+        child.style.opacity = "";
+        child.style.zIndex = "";
+        child.style.pointerEvents = "auto";
+      });
+    } else if (container.getAttribute("data-stacked") === "true") {
+      updateStackedLayout(container);
+    }
+  }
+
+  // 8. Cross-tab synchronization
+  if (
+    !newOptions.fromSync &&
+    data.options?.syncTabs !== false &&
+    newOptions.syncTabs !== false &&
+    getConfig().syncTabs &&
+    broadcaster.isSupported()
+  ) {
+    broadcaster.broadcast('update', key, { newOptions });
   }
 }
 

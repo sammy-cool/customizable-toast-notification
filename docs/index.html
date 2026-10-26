@@ -785,7 +785,14 @@
       @media (max-width: 640px) {
         .telemetry-row { grid-template-columns: 1fr 1fr; }
         .form-row, .form-row-3 { grid-template-columns: 1fr; }
-        .action-footer-bar { bottom: 12px; border-radius: var(--radius-md); width: calc(100% - 32px); }
+        .action-footer-bar { bottom: 12px; border-radius: var(--radius-md); width: calc(100% - 32px); flex-wrap: wrap; }
+      }
+      @media (max-width: 480px) {
+        .action-footer-bar { padding: 10px 14px; gap: 8px; justify-content: center; }
+        .footer-toast-btn, .footer-clear-btn { min-height: 44px; padding: 10px 14px; font-size: 13px; }
+        .telemetry-row { grid-template-columns: 1fr; }
+        .pos-grid { grid-template-columns: repeat(3, 1fr); gap: 4px; }
+        .quick-btn { min-height: 38px; }
       }
     </style>
   </head>
@@ -1457,6 +1464,7 @@ createToast({
             <span>✨</span> Fire Notification
           </button>
           <button class="footer-clear-btn" id="dismissAllBtn">Clear All</button>
+          <button class="footer-clear-btn" id="sharePresetBtn" title="Generate shareable link for this preset">🔗 Share</button>
         </div>
         <div style="font-size: 12px; color: var(--text-muted); font-weight: 500;" id="footerStatusText">
           Ready &bull; Click to trigger
@@ -2004,6 +2012,73 @@ createToast({
             }
           }
         });
+
+        // Share Preset URL Serialization
+        function serializePresetToUrl() {
+          try {
+            var opts = buildOptions();
+            var json = JSON.stringify(opts);
+            var encoded = encodeURIComponent(btoa(json));
+            var newUrl = window.location.origin + window.location.pathname + "#cfg=" + encoded;
+            window.history.replaceState(null, "", newUrl);
+            navigator.clipboard.writeText(newUrl).then(function () {
+              var btn = document.getElementById("sharePresetBtn");
+              if (btn) {
+                btn.textContent = "Copied Link!";
+                setTimeout(function () { btn.textContent = "🔗 Share"; }, 2000);
+              }
+              if (window.customizableToast) {
+                window.customizableToast.createToast.success("Preset share link copied to clipboard!", { duration: 2500 });
+              }
+            });
+          } catch (err) {
+            console.error("Failed to serialize preset:", err);
+          }
+        }
+
+        function deserializePresetFromUrl() {
+          try {
+            if (!window.location.hash || !window.location.hash.startsWith("#cfg=")) return;
+            var encoded = window.location.hash.slice(5);
+            var json = atob(decodeURIComponent(encoded));
+            var opts = JSON.parse(json);
+            if (!opts || typeof opts !== "object") return;
+
+            if (opts.message) document.getElementById("toastMessageInput").value = opts.message;
+            if (opts.type) document.getElementById("toastTypeSelect").value = opts.type;
+            if (opts.duration && durationSlider) {
+              durationSlider.value = opts.duration;
+              if (durationBadge) durationBadge.textContent = opts.duration + "ms";
+            }
+            if (opts.position) {
+              currentPosition = opts.position;
+              document.querySelectorAll(".pos-btn").forEach(function (btn) {
+                btn.classList.toggle("active", btn.getAttribute("data-pos") === currentPosition);
+              });
+              var posBadge = document.getElementById("currentPositionBadge");
+              if (posBadge) posBadge.textContent = currentPosition;
+            }
+            if (opts.animationType) document.getElementById("animationTypeSelect").value = opts.animationType;
+            if (opts.soundPreset) document.getElementById("soundPresetSelect").value = opts.soundPreset;
+            if (opts.showCloseButton !== undefined) document.getElementById("toggleCloseBtn").checked = opts.showCloseButton;
+            if (opts.pauseOnHover !== undefined) document.getElementById("togglePauseOnHover").checked = opts.pauseOnHover;
+            if (opts.swipeToDismiss !== undefined) document.getElementById("toggleSwipeToDismiss").checked = opts.swipeToDismiss;
+            if (opts.icon !== undefined) document.getElementById("toggleIcon").checked = Boolean(opts.icon);
+            if (opts.stacked !== undefined) document.getElementById("toggleStacked").checked = opts.stacked;
+
+            updateCodeSnippet();
+          } catch (err) {
+            console.warn("Could not deserialize URL preset:", err);
+          }
+        }
+
+        var sharePresetBtn = document.getElementById("sharePresetBtn");
+        if (sharePresetBtn) {
+          sharePresetBtn.addEventListener("click", serializePresetToUrl);
+        }
+
+        // Auto-load preset from URL if present
+        deserializePresetFromUrl();
 
         // Configurator Reset Button
         var resetConfigBtn = document.getElementById("resetConfigBtn");

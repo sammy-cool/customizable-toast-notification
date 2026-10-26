@@ -40,6 +40,21 @@ import {
   generateSpringLinearEasing,
   getSpringTransition,
 } from "./utils/spring.js";
+import {
+  setLocale,
+  getLocale,
+  getAvailableLocales,
+  registerLocale,
+  getLocaleMessage,
+  isRtlLocale,
+  resetLocale,
+} from "./utils/i18n.js";
+import {
+  getToastHistory,
+  clearToastHistory,
+  setHistoryCapacity,
+  resetToastHistory,
+} from "./utils/history.js";
 
 /**
  * @typedef {'modern' | 'retro' | 'futuristic' | 'subtle' | 'bell' | string} SoundPreset
@@ -138,9 +153,26 @@ import {
  * @property {number | string | 'indeterminate'} [progress]
  * @property {boolean} [progressNormalized]
  * @property {boolean} [syncTabs]
+ * @property {boolean} [syncDismiss]
  * @property {boolean} [aiPrioritization]
  * @property {number} [priority]
  * @property {boolean} [usePool]
+ * @property {string} [tag] - Optional thread/tag identifier for replacement/updating
+ * @property {string} [groupId] - Optional group identifier for grouping related toasts
+ * @property {boolean} [trapFocus] - Whether to trap keyboard Tab focus within the toast
+ * @property {boolean} [shadowDom] - Whether to isolate the container in an attached Shadow DOM root
+ */
+
+/**
+ * @typedef {Object} ToastHistoryEntry
+ * @property {string} id - Unique toast key or identifier
+ * @property {string} message - Notification text message
+ * @property {ToastType} type - Notification status type
+ * @property {string} position - Toast placement coordinates
+ * @property {number} timestamp - Unix timestamp (ms) when created
+ * @property {number} [dismissedAt] - Unix timestamp (ms) when dismissed
+ * @property {'active' | 'dismissed' | 'dropped'} status - Current lifecycle status
+ * @property {Record<string, unknown>} [options] - Snapshot of configured options
  */
 
 /**
@@ -180,6 +212,8 @@ import {
  * @property {SoundPreset} [soundPreset]
  * @property {boolean} [syncTabs]
  * @property {boolean} [aiPrioritization]
+ * @property {boolean} [shadowDom]
+ * @property {boolean} [trapFocus]
  * @property {boolean} [debug]
  * @property {((context: { type: string, message: string, duration?: number, options?: Record<string, unknown> }) => number | { score: number }) | null} [priorityScorer]
  * @property {((metrics: ToastMetrics) => void) | null} [onMetrics]
@@ -206,12 +240,7 @@ let defaultColors = {
   info: "#17a2b8",
 };
 
-let defaultMessages = {
-  success: "Operation completed successfully!",
-  error: "Something went wrong!",
-  warning: "Warning message!",
-  info: "Information message!",
-};
+let customDefaultMessages = {};
 
 let domReady = false;
 let domReadyPromise = null;
@@ -385,10 +414,19 @@ async function sanitizeToastOptions(rawOptions) {
 
   try {
     final.message =
-      final.message || defaultMessages?.[final.type] || "No Message Provided!";
+      final.message ||
+      customDefaultMessages[final.type] ||
+      getLocaleMessage(final.type) ||
+      "No Message Provided!";
   } catch (error) {
     console.warn("Default message resolution failed:", error);
   }
+
+  try {
+    if ((!final.fontDirection || final.fontDirection === "auto") && isRtlLocale()) {
+      final.fontDirection = "rtl";
+    }
+  } catch {}
 
   try {
     if (!final.textColor && final.backgroundColor) {
@@ -458,7 +496,7 @@ function setDefaultMessages(messages) {
         }
       }
       if (Object.keys(validated).length > 0) {
-        defaultMessages = { ...defaultMessages, ...validated };
+        customDefaultMessages = { ...customDefaultMessages, ...validated };
       }
     }
   } catch (error) {
@@ -753,6 +791,8 @@ createToastWithPriority.promise = toastPromise;
 createToastWithPriority.dismiss = dismissToast;
 createToastWithPriority.dismissAll = noopAll;
 createToastWithPriority.clear = noopAll;
+createToastWithPriority.getHistory = getToastHistory;
+createToastWithPriority.clearHistory = clearToastHistory;
 
 /** @type {string} */
 const version = typeof __VERSION__ !== "undefined" ? __VERSION__ : "3.19.0";
@@ -797,6 +837,15 @@ export {
   getSpringTransition,
   getAudioContext,
   getAudioAnalyser,
+  setLocale,
+  getLocale,
+  getAvailableLocales,
+  registerLocale,
+  resetLocale,
+  getToastHistory,
+  clearToastHistory,
+  setHistoryCapacity,
+  resetToastHistory,
 };
 
 if (typeof window !== "undefined" && typeof document !== "undefined") {
@@ -804,7 +853,7 @@ if (typeof window !== "undefined" && typeof document !== "undefined") {
     window.__customizableToastEscapeAttached = true;
     const onKeyDown = (e) => {
       if (e.key === "Escape" || e.key === "Esc") {
-        (async () => {
+        void (async () => {
           try {
             closeInProgress = true;
             closePromise = (async () => {
@@ -896,6 +945,15 @@ try {
       getSpringTransition,
       getAudioContext,
       getAudioAnalyser,
+      setLocale,
+      getLocale,
+      getAvailableLocales,
+      registerLocale,
+      resetLocale,
+      getToastHistory,
+      clearToastHistory,
+      setHistoryCapacity,
+      resetToastHistory,
     };
   }
 } catch (error) {

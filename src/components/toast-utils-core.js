@@ -1,5 +1,6 @@
 import { getDynamicAccessibleTextColorHex } from "../utils/dom.js";
 import { getConfig, shouldReduceMotion } from "../utils/config.js";
+import { getLocaleMessage } from "../utils/i18n.js";
 
 export function createCTA(toast, options, onClose) {
   const rawCfg = options?.cta;
@@ -68,9 +69,11 @@ export function createCTA(toast, options, onClose) {
     }
 
     el.className = "toast-cta";
+    const isRtl = options.fontDirection === "rtl";
     if (!getConfig().disableInlineStyles) {
       Object.assign(el.style, {
-        marginLeft: idx === 0 ? "10px" : "6px",
+        marginLeft: isRtl ? "0px" : (idx === 0 ? "10px" : "6px"),
+        marginRight: isRtl ? (idx === 0 ? "10px" : "6px") : "0px",
         padding: "6px 10px",
         borderRadius: "6px",
         fontSize: "12px",
@@ -82,12 +85,18 @@ export function createCTA(toast, options, onClose) {
         cursor: "pointer",
         whiteSpace: "nowrap",
         flexShrink: "0",
+        display: "inline-flex",
+        alignItems: "center",
+        textDecoration: "none",
+        outline: "none",
       });
     }
 
     el.textContent = cfg.label;
 
     const onClick = async (e) => {
+      if (el._isExecuting) return;
+      el._isExecuting = true;
       try {
         if (typeof cfg.onClick === "function") {
           const res = cfg.onClick(e);
@@ -96,8 +105,9 @@ export function createCTA(toast, options, onClose) {
       } catch (err) {
         console.error("CTA onClick handler error:", err);
       } finally {
+        el._isExecuting = false;
         if (cfg.autoClose !== false && typeof onClose === "function") {
-          onClose(toast);
+          await onClose(toast);
         }
       }
     };
@@ -105,7 +115,7 @@ export function createCTA(toast, options, onClose) {
     const onKeyDown = (e) => {
       if (isLink && !cfg.href && (e.key === "Enter" || e.key === " ")) {
         e.preventDefault();
-        onClick(e);
+        void onClick(e);
       }
     };
 
@@ -159,7 +169,7 @@ export function createUndoAction(toast, options, onClose) {
   const baseLabel =
     typeof undoCfg.label === "string" && undoCfg.label.trim()
       ? undoCfg.label.trim()
-      : "Undo";
+      : (getLocaleMessage("undo") || "Undo");
 
   const totalDuration = Number(options?.duration);
   const showCountdown =
@@ -189,9 +199,11 @@ export function createUndoAction(toast, options, onClose) {
     borderColor = `${h}55`;
   }
 
+  const isRtl = options.fontDirection === "rtl";
   if (!getConfig().disableInlineStyles) {
     Object.assign(btn.style, {
-      marginLeft: "10px",
+      marginLeft: isRtl ? "0px" : "10px",
+      marginRight: isRtl ? "10px" : "0px",
       padding: "5px 10px",
       borderRadius: "6px",
       fontSize: "12px",
@@ -262,7 +274,7 @@ export function createUndoAction(toast, options, onClose) {
       console.error("Undo action error:", err);
     } finally {
       if (typeof onClose === "function") {
-        onClose(toast);
+        await onClose(toast);
       }
     }
   };
@@ -291,28 +303,35 @@ export function createUndoAction(toast, options, onClose) {
 export function createCloseButton(toast, options, onClose) {
   const closeBtn = document.createElement("button");
   closeBtn.type = "button";
-  closeBtn.setAttribute("aria-label", "Close notification");
-  closeBtn.setAttribute("title", "Close");
+  const closeLabel = getLocaleMessage("close") || "Close notification";
+  closeBtn.setAttribute("aria-label", closeLabel);
+  closeBtn.setAttribute("title", closeLabel);
   closeBtn.textContent = "×";
 
   const closeTextColor = options.textColor || getDynamicAccessibleTextColorHex(options.backgroundColor);
 
   closeBtn.className = "toast-close-btn";
+  const isRtl = options.fontDirection === "rtl";
   if (!getConfig().disableInlineStyles) {
     Object.assign(closeBtn.style, {
-    background: "none",
-    border: "none",
-    color: closeTextColor,
-    fontSize: "18px",
-    marginLeft: "10px",
-    cursor: "pointer",
-    lineHeight: "1",
-    padding: "0 4px",
-  });
+      background: "none",
+      border: "none",
+      color: closeTextColor,
+      fontSize: "18px",
+      marginLeft: isRtl ? "0px" : "10px",
+      marginRight: isRtl ? "10px" : "0px",
+      cursor: "pointer",
+      lineHeight: "1",
+      padding: "0 4px",
+      flexShrink: "0",
+      display: "inline-flex",
+      alignItems: "center",
+      justifyContent: "center",
+    });
   }
 
   const onClick = () => {
-    if (typeof onClose === "function") onClose(toast);
+    if (typeof onClose === "function") void onClose(toast);
   };
   closeBtn.addEventListener("click", onClick);
 
@@ -695,7 +714,7 @@ export function attachSwipeToDismiss(toast, onClose) {
         if (toast._swipeTimeout) clearTimeout(toast._swipeTimeout);
         toast._swipeTimeout = setTimeout(() => {
           toast._swipeTimeout = null;
-          if (typeof onClose === "function") onClose(toast);
+          if (typeof onClose === "function") void onClose(toast);
         }, exitDuration);
         if (typeof toast._swipeTimeout?.unref === "function") {
           toast._swipeTimeout.unref();
@@ -748,4 +767,80 @@ export function attachSwipeToDismiss(toast, onClose) {
     toast.removeEventListener("mousedown", onPointerDown);
   };
 
+}
+
+/**
+ * Constrains keyboard Tab focus inside an active interactive toast.
+ * @param {HTMLElement} toast
+ * @returns {(() => void) | null} Cleanup function
+ */
+export function attachFocusTrap(toast) {
+  if (!toast || typeof toast.querySelectorAll !== "function") return null;
+
+  const getFocusable = () =>
+    Array.from(
+      toast.querySelectorAll(
+        'button:not([disabled]), [href], input:not([disabled]), select:not([disabled]), textarea:not([disabled]), [tabindex]:not([tabindex="-1"])'
+      )
+    ).filter((el) => {
+      try {
+        if (typeof el.offsetWidth === "number" && typeof el.offsetHeight === "number") {
+          const style = typeof window !== "undefined" && window.getComputedStyle ? window.getComputedStyle(el) : null;
+          if (style && (style.display === "none" || style.visibility === "hidden")) return false;
+          const hasRealLayout = typeof document !== "undefined" && document.body && (document.body.offsetWidth > 0 || document.body.offsetHeight > 0);
+          if (hasRealLayout && el.offsetWidth === 0 && el.offsetHeight === 0) {
+            return el === document.activeElement;
+          }
+        }
+        return true;
+      } catch {
+        return true;
+      }
+    });
+
+  const onKeyDown = (e) => {
+    if (e.key !== "Tab") return;
+    if (!toast.isConnected && toast.parentNode !== document.body) return;
+    const focusable = getFocusable();
+    if (focusable.length === 0) return;
+
+    const first = focusable[0];
+    const last = focusable[focusable.length - 1];
+
+    if (e.shiftKey) {
+      if (document.activeElement === first || !toast.contains(document.activeElement)) {
+        last.focus();
+        e.preventDefault();
+      }
+    } else {
+      if (document.activeElement === last || !toast.contains(document.activeElement)) {
+        first.focus();
+        e.preventDefault();
+      }
+    }
+  };
+
+  toast.addEventListener("keydown", onKeyDown);
+  if (typeof document !== "undefined") {
+    document.addEventListener("keydown", onKeyDown);
+  }
+
+  const initialFocusTimer = setTimeout(() => {
+    const focusable = getFocusable();
+    if (focusable.length > 0 && typeof focusable[0].focus === "function") {
+      focusable[0].focus();
+    }
+  }, 30);
+  if (typeof initialFocusTimer?.unref === "function") initialFocusTimer.unref();
+
+  const cleanup = () => {
+    clearTimeout(initialFocusTimer);
+    toast.removeEventListener("keydown", onKeyDown);
+    if (typeof document !== "undefined") {
+      document.removeEventListener("keydown", onKeyDown);
+    }
+  };
+
+  toast._cleanupFocusTrap = cleanup;
+  return cleanup;
 }

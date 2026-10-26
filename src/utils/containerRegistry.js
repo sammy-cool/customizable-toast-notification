@@ -46,6 +46,14 @@ export function getContainerId(position) {
 export function resetContainerRegistry() {
   containerRegistry.clear();
   containerLocks.clear();
+  if (typeof document !== "undefined") {
+    const host = document.querySelector("#toast-shadow-host");
+    if (host) {
+      try {
+        host.remove();
+      } catch {}
+    }
+  }
 }
 
 /**
@@ -105,8 +113,43 @@ function applyContainerBaseStyles(el) {
 export async function getOrCreateToastContainer(options = {}, setPosition) {
   const config = getConfig();
   const id = getContainerId(options?.position || config.defaultPosition);
-  const root = getContainerRoot();
+  let root = getContainerRoot();
   if (!root) throw new Error("Toast container root is unavailable");
+
+  const useShadow = Boolean(options?.shadowDom ?? config.shadowDom);
+  if (useShadow && typeof document !== "undefined" && typeof document.createElement === "function") {
+    let host = null;
+    try {
+      host = root.querySelector ? root.querySelector("#toast-shadow-host") : null;
+    } catch {}
+    if (!host) {
+      host = document.createElement("div");
+      host.id = "toast-shadow-host";
+      host.style.position = "fixed";
+      host.style.zIndex = String(config.zIndex || 9999);
+      host.style.pointerEvents = "none";
+      host.style.inset = "0";
+      host.style.overflow = "visible";
+      root.appendChild(host);
+    }
+    if (!host.shadowRoot && typeof host.attachShadow === "function") {
+      try {
+        host.attachShadow({ mode: "open" });
+      } catch {}
+    }
+    if (host.shadowRoot) {
+      root = host.shadowRoot;
+      if (!root.querySelector("style[data-toast-shadow-style]")) {
+        const shadowStyle = document.createElement("style");
+        shadowStyle.setAttribute("data-toast-shadow-style", "true");
+        shadowStyle.textContent = `
+          :host { position: fixed; inset: 0; pointer-events: none; z-index: ${config.zIndex || 9999}; }
+          * { box-sizing: border-box; }
+        `;
+        root.appendChild(shadowStyle);
+      }
+    }
+  }
 
   if (containerLocks.has(id)) {
     return containerLocks.get(id);

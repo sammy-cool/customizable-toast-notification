@@ -41,6 +41,21 @@ const requiredFiles = [
   "index.d.ts",
   "index.css",
   "index.css.d.ts",
+  "react.esm.mjs",
+  "react.cjs",
+  "react.d.ts",
+  "vue.esm.mjs",
+  "vue.cjs",
+  "vue.d.ts",
+  "svelte.esm.mjs",
+  "svelte.cjs",
+  "svelte.d.ts",
+  "solid.esm.mjs",
+  "solid.cjs",
+  "solid.d.ts",
+  "angular.esm.mjs",
+  "angular.cjs",
+  "angular.d.ts",
 ];
 
 requiredFiles.forEach(assertFileExists);
@@ -57,6 +72,8 @@ const sourceMapFiles = [
 
 sourceMapFiles.forEach(assertFileExists);
 
+const adapterList = ["react", "vue", "svelte", "solid", "angular"];
+
 // ---------------------------------------------------------
 // 3. Test CJS build
 // ---------------------------------------------------------
@@ -70,6 +87,14 @@ try {
 
   console.log("✅ CJS build works");
   console.log("   Exports:", Object.keys(cjs).join(", "));
+
+  for (const ad of adapterList) {
+    const mod = require(`../dist/${ad}.cjs`);
+    if (!mod || typeof mod !== "object") {
+      throw new Error(`CJS adapter ${ad} did not return an object`);
+    }
+    console.log(`✅ CJS adapter ${ad} works`);
+  }
 } catch (error) {
   console.error("❌ CJS build failed:", error.message);
   process.exit(1);
@@ -89,6 +114,14 @@ try {
 
     console.log("✅ ESM build works");
     console.log("   Exports:", Object.keys(esm).join(", "));
+
+    for (const ad of adapterList) {
+      const mod = await import(`../dist/${ad}.esm.mjs`);
+      if (!mod || typeof mod !== "object") {
+        throw new Error(`ESM adapter ${ad} did not return a module namespace`);
+      }
+      console.log(`✅ ESM adapter ${ad} works`);
+    }
   } catch (error) {
     console.error("❌ ESM build failed:", error.message);
     process.exit(1);

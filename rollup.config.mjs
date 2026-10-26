@@ -128,4 +128,46 @@ export default [
     ],
     plugins: [...getCommonPlugins("cjs")],
   },
+
+  ...["react", "vue", "svelte", "solid", "angular"].flatMap((adapter) => [
+    {
+      input: `src/${adapter}/index.js`,
+      output: {
+        file: `dist/${adapter}.esm.mjs`,
+        format: "esm",
+        sourcemap: true,
+        banner: adapter === "react" ? '"use client";\n' + banner : banner,
+      },
+      external: [
+        "react",
+        "vue",
+        "svelte",
+        "solid-js",
+        "@angular/core",
+        ...Object.keys(pkg.dependencies || {}),
+        ...Object.keys(pkg.peerDependencies || {}),
+      ],
+      plugins: [...getCommonPlugins("esm")],
+    },
+    {
+      input: `src/${adapter}/index.js`,
+      output: {
+        file: `dist/${adapter}.cjs`,
+        format: "cjs",
+        exports: "named",
+        sourcemap: true,
+        banner: adapter === "react" ? '"use client";\n' + banner : banner,
+      },
+      external: [
+        "react",
+        "vue",
+        "svelte",
+        "solid-js",
+        "@angular/core",
+        ...Object.keys(pkg.dependencies || {}),
+        ...Object.keys(pkg.peerDependencies || {}),
+      ],
+      plugins: [...getCommonPlugins("cjs")],
+    },
+  ]),
 ];

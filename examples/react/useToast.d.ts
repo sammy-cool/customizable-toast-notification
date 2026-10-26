@@ -19,7 +19,7 @@ export interface UseToastAPI {
   ) => Promise<T>;
   dismiss: (target?: string | ToastHandle | HTMLElement | Promise<ToastHandle>) => Promise<void>;
   dismissAll: () => Promise<void>;
-  resetStats: () => void;
+  clear: () => Promise<void>;
   setConfig: (options?: Partial<ToastGlobalConfig>) => ToastGlobalConfig;
   getConfig: () => ToastGlobalConfig;
 }

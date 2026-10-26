@@ -70,7 +70,25 @@ document.getElementById('my-button').addEventListener('click', () => {
 
 ## React & Next.js
 
-### Custom React Hook: `useToast`
+### First-Class React Subpath Adapter (`customizable-toast-notification/react`)
+
+The library includes a native React hook with zero boilerplate:
+
+```tsx
+import { useToast } from 'customizable-toast-notification/react';
+
+export function Dashboard() {
+  const { toast, success, error, loading, promise } = useToast();
+
+  const handleSave = async () => {
+    await success('Settings saved!');
+  };
+
+  return <button onClick={handleSave}>Save</button>;
+}
+```
+
+### Custom React Hook (Manual Implementation)
 ```typescript
 // hooks/useToast.ts
 import { useCallback, useEffect } from 'react';
@@ -199,7 +217,25 @@ export function ProfileForm() {
 
 ## Vue 3 & Nuxt
 
-### Composable: `useToast.js`
+### First-Class Vue Subpath Adapter (`customizable-toast-notification/vue`)
+
+```vue
+<script setup>
+import { useToast } from 'customizable-toast-notification/vue';
+
+const toast = useToast();
+
+const save = async () => {
+  await toast.success('Profile updated!');
+};
+</script>
+
+<template>
+  <button @click="save">Save Changes</button>
+</template>
+```
+
+### Composable (Manual Implementation): `useToast.js`
 ```javascript
 import { createToast, toastPromise, dismiss, noop, setConfig } from 'customizable-toast-notification';
 
@@ -238,7 +274,21 @@ export function useToast() {
 
 ## Svelte & SvelteKit
 
-### Toast Action / Store (`src/lib/toast.ts`)
+### First-Class Svelte Subpath Adapter (`customizable-toast-notification/svelte`)
+
+```svelte
+<script>
+  import { toastStore } from 'customizable-toast-notification/svelte';
+
+  async function handleAction() {
+    await toastStore.success('Item archived!');
+  }
+</script>
+
+<button on:click={handleAction}>Archive</button>
+```
+
+### Toast Action / Store (Manual Implementation) (`src/lib/toast.ts`)
 ```typescript
 import { createToast, setConfig, type ToastOptions } from 'customizable-toast-notification';
 import { browser } from '$app/environment';
@@ -262,7 +312,29 @@ export async function notify(options: ToastOptions) {
 
 ## Angular
 
-### Service: `toast.service.ts`
+### First-Class Angular Subpath Adapter (`customizable-toast-notification/angular`)
+
+Supports both Angular Standalone Components (`injectToast()`) and NgModule dependency injection (`ToastService`):
+
+```typescript
+import { Component } from '@angular/core';
+import { injectToast } from 'customizable-toast-notification/angular';
+
+@Component({
+  selector: 'app-root',
+  standalone: true,
+  template: `<button (click)="notify()">Click me</button>`,
+})
+export class AppComponent {
+  private toast = injectToast();
+
+  notify() {
+    this.toast.success('Angular notification triggered!');
+  }
+}
+```
+
+### Service (Manual Implementation): `toast.service.ts`
 ```typescript
 import { Injectable } from '@angular/core';
 import {

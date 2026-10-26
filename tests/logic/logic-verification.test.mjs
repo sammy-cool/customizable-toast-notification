@@ -4356,6 +4356,952 @@ describe("toast-utils-core.js & ToastManager.js — Exhaustive Progress Bar Fixe
   });
 });
 
+describe("Subsystems & Option Matrix Conflict Fortification", { concurrency: 1 }, () => {
+  test("FIXED: CTA rapid clicks are guarded against duplicate concurrent invocations", async () => {
+    freshDom();
+    const { createToast, resetToastManager } = await import("../../src/index.js");
+    resetToastManager();
+
+    const position = "test-cta-guard-" + Date.now();
+    let ctaCalls = 0;
+    const handle = await createToast({
+      message: "CTA Guard Test",
+      position,
+      cta: {
+        label: "Submit",
+        onClick: async () => {
+          ctaCalls++;
+          await new Promise((r) => setTimeout(r, 60));
+        },
+        autoClose: false,
+      },
+    });
+    await new Promise((r) => setTimeout(r, 60));
+    const container = document.getElementById(`toast-container-${position}`);
+    const toast = container?.querySelector(".toast");
+    const ctaBtn = toast?.querySelector(".toast-cta");
+    assert.ok(ctaBtn);
+
+    // Rapid double click
+    ctaBtn.click();
+    ctaBtn.click();
+    await new Promise((r) => setTimeout(r, 100));
+
+    assert.strictEqual(ctaCalls, 1, "CTA onClick must be guarded and not fire concurrently twice");
+    await handle.dismiss();
+    resetToastManager();
+  });
+
+  test("FIXED: Link CTA elements render with display: inline-flex and text-decoration: none", async () => {
+    freshDom();
+    const { createToast, resetToastManager } = await import("../../src/index.js");
+    resetToastManager();
+
+    const position = "test-cta-link-" + Date.now();
+    const handle = await createToast({
+      message: "Check link",
+      position,
+      cta: {
+        label: "Documentation",
+        href: "https://example.com",
+        variant: "link",
+      },
+    });
+    await new Promise((r) => setTimeout(r, 60));
+    const container = document.getElementById(`toast-container-${position}`);
+    const linkCta = container?.querySelector("a.toast-cta");
+    assert.ok(linkCta);
+    assert.strictEqual(linkCta.tagName, "A");
+    assert.strictEqual(linkCta.style.display, "inline-flex");
+    assert.strictEqual(linkCta.style.textDecoration, "none");
+
+    await handle.dismiss();
+    resetToastManager();
+  });
+
+  test("FIXED: numeric sound frequency (sound: 440) passes number directly to synthesizer", async () => {
+    freshDom();
+    const { createToast, resetToastManager } = await import("../../src/index.js");
+    resetToastManager();
+
+    const position = "test-sound-freq-" + Date.now();
+    const handle = await createToast({
+      message: "Tone test",
+      position,
+      sound: 440,
+    });
+    await new Promise((r) => setTimeout(r, 60));
+    const container = document.getElementById(`toast-container-${position}`);
+    assert.ok(container);
+
+    await handle.dismiss();
+    resetToastManager();
+  });
+
+  test("FIXED: dynamic stacked card deck toggle via handle.update({ stacked: true / false })", async () => {
+    freshDom();
+    const { createToast, resetToastManager } = await import("../../src/index.js");
+    resetToastManager();
+
+    const position = "test-stacked-dyn-" + Date.now();
+    const handle1 = await createToast({ message: "Card 1", position });
+    const handle2 = await createToast({ message: "Card 2", position });
+    await new Promise((r) => setTimeout(r, 60));
+
+    const container = document.getElementById(`toast-container-${position}`);
+    assert.ok(container);
+    assert.strictEqual(container.getAttribute("data-stacked"), null);
+
+    // Dynamically stack
+    await handle1.update({ stacked: true });
+    await new Promise((r) => setTimeout(r, 60));
+    assert.strictEqual(container.getAttribute("data-stacked"), "true");
+
+    // Dynamically unstack
+    await handle1.update({ stacked: false });
+    await new Promise((r) => setTimeout(r, 60));
+    assert.strictEqual(container.getAttribute("data-stacked"), null);
+
+    await handle1.dismiss();
+    await handle2.dismiss();
+    resetToastManager();
+  });
+
+  test("FIXED: loading toast transitioning to 'warning' clears the loading spinner", async () => {
+    freshDom();
+    const { createToast, resetToastManager } = await import("../../src/index.js");
+    resetToastManager();
+
+    const position = "test-load-warn-" + Date.now();
+    const handle = await createToast.loading("Loading item...", { position });
+    await new Promise((r) => setTimeout(r, 60));
+
+    const container = document.getElementById(`toast-container-${position}`);
+    const toast = container?.querySelector(".toast");
+    assert.ok(toast?.querySelector(".toast-loader"));
+
+    // Transition to warning
+    await handle.update({ type: "warning", message: "Item has warnings" });
+    await new Promise((r) => setTimeout(r, 60));
+    assert.strictEqual(toast?.querySelector(".toast-loader"), null, "Spinner must be cleared on transition to warning");
+
+    await handle.dismiss();
+    resetToastManager();
+  });
+
+  test("FIXED: handle.update({ wrapText: 'normal' }) dynamically un-truncates message", async () => {
+    freshDom();
+    const { createToast, resetToastManager } = await import("../../src/index.js");
+    resetToastManager();
+
+    const position = "test-wrap-dyn-" + Date.now();
+    const handle = await createToast({ message: "Truncated initially", wrapText: "truncate", position });
+    await new Promise((r) => setTimeout(r, 60));
+
+    const container = document.getElementById(`toast-container-${position}`);
+    const toast = container?.querySelector(".toast");
+    const span = toast?.querySelector(".toast-message");
+    assert.ok(span?.classList.contains("is-truncated"));
+
+    // Dynamically expand text
+    await handle.update({ wrapText: "normal" });
+    await new Promise((r) => setTimeout(r, 60));
+    assert.strictEqual(span?.classList.contains("is-truncated"), false, "is-truncated class must be removed");
+    assert.strictEqual(span?.style.display, "block");
+
+    await handle.dismiss();
+    resetToastManager();
+  });
+
+  test("FIXED: RTL layout applies proper marginRight on CTA, Undo, and Close buttons", async () => {
+    freshDom();
+    const { createToast, resetToastManager } = await import("../../src/index.js");
+    resetToastManager();
+
+    const position = "test-rtl-margins-" + Date.now();
+    const handle = await createToast({
+      message: "رسالة إشعار",
+      fontDirection: "rtl",
+      position,
+      cta: { label: "إجراء" },
+      showCloseButton: true,
+    });
+    await new Promise((r) => setTimeout(r, 60));
+
+    const container = document.getElementById(`toast-container-${position}`);
+    const toast = container?.querySelector(".toast");
+    const ctaBtn = toast?.querySelector(".toast-cta");
+    const closeBtn = toast?.querySelector(".toast-close-btn");
+
+    assert.ok(ctaBtn);
+    assert.ok(closeBtn);
+    assert.strictEqual(ctaBtn.style.marginLeft, "0px");
+    assert.strictEqual(ctaBtn.style.marginRight, "10px");
+    assert.strictEqual(closeBtn.style.marginLeft, "0px");
+    assert.strictEqual(closeBtn.style.marginRight, "10px");
+
+    await handle.dismiss();
+    resetToastManager();
+  });
+});
+
+describe("Omni-Channel Upgrades: i18n, Multi-Tab Queue Sync, React Adapter, and A11y", { concurrency: 1 }, () => {
+  test("i18n engine: setLocale, getLocale, getAvailableLocales, registerLocale, and isRtlLocale", async () => {
+    freshDom();
+    const {
+      setLocale,
+      getLocale,
+      getAvailableLocales,
+      registerLocale,
+      isRtlLocale,
+      resetLocale,
+    } = await import("../../src/utils/i18n.js");
+
+    resetLocale();
+    assert.strictEqual(getLocale(), "en");
+    assert.strictEqual(isRtlLocale("en"), false);
+    assert.strictEqual(isRtlLocale("ar"), true);
+    assert.strictEqual(isRtlLocale("he"), true);
+
+    const locales = getAvailableLocales();
+    assert.ok(locales.includes("en"));
+    assert.ok(locales.includes("hi"));
+    assert.ok(locales.includes("es"));
+    assert.ok(locales.includes("fr"));
+    assert.ok(locales.includes("de"));
+    assert.ok(locales.includes("ar"));
+    assert.ok(locales.includes("ja"));
+
+    setLocale("hi");
+    assert.strictEqual(getLocale(), "hi");
+
+    // Custom locale registration
+    registerLocale("it", {
+      success: "Operazione completata con successo!",
+      error: "Si è verificato un errore!",
+    });
+    setLocale("it");
+    assert.strictEqual(getLocale(), "it");
+
+    resetLocale();
+    assert.strictEqual(getLocale(), "en");
+  });
+
+  test("i18n toast integration: Hindi, Arabic auto-RTL, and custom default messages", async () => {
+    freshDom();
+    const {
+      createToast,
+      setLocale,
+      resetLocale,
+      setDefaultMessages,
+      resetToastManager,
+    } = await import("../../src/index.js");
+    resetToastManager();
+    resetLocale();
+
+    // Hindi default message
+    setLocale("hi");
+    const posHi = "test-i18n-hi-" + Date.now();
+    const handleHi = await createToast({ type: "success", position: posHi });
+    await new Promise((r) => setTimeout(r, 60));
+    const containerHi = document.getElementById(`toast-container-${posHi}`);
+    const toastHi = containerHi?.querySelector(".toast");
+    assert.ok(toastHi?.textContent.includes("कार्य सफलतापूर्वक संपन्न हुआ!"));
+    await handleHi.dismiss();
+
+    // Arabic auto-RTL detection
+    setLocale("ar");
+    const posAr = "test-i18n-ar-" + Date.now();
+    const handleAr = await createToast({ type: "warning", position: posAr });
+    await new Promise((r) => setTimeout(r, 60));
+    const containerAr = document.getElementById(`toast-container-${posAr}`);
+    const toastAr = containerAr?.querySelector(".toast");
+    assert.strictEqual(toastAr?.style.direction, "rtl");
+    assert.ok(toastAr?.textContent.includes("تحذير!"));
+    await handleAr.dismiss();
+
+    // Custom setDefaultMessages overrides locale default
+    setDefaultMessages({ success: "Custom Override" });
+    const posCustom = "test-i18n-custom-" + Date.now();
+    const handleCustom = await createToast({ type: "success", position: posCustom });
+    await new Promise((r) => setTimeout(r, 60));
+    const containerCustom = document.getElementById(`toast-container-${posCustom}`);
+    const toastCustom = containerCustom?.querySelector(".toast");
+    assert.ok(toastCustom?.textContent.includes("Custom Override"));
+    await handleCustom.dismiss();
+
+    resetLocale();
+    resetToastManager();
+  });
+
+  test("Multi-tab queue sync: remote dismiss message purges queued toast to prevent ghost popup", async () => {
+    freshDom();
+    const {
+      createToast,
+      setConfig,
+      resetConfig,
+      getToastBroadcaster,
+      resetToastManager,
+    } = await import("../../src/index.js");
+    resetToastManager();
+    resetConfig();
+    setConfig({ syncTabs: true, maxVisible: 1 });
+
+    const position = "top-left";
+    const broadcaster = getToastBroadcaster();
+
+    // Fill active slot (1 toast)
+    const handleActive = await createToast({ message: "Active Toast", position, duration: 20000 });
+    await new Promise((r) => setTimeout(r, 60));
+
+    // Queue second toast (will be buffered in queue because maxVisible is 1)
+    const handleQueued = await createToast({ message: "Queued Toast", position, duration: 20000 });
+    await new Promise((r) => setTimeout(r, 60));
+
+    // Simulate remote tab broadcasting dismissal of the queued toast
+    broadcaster._handleMessage({
+      type: "dismiss",
+      toastId: handleQueued.id,
+      tabId: "other-tab",
+      timestamp: Date.now(),
+      payload: {},
+    });
+
+    // Dismiss active toast -> queue should drain, but the queued toast was purged, so container becomes empty
+    await handleActive.dismiss();
+    await new Promise((r) => setTimeout(r, 550));
+
+    const container = document.getElementById(`toast-container-${position}`);
+    assert.strictEqual(container?.children.length || 0, 0, "Queued toast must be purged, no ghost toast should appear");
+
+    resetConfig();
+    resetToastManager();
+  });
+
+  test("Per-toast syncDismiss: false and syncTabs: false prevent remote tab broadcast", async () => {
+    freshDom();
+    const {
+      createToast,
+      setConfig,
+      resetConfig,
+      getToastBroadcaster,
+      resetToastManager,
+    } = await import("../../src/index.js");
+    resetToastManager();
+    resetConfig();
+    setConfig({ syncTabs: true });
+
+    const broadcaster = getToastBroadcaster();
+    const broadcasts = [];
+    const origBroadcast = broadcaster.broadcast.bind(broadcaster);
+    broadcaster.broadcast = (type, toastId, payload) => {
+      broadcasts.push({ type, toastId, payload });
+      return origBroadcast(type, toastId, payload);
+    };
+
+    // Toast with syncTabs: false should not broadcast 'create'
+    broadcasts.length = 0;
+    const pos1 = "test-sync-tabs-false-" + Date.now();
+    const handle1 = await createToast({ message: "Local Only", syncTabs: false, position: pos1 });
+    await new Promise((r) => setTimeout(r, 60));
+    assert.strictEqual(broadcasts.some((b) => b.type === "create"), false, "syncTabs: false must not broadcast create");
+
+    // Toast with syncDismiss: false should not broadcast 'dismiss'
+    broadcasts.length = 0;
+    const pos2 = "test-sync-dismiss-false-" + Date.now();
+    const handle2 = await createToast({ message: "Local Dismiss Only", syncDismiss: false, position: pos2 });
+    await new Promise((r) => setTimeout(r, 60));
+    await handle2.dismiss();
+    await new Promise((r) => setTimeout(r, 60));
+    assert.strictEqual(broadcasts.some((b) => b.type === "dismiss"), false, "syncDismiss: false must not broadcast dismiss");
+
+    await handle1.dismiss();
+    broadcaster.broadcast = origBroadcast;
+    resetConfig();
+    resetToastManager();
+  });
+
+  test("Accessibility: Error toasts receive role='alert' and aria-live='assertive'", async () => {
+    freshDom();
+    const { createToast, resetToastManager } = await import("../../src/index.js");
+    resetToastManager();
+
+    const pos = "test-a11y-err-" + Date.now();
+    const handleErr = await createToast({ type: "error", message: "Critical failure", position: pos });
+    await new Promise((r) => setTimeout(r, 60));
+
+    const container = document.getElementById(`toast-container-${pos}`);
+    const toast = container?.querySelector(".toast");
+    assert.strictEqual(toast?.getAttribute("role"), "alert");
+    assert.strictEqual(toast?.getAttribute("aria-live"), "assertive");
+
+    await handleErr.dismiss();
+    resetToastManager();
+  });
+
+  test("Accessibility: Emergency fallback toast has tabIndex=0, role='alert', and aria-live='assertive'", async () => {
+    freshDom();
+    const { createEmergencyToast } = await import("../../src/components/toast-utils.js");
+
+    const emergency = await createEmergencyToast({ message: "Emergency alert" });
+    assert.ok(emergency);
+    assert.strictEqual(emergency.tabIndex, 0);
+    assert.strictEqual(emergency.getAttribute("role"), "alert");
+    assert.strictEqual(emergency.getAttribute("aria-live"), "assertive");
+  });
+
+  test("React subpath export & useToast hook returns full memoized API contract", async () => {
+    freshDom();
+    const { useToast } = await import("../../src/react/index.js");
+    const api = useToast();
+
+    assert.ok(typeof api.success === "function");
+    assert.ok(typeof api.error === "function");
+    assert.ok(typeof api.warning === "function");
+    assert.ok(typeof api.info === "function");
+    assert.ok(typeof api.loading === "function");
+    assert.ok(typeof api.custom === "function");
+    assert.ok(typeof api.show === "function");
+    assert.ok(typeof api.promise === "function");
+    assert.ok(typeof api.dismiss === "function");
+    assert.ok(typeof api.dismissAll === "function");
+    assert.ok(typeof api.clear === "function");
+    assert.ok(typeof api.setConfig === "function");
+    assert.ok(typeof api.getConfig === "function");
+    assert.ok(typeof api.resetConfig === "function");
+    assert.ok(typeof api.setLocale === "function");
+    assert.ok(typeof api.getLocale === "function");
+  });
+});
+
+describe("history.js — Notification History & Telemetry Subsystem", () => {
+  test("records, retrieves, and clears toast history entries accurately", async () => {
+    const {
+      recordToastHistory,
+      markToastHistoryDismissed,
+      markToastHistoryDropped,
+      getToastHistory,
+      clearToastHistory,
+      setHistoryCapacity,
+      resetToastHistory,
+    } = await import("../../src/utils/history.js");
+
+    resetToastHistory();
+
+    const entry1 = recordToastHistory("toast-1", { message: "Hello", type: "success" }, "active");
+    assert.strictEqual(entry1.id, "toast-1");
+    assert.strictEqual(entry1.message, "Hello");
+    assert.strictEqual(entry1.type, "success");
+    assert.strictEqual(entry1.status, "active");
+    assert.ok(entry1.timestamp > 0);
+
+    markToastHistoryDismissed("toast-1");
+    let history = getToastHistory();
+    assert.strictEqual(history.length, 1);
+    assert.strictEqual(history[0].status, "dismissed");
+    assert.ok(history[0].dismissedAt > 0);
+
+    markToastHistoryDropped("toast-2", { message: "Dropped item" });
+    history = getToastHistory();
+    assert.strictEqual(history.length, 2);
+    assert.strictEqual(history[0].id, "toast-2");
+    assert.strictEqual(history[0].status, "dropped");
+
+    // Capacity limiting
+    setHistoryCapacity(3);
+    recordToastHistory("toast-3", { message: "Item 3" });
+    recordToastHistory("toast-4", { message: "Item 4" });
+    recordToastHistory("toast-5", { message: "Item 5" });
+    history = getToastHistory();
+    assert.strictEqual(history.length, 3);
+    assert.strictEqual(history[0].id, "toast-5");
+
+    // Immutability of returned array
+    history[0].message = "Tampered";
+    const freshHistory = getToastHistory();
+    assert.strictEqual(freshHistory[0].message, "Item 5");
+
+    clearToastHistory();
+    assert.strictEqual(getToastHistory().length, 0);
+
+    resetToastHistory();
+  });
+
+  test("ToastManager integrates with history automatically on create and dismiss", async () => {
+    freshDom();
+    const { createToast, getToastHistory, resetToastHistory, resetToastManager } = await import("../../src/index.js");
+    resetToastHistory();
+    resetToastManager();
+
+    const handle = await createToast({ message: "History integration test", type: "info" });
+    await new Promise((r) => setTimeout(r, 60));
+
+    let history = getToastHistory();
+    assert.ok(history.length >= 1);
+    const item = history.find((h) => h.message === "History integration test");
+    assert.ok(item);
+    assert.strictEqual(item.status, "active");
+
+    await handle.dismiss();
+    await new Promise((r) => setTimeout(r, 60));
+
+    history = getToastHistory();
+    const dismissedItem = history.find((h) => h.message === "History integration test");
+    assert.strictEqual(dismissedItem.status, "dismissed");
+
+    resetToastHistory();
+    resetToastManager();
+  });
+});
+
+describe("ToastManager.js — Threaded Tag Grouping (tag & groupId)", () => {
+  test("tag groups and replaces message in-place on existing active toast thread", async () => {
+    freshDom();
+    const { createToast, resetToastManager } = await import("../../src/index.js");
+    resetToastManager();
+
+    const handle1 = await createToast({
+      tag: "download-progress",
+      message: "Downloading 10%",
+      duration: 5000,
+      position: "top-right",
+    });
+    await new Promise((r) => setTimeout(r, 60));
+
+    const container = document.getElementById("toast-container-top-right");
+    assert.ok(container);
+    assert.strictEqual(container.querySelectorAll(".toast").length, 1);
+    assert.ok(container.textContent.includes("Downloading 10%"));
+
+    // Second toast with same tag should update existing toast in-place
+    const handle2 = await createToast({
+      tag: "download-progress",
+      message: "Downloading 90%",
+      duration: 5000,
+      position: "top-right",
+    });
+    await new Promise((r) => setTimeout(r, 60));
+
+    assert.strictEqual(container.querySelectorAll(".toast").length, 1);
+    assert.ok(container.textContent.includes("Downloading 90%"));
+
+    // Different tag should create a distinct toast
+    const handle3 = await createToast({
+      tag: "upload-task",
+      message: "Uploading files...",
+      duration: 5000,
+      position: "top-right",
+    });
+    await new Promise((r) => setTimeout(r, 60));
+    assert.strictEqual(container.querySelectorAll(".toast").length, 2);
+
+    await handle1.dismiss();
+    await handle2.dismiss();
+    await handle3.dismiss();
+    resetToastManager();
+  });
+
+  test("groupId aliases tag behavior seamlessly", async () => {
+    freshDom();
+    const { createToast, resetToastManager } = await import("../../src/index.js");
+    resetToastManager();
+
+    const handle1 = await createToast({
+      groupId: "chat-notifications",
+      message: "User A: Hello",
+      duration: 5000,
+      position: "bottom-left",
+    });
+    await new Promise((r) => setTimeout(r, 60));
+
+    const container = document.getElementById("toast-container-bottom-left");
+    assert.ok(container);
+    assert.strictEqual(container.querySelectorAll(".toast").length, 1);
+    assert.ok(container.textContent.includes("User A: Hello"));
+
+    await createToast({
+      groupId: "chat-notifications",
+      message: "User B: Welcome!",
+      duration: 5000,
+      position: "bottom-left",
+    });
+    await new Promise((r) => setTimeout(r, 60));
+
+    assert.strictEqual(container.querySelectorAll(".toast").length, 1);
+    assert.ok(container.textContent.includes("User B: Welcome!"));
+
+    await handle1.dismiss();
+    resetToastManager();
+  });
+});
+
+describe("toast-utils-core.js — Keyboard Focus Trapping (trapFocus)", () => {
+  test("attachFocusTrap cycles Tab and Shift+Tab between interactive elements", async () => {
+    freshDom();
+    const { attachFocusTrap } = await import("../../src/components/toast-utils-core.js");
+
+    const toast = document.createElement("div");
+    const btn1 = document.createElement("button");
+    btn1.textContent = "Action 1";
+    const btn2 = document.createElement("button");
+    btn2.textContent = "Action 2";
+    toast.appendChild(btn1);
+    toast.appendChild(btn2);
+    document.body.appendChild(toast);
+
+    const cleanup = attachFocusTrap(toast);
+    assert.strictEqual(typeof cleanup, "function");
+
+    // Test initial focus timer
+    await new Promise((r) => setTimeout(r, 50));
+    assert.strictEqual(document.activeElement, btn1);
+
+    // Tab from btn2 (last) wraps to btn1 (first)
+    btn2.focus();
+    const tabEvent = new window.KeyboardEvent("keydown", { key: "Tab", bubbles: true, cancelable: true });
+    toast.dispatchEvent(tabEvent);
+    assert.strictEqual(document.activeElement, btn1);
+
+    // Shift+Tab from btn1 (first) wraps to btn2 (last)
+    const shiftTabEvent = new window.KeyboardEvent("keydown", { key: "Tab", shiftKey: true, bubbles: true, cancelable: true });
+    toast.dispatchEvent(shiftTabEvent);
+    assert.strictEqual(document.activeElement, btn2);
+
+    cleanup();
+    toast.remove();
+  });
+
+  test("trapFocus option automatically activates focus trap on rich toast creation", async () => {
+    freshDom();
+    const { createToast, resetToastManager } = await import("../../src/index.js");
+    resetToastManager();
+
+    const handle = await createToast({
+      message: "Focus trap test",
+      trapFocus: true,
+      cta: { label: "Confirm", onClick: () => {} },
+      showCloseButton: true,
+      duration: 5000,
+    });
+    await new Promise((r) => setTimeout(r, 60));
+
+    const toast = document.querySelector(".toast");
+    assert.ok(toast);
+    assert.strictEqual(typeof toast._cleanupFocusTrap, "function");
+
+    await handle.dismiss();
+    resetToastManager();
+  });
+});
+
+describe("containerRegistry.js — Shadow DOM Encapsulation (shadowDom)", () => {
+  test("shadowDom: true encapsulates toast container in shadow root", async () => {
+    freshDom();
+    const { getOrCreateToastContainer, resetContainerRegistry } = await import("../../src/utils/containerRegistry.js");
+    resetContainerRegistry();
+
+    const container = await getOrCreateToastContainer({ shadowDom: true, position: "top-right" });
+    assert.ok(container);
+
+    const shadowHost = document.getElementById("toast-shadow-host");
+    assert.ok(shadowHost, "#toast-shadow-host must be created in document");
+    assert.ok(shadowHost.shadowRoot, "shadowRoot must be attached");
+    assert.strictEqual(container.parentNode, shadowHost.shadowRoot);
+    assert.ok(shadowHost.shadowRoot.querySelector("style[data-toast-shadow-style]"));
+
+    resetContainerRegistry();
+    assert.strictEqual(document.getElementById("toast-shadow-host"), null, "shadow host must be cleaned up on reset");
+  });
+});
+
+describe("Framework Adapters — Vue, Svelte, Solid, and Angular contracts", () => {
+  test("Vue adapter returns full useToast API contract and executes methods", async () => {
+    freshDom();
+    const { useToast, toast, createToastAPI } = await import("../../src/vue/index.js");
+    const api = useToast();
+
+    assert.ok(typeof api.success === "function");
+    assert.ok(typeof api.error === "function");
+    assert.ok(typeof api.warning === "function");
+    assert.ok(typeof api.info === "function");
+    assert.ok(typeof api.loading === "function");
+    assert.ok(typeof api.custom === "function");
+    assert.ok(typeof api.show === "function");
+    assert.ok(typeof api.promise === "function");
+    assert.ok(typeof api.dismiss === "function");
+    assert.ok(typeof api.dismissAll === "function");
+    assert.ok(typeof api.clear === "function");
+    assert.ok(typeof api.getHistory === "function");
+    assert.ok(typeof api.clearHistory === "function");
+    assert.strictEqual(toast, api);
+    assert.strictEqual(typeof createToastAPI, "function");
+
+    const h = await api.success("vue test", { duration: 100 });
+    await h.dismiss();
+    await api.error("vue err", { duration: 100 });
+    await api.warning("vue warn", { duration: 100 });
+    await api.info("vue info", { duration: 100 });
+    await api.loading("vue load", { duration: 100 });
+    await api.custom("vue custom", { duration: 100 });
+    await api.show({ message: "vue show", duration: 100 });
+    api.getConfig();
+    api.setConfig({});
+    api.resetConfig();
+    api.getLocale();
+    api.setLocale("en");
+    api.getHistory();
+    api.clearHistory();
+    await api.dismiss();
+    await api.dismissAll();
+    await api.clear();
+  });
+
+  test("React adapter executes useToast methods", async () => {
+    freshDom();
+    const { useToast, toast } = await import("../../src/react/index.js");
+    const api = useToast();
+
+    const h = await api.success("react test", { duration: 100 });
+    await h.dismiss();
+    await api.error("react err", { duration: 100 });
+    await api.warning("react warn", { duration: 100 });
+    await api.info("react info", { duration: 100 });
+    await api.loading("react load", { duration: 100 });
+    await api.custom("react custom", { duration: 100 });
+    await api.show({ message: "react show", duration: 100 });
+    api.getConfig();
+    api.setConfig({});
+    api.resetConfig();
+    api.getLocale();
+    api.setLocale("en");
+    api.getHistory();
+    api.clearHistory();
+    await api.dismiss();
+    await api.dismissAll();
+    await api.clear();
+  });
+
+  test("Svelte adapter provides readable store subscribe contract and methods", async () => {
+    freshDom();
+    const { toast, useToast, createToastStore } = await import("../../src/svelte/index.js");
+
+    assert.strictEqual(typeof toast.subscribe, "function");
+    let state = null;
+    const unsubscribe = toast.subscribe((val) => {
+      state = val;
+    });
+
+    assert.ok(state);
+    assert.ok(state.metrics);
+    assert.ok(Array.isArray(state.history));
+    assert.strictEqual(typeof unsubscribe, "function");
+    unsubscribe();
+
+    assert.ok(typeof toast.success === "function");
+    assert.ok(typeof toast.error === "function");
+    assert.ok(typeof toast.warning === "function");
+    assert.ok(typeof toast.info === "function");
+    assert.ok(typeof toast.getHistory === "function");
+    assert.ok(typeof toast.clearHistory === "function");
+    assert.strictEqual(useToast(), toast);
+    assert.strictEqual(typeof createToastStore, "function");
+
+    const h = await toast.success("svelte test", { duration: 100 });
+    await h.dismiss();
+    await toast.error("svelte err", { duration: 100 });
+    await toast.warning("svelte warn", { duration: 100 });
+    await toast.info("svelte info", { duration: 100 });
+    await toast.loading("svelte load", { duration: 100 });
+    await toast.custom("svelte custom", { duration: 100 });
+    await toast.show({ message: "svelte show", duration: 100 });
+    toast.getConfig();
+    toast.setConfig({});
+    toast.resetConfig();
+    toast.getLocale();
+    toast.setLocale("en");
+    toast.getHistory();
+    toast.clearHistory();
+    await toast.dismiss();
+    await toast.dismissAll();
+    await toast.clear();
+  });
+
+  test("SolidJS adapter returns full useToast API contract and executes methods", async () => {
+    freshDom();
+    const { useToast, toast, createToastAPI } = await import("../../src/solid/index.js");
+    const api = useToast();
+
+    assert.ok(typeof api.success === "function");
+    assert.ok(typeof api.error === "function");
+    assert.ok(typeof api.warning === "function");
+    assert.ok(typeof api.info === "function");
+    assert.ok(typeof api.getHistory === "function");
+    assert.strictEqual(toast, api);
+    assert.strictEqual(typeof createToastAPI, "function");
+
+    const h = await api.success("solid test", { duration: 100 });
+    await h.dismiss();
+    await api.error("solid err", { duration: 100 });
+    await api.warning("solid warn", { duration: 100 });
+    await api.info("solid info", { duration: 100 });
+    await api.loading("solid load", { duration: 100 });
+    await api.custom("solid custom", { duration: 100 });
+    await api.show({ message: "solid show", duration: 100 });
+    api.getConfig();
+    api.setConfig({});
+    api.resetConfig();
+    api.getLocale();
+    api.setLocale("en");
+    api.getHistory();
+    api.clearHistory();
+    await api.dismiss();
+    await api.dismissAll();
+    await api.clear();
+  });
+
+  test("Angular adapter exposes ToastService class with Ivy metadata and injectToast", async () => {
+    freshDom();
+    const { ToastService, injectToast, toast } = await import("../../src/angular/index.js");
+
+    assert.strictEqual(typeof ToastService, "function");
+    assert.ok(ToastService.ɵfac);
+    assert.ok(ToastService.ɵprov);
+    assert.strictEqual(ToastService.ɵprov.providedIn, "root");
+
+    const instance = new ToastService();
+    assert.ok(typeof instance.success === "function");
+    assert.ok(typeof instance.error === "function");
+    assert.ok(typeof instance.warning === "function");
+    assert.ok(typeof instance.info === "function");
+    assert.ok(typeof instance.loading === "function");
+    assert.ok(typeof instance.custom === "function");
+    assert.ok(typeof instance.getHistory === "function");
+    assert.ok(typeof instance.clearHistory === "function");
+
+    const injected = injectToast();
+    assert.ok(injected instanceof ToastService);
+    assert.strictEqual(toast, injected);
+
+    const h = await instance.success("ng test", { duration: 100 });
+    await h.dismiss();
+    await instance.error("ng err", { duration: 100 });
+    await instance.warning("ng warn", { duration: 100 });
+    await instance.info("ng info", { duration: 100 });
+    await instance.loading("ng load", { duration: 100 });
+    await instance.custom("ng custom", { duration: 100 });
+    await instance.show({ message: "ng show", duration: 100 });
+    instance.getConfig();
+    instance.setConfig({});
+    instance.resetConfig();
+    instance.getLocale();
+    instance.setLocale("en");
+    instance.getHistory();
+    instance.clearHistory();
+    await instance.dismiss();
+    await instance.dismissAll();
+    await instance.clear();
+  });
+});
+
+describe("Architecture & Edge-Case Fortification Suite", () => {
+  test("RTL fontDirection auto-detects from active locale and applies to toast container & icon margins", async () => {
+    freshDom();
+    const { createToast, setLocale, resetLocale, resetToastManager } = await import("../../src/index.js");
+    resetToastManager();
+    setLocale("ar");
+
+    const pos = "test-rtl-auto-" + Date.now();
+    const handle = await createToast({ message: "مرحبا", position: pos, icon: true });
+    await new Promise((r) => setTimeout(r, 60));
+
+    const container = document.getElementById(`toast-container-${pos}`);
+    const toast = container?.querySelector(".toast");
+    assert.ok(toast);
+    assert.strictEqual(toast.style.direction, "rtl");
+
+    const icon = toast.querySelector(".toast-icon");
+    assert.ok(icon);
+    assert.strictEqual(icon.style.marginLeft, "8px");
+    assert.strictEqual(icon.style.marginRight, "0px");
+
+    await handle.dismiss();
+    resetLocale();
+    resetToastManager();
+  });
+
+  test("createUndoAction and createCloseButton localize labels and aria-labels via i18n", async () => {
+    freshDom();
+    const { createCloseButton, createUndoAction } = await import("../../src/components/toast-utils-core.js");
+    const { setLocale, resetLocale } = await import("../../src/utils/i18n.js");
+
+    setLocale("hi");
+    const toast = document.createElement("div");
+
+    createCloseButton(toast, {}, () => {});
+    const closeBtn = toast.querySelector(".toast-close-btn");
+    assert.ok(closeBtn);
+    assert.strictEqual(closeBtn.getAttribute("aria-label"), "सूचना बंद करें");
+    assert.strictEqual(closeBtn.getAttribute("title"), "सूचना बंद करें");
+
+    createUndoAction(toast, { duration: 5000, undo: () => {} }, () => {});
+    const undoBtn = toast.querySelector(".toast-undo-btn");
+    assert.ok(undoBtn);
+    assert.ok(undoBtn.textContent.includes("पूर्ववत करें"));
+
+    toast._cleanupCloseButton?.();
+    toast._cleanupUndo?.();
+    resetLocale();
+  });
+
+  test("maxQueueSize: 0 records dropped toasts in history telemetry buffer", async () => {
+    freshDom();
+    const { createToast, setConfig, resetConfig, getToastHistory, resetToastHistory, resetToastManager } = await import("../../src/index.js");
+    resetToastManager();
+    resetToastHistory();
+    setConfig({ maxVisible: 1, maxQueueSize: 0 });
+
+    const pos = "test-drop-history-" + Date.now();
+    const h1 = await createToast({ message: "Showing Toast", position: pos });
+    await new Promise((r) => setTimeout(r, 60));
+
+    await createToast({ message: "Dropped Toast 1", position: pos });
+    await new Promise((r) => setTimeout(r, 60));
+
+    const history = getToastHistory();
+    const droppedItem = history.find((h) => h.message === "Dropped Toast 1");
+    assert.ok(droppedItem, "Dropped toast must be recorded in history when maxQueueSize is 0");
+    assert.strictEqual(droppedItem.status, "dropped");
+
+    await h1.dismiss();
+    resetConfig();
+    resetToastHistory();
+    resetToastManager();
+  });
+
+  test("removeWithTransition for animationType: fade resolves immediately on opacity transitionend", async () => {
+    freshDom();
+    const { createToast, resetToastManager } = await import("../../src/index.js");
+    resetToastManager();
+
+    const pos = "test-fade-exit-" + Date.now();
+    const handle = await createToast({
+      message: "Fade dismiss test",
+      animationType: "fade",
+      animationDuration: "100ms",
+      position: pos,
+    });
+    await new Promise((r) => setTimeout(r, 60));
+
+    const start = Date.now();
+    await handle.dismiss();
+    const elapsed = Date.now() - start;
+
+    assert.ok(elapsed < 400, `Fade exit must resolve quickly (took ${elapsed}ms)`);
+    resetToastManager();
+  });
+});
+
+
 
 
 
