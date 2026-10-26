@@ -1,3 +1,19 @@
+# [3.20.0](https://github.com/sammy-cool/customizable-toast-notification/compare/v3.19.0...v3.20.0) (2026-10-26)
+
+
+### Bug Fixes
+
+* **core:** resolve cta double-click, rtl button margins, dynamic stacked, and cross-tab update sync ([0d1eb0f](https://github.com/sammy-cool/customizable-toast-notification/commit/0d1eb0f9390b2076c6642108df188566f3e40f27))
+* **core:** resolve rtl layout, localized labels, fade exit timing, and drop telemetry ([6477abb](https://github.com/sammy-cool/customizable-toast-notification/commit/6477abb4d4b3f564c15ad8e302c3e41e9dacd2c9))
+* handle floating promises to satisfy sonarqube quality gate ([8ee9b3b](https://github.com/sammy-cool/customizable-toast-notification/commit/8ee9b3b7b546bdad8b4542f0beddbdb80ea9a762))
+* update SonarQube organization and project key for consistency ([a730b5f](https://github.com/sammy-cool/customizable-toast-notification/commit/a730b5f97e2351c3e27d6cf40a019d3a71aa0b2a))
+
+
+### Features
+
+* **core:** implement history ring buffer, tag threading, focus trap, and framework adapters ([8f4f362](https://github.com/sammy-cool/customizable-toast-notification/commit/8f4f3623412aea01c2d8b851363463e5fc8bf11a))
+* **core:** implement i18n engine, react adapter, multi-tab queue sync, and a11y ([6aa44f6](https://github.com/sammy-cool/customizable-toast-notification/commit/6aa44f6cebfef164c1098c7af510934578212ebc))
+
 # [3.19.0](https://github.com/sammy-cool/customizable-toast-notification/compare/v3.18.2...v3.19.0) (2026-10-24)
 
 
