@@ -5493,14 +5493,21 @@ describe("SonarQube S6544 & AI Code Assurance Coverage Suite", () => {
     }
   });
 
-  test("Escape keypress event listener executes void async dismiss handler cleanly", async () => {
+  test("Escape and landmark keypress event listeners execute cleanly", async () => {
     freshDom();
-    const { createToast, resetToastManager } = await import("../../src/index.js");
+    const { createToast, resetToastManager, initKeyboardShortcuts } = await import("../../src/index.js");
 
     try {
-      await createToast({ message: "Dismiss on Escape", position: "bottom-right", duration: 5000 });
+      initKeyboardShortcuts(window);
+      await createToast({ message: "Dismiss on Escape", position: "bottom-right", duration: 5000, cta: { text: "Action", onClick: () => {} } });
       await new Promise((r) => setTimeout(r, 50));
 
+      // Test F6 landmark navigation
+      window.dispatchEvent(new window.KeyboardEvent("keydown", { key: "F6" }));
+      // Test Alt+T landmark navigation
+      window.dispatchEvent(new window.KeyboardEvent("keydown", { key: "t", altKey: true }));
+
+      // Test Escape dismissal
       window.dispatchEvent(new window.KeyboardEvent("keydown", { key: "Escape" }));
       await new Promise((r) => setTimeout(r, 100));
     } finally {

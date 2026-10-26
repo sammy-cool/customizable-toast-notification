@@ -70,10 +70,10 @@ export async function parseAnimationDuration(duration) {
   if (typeof duration === "string") {
     const trimmed = duration.trim().toLowerCase();
     if (trimmed.endsWith("s") && !trimmed.endsWith("ms")) {
-      const parsed = parseFloat(trimmed) * 1000;
+      const parsed = Number.parseFloat(trimmed) * 1000;
       return Number.isFinite(parsed) && parsed >= 0 ? parsed : 500;
     }
-    const parsed = parseFloat(trimmed);
+    const parsed = Number.parseFloat(trimmed);
     return Number.isFinite(parsed) && parsed >= 0 ? parsed : 500;
   }
   return 500;
@@ -358,9 +358,9 @@ export function getDynamicAccessibleTextColorHex(toastBg) {
           .join("");
       }
       if (hex.length >= 6) {
-        const r = parseInt(hex.slice(0, 2), 16);
-        const g = parseInt(hex.slice(2, 4), 16);
-        const b = parseInt(hex.slice(4, 6), 16);
+        const r = Number.parseInt(hex.slice(0, 2), 16);
+        const g = Number.parseInt(hex.slice(2, 4), 16);
+        const b = Number.parseInt(hex.slice(4, 6), 16);
         if (Number.isFinite(r) && Number.isFinite(g) && Number.isFinite(b)) {
           return { r, g, b };
         }
@@ -372,7 +372,7 @@ export function getDynamicAccessibleTextColorHex(toastBg) {
       if (typeof c !== "string") return Number(c);
       const trimmed = c.trim();
       if (trimmed.endsWith("%")) {
-        return Math.round((parseFloat(trimmed) / 100) * 255);
+        return Math.round((Number.parseFloat(trimmed) / 100) * 255);
       }
       return Number(trimmed);
     };
@@ -403,7 +403,7 @@ export function getDynamicAccessibleTextColorHex(toastBg) {
 
     const parseHue = (hStr) => {
       const trimmed = hStr.trim().toLowerCase();
-      let raw = parseFloat(trimmed);
+      let raw = Number.parseFloat(trimmed);
       if (!Number.isFinite(raw)) return 0;
       if (trimmed.endsWith("turn")) {
         raw = raw * 360;

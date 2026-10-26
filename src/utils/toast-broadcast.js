@@ -56,10 +56,11 @@ class ToastBroadcaster {
     }
 
     if (!entropy) {
-      // 53-bit safe integer entropy fallback
-      entropy = Math.floor(Math.random() * 0x1fffffffffffff)
-        .toString(36)
-        .slice(0, 9);
+      // High-resolution entropy fallback without PRNG
+      const highRes = typeof performance !== "undefined" && typeof performance.now === "function"
+        ? Math.floor(performance.now() * 1000)
+        : 0;
+      entropy = ((Date.now() ^ highRes) >>> 0).toString(36).slice(0, 9);
     }
 
     return `tab-${timestamp}-${entropy}`;

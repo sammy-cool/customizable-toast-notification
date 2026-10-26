@@ -848,47 +848,55 @@ export {
   resetToastHistory,
 };
 
-if (typeof window !== "undefined" && typeof document !== "undefined") {
-  if (!window.__customizableToastEscapeAttached) {
-    window.__customizableToastEscapeAttached = true;
-    const onKeyDown = (e) => {
-      if (e.key === "Escape" || e.key === "Esc") {
-        void (async () => {
-          try {
-            closeInProgress = true;
-            closePromise = (async () => {
-              try {
-                await dismiss();
-              } finally {
-                closeInProgress = false;
-                closePromise = null;
-              }
-            })();
-            await closePromise;
-          } catch (error) {
-            console.error("Escape key dismiss failed:", error);
-            closeInProgress = false;
-            closePromise = null;
-          }
-        })();
-      } else if (e.key === "F6" || ((e.altKey || e.metaKey) && (e.key === "t" || e.key === "T"))) {
-        // Accessible landmark navigation: focus the most recent active toast
-        const root = (getConfig().targetNode && typeof getConfig().targetNode.querySelectorAll === "function") ? getConfig().targetNode : document;
-        const activeToasts = root.querySelectorAll('[id^="toast-container-"] [id^="toast-"]');
-        if (activeToasts.length > 0) {
-          const targetToast = activeToasts[activeToasts.length - 1];
-          // Try focusing the interactive CTA, undo, or close button inside the toast first
-          const interactive = targetToast.querySelector("button, a, [tabindex='0']");
-          if (interactive && typeof interactive.focus === "function") {
-            interactive.focus();
-          } else if (typeof targetToast.focus === "function") {
-            targetToast.focus();
-          }
+/**
+ * Attach global keyboard event listeners (Escape to dismiss, F6/Alt+T for landmark navigation)
+ * @param {Window} [win]
+ * @returns {void}
+ */
+export function initKeyboardShortcuts(win = typeof window !== "undefined" ? window : null) {
+  if (!win || !win.document || win.__customizableToastEscapeAttached) return;
+  win.__customizableToastEscapeAttached = true;
+  const onKeyDown = (e) => {
+    if (e.key === "Escape" || e.key === "Esc") {
+      void (async () => {
+        try {
+          closeInProgress = true;
+          closePromise = (async () => {
+            try {
+              await dismiss();
+            } finally {
+              closeInProgress = false;
+              closePromise = null;
+            }
+          })();
+          await closePromise;
+        } catch (error) {
+          console.error("Escape key dismiss failed:", error);
+          closeInProgress = false;
+          closePromise = null;
+        }
+      })();
+    } else if (e.key === "F6" || ((e.altKey || e.metaKey) && (e.key === "t" || e.key === "T"))) {
+      // Accessible landmark navigation: focus the most recent active toast
+      const root = (getConfig().targetNode && typeof getConfig().targetNode.querySelectorAll === "function") ? getConfig().targetNode : win.document;
+      const activeToasts = root.querySelectorAll('[id^="toast-container-"] [id^="toast-"]');
+      if (activeToasts.length > 0) {
+        const targetToast = activeToasts[activeToasts.length - 1];
+        // Try focusing the interactive CTA, undo, or close button inside the toast first
+        const interactive = targetToast.querySelector("button, a, [tabindex='0']");
+        if (interactive && typeof interactive.focus === "function") {
+          interactive.focus();
+        } else if (typeof targetToast.focus === "function") {
+          targetToast.focus();
         }
       }
-    };
-    window.addEventListener("keydown", onKeyDown, { passive: true });
-  }
+    }
+  };
+  win.addEventListener("keydown", onKeyDown, { passive: true });
+}
+
+if (typeof window !== "undefined" && typeof document !== "undefined") {
+  initKeyboardShortcuts(window);
 }
 
 try {
@@ -954,6 +962,7 @@ try {
       clearToastHistory,
       setHistoryCapacity,
       resetToastHistory,
+      initKeyboardShortcuts,
     };
   }
 } catch (error) {

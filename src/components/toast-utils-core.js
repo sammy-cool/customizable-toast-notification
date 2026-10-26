@@ -393,12 +393,7 @@ export function parseProgressValue(rawProgress, toast, options = {}) {
 
   let pct;
   if (typeof rawProgress === "string") {
-    const trimmed = rawProgress.trim();
-    if (trimmed.endsWith("%")) {
-      pct = parseFloat(trimmed);
-    } else {
-      pct = parseFloat(trimmed);
-    }
+    pct = Number.parseFloat(rawProgress.trim());
   } else {
     pct = Number(rawProgress);
   }
@@ -428,7 +423,7 @@ export function createProgressBar(toast, options = {}) {
   progressBar.className = "toast-progress-bar";
   toast._progressBar = progressBar;
   const borderRadiusStr = options.borderRadius || "0";
-  const parsedRadius = parseInt(borderRadiusStr, 10);
+  const parsedRadius = Number.parseInt(borderRadiusStr, 10);
   const borderRadiusNum = Number.isFinite(parsedRadius) && parsedRadius > 0 ? parsedRadius : 0;
 
   let progressHeightPx = 4;
@@ -438,7 +433,7 @@ export function createProgressBar(toast, options = {}) {
     progressHeightStyle = `${progressHeightPx}px`;
   } else if (typeof options.progressHeight === "string" && options.progressHeight.trim()) {
     const trimmed = options.progressHeight.trim();
-    const parsedFloat = parseFloat(trimmed);
+    const parsedFloat = Number.parseFloat(trimmed);
     if (Number.isFinite(parsedFloat) && parsedFloat > 0) {
       if (trimmed.endsWith("rem") || trimmed.endsWith("em")) {
         progressHeightPx = parsedFloat * 16;

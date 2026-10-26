@@ -3,10 +3,20 @@
 
 let counter = 0;
 
-// Tab/Session-level unique salt (deterministic & safe across all environments)
-const sessionSalt = Math.floor(Math.random() * 0xffff)
-  .toString(36)
-  .padStart(3, "0");
+// Tab/Session-level unique salt (cryptographically secure where available, deterministic & safe across all environments)
+function generateSalt() {
+  if (typeof globalThis !== "undefined" && globalThis.crypto?.getRandomValues) {
+    const arr = new Uint16Array(1);
+    globalThis.crypto.getRandomValues(arr);
+    return arr[0].toString(36).padStart(3, "0");
+  }
+  const highRes = typeof performance !== "undefined" && typeof performance.now === "function"
+    ? Math.floor(performance.now() * 1000)
+    : 0;
+  const entropy = (Date.now() ^ highRes) & 0xffff;
+  return entropy.toString(36).padStart(3, "0");
+}
+const sessionSalt = generateSalt();
 
 /**
  * Reset the internal monotonic counter (primarily for test isolation)
