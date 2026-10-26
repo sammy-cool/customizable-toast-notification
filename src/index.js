@@ -853,7 +853,7 @@ if (typeof window !== "undefined" && typeof document !== "undefined") {
     window.__customizableToastEscapeAttached = true;
     const onKeyDown = (e) => {
       if (e.key === "Escape" || e.key === "Esc") {
-        (async () => {
+        void (async () => {
           try {
             closeInProgress = true;
             closePromise = (async () => {

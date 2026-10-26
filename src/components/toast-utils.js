@@ -381,7 +381,7 @@ export async function createEmergencyToast(options = {}, onClose) {
       if (timer) clearTimeout(timer);
       closeSpan.removeEventListener("click", onClick);
       emergency.remove();
-      if (typeof onClose === "function") onClose(emergency);
+      if (typeof onClose === "function") void onClose(emergency);
     };
     closeSpan.addEventListener("click", onClick);
 
@@ -389,14 +389,14 @@ export async function createEmergencyToast(options = {}, onClose) {
     timer = setTimeout(() => {
       closeSpan.removeEventListener("click", onClick);
       emergency.remove();
-      if (typeof onClose === "function") onClose(emergency);
+      if (typeof onClose === "function") void onClose(emergency);
     }, duration);
     if (typeof timer?.unref === "function") timer.unref();
 
     return emergency;
   } catch (error) {
     console.error("Emergency toast creation failed:", error);
-    if (typeof onClose === "function") onClose(null);
+    if (typeof onClose === "function") void onClose(null);
     return null;
   }
 }

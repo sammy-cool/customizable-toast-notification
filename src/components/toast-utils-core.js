@@ -107,7 +107,7 @@ export function createCTA(toast, options, onClose) {
       } finally {
         el._isExecuting = false;
         if (cfg.autoClose !== false && typeof onClose === "function") {
-          onClose(toast);
+          await onClose(toast);
         }
       }
     };
@@ -115,7 +115,7 @@ export function createCTA(toast, options, onClose) {
     const onKeyDown = (e) => {
       if (isLink && !cfg.href && (e.key === "Enter" || e.key === " ")) {
         e.preventDefault();
-        onClick(e);
+        void onClick(e);
       }
     };
 
@@ -274,7 +274,7 @@ export function createUndoAction(toast, options, onClose) {
       console.error("Undo action error:", err);
     } finally {
       if (typeof onClose === "function") {
-        onClose(toast);
+        await onClose(toast);
       }
     }
   };
@@ -331,7 +331,7 @@ export function createCloseButton(toast, options, onClose) {
   }
 
   const onClick = () => {
-    if (typeof onClose === "function") onClose(toast);
+    if (typeof onClose === "function") void onClose(toast);
   };
   closeBtn.addEventListener("click", onClick);
 
@@ -714,7 +714,7 @@ export function attachSwipeToDismiss(toast, onClose) {
         if (toast._swipeTimeout) clearTimeout(toast._swipeTimeout);
         toast._swipeTimeout = setTimeout(() => {
           toast._swipeTimeout = null;
-          if (typeof onClose === "function") onClose(toast);
+          if (typeof onClose === "function") void onClose(toast);
         }, exitDuration);
         if (typeof toast._swipeTimeout?.unref === "function") {
           toast._swipeTimeout.unref();

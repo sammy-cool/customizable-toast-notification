@@ -81,7 +81,9 @@ export function initBroadcastListeners() {
     if (!getConfig().syncTabs) return;
     // Another tab created a toast - show it in this tab
     if (toastId && payload && !active.has(toastId) && !pending.has(toastId)) {
-      showToast({ ...payload.options, fromSync: true });
+      void showToast({ ...payload.options, fromSync: true }).catch((err) => {
+        console.error('[Toast] Failed to show synced toast:', err);
+      });
     }
   });
 
@@ -92,10 +94,14 @@ export function initBroadcastListeners() {
       const data = active.get(toastId);
       if (data && payload.count !== undefined && data.count !== payload.count) {
         data.count = payload.count;
-        updateBadge(data);
+        void updateBadge(data).catch((err) => {
+          console.error('[Toast] Failed to update badge:', err);
+        });
       }
       if (payload.newOptions && typeof payload.newOptions === "object") {
-        updateToastByKey(toastId, { ...payload.newOptions, fromSync: true });
+        void updateToastByKey(toastId, { ...payload.newOptions, fromSync: true }).catch((err) => {
+          console.error('[Toast] Failed to update synced toast:', err);
+        });
       }
     }
   });
@@ -105,7 +111,9 @@ export function initBroadcastListeners() {
     // Another tab dismissed a toast - dismiss in this tab without re-broadcasting
     if (!toastId) return;
     if (active.has(toastId) || pending.has(toastId)) {
-      closeToastByKey(toastId, true);
+      void closeToastByKey(toastId, true).catch((err) => {
+        console.error('[Toast] Failed to dismiss synced toast:', err);
+      });
     } else {
       // If the toast was buffered in queue in this tab, purge it so it doesn't pop up later
       const qIdx = queue.findIndex((item) => item.key === toastId);
@@ -122,7 +130,9 @@ export function initBroadcastListeners() {
     if (payload && Array.isArray(payload.queue)) {
       for (const item of payload.queue) {
         if (item?.options && !active.has(item.key) && !pending.has(item.key)) {
-          showToast({ ...item.options, fromSync: true });
+          void showToast({ ...item.options, fromSync: true }).catch((err) => {
+            console.error('[Toast] Failed to show synced queue item:', err);
+          });
         }
       }
     }
@@ -669,7 +679,11 @@ function createDismissTimer(toast, options) {
   }
   const duration = Number.isFinite(raw) && raw > 0 ? raw : 2500;
   const delay = duration + 5;
-  const timer = new PausableTimer(async () => await closeToast(toast), delay);
+  const timer = new PausableTimer(() => {
+    void closeToast(toast).catch((err) => {
+      console.error("[Toast] Timer dismiss failed:", err);
+    });
+  }, delay);
   timer.start();
   return timer;
 }
