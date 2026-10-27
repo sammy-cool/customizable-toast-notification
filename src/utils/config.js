@@ -55,8 +55,7 @@ const DEFAULT_GLOBAL_CONFIG = Object.freeze({
   theme: "light",
   stacked: false,
   swipeToDismiss: true,
-  sound: true,
-  soundPreset: "modern",
+  sound: false,
   icon: true,
   pauseOnHover: false,
   syncTabs: false,
@@ -96,7 +95,6 @@ export function setConfig(options = {}) {
     stacked,
     swipeToDismiss,
     sound,
-    soundPreset,
     icon,
     pauseOnHover,
     syncTabs,
@@ -193,13 +191,6 @@ export function setConfig(options = {}) {
 
   if (sound !== undefined) {
     globalConfig.sound = Boolean(sound);
-  }
-
-  if (soundPreset !== undefined) {
-    const sp = String(soundPreset || "modern").toLowerCase().trim();
-    if (sp) {
-      globalConfig.soundPreset = sp;
-    }
   }
 
   if (icon !== undefined) {

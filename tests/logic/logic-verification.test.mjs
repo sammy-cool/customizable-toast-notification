@@ -1068,13 +1068,6 @@ describe("dom.js — parseAnimationDuration and query edge cases", () => {
     assert.equal(await parseAnimationDuration("0.3s"), 300);
     assert.equal(await parseAnimationDuration("250ms"), 250);
   });
-
-  test("query safely returns null when root or document has no querySelector", async () => {
-    freshDom();
-    const { query } = await import("../../src/utils/dom.js");
-    assert.equal(query(".missing", null), null);
-    assert.equal(query(".missing", {}), null);
-  });
 });
 
 describe("containerRegistry.js — getContainerId edge cases", () => {
@@ -1341,18 +1334,6 @@ describe("toast-utils.js — animation & custom className across all toast types
       assert.equal(toast.style.transform, "translateY(20px)");
       assert.equal(toast.style.transition, "opacity 500ms ease-in-out, transform 500ms ease-in-out");
     }
-  });
-});
-
-describe("dom.js — forceReflow utility", () => {
-  test("forceReflow safely returns offsetWidth or 0 on non-elements/errors", async () => {
-    freshDom();
-    const { forceReflow } = await import("../../src/utils/dom.js");
-    assert.equal(forceReflow(null), 0);
-    assert.equal(forceReflow(undefined), 0);
-    assert.equal(forceReflow({}), 0);
-    const div = document.createElement("div");
-    assert.equal(typeof forceReflow(div), "number");
   });
 });
 

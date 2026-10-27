@@ -2,7 +2,7 @@ import { test, expect } from '@playwright/test';
 
 const HARNESS = '/tests/e2e/fixtures/harness.html';
 
-test.describe('Phase 2: Stacked Layout Mode', () => {
+test.describe('Stacked Layout Mode', () => {
   test.beforeEach(async ({ page }) => {
     await page.goto(HARNESS);
     await page.waitForFunction(() => !!window.customizableToast);

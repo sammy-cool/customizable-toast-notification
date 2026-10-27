@@ -907,8 +907,8 @@ async function drainQueue() {
   try {
     const config = getConfig();
 
-    // Apply AI priority sorting if enabled globally or on queued items
-    if ((config.aiPrioritization || queue.some(i => i.options?.aiPrioritization || typeof i.options?.priority === "number")) && queue.length > 1) {
+    // Apply priority sorting if enabled globally or on queued items
+    if ((config.aiPrioritization || typeof config.priorityScorer === "function" || queue.some(i => i.options?.aiPrioritization || typeof i.options?.priority === "number")) && queue.length > 1) {
       queue.sort((a, b) => getItemPriority(b) - getItemPriority(a)); // Higher priority first
     }
 

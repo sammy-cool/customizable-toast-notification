@@ -3,7 +3,6 @@ const require = createRequire(import.meta.url);
 const pkg = require("./package.json");
 
 import resolve from "@rollup/plugin-node-resolve";
-import commonjs from "@rollup/plugin-commonjs";
 import { visualizer } from "rollup-plugin-visualizer";
 import replace from "@rollup/plugin-replace";
 import esbuild from "esbuild";
@@ -75,7 +74,6 @@ const getCommonPlugins = (target) => [
     browser: target === "umd",
     preferBuiltins: target !== "umd",
   }),
-  commonjs(),
   esbuildPlugin(target),
 ];
 

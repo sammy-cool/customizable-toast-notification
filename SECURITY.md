@@ -41,6 +41,6 @@ prefer otherwise.
 
 ## Supported versions
 
-Only the latest published major version (currently 3.x) receives security
+Only the latest published major version (currently 4.x) receives security
 fixes. Given how actively this project releases, please upgrade to the
 latest version before reporting — there's a real chance it's already fixed.

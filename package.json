@@ -1,7 +1,7 @@
 {
   "name": "customizable-toast-notification",
   "version": "3.20.2",
-  "description": "A lightweight, zero-dependency toast notification library with CTA support for modern JavaScript applications with production-grade reliability and comprehensive system  mechanisms",
+  "description": "A lightweight, zero-dependency toast notification library with CTA support for modern JavaScript applications with production-grade reliability and comprehensive system mechanisms",
   "type": "module",
   "main": "dist/index.cjs",
   "module": "dist/index.esm.mjs",
@@ -52,11 +52,11 @@
     "./package.json": "./package.json"
   },
   "peerDependencies": {
+    "@angular/core": ">=12.0.0",
     "react": ">=16.8.0",
-    "vue": ">=3.0.0",
-    "svelte": ">=3.0.0",
     "solid-js": ">=1.0.0",
-    "@angular/core": ">=12.0.0"
+    "svelte": ">=3.0.0",
+    "vue": ">=3.0.0"
   },
   "peerDependenciesMeta": {
     "react": {
@@ -98,7 +98,7 @@
     "build:types:emit": "tsc -p tsconfig.types.json",
     "build:types:bundle": "rollup -c rollup.dts.config.mjs",
     "build:adapter:types": "node scripts/copy-adapter-types.cjs",
-    "build:types": "npm run build:types:emit && npm run build:types:bundle && npm run build:adapter:types",
+    "build:types": "npm run build:types:emit && npm run build:types:bundle && npm run build:adapter:types && rm -rf dist/types",
     "zone-build": "npm run dist:clean && npm run build && npm run build:types && du -h dist/*",
     "test:builds": "node scripts/test-build.cjs",
     "test": "npm run ci:test",
@@ -189,7 +189,6 @@
     "@commitlint/config-conventional": "^21.2.0",
     "@eslint/js": "^10.0.1",
     "@playwright/test": "1.63.0",
-    "@rollup/plugin-commonjs": "^29.0.3",
     "@rollup/plugin-node-resolve": "^16.0.3",
     "@rollup/plugin-replace": "^6.0.2",
     "@semantic-release/changelog": "^7.0.0",

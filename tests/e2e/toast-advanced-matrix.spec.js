@@ -2,7 +2,7 @@ import { test, expect } from '@playwright/test';
 
 const HARNESS = '/tests/e2e/fixtures/harness.html';
 
-test.describe('Phase 3 & 4: Omni-Channel Capabilities & Real Browser DOM', () => {
+test.describe('Omni-Channel Capabilities & Real Browser DOM', () => {
   test.beforeEach(async ({ page }) => {
     await page.goto(HARNESS);
     await page.waitForFunction(() => !!window.customizableToast);
