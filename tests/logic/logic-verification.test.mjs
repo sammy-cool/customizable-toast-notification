@@ -2080,7 +2080,7 @@ describe("smart-triage.js — TypeSafe AI Smart Triage deterministic classifier"
     assert.ok(plan.undo, "Destructive event must have undo configured");
     assert.strictEqual(plan.undo.label, "Undo");
     assert.strictEqual(plan.undo.showCountdown, true);
-    assert.strictEqual(plan.spring, "wobbly");
+    assert.strictEqual(plan.animationType, "slide");
   });
 
   test("classifyEventDeterministic classifies critical errors and high priority", async () => {
@@ -2088,18 +2088,19 @@ describe("smart-triage.js — TypeSafe AI Smart Triage deterministic classifier"
 
     const plan = classifyEventDeterministic("Network timeout: database connection failed");
     assert.strictEqual(plan.type, "error");
-    assert.strictEqual(plan.soundPreset, "retro");
-    assert.strictEqual(plan.spring, "stiff");
+    assert.strictEqual(plan.animationType, "bounce");
     assert.strictEqual(plan.priority, 90);
+    assert.strictEqual(plan.sound, true);
   });
 
-  test("classifyEventDeterministic classifies successes with bell preset and bouncy spring", async () => {
+  test("classifyEventDeterministic classifies successes with spring animation", async () => {
     const { classifyEventDeterministic } = await import("../../examples/ai-triage/smart-triage.js");
 
     const plan = classifyEventDeterministic("Profile saved and verified successfully");
     assert.strictEqual(plan.type, "success");
-    assert.strictEqual(plan.soundPreset, "bell");
-    assert.strictEqual(plan.spring, "bouncy");
+    assert.strictEqual(plan.animationType, "spring");
+    assert.strictEqual(plan.spring, true);
+    assert.strictEqual(plan.sound, true);
   });
 });
 
