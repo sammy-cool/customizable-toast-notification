@@ -1,3 +1,10 @@
+## [3.20.2](https://github.com/sammy-cool/customizable-toast-notification/compare/v3.20.1...v3.20.2) (2026-10-27)
+
+
+### Bug Fixes
+
+* guarantee 3-character salt length in generateSalt fallback ([a21d6d6](https://github.com/sammy-cool/customizable-toast-notification/commit/a21d6d68c2c757401db5f71792f032516e5fea17))
+
 ## [3.20.1](https://github.com/sammy-cool/customizable-toast-notification/compare/v3.20.0...v3.20.1) (2026-10-27)
 
 

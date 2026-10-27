@@ -116,7 +116,7 @@ Global Variable Name: `customizableToast`
 <script src="https://cdn.jsdelivr.net/npm/customizable-toast-notification/dist/index.umd.js"></script>
 
 <!-- OR pin to a specific version -->
-<script src="https://cdn.jsdelivr.net/npm/customizable-toast-notification@3.20.1/dist/index.umd.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/customizable-toast-notification@3.20.2/dist/index.umd.js"></script>
 
 <script>
   // Access the global UMD export
@@ -1016,8 +1016,8 @@ createToast({ message: "Using external CSS!" });
 
 ```html
 <!-- HTML (CDN) -->
-<link rel="stylesheet" href="https://unpkg.com/customizable-toast-notification@3.20.1/dist/index.css">
-<script src="https://unpkg.com/customizable-toast-notification@3.20.1/dist/index.umd.js"></script>
+<link rel="stylesheet" href="https://unpkg.com/customizable-toast-notification@3.20.2/dist/index.css">
+<script src="https://unpkg.com/customizable-toast-notification@3.20.2/dist/index.umd.js"></script>
 <script>
   customizableToast.setConfig({ disableInlineStyles: true });
   customizableToast.createToast({ message: "Using external CSS!" });
