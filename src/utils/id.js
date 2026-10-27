@@ -3,11 +3,15 @@
 
 let counter = 0;
 
-// Tab/Session-level unique salt (cryptographically secure where available, deterministic & safe across all environments)
-function generateSalt() {
-  if (typeof globalThis !== "undefined" && globalThis.crypto?.getRandomValues) {
+/**
+ * Tab/Session-level unique salt generator (cryptographically secure where available, deterministic & safe across all environments)
+ * @param {Crypto | null} [customCrypto] - Optional custom crypto object for testing
+ * @returns {string} Unique 3-character salt
+ */
+export function generateSalt(customCrypto = typeof globalThis !== "undefined" ? globalThis.crypto : null) {
+  if (customCrypto && typeof customCrypto.getRandomValues === "function") {
     const arr = new Uint16Array(1);
-    globalThis.crypto.getRandomValues(arr);
+    customCrypto.getRandomValues(arr);
     return arr[0].toString(36).padStart(3, "0");
   }
   const highRes = typeof performance !== "undefined" && typeof performance.now === "function"
