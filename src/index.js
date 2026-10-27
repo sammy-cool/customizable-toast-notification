@@ -733,7 +733,7 @@ createToastWithPriority.dismissAll = noopAll;
 createToastWithPriority.clear = noopAll;
 
 /** @type {string} */
-const version = typeof __VERSION__ !== "undefined" ? __VERSION__ : "3.20.2";
+const version = typeof __VERSION__ !== "undefined" ? __VERSION__ : "4.0.0";
 
 export {
   version,

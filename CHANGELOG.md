@@ -1,3 +1,25 @@
+# [4.0.0](https://github.com/sammy-cool/customizable-toast-notification/compare/v3.20.2...v4.0.0) (2026-10-27)
+
+
+* feat!: streamline core engine to ultra-lightweight pure toast library ([8cbcc9a](https://github.com/sammy-cool/customizable-toast-notification/commit/8cbcc9a04bc86c3c6158f4f98b8c1863febd0dfc))
+
+
+### Bug Fixes
+
+* **ci:** repair audit workflow yaml syntax, prune dead overrides, and achieve 100% test coverage ([4839726](https://github.com/sammy-cool/customizable-toast-notification/commit/4839726471394701916b63dea39c107b6a49a65b))
+* fortify multi-config interactions, mobile overflow, and focus trap ([eefc61c](https://github.com/sammy-cool/customizable-toast-notification/commit/eefc61c8a2680f1d3393603a8bb52208d06e9cf4))
+
+
+### Performance Improvements
+
+* migrate rollup pipeline to native esbuild and streamline package manifests ([e3523fd](https://github.com/sammy-cool/customizable-toast-notification/commit/e3523fde7384696cc9d338b6c53c1a59878edad1))
+
+
+### BREAKING CHANGES
+
+* removed audio synthesizer, ai-scorer, spring solver,
+multi-touch pinch, and DOM pool utilities in favor of web standards.
+
 ## [3.20.2](https://github.com/sammy-cool/customizable-toast-notification/compare/v3.20.1...v3.20.2) (2026-10-27)
 
 
