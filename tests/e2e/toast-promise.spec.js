@@ -92,11 +92,16 @@ test.describe("toastPromise()", () => {
   }) => {
     const pos = "e2e-promise-success-" + Date.now();
 
-    // Fire toastPromise with a promise that resolves after a real delay,
-    // so we can observe the loading state before it settles.
+    // Fire toastPromise with an explicitly controlled promise
+    // so we can observe the loading state deterministically before resolving.
     await page.evaluate((pos) => {
+      let resolver;
+      window.__testPromise = new Promise((resolve) => {
+        resolver = resolve;
+      });
+      window.__resolvePromise = resolver;
       window.__promiseResult = window.customizableToast.toastPromise(
-        new Promise((resolve) => setTimeout(() => resolve({ id: 42 }), 800)),
+        window.__testPromise,
         {
           loading: "Saving...",
           success: (val) => `Saved! id=${val.id}`,
@@ -106,10 +111,12 @@ test.describe("toastPromise()", () => {
       );
     }, pos);
 
-    // Loading toast should be visible well before the promise settles
-    await page.waitForTimeout(200);
+    // Loading toast should be visible while promise is pending
     const container = page.locator(`[id^="toast-container-${pos}"]`);
     await expect(container).toContainText("Saving...");
+
+    // Resolve the promise deterministically
+    await page.evaluate(() => window.__resolvePromise({ id: 42 }));
 
     // After it settles: exactly one toast, showing the success message
     // with the resolved value interpolated in
@@ -128,13 +135,18 @@ test.describe("toastPromise()", () => {
   }) => {
     const pos = "e2e-promise-error-" + Date.now();
 
+    // Fire toastPromise with an explicitly controlled promise
+    // so we can observe the loading state deterministically before rejecting.
     await page.evaluate((pos) => {
+      let rejecter;
+      window.__testErrorPromise = new Promise((_resolve, reject) => {
+        rejecter = reject;
+      });
+      window.__rejectPromise = rejecter;
       window.__caughtMessage = null;
       window.customizableToast
         .toastPromise(
-          new Promise((_resolve, reject) =>
-            setTimeout(() => reject(new Error("network down")), 800),
-          ),
+          window.__testErrorPromise,
           {
             loading: "Syncing...",
             success: "Synced!",
@@ -147,9 +159,12 @@ test.describe("toastPromise()", () => {
         });
     }, pos);
 
-    await page.waitForTimeout(200);
+    // Loading toast should be visible while promise is pending
     const container = page.locator(`[id^="toast-container-${pos}"]`);
     await expect(container).toContainText("Syncing...");
+
+    // Reject the promise deterministically
+    await page.evaluate(() => window.__rejectPromise(new Error("network down")));
 
     await expect(container).toContainText("Sync failed: network down", {
       timeout: 3000,

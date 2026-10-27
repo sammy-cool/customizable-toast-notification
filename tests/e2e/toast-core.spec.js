@@ -147,7 +147,7 @@ test.describe("core toast creation", () => {
     await page.evaluate(() => {
       window.customizableToast.createToast({
         message: "auto dismiss",
-        duration: 300,
+        duration: 800,
       });
     });
     const toast = page.locator('[id^="toast-container-"] [id^="toast-"]').first();

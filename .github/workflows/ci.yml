@@ -4,14 +4,10 @@ on:
   push:
     branches:
       - master
-      - migration-phase-v2
-      - "*"
 
   pull_request:
     branches:
       - master
-      - migration-phase-v2
-      - "*"
 
 jobs:
   verify:
@@ -76,15 +72,6 @@ jobs:
           name: coverage
           path: coverage/
           if-no-files-found: ignore
-
-      # AUDIT/CI FIX: removed entirely. The Docker image above already
-      # ships chromium, firefox, and webkit pre-installed with all system
-      # dependencies — this step was re-downloading ~300-500MB of browser
-      # binaries and re-running apt-get on every single push/PR, purely
-      # wasted time once the container image is in place. If you ever
-      # move off the container image, this step needs to come back.
-      # - name: Install Playwright Browsers
-      #   run: npx playwright install --with-deps
 
       - name: Run Playwright Tests
         env:

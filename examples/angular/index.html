@@ -41,11 +41,11 @@
     const toastService = new ToastService();
 
     document.getElementById("ngSuccess").addEventListener("click", () => {
-      toastService.success("Angular service toast triggered!", { sound: true, soundPreset: "bell" });
+      toastService.success("Angular service toast triggered!", { sound: true, animationType: "spring" });
     });
 
     document.getElementById("ngSpring").addEventListener("click", () => {
-      toastService.info("Angular spring animated notification", { spring: "bouncy", sound: true, soundPreset: "futuristic" });
+      toastService.info("Angular spring animated notification", { animationType: "spring", sound: true });
     });
 
     document.getElementById("ngUndo").addEventListener("click", () => {

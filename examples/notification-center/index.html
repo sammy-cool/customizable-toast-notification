@@ -380,8 +380,7 @@
     // Enable iOS card stacking and sound
     setConfig({
       stacked: true,
-      sound: true,
-      soundPreset: "modern"
+      sound: true
     });
 
     // In-memory notification history buffer
@@ -513,9 +512,8 @@
       notifyAndArchive({
         type: "success",
         message: "Payment of $49.00 processed successfully via Stripe.",
-        sound: "success",
-        soundPreset: "bell",
-        spring: "bouncy"
+        sound: true,
+        animationType: "spring"
       });
     });
 
@@ -523,9 +521,8 @@
       notifyAndArchive({
         type: "error",
         message: "Database latency spiked to 480ms on cluster us-east-1.",
-        sound: "error",
-        soundPreset: "retro",
-        spring: "stiff",
+        sound: true,
+        animationType: "bounce",
         cta: {
           label: "View Telemetry",
           onClick: () => openDrawer()
@@ -537,8 +534,8 @@
       notifyAndArchive({
         type: "info",
         message: "Alex Chen requested access to Production Analytics.",
-        sound: "info",
-        soundPreset: "modern",
+        sound: true,
+        animationType: "spring",
         cta: [
           {
             label: "Approve",

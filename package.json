@@ -1,7 +1,7 @@
 {
   "name": "customizable-toast-notification",
   "version": "3.20.2",
-  "description": "A lightweight, zero-dependency toast notification library with CTA support for modern JavaScript applications with production-grade reliability and comprehensive system  mechanisms",
+  "description": "A lightweight, zero-dependency toast notification library with CTA support for modern JavaScript applications with production-grade reliability and comprehensive system mechanisms",
   "type": "module",
   "main": "dist/index.cjs",
   "module": "dist/index.esm.mjs",
@@ -52,11 +52,11 @@
     "./package.json": "./package.json"
   },
   "peerDependencies": {
+    "@angular/core": ">=12.0.0",
     "react": ">=16.8.0",
-    "vue": ">=3.0.0",
-    "svelte": ">=3.0.0",
     "solid-js": ">=1.0.0",
-    "@angular/core": ">=12.0.0"
+    "svelte": ">=3.0.0",
+    "vue": ">=3.0.0"
   },
   "peerDependenciesMeta": {
     "react": {
@@ -98,7 +98,7 @@
     "build:types:emit": "tsc -p tsconfig.types.json",
     "build:types:bundle": "rollup -c rollup.dts.config.mjs",
     "build:adapter:types": "node scripts/copy-adapter-types.cjs",
-    "build:types": "npm run build:types:emit && npm run build:types:bundle && npm run build:adapter:types",
+    "build:types": "npm run build:types:emit && npm run build:types:bundle && npm run build:adapter:types && rm -rf dist/types",
     "zone-build": "npm run dist:clean && npm run build && npm run build:types && du -h dist/*",
     "test:builds": "node scripts/test-build.cjs",
     "test": "npm run ci:test",
@@ -106,11 +106,12 @@
     "test:all": "npm run lint && npm run ci:test && npm run test:builds && npm run test:e2e && npm run test:coverage",
     "test:coverage": "c8 --config c8.config.json node tests/logic/logic-verification.test.mjs",
     "lint": "eslint src",
+    "analyze": "ANALYZE=true rollup -c",
     "test:e2e": "playwright test",
     "test:e2e:ui": "playwright test --ui",
     "test:e2e:headed": "playwright test --headed",
-    "version": "node scripts/sync-version.cjs && npm run zone-build",
-    "prepublishOnly": "node scripts/sync-version.cjs && npm run zone-build",
+    "version": "node scripts/sync-version.cjs",
+    "prepublishOnly": "npm run zone-build",
     "prepare": "husky"
   },
   "keywords": [
@@ -169,35 +170,30 @@
   },
   "license": "Apache-2.0",
   "files": [
-    "dist/index.esm.mjs",
-    "dist/index.esm.mjs.map",
-    "dist/index.umd.js",
-    "dist/index.umd.js.map",
-    "dist/index.cjs",
-    "dist/index.cjs.map",
-    "dist/index.d.ts",
-    "dist/index.css",
-    "dist/index.css.map",
-    "dist/index.css.d.ts",
+    "dist/*.cjs",
+    "dist/*.cjs.map",
+    "dist/*.esm.mjs",
+    "dist/*.esm.mjs.map",
+    "dist/*.umd.js",
+    "dist/*.umd.js.map",
+    "dist/*.d.ts",
+    "dist/*.css",
+    "dist/*.css.map",
+    "dist/*.css.d.ts",
     "README.md",
     "LICENSE",
     "CHANGELOG.md"
   ],
   "devDependencies": {
-    "@babel/core": "^8.0.6",
-    "@babel/preset-env": "^8.0.0",
     "@commitlint/cli": "^21.2.1",
-    "c8": "^12.0.0",
     "@commitlint/config-conventional": "^21.2.0",
     "@eslint/js": "^10.0.1",
     "@playwright/test": "1.63.0",
-    "@rollup/plugin-babel": "^7.1.0",
-    "@rollup/plugin-commonjs": "^29.0.3",
     "@rollup/plugin-node-resolve": "^16.0.3",
     "@rollup/plugin-replace": "^6.0.2",
-    "@rollup/plugin-terser": "^1.0.0",
     "@semantic-release/changelog": "^7.0.0",
     "@semantic-release/git": "^11.0.1",
+    "c8": "^12.0.0",
     "esbuild": "^0.28.2",
     "eslint": "^10.8.0",
     "globals": "^17.9.0",
@@ -212,11 +208,7 @@
   "overrides": {
     "handlebars": "^4.7.10",
     "source-map-js": "^1.2.2",
-    "serialize-javascript": "^7.1.4",
     "brace-expansion": "^5.0.12",
-    "http-cache-semantics": "^4.3.0",
-    "ip-address": "^10.7.3",
-    "postcss-selector-parser": "^7.1.6",
     "undici": "^6.29.1"
   },
   "repository": {

@@ -40,29 +40,24 @@ export function classifyEventDeterministic(event) {
     /\b(success|succeeded|completed|saved|created|updated|copied|connected|restored|verified|approved)\b/.test(lower);
 
   let type = "info";
-  let soundPreset = "modern";
-  let spring = "default";
+  let animationType = "spring";
   let priority = 50;
 
   if (isError) {
     type = "error";
-    soundPreset = "retro"; // Sharp alert tone
-    spring = "stiff";
+    animationType = "bounce";
     priority = 90;
   } else if (isDestructive || isWarning) {
     type = "warning";
-    soundPreset = "subtle";
-    spring = "wobbly";
+    animationType = "slide";
     priority = 75;
   } else if (isSuccess) {
     type = "success";
-    soundPreset = "bell"; // Pleasant chime
-    spring = "bouncy";
+    animationType = "spring";
     priority = 60;
   } else {
     type = "info";
-    soundPreset = "futuristic";
-    spring = "gentle";
+    animationType = "zoom";
     priority = 40;
   }
 
@@ -75,8 +70,8 @@ export function classifyEventDeterministic(event) {
     message: text || "Event received",
     type,
     duration,
-    soundPreset,
-    spring,
+    animationType,
+    spring: animationType === "spring",
     priority,
     sound: true,
   };

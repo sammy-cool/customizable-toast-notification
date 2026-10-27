@@ -152,9 +152,8 @@
         position: "top-center",
         duration: 24 * 60 * 60 * 1000, // Persistent until reconnected
         showProgressBar: false,
-        sound: "error",
-        soundPreset: "retro",
-        spring: "stiff",
+        sound: true,
+        animationType: "spring",
         cta: {
           label: "Retry Connection",
           autoClose: false,
@@ -185,9 +184,8 @@
         message: "Back online! All queued sync operations restored.",
         position: "top-center",
         duration: 3500,
-        sound: "success",
-        soundPreset: "modern",
-        spring: "bouncy"
+        sound: true,
+        animationType: "spring"
       });
     }
 

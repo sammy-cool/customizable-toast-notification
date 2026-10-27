@@ -13,17 +13,9 @@ Complete reference for all functions, configuration options, handles, and TypeSc
    - [`setConfig(config)`](#setconfigconfig)
    - [`getConfig()`](#getconfig)
    - [`shouldReduceMotion()`](#shouldreducemotion)
-2. [Audio Utilities](#audio-utilities)
-   - [`playTone(type)`](#playtonetype)
-   - [`setAudioEnabled(enabled)`](#setaudioenabledenabled)
-   - [`isAudioEnabled()`](#isaudioenabled)
-3. [Phase 3 Advanced Utilities](#phase-3-advanced-utilities)
-   - [`getToastPool(initialSize, maxSize)`](#gettoastpoolinitialsize-maxsize)
-   - [`getToastBroadcaster()`](#gettoastbroadcaster)
-   - [`calculateToastPriority(context)`](#calculatetoastprioritycontext)
-   - [`categorizeToast(message)`](#categorizetoastmessage)
-   - [`createGestureDetector(element, options)`](#creategesturedetectorelement-options)
-4. [Types & Configuration](#types--configuration)
+2. [Telemetry & Metrics](#telemetry--metrics)
+   - [`getToastMetrics()`](#gettoastmetrics)
+3. [Types & Configuration](#types--configuration)
    - [`ToastOptions`](#toastoptions)
    - [`ToastHandle`](#toasthandle)
    - [`CTAOptions`](#ctaoptions)
@@ -98,8 +90,7 @@ setConfig({
   stacked: true, // iOS-style card deck mode
   swipeToDismiss: true,
   sound: true,
-  syncTabs: true, // Cross-tab synchronization via BroadcastChannel
-  aiPrioritization: true, // Semantic priority routing
+  priorityQueue: true, // Priority queue routing (higher priority shown first)
 });
 ```
 
@@ -108,34 +99,10 @@ Returns a snapshot of the current global configuration object.
 
 ---
 
-## Audio Utilities
+## Telemetry & Metrics
 
-### `playTone(type)`
-Synthesizes zero-asset audio notification chimes using the Web Audio API without network downloads.
-
-- `type`: `'success' | 'error' | 'warning' | 'info' | 'pop'`
-
-### `setAudioEnabled(enabled)`
-Enables or disables global audio chimes.
-
-### `isAudioEnabled()`
-Returns a boolean indicating whether audio chimes are enabled.
-
----
-
-## Phase 3 Advanced Utilities
-
-### `getToastPool(initialSize?, maxSize?)`
-Returns the singleton `ToastElementPool` for virtual scrolling and recycling of DOM nodes when managing large queues (100+ toasts).
-
-### `getToastBroadcaster()`
-Returns the singleton `ToastBroadcaster` for cross-tab notification synchronization using `BroadcastChannel`.
-
-### `calculateToastPriority(context)`
-Calculates the semantic priority score (`0..100`) for a toast based on severity, urgency keywords, and context.
-
-### `categorizeToast(message)`
-Extracts semantic categories (`'security'`, `'performance'`, `'user'`, `'system'`, `'billing'`) from a notification message.
+### `getToastMetrics()`
+Returns live operational metrics: active count, queue depth, visible count, and dropped count.
 
 ---
 
@@ -152,12 +119,17 @@ Extracts semantic categories (`'security'`, `'performance'`, `'user'`, `'system'
 | `theme` | `ToastTheme` | `'light'` | Built-in theme name |
 | `stacked` | `boolean` | `false` | iOS-style card deck depth layout |
 | `swipeToDismiss` | `boolean` | `true` | Mobile touch swipe and desktop drag dismiss |
-| `sound` | `boolean \| string` | `true` | Audio chime on mount |
+| `sound` | `boolean \| string` | `false` | Sound notification toggle or audio URL |
+| `onSound` | `(options) => void` | `undefined` | Custom sound playback handler |
+| `priority` | `number` | `undefined` | Numeric queue priority score |
+| `animationType` | `'default' \| 'spring' \| 'bounce' \| 'slide' \| 'zoom' \| 'fade' \| 'flip'` | `'default'` | Animation entrance and exit style |
+| `spring` | `boolean` | `false` | Natural cubic-bezier bounce physics |
 | `progress` | `number` | `undefined` | Deterministic progress value (`0..100` or `0..1`) |
 | `showProgressBar` | `boolean` | `true` | Show countdown progress bar |
 | `showCloseButton` | `boolean` | `true` | Show '×' dismissal button |
 | `showLoader` | `boolean` | `false` | Show inline SVG spinner |
-| `cta` | `CTAOptions` | `undefined` | Interactive Call-To-Action button or link |
+| `cta` | `CTAOptions \| CTAOptions[]` | `undefined` | Interactive Call-To-Action button(s) or link |
+| `undo` | `UndoOptions \| function` | `undefined` | Action Undo button with dynamic live countdown |
 | `className` | `string` | `undefined` | Custom CSS classes for styling & animations |
 | `allowHtml` | `boolean` | `false` | Allow sanitized HTML rendering |
 | `pauseOnHover` | `boolean` | `true` (if CTA) | Pause auto-dismiss timer on mouseenter/focus |

@@ -7,10 +7,6 @@ import {
   setConfig,
   getConfig,
   resetConfig,
-  setLocale,
-  getLocale,
-  getToastHistory,
-  clearToastHistory,
 } from "../index.js";
 
 /**
@@ -73,22 +69,6 @@ export class ToastService {
   resetConfig() {
     return resetConfig();
   }
-
-  setLocale(locale) {
-    return setLocale(locale);
-  }
-
-  getLocale() {
-    return getLocale();
-  }
-
-  getHistory() {
-    return getToastHistory();
-  }
-
-  clearHistory() {
-    clearToastHistory();
-  }
 }
 
 // Angular Ivy dependency injection token compatibility metadata
@@ -125,8 +105,4 @@ export {
   setConfig,
   getConfig,
   resetConfig,
-  setLocale,
-  getLocale,
-  getToastHistory,
-  clearToastHistory,
 };

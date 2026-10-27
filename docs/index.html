@@ -836,7 +836,7 @@
           <span class="gradient-text">Toast Notification Studio</span>
         </h1>
         <p class="hero-desc">
-          Craft pixel-perfect alerts with analytical spring physics, Web Audio harmonic synthesizers,
+          Craft pixel-perfect alerts with dynamic CSS spring physics, client-side sound callbacks,
           swipe gestures, card deck stacking, cross-tab sync, and automatic TypeSafe AI triage.
         </p>
 
@@ -981,7 +981,7 @@
           <div class="card-header">
             <div>
               <div class="card-title">Physics & Animation Studio</div>
-              <div class="card-subtitle">Analytical spring solver & CSS linear() timing curves</div>
+              <div class="card-subtitle">Native cubic-bezier spring curves & directional transitions</div>
             </div>
             <span class="value-badge" id="springPresetBadge">bouncy</span>
           </div>
@@ -1036,12 +1036,12 @@
           </div>
         </section>
 
-        <!-- 4. Web Audio Synthesizer & Progress Bar Lab -->
+        <!-- 4. Sound & Progress Lab -->
         <section class="card col-6">
           <div class="card-header">
             <div>
-              <div class="card-title">Synthesizer & Progress Lab</div>
-              <div class="card-subtitle">Zero-asset Web Audio synthesis & streaming progress</div>
+              <div class="card-title">Sound & Progress Lab</div>
+              <div class="card-subtitle">Zero-dependency sound triggers & streaming progress</div>
             </div>
             <div style="display: flex; gap: 6px;">
               <button class="quick-btn" id="testToneBtn" style="padding: 4px 10px; font-size: 11px;">▶ Test Chime</button>
@@ -1055,7 +1055,7 @@
 
           <div class="form-row" style="margin-bottom: 12px;">
             <div class="form-group" style="margin: 0;">
-              <label class="form-label" for="soundPresetSelect">Synth Preset</label>
+              <label class="form-label" for="soundPresetSelect">Chime Preset</label>
               <select id="soundPresetSelect" class="select-input">
                 <option value="modern" selected>modern (Multi-tone sine chord)</option>
                 <option value="retro">retro (8-bit chip arpeggio)</option>
@@ -1174,7 +1174,7 @@
           <div class="card-header">
             <div>
               <div class="card-title">Enterprise Subsystems & Telemetry</div>
-              <div class="card-subtitle">Real-time metrics, tab sync, recycling pool & AI triage</div>
+              <div class="card-subtitle">Real-time metrics, tab sync & AI priority routing</div>
             </div>
             <span class="value-badge" style="color: var(--success);">● Active</span>
           </div>
@@ -1198,18 +1198,14 @@
             </div>
           </div>
 
-          <div class="form-row-3" style="margin-top: 8px;">
+          <div class="form-row-2" style="margin-top: 8px;">
             <label class="toggle-label">
-              <span>Cross-Tab Sync</span>
-              <label class="switch"><input type="checkbox" id="toggleSyncTabs"><span class="slider"></span></label>
+              <span>Priority Queue</span>
+              <label class="switch"><input type="checkbox" id="togglePriorityQueue"><span class="slider"></span></label>
             </label>
             <label class="toggle-label">
-              <span>AI Prioritization</span>
-              <label class="switch"><input type="checkbox" id="toggleAiScorer"><span class="slider"></span></label>
-            </label>
-            <label class="toggle-label">
-              <span>Recycling Pool</span>
-              <label class="switch"><input type="checkbox" id="togglePool" checked><span class="slider"></span></label>
+              <span>Inline Loader</span>
+              <label class="switch"><input type="checkbox" id="toggleShowLoader"><span class="slider"></span></label>
             </label>
           </div>
         </section>
@@ -1296,28 +1292,34 @@ createToast({
                   <td>15 layout positions: corners, centers, edges, center-top/bottom, and top/bottom full-width.</td>
                 </tr>
                 <tr>
-                  <td class="opt-name">spring</td>
-                  <td class="opt-type">boolean | SpringPreset | SpringConfig</td>
-                  <td class="opt-default">false</td>
-                  <td>Configures damped harmonic oscillator physics motion using modern CSS linear() curves.</td>
-                </tr>
-                <tr>
                   <td class="opt-name">animationType</td>
                   <td class="opt-type">'default' | 'spring' | 'bounce' | 'slide' | 'zoom' | 'fade' | 'flip'</td>
                   <td class="opt-default">'default'</td>
-                  <td>Animation entrance/exit style. Seamlessly works across standard CSS transitions and spring physics.</td>
+                  <td>Animation entrance/exit style. Seamlessly works across standard CSS transitions and native spring physics.</td>
+                </tr>
+                <tr>
+                  <td class="opt-name">spring</td>
+                  <td class="opt-type">boolean</td>
+                  <td class="opt-default">false</td>
+                  <td>Enables natural cubic-bezier bounce physics (cubic-bezier(0.34, 1.56, 0.64, 1)) at 400ms.</td>
                 </tr>
                 <tr>
                   <td class="opt-name">sound</td>
-                  <td class="opt-type">boolean | SoundPreset</td>
+                  <td class="opt-type">boolean | string</td>
                   <td class="opt-default">false</td>
-                  <td>Synthesizes zero-asset audio tones on toast creation via Web Audio oscillator nodes.</td>
+                  <td>Audio notification toggle or URL path to custom audio chime file (e.g. '/assets/chime.mp3').</td>
                 </tr>
                 <tr>
-                  <td class="opt-name">soundPreset</td>
-                  <td class="opt-type">'modern' | 'retro' | 'futuristic' | 'subtle' | 'bell'</td>
-                  <td class="opt-default">'modern'</td>
-                  <td>Sound design preset timbre. Easily extensible via registerSoundPreset().</td>
+                  <td class="opt-name">onSound</td>
+                  <td class="opt-type">(options: ToastOptions) => void</td>
+                  <td class="opt-default">undefined</td>
+                  <td>Custom audio callback hook invoked on toast mount for Web Audio synthesis or third-party SFX.</td>
+                </tr>
+                <tr>
+                  <td class="opt-name">priority</td>
+                  <td class="opt-type">number</td>
+                  <td class="opt-default">undefined</td>
+                  <td>Numeric queue priority (higher score toasts jump ahead of routine notifications in full queue).</td>
                 </tr>
                 <tr>
                   <td class="opt-name">showProgressBar</td>
@@ -1368,23 +1370,12 @@ createToast({
                   <td>Enables mobile touch swipe gesture and mouse drag with spring velocity snap-back.</td>
                 </tr>
                 <tr>
-                  <td class="opt-name">syncTabs</td>
+                  <td class="opt-name">priorityQueue</td>
                   <td class="opt-type">boolean</td>
                   <td class="opt-default">false</td>
-                  <td>Synchronizes toasts across multiple browser tabs via BroadcastChannel.</td>
+                  <td>Enables priority-based queue sorting (higher priority toasts shown first).</td>
                 </tr>
-                <tr>
-                  <td class="opt-name">aiPrioritization</td>
-                  <td class="opt-type">boolean</td>
-                  <td class="opt-default">false</td>
-                  <td>Analyzes event semantics and urgency to calculate priority scores for dynamic queue ordering.</td>
-                </tr>
-                <tr>
-                  <td class="opt-name">usePool</td>
-                  <td class="opt-type">boolean</td>
-                  <td class="opt-default">false</td>
-                  <td>High-throughput element recycling pool preventing garbage collection pressure.</td>
-                </tr>
+
                 <tr>
                   <td class="opt-name">showLoader</td>
                   <td class="opt-type">boolean</td>
@@ -1693,11 +1684,86 @@ createToast({
         }
         renderSpringGraph();
 
-        // Audio Oscilloscope Visualizer
+        // Audio Oscilloscope Visualizer & Demo Web Audio Synth
         var scopeCanvas = document.getElementById("audioOscilloscopeCanvas");
         var scopeCtx = scopeCanvas ? scopeCanvas.getContext("2d") : null;
         var analyser = null;
         var animFrameId = null;
+        var demoAudioCtx = null;
+
+        function getDemoAudioContext() {
+          if (!demoAudioCtx) {
+            var AudioCtx = window.AudioContext || window.webkitAudioContext;
+            if (AudioCtx) {
+              demoAudioCtx = new AudioCtx();
+              analyser = demoAudioCtx.createAnalyser();
+              analyser.fftSize = 256;
+              analyser.connect(demoAudioCtx.destination);
+            }
+          }
+          if (demoAudioCtx && demoAudioCtx.state === "suspended") {
+            demoAudioCtx.resume();
+          }
+          return demoAudioCtx;
+        }
+
+        function playDemoTone(type, preset) {
+          try {
+            var ctx = getDemoAudioContext();
+            if (!ctx || !analyser) return;
+
+            var now = ctx.currentTime;
+            var osc = ctx.createOscillator();
+            var gain = ctx.createGain();
+            osc.connect(gain);
+            gain.connect(analyser);
+
+            var freqs = {
+              bell: [587.33, 880, 1174.66],
+              retro: [220, 440, 880],
+              futuristic: [300, 600, 1200],
+              subtle: [400],
+              modern: [440, 554.37, 659.25],
+            };
+            var toneFreqs = freqs[preset] || freqs.modern;
+
+            if (preset === "bell") {
+              osc.type = "sine";
+              osc.frequency.setValueAtTime(toneFreqs[0], now);
+              osc.frequency.exponentialRampToValueAtTime(toneFreqs[1], now + 0.08);
+              gain.gain.setValueAtTime(0.2, now);
+              gain.gain.exponentialRampToValueAtTime(0.001, now + 0.4);
+              osc.start(now);
+              osc.stop(now + 0.4);
+            } else if (preset === "retro") {
+              osc.type = "square";
+              osc.frequency.setValueAtTime(toneFreqs[0], now);
+              osc.frequency.setValueAtTime(toneFreqs[1], now + 0.06);
+              osc.frequency.setValueAtTime(toneFreqs[2], now + 0.12);
+              gain.gain.setValueAtTime(0.12, now);
+              gain.gain.exponentialRampToValueAtTime(0.001, now + 0.25);
+              osc.start(now);
+              osc.stop(now + 0.25);
+            } else if (preset === "subtle") {
+              osc.type = "triangle";
+              osc.frequency.setValueAtTime(400, now);
+              gain.gain.setValueAtTime(0.1, now);
+              gain.gain.exponentialRampToValueAtTime(0.001, now + 0.08);
+              osc.start(now);
+              osc.stop(now + 0.08);
+            } else {
+              osc.type = "sine";
+              osc.frequency.setValueAtTime(toneFreqs[0], now);
+              osc.frequency.exponentialRampToValueAtTime(toneFreqs[toneFreqs.length - 1], now + 0.15);
+              gain.gain.setValueAtTime(0.2, now);
+              gain.gain.exponentialRampToValueAtTime(0.001, now + 0.35);
+              osc.start(now);
+              osc.stop(now + 0.35);
+            }
+          } catch (e) {
+            console.warn("Demo audio playback:", e);
+          }
+        }
 
         function initOscilloscope() {
           if (!scopeCanvas || !scopeCtx) return;
@@ -1713,7 +1779,7 @@ createToast({
             animFrameId = requestAnimationFrame(draw);
             scopeCtx.clearRect(0, 0, scopeCanvas.width, scopeCanvas.height);
 
-            if (analyser && window.customizableToast && window.customizableToast.isAudioEnabled()) {
+            if (analyser) {
               var bufferLength = analyser.frequencyBinCount || 256;
               var dataArray = new Uint8Array(bufferLength);
               analyser.getByteTimeDomainData(dataArray);
@@ -1750,22 +1816,16 @@ createToast({
         initOscilloscope();
 
         document.getElementById("testToneBtn").addEventListener("click", function () {
-          if (window.customizableToast) {
-            var preset = document.getElementById("soundPresetSelect").value;
-            if (preset === "none") {
-              var fst = document.getElementById("footerStatusText");
-              if (fst) {
-                fst.textContent = "Audio is muted (Preset set to 'none')";
-                setTimeout(function () { fst.textContent = "Ready • Click to trigger"; }, 2000);
-              }
-              return;
+          var preset = document.getElementById("soundPresetSelect").value;
+          if (preset === "none") {
+            var fst = document.getElementById("footerStatusText");
+            if (fst) {
+              fst.textContent = "Audio is muted (Preset set to 'none')";
+              setTimeout(function () { fst.textContent = "Ready • Click to trigger"; }, 2000);
             }
-            window.customizableToast.setAudioEnabled(true);
-            if (typeof window.customizableToast.getAudioAnalyser === "function") {
-              analyser = window.customizableToast.getAudioAnalyser();
-            }
-            window.customizableToast.playTone("success", preset);
+            return;
           }
+          playDemoTone("success", preset);
         });
 
         // Telemetry Monitor
@@ -1835,18 +1895,9 @@ createToast({
             position: currentPosition,
           };
 
+          opts.animationType = animType;
           if (animType === "spring") {
-            if (springPresetBadge && springPresetBadge.textContent === "custom") {
-              opts.spring = {
-                stiffness: parseFloat(stiffnessSlider.value) || 100,
-                damping: parseFloat(dampingSlider.value) || 10,
-                mass: parseFloat(massSlider.value) || 1,
-              };
-            } else {
-              opts.spring = springPreset;
-            }
-          } else {
-            opts.animationType = animType;
+            opts.spring = true;
           }
 
           if (document.getElementById("toggleCloseBtn").checked === false) opts.showCloseButton = false;
@@ -1855,15 +1906,14 @@ createToast({
           if (document.getElementById("toggleIcon").checked === false) opts.icon = false;
           if (document.getElementById("toggleAllowHtml").checked) opts.allowHtml = true;
           if (document.getElementById("toggleStacked").checked) opts.stacked = true;
-          if (document.getElementById("toggleSyncTabs").checked) opts.syncTabs = true;
-          if (document.getElementById("toggleAiScorer").checked) opts.aiPrioritization = true;
-          if (document.getElementById("togglePool").checked) opts.usePool = true;
+          if (document.getElementById("togglePriorityQueue").checked) opts.priorityQueue = true;
+          if (document.getElementById("toggleShowLoader") && document.getElementById("toggleShowLoader").checked) opts.showLoader = true;
 
           if (soundPreset === "none") {
             opts.sound = false;
           } else {
             opts.sound = true;
-            opts.soundPreset = soundPreset;
+            opts.onSound = "() => playChime()";
           }
 
           if (progMode === "hidden") {
@@ -1909,7 +1959,8 @@ createToast({
         function formatSnippet(str) {
           return str
             .replace(/"onClick":\s*"([^"]+)"/g, 'onClick: $1')
-            .replace(/"onUndo":\s*"([^"]+)"/g, 'onUndo: $1');
+            .replace(/"onUndo":\s*"([^"]+)"/g, 'onUndo: $1')
+            .replace(/"onSound":\s*"([^"]+)"/g, 'onSound: $1');
         }
 
         function updateCodeSnippet() {
@@ -1965,6 +2016,8 @@ createToast({
           }
 
           var opts = Object.assign({}, buildOptions(), customOverride || {});
+          var soundPresetVal = document.getElementById("soundPresetSelect").value;
+          var effectivePreset = (customOverride && customOverride.soundPreset) || soundPresetVal;
 
           // Clean up stringified functions in options for runtime execution
           if (opts.cta) {
@@ -1985,9 +2038,13 @@ createToast({
             };
           }
 
-          // Wire up audio analyser if needed
-          if (opts.sound && typeof window.customizableToast.getAudioAnalyser === "function") {
-            analyser = window.customizableToast.getAudioAnalyser();
+          if (opts.sound && effectivePreset !== "none") {
+            opts.onSound = function (toastOpts) {
+              playDemoTone(toastOpts ? toastOpts.type : opts.type, effectivePreset);
+            };
+          }
+          if (opts.soundPreset) {
+            delete opts.soundPreset;
           }
 
           var footerStatus = document.getElementById("footerStatusText");
@@ -2065,6 +2122,9 @@ createToast({
             if (opts.swipeToDismiss !== undefined) document.getElementById("toggleSwipeToDismiss").checked = opts.swipeToDismiss;
             if (opts.icon !== undefined) document.getElementById("toggleIcon").checked = Boolean(opts.icon);
             if (opts.stacked !== undefined) document.getElementById("toggleStacked").checked = opts.stacked;
+            if (opts.showLoader !== undefined && document.getElementById("toggleShowLoader")) {
+              document.getElementById("toggleShowLoader").checked = Boolean(opts.showLoader);
+            }
 
             updateCodeSnippet();
           } catch (err) {
@@ -2096,9 +2156,8 @@ createToast({
             document.getElementById("toggleIcon").checked = true;
             document.getElementById("toggleAllowHtml").checked = false;
             document.getElementById("toggleStacked").checked = false;
-            document.getElementById("toggleSyncTabs").checked = false;
-            document.getElementById("toggleAiScorer").checked = false;
-            document.getElementById("togglePool").checked = true;
+            document.getElementById("togglePriorityQueue").checked = false;
+            if (document.getElementById("toggleShowLoader")) document.getElementById("toggleShowLoader").checked = false;
             document.getElementById("toggleUndoAction").checked = false;
             document.getElementById("animationTypeSelect").value = "spring";
             springPresetSelect.value = "bouncy";
@@ -2151,16 +2210,16 @@ createToast({
 
         // Quick Preset Buttons
         document.getElementById("quickSuccessBtn").addEventListener("click", function () {
-          fireToast({ type: "success", message: "Deployment pipeline succeeded in 42s!", sound: true, soundPreset: "bell", spring: "bouncy", position: currentPosition });
+          fireToast({ type: "success", message: "Deployment pipeline succeeded in 42s!", sound: true, soundPreset: "bell", animationType: "spring", position: currentPosition });
         });
         document.getElementById("quickErrorBtn").addEventListener("click", function () {
-          fireToast({ type: "error", message: "Database connection failed. Retrying in 5s...", sound: true, soundPreset: "retro", spring: "stiff", position: currentPosition });
+          fireToast({ type: "error", message: "Database connection failed. Retrying in 5s...", sound: true, soundPreset: "retro", animationType: "bounce", position: currentPosition });
         });
         document.getElementById("quickWarningBtn").addEventListener("click", function () {
-          fireToast({ type: "warning", message: "Disk usage at 91%. Cleanup recommended.", sound: true, soundPreset: "modern", position: currentPosition });
+          fireToast({ type: "warning", message: "Disk usage at 91%. Cleanup recommended.", sound: true, soundPreset: "modern", animationType: "slide", position: currentPosition });
         });
         document.getElementById("quickInfoBtn").addEventListener("click", function () {
-          fireToast({ type: "info", message: "New security updates are available for your system.", sound: true, soundPreset: "subtle", position: currentPosition });
+          fireToast({ type: "info", message: "New security updates are available for your system.", sound: true, soundPreset: "subtle", animationType: "zoom", position: currentPosition });
         });
 
         document.getElementById("quickLoadingBtn").addEventListener("click", function () {
@@ -2215,6 +2274,7 @@ createToast({
             duration: 5000,
             sound: true,
             soundPreset: "futuristic",
+            animationType: "spring",
             position: currentPosition
           });
         });
@@ -2230,7 +2290,8 @@ createToast({
               progress: "indeterminate",
               duration: 0,
               sound: true,
-              soundPreset: "futuristic",
+              onSound: function (o) { playDemoTone(o ? o.type : "info", "futuristic"); },
+              animationType: "spring",
               position: currentPosition
             }).then(function (handle) {
               setTimeout(function () {
@@ -2270,6 +2331,7 @@ createToast({
               duration: 5000,
               sound: true,
               soundPreset: "subtle",
+              animationType: "spring",
               position: currentPosition
             });
           });
@@ -2284,14 +2346,15 @@ createToast({
               duration: 7000,
               position: currentPosition,
               sound: true,
-              soundPreset: "retro",
+              onSound: function () { playDemoTone("warning", "retro"); },
               undo: {
                 label: "Undo",
                 showCountdown: true,
                 onUndo: function () {
                   window.customizableToast.createToast.success("Database restored! No data was lost. 🛡️", {
                     position: currentPosition,
-                    soundPreset: "bell"
+                    sound: true,
+                    onSound: function () { playDemoTone("success", "bell"); }
                   });
                 }
               }
@@ -2306,7 +2369,7 @@ createToast({
         });
 
         document.getElementById("quickBouncyBtn").addEventListener("click", function () {
-          fireToast({ type: "success", message: "Bouncy dynamic spring physics!", spring: "bouncy", animationType: "spring", position: currentPosition });
+          fireToast({ type: "success", message: "Bouncy dynamic spring physics!", spring: true, animationType: "spring", position: currentPosition });
         });
 
         document.getElementById("quickFloodBtn").addEventListener("click", function () {
@@ -2318,8 +2381,7 @@ createToast({
                   message: "Burst notification #" + idx + " of 50",
                   type: idx % 3 === 0 ? "success" : (idx % 3 === 1 ? "info" : "warning"),
                   duration: 2000,
-                  position: currentPosition,
-                  usePool: true
+                  position: currentPosition
                 });
               }, idx * 25);
             })(i);

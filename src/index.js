@@ -14,47 +14,7 @@ import {
 import { getOrCreateToastContainer, resetContainerRegistry } from "./utils/containerRegistry.js";
 import { getDynamicAccessibleTextColorHex } from "./utils/dom.js";
 import { setPosition } from "./utils/position.js";
-import {
-  setAudioEnabled,
-  isAudioEnabled,
-  playTone,
-  registerSoundPreset,
-  getSoundPresets,
-  resetSoundPresets,
-  resetAudioContext,
-  getAudioContext,
-  getAudioAnalyser,
-} from "./utils/audio.js";
-import { getToastPool, resetToastPool } from "./utils/toast-pool.js";
-import { getToastBroadcaster, resetToastBroadcaster } from "./utils/toast-broadcast.js";
-import { calculateToastPriority, categorizeToast } from "./utils/ai-scorer.js";
-import { createGestureDetector, detectPinch, isFlick, calculateVelocity } from "./utils/multi-touch.js";
 import { generateToastId, resetToastIdCounter } from "./utils/id.js";
-import {
-  registerSpringPreset,
-  getSpringPresets,
-  resetSpringPresets,
-  resolveSpringConfig,
-  solveSpring,
-  calculateSpringSettlingDuration,
-  generateSpringLinearEasing,
-  getSpringTransition,
-} from "./utils/spring.js";
-import {
-  setLocale,
-  getLocale,
-  getAvailableLocales,
-  registerLocale,
-  getLocaleMessage,
-  isRtlLocale,
-  resetLocale,
-} from "./utils/i18n.js";
-import {
-  getToastHistory,
-  clearToastHistory,
-  setHistoryCapacity,
-  resetToastHistory,
-} from "./utils/history.js";
 
 /**
  * @typedef {'modern' | 'retro' | 'futuristic' | 'subtle' | 'bell' | string} SoundPreset
@@ -92,17 +52,6 @@ import {
  */
 
 /**
- * @typedef {Object} SpringConfig
- * @property {number} [stiffness=100] - Spring stiffness constant (k > 0)
- * @property {number} [damping=10] - Damping friction coefficient (c > 0)
- * @property {number} [mass=1] - Inertial mass (m > 0)
- */
-
-/**
- * @typedef {'default' | 'gentle' | 'wobbly' | 'stiff' | 'bouncy' | string} SpringPreset
- */
-
-/**
  * @typedef {Object} ToastLoaderOptions
  * @property {number} [size] - Spinner size in pixels (default 14)
  * @property {string} [color] - Spinner SVG stroke color (default 'currentColor')
@@ -111,6 +60,7 @@ import {
 
 /**
  * @typedef {Object} ToastOptions
+ * @property {string} [id] - Optional custom unique identifier for the toast notification
  * @property {string} [message]
  * @property {ToastType} [type]
  * @property {number} [duration]
@@ -122,7 +72,7 @@ import {
  * @property {boolean} [showProgressBar]
  * @property {string} [animationDuration]
  * @property {string} [animationEasing]
- * @property {'default' | 'fade' | 'slide' | 'zoom' | 'bounce' | 'flip' | string} [animationType]
+ * @property {'default' | 'fade' | 'slide' | 'zoom' | 'bounce' | 'flip' | 'spring' | string} [animationType]
  * @property {string} [progressColor]
  * @property {string} [progressBarColor]
  * @property {string} [progressHeight]
@@ -144,36 +94,24 @@ import {
  * @property {string} [className]
  * @property {CTAOptions | CTAOptions[]} [cta]
  * @property {((e: MouseEvent, toast: HTMLElement) => void | Promise<void>) | UndoOptions} [undo]
- * @property {boolean | SpringPreset | SpringConfig} [spring]
+ * @property {boolean} [spring]
  * @property {boolean} [stacked]
- * @property {boolean | 'success' | 'error' | 'warning' | 'info' | 'pop' | string} [sound]
- * @property {SoundPreset} [soundPreset]
+ * @property {boolean | string} [sound]
+ * @property {((options: ToastOptions) => void)} [onSound] - Sound playback handler callback
  * @property {boolean | string | HTMLElement | ((options: ToastOptions) => boolean | string | HTMLElement | null | undefined)} [icon]
  * @property {boolean} [swipeToDismiss]
  * @property {number | string | 'indeterminate'} [progress]
  * @property {boolean} [progressNormalized]
- * @property {boolean} [syncTabs]
- * @property {boolean} [syncDismiss]
- * @property {boolean} [aiPrioritization]
- * @property {number} [priority]
- * @property {boolean} [usePool]
+ * @property {boolean} [priorityQueue] - Whether to sort toasts by priority
+ * @property {number} [priority] - Numeric priority score (higher = shown sooner)
  * @property {string} [tag] - Optional thread/tag identifier for replacement/updating
  * @property {string} [groupId] - Optional group identifier for grouping related toasts
  * @property {boolean} [trapFocus] - Whether to trap keyboard Tab focus within the toast
  * @property {boolean} [shadowDom] - Whether to isolate the container in an attached Shadow DOM root
+ * @property {'alert' | 'status' | string} [role] - ARIA role attribute (default: 'alert')
+ * @property {'polite' | 'assertive' | 'off'} [ariaLive] - ARIA live region politeness
  */
 
-/**
- * @typedef {Object} ToastHistoryEntry
- * @property {string} id - Unique toast key or identifier
- * @property {string} message - Notification text message
- * @property {ToastType} type - Notification status type
- * @property {string} position - Toast placement coordinates
- * @property {number} timestamp - Unix timestamp (ms) when created
- * @property {number} [dismissedAt] - Unix timestamp (ms) when dismissed
- * @property {'active' | 'dismissed' | 'dropped'} status - Current lifecycle status
- * @property {Record<string, unknown>} [options] - Snapshot of configured options
- */
 
 /**
  * @typedef {'auto' | 'always' | 'never'} ReducedMotionMode
@@ -209,9 +147,9 @@ import {
  * @property {boolean} [stacked]
  * @property {boolean} [swipeToDismiss]
  * @property {boolean} [sound]
- * @property {SoundPreset} [soundPreset]
- * @property {boolean} [syncTabs]
- * @property {boolean} [aiPrioritization]
+ * @property {boolean} [icon]
+ * @property {boolean} [pauseOnHover]
+ * @property {boolean} [priorityQueue]
  * @property {boolean} [shadowDom]
  * @property {boolean} [trapFocus]
  * @property {boolean} [debug]
@@ -238,6 +176,14 @@ let defaultColors = {
   error: "#dc3545",
   warning: "#ffc107",
   info: "#17a2b8",
+};
+
+const DEFAULT_TYPE_MESSAGES = {
+  success: "Operation completed successfully!",
+  error: "Something went wrong!",
+  warning: "Warning message!",
+  info: "Information message!",
+  loading: "Loading, please wait...",
 };
 
 let customDefaultMessages = {};
@@ -416,17 +362,11 @@ async function sanitizeToastOptions(rawOptions) {
     final.message =
       final.message ||
       customDefaultMessages[final.type] ||
-      getLocaleMessage(final.type) ||
+      DEFAULT_TYPE_MESSAGES[final.type] ||
       "No Message Provided!";
   } catch (error) {
     console.warn("Default message resolution failed:", error);
   }
-
-  try {
-    if ((!final.fontDirection || final.fontDirection === "auto") && isRtlLocale()) {
-      final.fontDirection = "rtl";
-    }
-  } catch {}
 
   try {
     if (!final.textColor && final.backgroundColor) {
@@ -791,8 +731,6 @@ createToastWithPriority.promise = toastPromise;
 createToastWithPriority.dismiss = dismissToast;
 createToastWithPriority.dismissAll = noopAll;
 createToastWithPriority.clear = noopAll;
-createToastWithPriority.getHistory = getToastHistory;
-createToastWithPriority.clearHistory = clearToastHistory;
 
 /** @type {string} */
 const version = typeof __VERSION__ !== "undefined" ? __VERSION__ : "3.20.2";
@@ -807,45 +745,9 @@ export {
   resetToastManager,
   resetContainerRegistry,
   updateToastByKey,
-  setAudioEnabled,
-  isAudioEnabled,
-  playTone,
-  getToastPool,
-  resetToastPool,
-  getToastBroadcaster,
-  resetToastBroadcaster,
-  calculateToastPriority,
-  categorizeToast,
-  createGestureDetector,
-  detectPinch,
-  isFlick,
-  calculateVelocity,
   generateToastId,
   resetToastIdCounter,
   getToastMetrics,
-  registerSoundPreset,
-  getSoundPresets,
-  resetSoundPresets,
-  resetAudioContext,
-  registerSpringPreset,
-  getSpringPresets,
-  resetSpringPresets,
-  resolveSpringConfig,
-  solveSpring,
-  calculateSpringSettlingDuration,
-  generateSpringLinearEasing,
-  getSpringTransition,
-  getAudioContext,
-  getAudioAnalyser,
-  setLocale,
-  getLocale,
-  getAvailableLocales,
-  registerLocale,
-  resetLocale,
-  getToastHistory,
-  clearToastHistory,
-  setHistoryCapacity,
-  resetToastHistory,
 };
 
 /**
@@ -923,45 +825,9 @@ try {
       toastPromise,
       promise: toastPromise,
       updateToastByKey,
-      setAudioEnabled,
-      isAudioEnabled,
-      playTone,
-      registerSoundPreset,
-      getSoundPresets,
-      resetSoundPresets,
-      resetAudioContext,
-      getToastPool,
-      resetToastPool,
-      getToastBroadcaster,
-      resetToastBroadcaster,
-      calculateToastPriority,
-      categorizeToast,
-      createGestureDetector,
-      detectPinch,
-      isFlick,
-      calculateVelocity,
       generateToastId,
       resetToastIdCounter,
       getToastMetrics,
-      registerSpringPreset,
-      getSpringPresets,
-      resetSpringPresets,
-      resolveSpringConfig,
-      solveSpring,
-      calculateSpringSettlingDuration,
-      generateSpringLinearEasing,
-      getSpringTransition,
-      getAudioContext,
-      getAudioAnalyser,
-      setLocale,
-      getLocale,
-      getAvailableLocales,
-      registerLocale,
-      resetLocale,
-      getToastHistory,
-      clearToastHistory,
-      setHistoryCapacity,
-      resetToastHistory,
       initKeyboardShortcuts,
     };
   }

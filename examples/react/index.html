@@ -44,10 +44,10 @@
         React.createElement("h2", null, "⚛️ React `useToast` Hook Demo"),
         React.createElement("p", { style: { color: "#94a3b8" } }, "Using customizable-toast-notification with React 18 hook."),
         React.createElement("div", { className: "btn-grid" },
-          React.createElement("button", { className: "success", onClick: () => toast.success("Saved successfully!", { sound: true, soundPreset: "bell", spring: "bouncy" }) }, "Success (Bell)"),
-          React.createElement("button", { className: "error", onClick: () => toast.error("Network timeout!", { sound: true, soundPreset: "retro", spring: "stiff" }) }, "Error (Retro)"),
-          React.createElement("button", { className: "warning", onClick: () => toast.warning("Low disk space", { sound: true, spring: "wobbly" }) }, "Warning (Wobbly)"),
-          React.createElement("button", { className: "info", onClick: () => toast.info("New update available", { sound: true, soundPreset: "futuristic" }) }, "Info (Futuristic)"),
+          React.createElement("button", { className: "success", onClick: () => toast.success("Saved successfully!", { sound: true, animationType: "spring" }) }, "Success (Spring)"),
+          React.createElement("button", { className: "error", onClick: () => toast.error("Network timeout!", { sound: true, animationType: "bounce" }) }, "Error (Bounce)"),
+          React.createElement("button", { className: "warning", onClick: () => toast.warning("Low disk space", { sound: true, animationType: "slide" }) }, "Warning (Slide)"),
+          React.createElement("button", { className: "info", onClick: () => toast.info("New update available", { sound: true, animationType: "zoom" }) }, "Info (Zoom)"),
           React.createElement("button", { className: "undo", onClick: () => toast.warning("Message deleted", {
             duration: 5000,
             undo: { label: "Undo", showCountdown: true, onUndo: () => alert("Undo clicked!") }

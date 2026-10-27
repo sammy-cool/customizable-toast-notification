@@ -13,11 +13,8 @@ import {
   attachSwipeToDismiss,
   attachFocusTrap,
 } from "./toast-utils-core.js";
-import { playTone } from "../utils/audio.js";
-import { getSpringTransition } from "../utils/spring.js";
 import { getConfig } from "../utils/config.js";
 import { createToastIcon } from "./icons.js";
-import { isRtlLocale } from "../utils/i18n.js";
 
 /**
  * Applies rich styling and content to a toast element.
@@ -59,20 +56,18 @@ function getInitialTransform(position, animationType, isSpring) {
 
 export async function applyRichStyling(toast, options, onClose) {
   const config = getConfig();
-  const springTransition = options?.spring ? getSpringTransition(options.spring) : null;
-  const durationMs = springTransition
-    ? springTransition.duration
+  const animType = String(options?.animationType || "").toLowerCase().trim();
+  const isSpring = Boolean(options?.spring) || animType === "spring";
+  const durationMs = isSpring
+    ? 400
     : await parseAnimationDuration(options?.animationDuration);
   const validAnimationDuration = `${durationMs}ms`;
-  const easing = springTransition
-    ? springTransition.easing
+  const easing = isSpring
+    ? "cubic-bezier(0.34, 1.56, 0.64, 1)"
     : typeof options?.animationEasing === "string" && options.animationEasing.trim()
       ? options.animationEasing.trim()
       : "ease";
 
-  if (springTransition) {
-    toast._spring = springTransition;
-  }
   toast._animationType = options?.animationType;
 
   const customClass = typeof options?.className === "string" && options.className.trim()
@@ -90,8 +85,8 @@ export async function applyRichStyling(toast, options, onClose) {
       ? `${options.maxWidth}px`
       : options?.maxWidth;
 
-  const opacityDuration = springTransition ? `${Math.min(300, durationMs)}ms` : validAnimationDuration;
-  const opacityEasing = springTransition ? "ease" : easing;
+  const opacityDuration = isSpring ? `${Math.min(300, durationMs)}ms` : validAnimationDuration;
+  const opacityEasing = isSpring ? "ease" : easing;
 
   if (!config.disableInlineStyles) {
     Object.assign(toast.style, {
@@ -113,13 +108,11 @@ export async function applyRichStyling(toast, options, onClose) {
       userSelect: "text",
       pointerEvents: "auto",
       transition: `opacity ${opacityDuration} ${opacityEasing}, transform ${validAnimationDuration} ${easing}`,
-      transform: getInitialTransform(options?.position, options?.animationType, !!springTransition),
+      transform: getInitialTransform(options?.position, options?.animationType, isSpring),
       zIndex: String(config.zIndex),
       direction:
         options?.fontDirection && options.fontDirection !== "auto"
           ? options.fontDirection
-          : isRtlLocale()
-          ? "rtl"
           : undefined,
     });
   }
@@ -254,15 +247,18 @@ export async function applyRichStyling(toast, options, onClose) {
     attachSwipeToDismiss(toast, onClose);
   }
 
-  // Play audio chime if enabled (global config + per-toast override)
+  // Play audio chime/sound if enabled (URL string or custom callback)
   const shouldPlaySound = options?.sound !== undefined ? options.sound : config.sound;
   if (shouldPlaySound) {
-    const tone =
-      typeof options.sound === "string" || typeof options.sound === "number"
-        ? options.sound
-        : options?.type || "info";
-    const preset = options?.soundPreset || config.soundPreset || "modern";
-    playTone(tone, preset);
+    if (typeof options?.sound === "string" && typeof window !== "undefined" && typeof window.Audio === "function") {
+      try {
+        new window.Audio(options.sound).play().catch(() => {});
+      } catch {}
+    } else if (typeof options?.onSound === "function") {
+      try {
+        options.onSound(options);
+      } catch {}
+    }
   }
 
   if (options?.trapFocus ?? config.trapFocus) {

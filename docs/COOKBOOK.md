@@ -30,9 +30,8 @@ async function showInvitationToast(invitation) {
     message: `Team invite from ${invitation.senderName} (${invitation.teamName})`,
     position: "top-right",
     duration: 10000,
-    sound: "info",
-    soundPreset: "modern",
-    spring: "gentle",
+    sound: true,
+    animationType: "spring",
     cta: [
       {
         label: "Accept",
@@ -73,9 +72,8 @@ export function setupGlobalErrorToasts() {
       message: `Error: ${message.slice(0, 90)}`,
       position: "top-right",
       duration: 8000,
-      sound: "error",
-      soundPreset: "retro",
-      spring: "stiff",
+      sound: true,
+      animationType: "spring",
       cta: [
         {
           label: "Copy Stack",
@@ -132,9 +130,8 @@ export function initNetworkMonitor() {
       position: "top-center",
       duration: 24 * 60 * 60 * 1000, // Keep visible until back online
       showProgressBar: false,
-      sound: "error",
-      soundPreset: "retro",
-      spring: "stiff",
+      sound: true,
+      animationType: "spring",
       cta: {
         label: "Check Status",
         autoClose: false,
@@ -156,9 +153,8 @@ export function initNetworkMonitor() {
       message: "Connected! All operations restored.",
       position: "top-center",
       duration: 3500,
-      sound: "success",
-      soundPreset: "bell",
-      spring: "bouncy",
+      sound: true,
+      animationType: "spring",
     });
   }
 
@@ -321,7 +317,7 @@ export async function deleteItemWithUndo(item, deleteMutation, undoMutation) {
     message: `Deleted "${item.title}".`,
     duration: 6000,
     position: "bottom-left",
-    spring: "gentle",
+    animationType: "spring",
     undo: {
       label: "Undo",
       showCountdown: true, // Displays dynamic decaying timer badge: "Undo (6s... 1s)"
@@ -352,7 +348,6 @@ setConfig({
   stacked: true,
   maxVisible: 3,
   sound: true,
-  soundPreset: "modern",
 });
 
 export async function onIncomingMessage(message) {
@@ -360,8 +355,8 @@ export async function onIncomingMessage(message) {
     type: "info",
     message: `${message.sender}: ${message.text}`,
     stacked: true,
-    spring: "wobbly",
-    sound: "info",
+    animationType: "spring",
+    sound: true,
   });
 }
 ```

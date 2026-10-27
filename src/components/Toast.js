@@ -1,16 +1,14 @@
-// src/components/Toast.js  //# Single responsibility
+// src/components/Toast.js
 "use strict";
 
 import { createElementWithId } from "../utils/dom.js";
 import { applyRichStyling, createEmergencyToast } from "./toast-utils.js";
-import { getToastPool } from "../utils/toast-pool.js";
-import { generateToastId } from "../utils/id.js";
 
 /**
- * Creates a multi-layer toast element with satellite-grade fallbacks
+ * Creates a multi-layer toast element with emergency fallbacks
  * @param {Object} options - Toast configuration options
  * @param {Function} onClose - Callback when toast closes
- * @returns {HTMLElement} Toast element
+ * @returns {Promise<HTMLElement>} Toast element
  */
 export async function createToastElement(options, onClose) {
   let toast;
@@ -19,21 +17,10 @@ export async function createToastElement(options, onClose) {
 
   // PRIMARY: Full-featured toast
   try {
-    if (options?.usePool) {
-      const rawId = generateToastId(prefix);
-      toast = getToastPool().acquire(rawId);
-      toast._pooledId = rawId;
-    } else {
-      toast = await createElementWithId(tagName, prefix);
-    }
+    toast = await createElementWithId(tagName, prefix);
     await applyRichStyling(toast, options, onClose);
     return toast;
   } catch (error) {
-    if (options?.usePool && toast?._pooledId) {
-      try {
-        getToastPool().release(toast, toast._pooledId);
-      } catch {}
-    }
     console.warn(
       "toast creation failed with error showing fallback one: ",
       error

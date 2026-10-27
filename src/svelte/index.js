@@ -7,11 +7,7 @@ import {
   setConfig,
   getConfig,
   resetConfig,
-  setLocale,
-  getLocale,
   getToastMetrics,
-  getToastHistory,
-  clearToastHistory,
 } from "../index.js";
 
 const subscribers = new Set();
@@ -19,7 +15,6 @@ const subscribers = new Set();
 function notifySubscribers() {
   const state = {
     metrics: getToastMetrics(),
-    history: getToastHistory(),
   };
   for (const fn of subscribers) {
     try {
@@ -37,7 +32,7 @@ export function createToastStore() {
     subscribe(run) {
       if (typeof run === "function") {
         subscribers.add(run);
-        run({ metrics: getToastMetrics(), history: getToastHistory() });
+        run({ metrics: getToastMetrics() });
         return () => subscribers.delete(run);
       }
       return () => {};
@@ -93,13 +88,6 @@ export function createToastStore() {
     setConfig,
     getConfig,
     resetConfig,
-    setLocale,
-    getLocale,
-    getHistory: getToastHistory,
-    clearHistory: () => {
-      clearToastHistory();
-      notifySubscribers();
-    },
   };
 }
 
@@ -115,9 +103,5 @@ export {
   setConfig,
   getConfig,
   resetConfig,
-  setLocale,
-  getLocale,
   getToastMetrics,
-  getToastHistory,
-  clearToastHistory,
 };

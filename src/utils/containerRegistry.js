@@ -145,6 +145,66 @@ export async function getOrCreateToastContainer(options = {}, setPosition) {
         shadowStyle.textContent = `
           :host { position: fixed; inset: 0; pointer-events: none; z-index: ${config.zIndex || 9999}; }
           * { box-sizing: border-box; }
+          .toast-container-base {
+            position: fixed;
+            z-index: ${config.zIndex || 9999};
+            pointer-events: none;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            flex-direction: column;
+            overflow: hidden;
+            inset: auto 10px 10px auto;
+            contain: layout style;
+          }
+          [data-stacked="true"] .toast-outer-wrapper {
+            transition: transform 240ms cubic-bezier(0.16, 1, 0.3, 1), margin 240ms cubic-bezier(0.16, 1, 0.3, 1), opacity 240ms ease;
+          }
+          [data-stacked="true"] .toast-outer-wrapper[data-stacked-depth="expanded"] {
+            transform: none;
+            margin-top: 0px;
+            margin-bottom: 10px;
+            opacity: 1;
+            pointer-events: auto;
+          }
+          [data-stacked="true"] .toast-outer-wrapper[data-stacked-depth="0"] {
+            transform: scale(1);
+            margin-top: 0px;
+            margin-bottom: 0px;
+            opacity: 1;
+            z-index: 30;
+            pointer-events: auto;
+          }
+          [data-stacked="true"] .toast-outer-wrapper[data-stacked-depth="1"] {
+            transform: scale(0.95) translateY(-10px);
+            margin-top: -55px;
+            margin-bottom: 0px;
+            opacity: 0.9;
+            z-index: 20;
+            pointer-events: auto;
+          }
+          [data-stacked="true"][id*="top"] .toast-outer-wrapper[data-stacked-depth="1"] {
+            transform: scale(0.95) translateY(10px);
+          }
+          [data-stacked="true"] .toast-outer-wrapper[data-stacked-depth="2"] {
+            transform: scale(0.90) translateY(-20px);
+            margin-top: -55px;
+            margin-bottom: 0px;
+            opacity: 0.75;
+            z-index: 10;
+            pointer-events: auto;
+          }
+          [data-stacked="true"][id*="top"] .toast-outer-wrapper[data-stacked-depth="2"] {
+            transform: scale(0.90) translateY(20px);
+          }
+          [data-stacked="true"] .toast-outer-wrapper[data-stacked-depth="overflow"] {
+            transform: scale(0.85) translateY(-30px);
+            margin-top: -55px;
+            margin-bottom: 0px;
+            opacity: 0;
+            z-index: 1;
+            pointer-events: none;
+          }
         `;
         root.appendChild(shadowStyle);
       }

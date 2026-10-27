@@ -1,6 +1,5 @@
 import { getDynamicAccessibleTextColorHex } from "../utils/dom.js";
 import { getConfig, shouldReduceMotion } from "../utils/config.js";
-import { getLocaleMessage } from "../utils/i18n.js";
 
 export function createCTA(toast, options, onClose) {
   const rawCfg = options?.cta;
@@ -169,7 +168,7 @@ export function createUndoAction(toast, options, onClose) {
   const baseLabel =
     typeof undoCfg.label === "string" && undoCfg.label.trim()
       ? undoCfg.label.trim()
-      : (getLocaleMessage("undo") || "Undo");
+      : (typeof options?.undoText === "string" && options.undoText.trim() ? options.undoText.trim() : "Undo");
 
   const totalDuration = Number(options?.duration);
   const showCountdown =
@@ -303,7 +302,10 @@ export function createUndoAction(toast, options, onClose) {
 export function createCloseButton(toast, options, onClose) {
   const closeBtn = document.createElement("button");
   closeBtn.type = "button";
-  const closeLabel = getLocaleMessage("close") || "Close notification";
+  const closeLabel =
+    typeof options?.closeAriaLabel === "string" && options.closeAriaLabel.trim()
+      ? options.closeAriaLabel.trim()
+      : "Close notification";
   closeBtn.setAttribute("aria-label", closeLabel);
   closeBtn.setAttribute("title", closeLabel);
   closeBtn.textContent = "×";
@@ -716,9 +718,8 @@ export function attachSwipeToDismiss(toast, onClose) {
         }
       } else {
         if (!getConfig().disableInlineStyles && !shouldReduceMotion()) {
-          const spring = toast._spring;
-          const snapEasing = spring?.easing || "cubic-bezier(0.34, 1.56, 0.64, 1)";
-          const snapDuration = spring?.duration ? Math.min(400, spring.duration) : 200;
+          const snapEasing = "cubic-bezier(0.34, 1.56, 0.64, 1)";
+          const snapDuration = 200;
           toast.style.transition = `transform ${snapDuration}ms ${snapEasing}, opacity 200ms ease`;
           toast.style.transform = "translateX(0)";
           toast.style.opacity = "1";
@@ -726,6 +727,7 @@ export function attachSwipeToDismiss(toast, onClose) {
           if (toast._snapbackTimer) clearTimeout(toast._snapbackTimer);
           toast._snapbackTimer = setTimeout(() => {
             toast._snapbackTimer = null;
+            toast.style.transform = "none";
             if (toast._originalTransition) {
               toast.style.transition = toast._originalTransition;
             }
@@ -772,6 +774,11 @@ export function attachSwipeToDismiss(toast, onClose) {
 export function attachFocusTrap(toast) {
   if (!toast || typeof toast.querySelectorAll !== "function") return null;
 
+  const previouslyFocused =
+    typeof document !== "undefined" && document.activeElement && document.activeElement !== document.body
+      ? document.activeElement
+      : null;
+
   const getFocusable = () =>
     Array.from(
       toast.querySelectorAll(
@@ -795,7 +802,7 @@ export function attachFocusTrap(toast) {
 
   const onKeyDown = (e) => {
     if (e.key !== "Tab") return;
-    if (!toast.isConnected && toast.parentNode !== document.body) return;
+    if (!toast.isConnected) return;
     const focusable = getFocusable();
     if (focusable.length === 0) return;
 
@@ -833,6 +840,11 @@ export function attachFocusTrap(toast) {
     toast.removeEventListener("keydown", onKeyDown);
     if (typeof document !== "undefined") {
       document.removeEventListener("keydown", onKeyDown);
+    }
+    if (previouslyFocused && typeof previouslyFocused.focus === "function" && previouslyFocused.isConnected) {
+      try {
+        previouslyFocused.focus();
+      } catch {}
     }
   };
 

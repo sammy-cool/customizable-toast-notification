@@ -3,11 +3,9 @@ const require = createRequire(import.meta.url);
 const pkg = require("./package.json");
 
 import resolve from "@rollup/plugin-node-resolve";
-import commonjs from "@rollup/plugin-commonjs";
-import terser from "@rollup/plugin-terser";
-import babel from "@rollup/plugin-babel";
 import { visualizer } from "rollup-plugin-visualizer";
 import replace from "@rollup/plugin-replace";
+import esbuild from "esbuild";
 
 const buildTime = new Date().toISOString().slice(0, 19).replace("T", " ");
 
@@ -26,6 +24,44 @@ const banner = `/*!
  * out of the box — with CTA support and zero dependencies.
  */`;
 
+/**
+ * High-performance native esbuild plugin for Rollup.
+ * Replaces legacy Babel and Terser with ultra-fast Go-based compilation and minification.
+ * @param {"umd" | "esm" | "cjs"} target
+ * @returns {import("rollup").Plugin}
+ */
+const esbuildPlugin = (target) => ({
+  name: "rollup-plugin-esbuild-native",
+  async transform(code, id) {
+    if (id.includes("node_modules")) return null;
+    const result = await esbuild.transform(code, {
+      loader: id.endsWith(".ts") ? "ts" : "js",
+      target: target === "cjs" ? "node14" : "es2020",
+      sourcemap: true,
+      sourcefile: id,
+    });
+    return {
+      code: result.code,
+      map: result.map,
+    };
+  },
+  async renderChunk(code, chunk) {
+    const result = await esbuild.transform(code, {
+      minify: true,
+      target: target === "cjs" ? "node14" : "es2020",
+      sourcemap: true,
+      sourcefile: chunk.fileName,
+      legalComments: "inline",
+      drop: ["debugger"],
+      pure: ["console.log", "console.info", "console.debug"],
+    });
+    return {
+      code: result.code,
+      map: result.map,
+    };
+  },
+});
+
 const getCommonPlugins = (target) => [
   replace({
     preventAssignment: true,
@@ -34,46 +70,11 @@ const getCommonPlugins = (target) => [
       "process.env.NODE_ENV": JSON.stringify("production"),
     },
   }),
-  // AUDIT CLEANUP: rollup-plugin-postcss removed — this library has zero
-  // .css files anywhere (all styling is inline via JS Object.assign on
-  // element.style throughout src/), so this step processed nothing on
-  // every single build. Pure overhead (install size, build time) with no
-  // functional benefit. If CSS-based theming is ever added later,
-  // re-adding this is a quick `npm install rollup-plugin-postcss` plus
-  // this block back — no need to carry it speculatively until then.
   resolve({
     browser: target === "umd",
     preferBuiltins: target !== "umd",
   }),
-  commonjs(),
-  babel({
-    babelHelpers: "bundled",
-    exclude: "node_modules/**",
-    presets: [
-      [
-        "@babel/preset-env",
-        {
-          targets:
-            target === "cjs"
-              ? { node: "14.0.0" }
-              : { browsers: "> 0.25%, not dead, not ie 11, chrome >= 60, safari >= 11" },
-          useBuiltIns: false,
-          modules: false,
-        },
-      ],
-    ],
-  }),
-  terser({
-    compress: {
-      drop_console: ["log", "info", "debug"],
-      drop_debugger: true,
-      passes: 2,
-    },
-    mangle: true,
-    format: {
-      comments: /^!/,
-    },
-  }),
+  esbuildPlugin(target),
 ];
 
 export default [
@@ -89,12 +90,16 @@ export default [
     },
     plugins: [
       ...getCommonPlugins("umd"),
-      visualizer({
-        filename: "./bundle-analysis.html",
-        open: false,
-        gzipSize: true,
-        brotliSize: true,
-      }),
+      ...(process.env.ANALYZE === "true"
+        ? [
+            visualizer({
+              filename: "./bundle-analysis.html",
+              open: false,
+              gzipSize: true,
+              brotliSize: true,
+            }),
+          ]
+        : []),
     ],
   },
 
@@ -137,6 +142,7 @@ export default [
         format: "esm",
         sourcemap: true,
         banner: adapter === "react" ? '"use client";\n' + banner : banner,
+        paths: (id) => (id.endsWith("src/index.js") ? "./index.esm.mjs" : id),
       },
       external: [
         "react",
@@ -146,6 +152,7 @@ export default [
         "@angular/core",
         ...Object.keys(pkg.dependencies || {}),
         ...Object.keys(pkg.peerDependencies || {}),
+        (id) => id.endsWith("src/index.js"),
       ],
       plugins: [...getCommonPlugins("esm")],
     },
@@ -157,6 +164,7 @@ export default [
         exports: "named",
         sourcemap: true,
         banner: adapter === "react" ? '"use client";\n' + banner : banner,
+        paths: (id) => (id.endsWith("src/index.js") ? "./index.cjs" : id),
       },
       external: [
         "react",
@@ -166,6 +174,7 @@ export default [
         "@angular/core",
         ...Object.keys(pkg.dependencies || {}),
         ...Object.keys(pkg.peerDependencies || {}),
+        (id) => id.endsWith("src/index.js"),
       ],
       plugins: [...getCommonPlugins("cjs")],
     },
