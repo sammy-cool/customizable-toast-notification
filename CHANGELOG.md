@@ -1,3 +1,10 @@
+## [4.0.1](https://github.com/sammy-cool/customizable-toast-notification/compare/v4.0.0...v4.0.1) (2026-10-27)
+
+
+### Bug Fixes
+
+* fortify progress bar desync, pop animation, stacked margins, and theme overrides ([e7dceb7](https://github.com/sammy-cool/customizable-toast-notification/commit/e7dceb719585bbc1f010c0555e3a290e8c0736b5))
+
 # [4.0.0](https://github.com/sammy-cool/customizable-toast-notification/compare/v3.20.2...v4.0.0) (2026-10-27)
 
 
