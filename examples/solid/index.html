@@ -32,7 +32,7 @@
     const toast = useToast();
 
     document.getElementById("solidSuccess").addEventListener("click", () => {
-      toast.success("SolidJS reactive notification active!", { sound: true, soundPreset: "bell", spring: "bouncy" });
+      toast.success("SolidJS reactive notification active!", { sound: true, animationType: "spring" });
     });
 
     document.getElementById("solidUndo").addEventListener("click", () => {

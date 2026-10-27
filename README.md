@@ -102,7 +102,7 @@ toast({
   type: "success",
   duration: 3000,
   position: "bottom-right",
-  spring: "gentle",
+  animationType: "spring",
   sound: true,
 });
 ```
@@ -584,8 +584,7 @@ if (shouldReduceMotion()) {
 | `theme`                | `"light" \| "dark" \| "high-contrast" \| "compact" \| "spacious" \| "glass"` | `"light"` | Built-in CSS theme applied via `data-toast-theme` on document root.                                  |
 | `stacked`              | `boolean`                         | `false`           | Enable iOS-style 3D card deck layout with depth scaling and hover expansion.                                     |
 | `swipeToDismiss`       | `boolean`                         | `true`            | Enable touch / mouse drag swipe gesture to dismiss toasts with spring snap-back physics.                         |
-| `sound`                | `boolean`                         | `true`            | Enable pure Web Audio API notification chimes (0KB network, zero audio assets).                                   |
-| `soundPreset`          | `"modern" \| "retro" \| "futuristic" \| "subtle" \| "bell"` | `"modern"` | Built-in sound synthesis theme for audio notifications.                                           |
+| `sound`                | `boolean`                         | `true`            | Enable sound notification support (audio URLs or `onSound` callbacks).                                            |
 | `pauseOnHover`         | `boolean`                         | `false`           | When `true`, automatically pauses countdown timers for all toasts on mouse hover or keyboard focus.               |
 | `syncTabs`             | `boolean`                         | `false`           | Synchronize toast notifications across browser tabs using BroadcastChannel.                                      |
 | `aiPrioritization`     | `boolean`                         | `false`           | Enable offline content-aware queue priority sorting (critical alerts jump ahead of routine messages).            |

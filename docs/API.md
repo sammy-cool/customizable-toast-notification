@@ -135,6 +135,7 @@ Switches the active internationalization locale (e.g. `'en'`, `'hi'`, `'es'`, `'
 | `sound` | `boolean \| string` | `false` | Sound notification toggle or audio URL |
 | `onSound` | `(options) => void` | `undefined` | Custom sound playback handler |
 | `priority` | `number` | `undefined` | Numeric queue priority score |
+| `animationType` | `'default' \| 'spring' \| 'bounce' \| 'slide' \| 'zoom' \| 'fade' \| 'flip'` | `'default'` | Animation entrance and exit style |
 | `spring` | `boolean` | `false` | Natural cubic-bezier bounce physics |
 | `progress` | `number` | `undefined` | Deterministic progress value (`0..100` or `0..1`) |
 | `showProgressBar` | `boolean` | `true` | Show countdown progress bar |

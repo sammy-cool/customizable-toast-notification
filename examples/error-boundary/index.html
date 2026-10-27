@@ -119,9 +119,8 @@ window.addEventListener('unhandledrejection', (e) => notifyError(e.reason));</co
         message: `Unhandled Error: ${errMessage.slice(0, 80)}`,
         position: "top-right",
         duration: 8000,
-        sound: "error",
-        soundPreset: "retro",
-        spring: "stiff",
+        sound: true,
+        animationType: "spring",
         cta: [
           {
             label: "Copy Stack",
@@ -175,8 +174,8 @@ window.addEventListener('unhandledrejection', (e) => notifyError(e.reason));</co
         type: "success",
         message: "Safe operation succeeded without errors.",
         duration: 2500,
-        sound: "success",
-        soundPreset: "modern"
+        sound: true,
+        animationType: "spring"
       });
     });
   </script>

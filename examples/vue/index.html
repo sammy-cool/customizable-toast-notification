@@ -40,10 +40,10 @@
 
     createApp({
       setup() {
-        const showSuccess = () => customizableToast.createToast({ type: 'success', message: 'Vue 3 action completed!', sound: true, soundPreset: 'bell', spring: 'bouncy' });
-        const showError = () => customizableToast.createToast({ type: 'error', message: 'Vue 3 action failed!', sound: true, soundPreset: 'retro', spring: 'stiff' });
-        const showWarning = () => customizableToast.createToast({ type: 'warning', message: 'Vue 3 warning prompt', sound: true, spring: 'wobbly' });
-        const showInfo = () => customizableToast.createToast({ type: 'info', message: 'Vue 3 information update', sound: true, soundPreset: 'futuristic' });
+        const showSuccess = () => customizableToast.createToast({ type: 'success', message: 'Vue 3 action completed!', sound: true, animationType: 'spring' });
+        const showError = () => customizableToast.createToast({ type: 'error', message: 'Vue 3 action failed!', sound: true, animationType: 'bounce' });
+        const showWarning = () => customizableToast.createToast({ type: 'warning', message: 'Vue 3 warning prompt', sound: true, animationType: 'slide' });
+        const showInfo = () => customizableToast.createToast({ type: 'info', message: 'Vue 3 information update', sound: true, animationType: 'zoom' });
         const showUndo = () => customizableToast.createToast({
           type: 'warning',
           message: 'Project archived.',

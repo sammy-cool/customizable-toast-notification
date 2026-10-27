@@ -1,4 +1,4 @@
-import type { ToastType, SoundPreset, SpringPreset, UndoOptions } from "../../dist/index.d.ts";
+import type { ToastType, UndoOptions } from "../../dist/index.d.ts";
 
 export interface EventPayload {
   message?: string;
@@ -13,8 +13,8 @@ export interface SmartToastPlan {
   message: string;
   type: ToastType;
   duration: number;
-  soundPreset: SoundPreset;
-  spring: SpringPreset;
+  animationType: string;
+  spring: boolean;
   priority: number;
   sound: boolean;
   undo?: UndoOptions;

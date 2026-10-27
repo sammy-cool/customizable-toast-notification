@@ -56,7 +56,6 @@ export async function executeServerAction(action, payload, options = {}) {
       showLoader: true,
       position,
       sound,
-      soundPreset: 'modern',
     });
   } catch {
     // Graceful fallback if toast cannot mount
@@ -98,7 +97,6 @@ export async function executeServerAction(action, payload, options = {}) {
         duration: successDuration,
         position,
         sound,
-        soundPreset: 'bell',
       });
     }
 
@@ -115,7 +113,6 @@ export async function executeServerAction(action, payload, options = {}) {
       duration: 5000,
       position,
       sound,
-      soundPreset: 'retro',
       showLoader: false,
     };
 
