@@ -7,16 +7,11 @@ import { getOrCreateToastContainer, normalizePositionKey, unregisterContainer } 
 import { setPosition } from "../utils/position.js";
 import { PausableTimer } from "../utils/PausableTimer.js";
 import { sanitizeHtml } from "../utils/html-sanitizer.js";
-import { playTone } from "../utils/audio.js";
 import { createProgressBar, createCTA, createUndoAction, createCloseButton, runToastAnimation, parseProgressValue, ensureProgressIndeterminateStyles, attachSwipeToDismiss } from "./toast-utils-core.js";
-import { getSpringTransition } from "../utils/spring.js";
 import { createLoader } from "./loader.js";
 import { createToastIcon } from "./icons.js";
 import { getConfig, shouldReduceMotion } from "../utils/config.js";
 import { getToastBroadcaster } from "../utils/toast-broadcast.js";
-import { calculateToastPriority } from "../utils/ai-scorer.js";
-import { getToastPool } from "../utils/toast-pool.js";
-import { createGestureDetector } from "../utils/multi-touch.js";
 import {
   recordToastHistory,
   markToastHistoryDismissed,
@@ -135,8 +130,7 @@ initBroadcastListeners();
 
 /**
  * Numeric priority score for a queued toast item (higher = shown sooner).
- * calculateToastPriority() returns { score, breakdown, keywords }, so we
- * normalize to a plain number here for sorting/queue comparisons.
+ * Normalizes to a plain number for queue sorting and priority comparison.
  * @param {{options?: Object, priority?: {score?: number}}} item
  * @returns {number}
  */
@@ -163,7 +157,8 @@ function getItemPriority(item) {
     }
   }
 
-  return calculateToastPriority(item?.options).score;
+  const TYPE_PRIORITIES = { error: 80, warning: 60, info: 40, success: 20 };
+  return TYPE_PRIORITIES[item?.options?.type] || 0;
 }
 
 export function updateStackedLayout(container) {
@@ -197,28 +192,11 @@ export function updateStackedLayout(container) {
     container.addEventListener("focusin", onFocusIn);
     container.addEventListener("focusout", onFocusOut);
 
-    let detector = null;
-    if (typeof createGestureDetector === "function") {
-      detector = createGestureDetector(container, {
-        onPinch: (pinch) => {
-          if (pinch.direction === "out" && !container._isExpanded) {
-            container._isExpanded = true;
-            updateStackedLayout(container);
-          } else if (pinch.direction === "in" && container._isExpanded) {
-            container._isExpanded = false;
-            updateStackedLayout(container);
-          }
-        },
-      });
-      detector.attach();
-    }
-
     container._stackedCleanup = () => {
       container.removeEventListener("mouseenter", onMouseEnter);
       container.removeEventListener("mouseleave", onMouseLeave);
       container.removeEventListener("focusin", onFocusIn);
       container.removeEventListener("focusout", onFocusOut);
-      detector?.detach?.();
       container._stackedInitialized = false;
     };
   }
@@ -370,22 +348,18 @@ export async function showToast(options = {}) {
           existingQueued.count += current.count;
           if (typeof current.options?.priority === "number") {
             existingQueued.options = { ...existingQueued.options, ...current.options };
-            existingQueued.priority = calculateToastPriority(existingQueued.options);
+            existingQueued.priority = { score: getItemPriority(existingQueued) };
           }
           emitMetrics();
           return;
         }
         const usesPriority =
-          getConfig().aiPrioritization ||
-          current.options?.aiPrioritization ||
           typeof current.options?.priority === "number" ||
-          queue.some((queuedItem) =>
-            queuedItem?.options?.aiPrioritization ||
-            typeof queuedItem?.options?.priority === "number",
-          );
+          typeof getConfig().priorityScorer === "function" ||
+          queue.some((queuedItem) => typeof queuedItem?.options?.priority === "number");
 
         if (usesPriority) {
-          item.priority = calculateToastPriority(current.options);
+          item.priority = { score: getItemPriority(item) };
         }
 
         if (queue.length >= maxQ) {
@@ -875,7 +849,6 @@ export async function closeToastByKey(key, fromSync = false) {
         const anim = String(data.options?.animationType || "").toLowerCase().trim();
 
         let exitTransform = "translateY(20px)";
-        const spring = data.toast?._spring;
 
         if (shouldReduceMotion()) {
           data.toast.style.transition = "none";
@@ -891,7 +864,7 @@ export async function closeToastByKey(key, fromSync = false) {
             exitTransform = isLeft ? "translateX(-100%)" : isRight ? "translateX(100%)" : isTop ? "translateY(-100%)" : "translateY(100%)";
           } else if (anim === "bounce") {
             exitTransform = isTop ? "translateY(-36px) scale(0.9)" : "translateY(36px) scale(0.9)";
-          } else if (spring) {
+          } else if (data.options?.spring) {
             exitTransform = isTop ? "translateY(-28px) scale(0.94)" : "translateY(28px) scale(0.94)";
           }
 
@@ -980,12 +953,6 @@ async function removeWithTransition(el, targetEl, animationDurationMs = 400) {
       try {
         animEl?.removeEventListener?.("transitionend", onEnd, true);
       } catch {}
-      const toastEl = el.querySelector?.(".toast") || el;
-      if (toastEl?._pooledId) {
-        try {
-          getToastPool().release(toastEl, toastEl._pooledId);
-        } catch {}
-      }
       void removeElement(el).catch(console.error);
       resolve();
     };
@@ -1443,7 +1410,6 @@ export async function updateToastByKey(key, newOptions = {}) {
 
   if (newOptions.spring !== undefined) {
     data.options.spring = newOptions.spring;
-    toast._spring = newOptions.spring ? getSpringTransition(newOptions.spring) : null;
   }
 
   if (newOptions.swipeToDismiss !== undefined) {
@@ -1555,23 +1521,22 @@ export async function updateToastByKey(key, newOptions = {}) {
     }
   }
 
-  // 6. Audio Tone
+  // 6. Audio / Sound
   const shouldPlayAudio =
     newOptions.sound !== undefined
       ? Boolean(newOptions.sound)
       : Boolean(newOptions.type && (data.options.sound || getConfig().sound));
 
   if (shouldPlayAudio) {
-    const tone =
-      typeof newOptions.sound === "string" || typeof newOptions.sound === "number"
-        ? newOptions.sound
-        : newOptions.type || data.options.type || "info";
-    const preset =
-      newOptions.soundPreset ||
-      data.options.soundPreset ||
-      getConfig().soundPreset ||
-      "modern";
-    playTone(tone, preset);
+    if (typeof newOptions.sound === "string" && typeof window !== "undefined" && typeof window.Audio === "function") {
+      try {
+        new window.Audio(newOptions.sound).play().catch(() => {});
+      } catch {}
+    } else if (typeof newOptions.onSound === "function") {
+      try {
+        newOptions.onSound(newOptions);
+      } catch {}
+    }
   }
 
   // 7. Stacked update

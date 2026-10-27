@@ -716,9 +716,8 @@ export function attachSwipeToDismiss(toast, onClose) {
         }
       } else {
         if (!getConfig().disableInlineStyles && !shouldReduceMotion()) {
-          const spring = toast._spring;
-          const snapEasing = spring?.easing || "cubic-bezier(0.34, 1.56, 0.64, 1)";
-          const snapDuration = spring?.duration ? Math.min(400, spring.duration) : 200;
+          const snapEasing = "cubic-bezier(0.34, 1.56, 0.64, 1)";
+          const snapDuration = 200;
           toast.style.transition = `transform ${snapDuration}ms ${snapEasing}, opacity 200ms ease`;
           toast.style.transform = "translateX(0)";
           toast.style.opacity = "1";

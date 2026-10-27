@@ -92,12 +92,16 @@ export default [
     },
     plugins: [
       ...getCommonPlugins("umd"),
-      visualizer({
-        filename: "./bundle-analysis.html",
-        open: false,
-        gzipSize: true,
-        brotliSize: true,
-      }),
+      ...(process.env.ANALYZE === "true"
+        ? [
+            visualizer({
+              filename: "./bundle-analysis.html",
+              open: false,
+              gzipSize: true,
+              brotliSize: true,
+            }),
+          ]
+        : []),
     ],
   },
 
@@ -140,6 +144,7 @@ export default [
         format: "esm",
         sourcemap: true,
         banner: adapter === "react" ? '"use client";\n' + banner : banner,
+        paths: (id) => (id.endsWith("src/index.js") ? "./index.esm.mjs" : id),
       },
       external: [
         "react",
@@ -149,6 +154,7 @@ export default [
         "@angular/core",
         ...Object.keys(pkg.dependencies || {}),
         ...Object.keys(pkg.peerDependencies || {}),
+        (id) => id.endsWith("src/index.js"),
       ],
       plugins: [...getCommonPlugins("esm")],
     },
@@ -160,6 +166,7 @@ export default [
         exports: "named",
         sourcemap: true,
         banner: adapter === "react" ? '"use client";\n' + banner : banner,
+        paths: (id) => (id.endsWith("src/index.js") ? "./index.cjs" : id),
       },
       external: [
         "react",
@@ -169,6 +176,7 @@ export default [
         "@angular/core",
         ...Object.keys(pkg.dependencies || {}),
         ...Object.keys(pkg.peerDependencies || {}),
+        (id) => id.endsWith("src/index.js"),
       ],
       plugins: [...getCommonPlugins("cjs")],
     },

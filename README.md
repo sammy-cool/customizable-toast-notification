@@ -11,7 +11,7 @@
 [![Security Rating](https://sonarcloud.io/api/project_badges/measure?project=sammy-cool_customizable-toast-notification&metric=security_rating)](https://sonarcloud.io/summary/new_code?id=sammy-cool_customizable-toast-notification)
 [![Open in StackBlitz](https://img.shields.io/badge/StackBlitz-Live%20Sandbox-blue?logo=stackblitz)](https://stackblitz.com/edit/customizable-toast-notification-demo?file=index.html)
 
-**[▶ Try the interactive live playground](https://sammy-cool.github.io/customizable-toast-notification/)** — test damped spring physics, 5 zero-asset Web Audio synthesizer presets, dynamic action undo countdowns, and iOS-style card deck stacking in real time.
+**[▶ Try the interactive live playground](https://sammy-cool.github.io/customizable-toast-notification/)** — test smooth cubic-bezier physics, audio notification hooks, dynamic action undo countdowns, and iOS-style card deck stacking in real time.
 
 ```
 ┌────────────────────────────────────────────────────────────────────────┐
@@ -22,10 +22,10 @@
      ┌───────────────────┬───────────┴───────────┬───────────────────┐
      ▼                   ▼                       ▼                   ▼
 ┌──────────────┐   ┌───────────────┐     ┌───────────────┐   ┌───────────────┐
-│ Web Audio    │   │ Spring Physics│     │ Action Undo   │   │ Card Deck     │
-│ 5 Synth      │   │ Damped        │     │ Dynamic Live  │   │ iOS-Style     │
-│ Presets +    │   │ Harmonic      │     │ Countdown     │   │ Pinch-to-     │
-│ Oscilloscope │   │ Oscillator    │     │ Badge (Xs)    │   │ Expand Stack  │
+│ Sound Audio  │   │ Natural Curve │     │ Action Undo   │   │ Card Deck     │
+│ URL / Custom │   │ Cubic-Bezier  │     │ Dynamic Live  │   │ iOS-Style     │
+│ onSound Hook │   │ Spring Ease   │     │ Countdown     │   │ Expandable    │
+│ Playback     │   │ Physics       │     │ Badge (Xs)    │   │ Stacking      │
 └──────────────┘   └───────────────┘     └───────────────┘   └───────────────┘
      │                   │                       │                   │
      └───────────────────┴───────────┬───────────┴───────────────────┘
@@ -222,19 +222,19 @@ auto-dismissed on its own — they no-op gracefully rather than throwing. You ca
 | `fontPadding`       | `string`           | `undefined`                     | Custom padding for message container (e.g. `"4px 8px"`)                         |
 | `className`         | `string`           | `undefined`                     | Custom CSS class name(s) for animations / styling                              |
 | `stacked`           | `boolean`          | `false`                         | Enable iOS-style card deck stacking for multiple toasts                        |
-| `sound`             | `boolean \| string`| `false`                         | Zero-asset audio chime (`true`, `'success'`, `'error'`, `'warning'`, `'pop'`)   |
-| `soundPreset`       | `string`           | `"modern"`                      | Audio synth theme: `"modern"`, `"retro"`, `"futuristic"`, `"subtle"`, `"bell"`  |
-| `swipeToDismiss`    | `boolean`          | `true`                          | Mobile touch swipe-to-dismiss gesture with physics                             |
+| `sound`             | `boolean \| string`| `false`                         | Sound notification toggle or audio file URL (e.g. `"/chime.mp3"`)               |
+| `onSound`           | `function`         | `undefined`                     | Sound playback handler callback invoked on mount `(options) => void`           |
+| `priority`          | `number`           | `undefined`                     | Numeric queue priority (higher score displays ahead of lower priority toasts)   |
+| `swipeToDismiss`    | `boolean`          | `true`                          | Mobile touch & desktop mouse drag swipe-to-dismiss gesture                      |
 | `progressDirection` | `string`           | `"decreasing"`                  | Progress bar fill direction: `"decreasing"`, `"increasing"`, `"reverse"`, `"ltr"` |
 | `progressBarColor`  | `string`           | Falls back to `textColor`       | Alias for `progressColor` (accepts hex, rgb, hsl, CSS var)                     |
 | `progress`          | `number \| 'indeterminate'`| `undefined`            | Explicit percentage (0 to 100) or `"indeterminate"` moving gradient            |
-| `usePool`           | `boolean`          | `false`                         | Virtual element pooling for DOM recycling in high-frequency rendering           |
 | `tag` / `groupId`   | `string`           | `undefined`                     | Thread grouping identifier to replace notification in-place instead of stacking |
 | `trapFocus`         | `boolean`          | `false`                         | Modal keyboard focus trap (`Tab`/`Shift+Tab`) cycling for high-priority toasts  |
 | `shadowDom`         | `boolean`          | `false`                         | Render toast container inside isolated Shadow Root to prevent CSS bleed         |
 | `cta`               | `object \| array`   | `null`                          | Call-to-action configuration (see [CTA](#call-to-action))                      |
 | `undo`              | `function \| object`| `null`                         | Action Undo button with live dynamic countdown badge (see [Undo](#️-action-undo-with-live-countdown)) |
-| `spring`            | `boolean \| string \| object`| `null`                | Configurable spring physics animations (see [Spring Physics](#-configurable-spring-physics-animation-engine)) |
+| `spring`            | `boolean`          | `false`                         | Natural cubic-bezier bounce curve (`cubic-bezier(0.34, 1.56, 0.64, 1)`)        |
 
 #### Position Options
 
@@ -360,41 +360,16 @@ createToast({
 | `showCountdown` | `boolean` | `true` | Decays remaining duration in seconds in real-time |
 | `onUndo` | `function` | `undefined` | Callback fired on click; supports async promises before auto-closing toast |
 
-### 🌀 Configurable Spring Physics Animation Engine
+### 🌀 Natural Spring Easing Physics
 
-Replaces standard transitions with damped harmonic oscillator physics:
+Toasts support smooth cubic-bezier physics curves with natural overshoot and settling:
 
 ```js
-// Use built-in presets: 'default', 'gentle', 'wobbly', 'stiff', 'bouncy'
+// Enable natural spring overshoot:
 createToast({
   message: "Synced to cloud",
-  spring: "bouncy",
+  spring: true, // applies cubic-bezier(0.34, 1.56, 0.64, 1) at 400ms
 });
-
-// Or customize exact physical constants:
-createToast({
-  message: "Physics simulated notification",
-  spring: {
-    stiffness: 180, // Spring tension (k)
-    damping: 12,    // Friction resistance (c)
-    mass: 1.2,      // Inertial mass (m)
-  },
-});
-```
-
-| Preset | Stiffness ($k$) | Damping ($c$) | Mass ($m$) | Behavior |
-| ------ | --------------- | ------------- | ---------- | -------- |
-| `default` | 100 | 10 | 1 | Natural subtle bounce |
-| `gentle` | 120 | 14 | 1 | Smooth with minimal overshoot |
-| `wobbly` | 180 | 12 | 1 | Playful oscillation |
-| `stiff` | 210 | 20 | 1 | Crisp, rapid settling |
-| `bouncy` | 300 | 15 | 1.2 | High energy with dynamic bounce |
-
-Register custom global presets or resolve spring curves directly:
-```js
-import { registerSpringPreset, getSpringTransition } from "customizable-toast-notification";
-
-registerSpringPreset("snappy", { stiffness: 250, damping: 22, mass: 1 });
 ```
 
 ### Loader Options
@@ -434,21 +409,29 @@ createToast({ message: "Deploy finished successfully", type: "success", stacked:
 - Hovering or keyboard-focusing on the deck automatically expands all notifications with spring animations.
 - Leaving collapses them back into a clean stack.
 
-### 🔊 Zero-Asset Web Audio API Chimes
+### 🔊 Sound Notification Playback & Hooks
 
-Play pleasant micro-feedback audio chimes generated entirely on the fly with the browser's native `AudioContext` and pure math oscillators — **zero external audio files, zero MP3 assets, and 0 network overhead**:
+Trigger sound feedback on notification mount via audio URL or custom sound handler callbacks:
 
 ```js
-import { createToast, setAudioEnabled, playTone } from "customizable-toast-notification";
+import { createToast } from "customizable-toast-notification";
 
-// Automatically chime based on type or custom tone:
-createToast({ message: "Changes saved", type: "success", sound: true }); // pleasant major chord
-createToast({ message: "Network error", type: "error", sound: "error" }); // gentle alert buzz
-createToast({ message: "Warning threshold", sound: "warning" });
-createToast({ message: "New ping", sound: "pop" });
+// 1. Play from audio URL:
+createToast({
+  message: "Changes saved",
+  type: "success",
+  sound: "/assets/sounds/success.mp3",
+});
 
-// Globally toggle sound effects (e.g. user accessibility preferences)
-setAudioEnabled(false);
+// 2. Or supply a custom onSound callback:
+createToast({
+  message: "Network warning",
+  type: "warning",
+  sound: true,
+  onSound: (options) => {
+    mySoundPlayer.play(options.type);
+  },
+});
 ```
 
 ### 👆 Mobile Touch Swipe-to-Dismiss
@@ -698,52 +681,44 @@ createToast({ message: "Shared across all open tabs!", type: "info" });
 
 Graceful degradation: if `BroadcastChannel` is unavailable (e.g. Node.js or older browsers), the library simply runs in single-tab mode — no errors.
 
-### 🧠 AI-Powered Priority Queue Routing
+### 🧠 Intelligent Priority Queue Routing
 
-When the queue fills (more than `maxVisible` toasts), the `aiPrioritization` flag reorders the queue by urgency instead of strict FIFO. Priority is derived from `type` (error > warning > info > success) plus keyword scoring (`urgent`, `critical`, `failed`, `done`, etc.). Fully offline, zero external calls.
+When the queue fills (more than `maxVisible` toasts), the `aiPrioritization` flag and `priority` options reorder the queue by urgency instead of strict FIFO. Priority is derived from `priority` option or `type` (error > warning > info > success), with support for custom priority scorers or consumer AI triage classifiers (`examples/ai-triage/`).
 
 ```js
 setConfig({ aiPrioritization: true });
 
-createToast({ message: "Payment failed", type: "error" });   // Highest priority
-createToast({ message: "Background sync", type: "info" });  // Queued behind the error
+createToast({ message: "Payment failed", type: "error" });   // Highest priority (score: 80)
+createToast({ message: "Background sync", type: "info" });  // Queued behind the error (score: 40)
+
+// Or specify an explicit priority score:
+createToast({ message: "VIP Customer Alert", priority: 100 });
 ```
 
-The built-in scorer also exposes `calculateToastPriority(context)` and `categorizeToast(message)` for custom routing integrations.
+### 👆 Touch & Pointer Swipe-to-Dismiss
 
-### 🃏 Virtual Scrolling — DOM Element Pool
+Toasts support smooth native pointer and touch swipe-to-dismiss out of the box:
 
-An internal element-pool recycles toast DOM nodes, so burst queues of 100+ toasts no longer create proportional DOM pressure or trigger layout thrashing / GC spikes. The pool size scales automatically with `MAX_VISIBLE`.
-
-No configuration required — it's transparent to callers. The queue drains in priority order (when enabled above) and reuses the same recycled elements.
-
-### 👆 Advanced Gestures: Flick Swipe & Pinch-to-Expand
-
-Swipe-to-dismiss already exists in Phase 2; Phase 3 refines the physics:
-
-- **Flick detection**: velocity ≥ 0.65 px/ms over ≥ 50 px triggers instant dismiss; anything shorter snaps back with spring easing.
-- **Pinch-to-expand**: two-finger gesture on a toast expands it to full height (useful for long error messages with stack traces); releasing collapses it back.
-
-The multi-touch math (`calculateVelocity`, `isFlick`, `detectPinch`) is exported for consumer recipes that want custom gesture behavior.
+- Horizontal drag beyond threshold flings the toast off screen with smooth dismissal transition.
+- Dragging below threshold cleanly snaps the notification back into position.
+- Interactive elements (buttons, links, inputs) inside toasts automatically guard against accidental swipe drag.
 
 ### 🏗️ How It All Fits Together
 
 ```js
-import { setConfig } from "customizable-toast-notification";
+import { setConfig, createToast } from "customizable-toast-notification";
 
 setConfig({
   maxVisible: 3,
   syncTabs: true,        // mirror to other tabs
   aiPrioritization: true,// sort the queue by urgency
   stacked: true,         // iOS-style card deck
-  swipeToDismiss: true,  // flick physics (Phase 2)
-  sound: true,           // zero-asset Web Audio chimes (Phase 2)
+  swipeToDismiss: true,  // touch & pointer gestures
+  sound: true,           // notification chimes
 });
 
 createToast({ message: "New notification", type: "success" });
 ```
-
-The library keeps its zero-runtime-dependency guarantee: `BroadcastChannel`, Web Audio, and the gesture math are all native browser APIs with immediate graceful fallbacks when unavailable.
 
 ## 💡 Examples
 
