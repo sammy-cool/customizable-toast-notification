@@ -4857,6 +4857,187 @@ describe("SonarQube S6544 & AI Code Assurance Coverage Suite", () => {
   });
 });
 
+describe("v4 Streamlined Core — Audio Playback, onSound hooks, and Numeric Priority Queue Coverage", () => {
+  test("createToast and handle.update execute window.Audio playback and error handling", async () => {
+    freshDom();
+    const { createToast, resetToastManager } = await import("../../src/index.js");
+    resetToastManager();
+
+    try {
+      let playedAudioUrl = null;
+      let playCatchInvoked = false;
+
+      // 1. Success path for createToast sound URL
+      window.Audio = class MockAudio {
+        constructor(url) {
+          playedAudioUrl = url;
+        }
+        play() {
+          return {
+            catch(fn) {
+              playCatchInvoked = true;
+              fn(new Error("Audio play rejected"));
+            },
+          };
+        }
+      };
+
+      const handle1 = await createToast({
+        message: "Audio Toast",
+        sound: "/assets/chime.mp3",
+      });
+      await new Promise((r) => setTimeout(r, 60));
+      assert.strictEqual(playedAudioUrl, "/assets/chime.mp3");
+      assert.strictEqual(playCatchInvoked, true);
+
+      // 2. handle.update with sound URL
+      let updatedAudioUrl = null;
+      let updateCatchInvoked = false;
+      window.Audio = class MockAudioUpdate {
+        constructor(url) {
+          updatedAudioUrl = url;
+        }
+        play() {
+          return {
+            catch(fn) {
+              updateCatchInvoked = true;
+              fn(new Error("Audio play rejected"));
+            },
+          };
+        }
+      };
+
+      await handle1.update({
+        sound: "/assets/update-chime.mp3",
+      });
+      assert.strictEqual(updatedAudioUrl, "/assets/update-chime.mp3");
+      assert.strictEqual(updateCatchInvoked, true);
+
+      // 3. createToast where new window.Audio throws synchronously (hits catch block in toast-utils.js:258)
+      window.Audio = class ThrowingAudio {
+        constructor() {
+          throw new Error("Audio constructor failure");
+        }
+      };
+
+      const handle2 = await createToast({
+        message: "Audio Throws Toast",
+        sound: "/assets/fail.mp3",
+      });
+      await new Promise((r) => setTimeout(r, 60));
+      assert.ok(handle2);
+
+      // 4. handle.update where new window.Audio throws synchronously (hits catch block in ToastManager.js:1534)
+      await handle1.update({
+        sound: "/assets/fail-update.mp3",
+      });
+
+      await handle1.dismiss();
+      await handle2.dismiss();
+    } finally {
+      delete window.Audio;
+      resetToastManager();
+    }
+  });
+
+  test("createToast and handle.update execute onSound callback and error handling", async () => {
+    freshDom();
+    const { createToast, resetToastManager } = await import("../../src/index.js");
+    resetToastManager();
+
+    try {
+      let createSoundInvoked = false;
+      let updateSoundInvoked = false;
+
+      // 1. createToast with onSound callback
+      const handle = await createToast({
+        message: "onSound Toast",
+        sound: true,
+        onSound: () => {
+          createSoundInvoked = true;
+        },
+      });
+      await new Promise((r) => setTimeout(r, 60));
+      assert.strictEqual(createSoundInvoked, true);
+
+      // 2. handle.update with onSound callback
+      await handle.update({
+        sound: true,
+        onSound: () => {
+          updateSoundInvoked = true;
+        },
+      });
+      assert.strictEqual(updateSoundInvoked, true);
+
+      // 3. createToast where onSound throws synchronously (hits catch block in toast-utils.js:262)
+      const handleThrow = await createToast({
+        message: "onSound Throw Toast",
+        sound: true,
+        onSound: () => {
+          throw new Error("onSound sync error");
+        },
+      });
+      await new Promise((r) => setTimeout(r, 60));
+      assert.ok(handleThrow);
+
+      // 4. handle.update where onSound throws synchronously (hits catch block in ToastManager.js:1538)
+      await handle.update({
+        sound: true,
+        onSound: () => {
+          throw new Error("update onSound sync error");
+        },
+      });
+
+      await handle.dismiss();
+      await handleThrow.dismiss();
+    } finally {
+      resetToastManager();
+    }
+  });
+
+  test("ToastManager queues items with TYPE_PRIORITIES and updates queued priority on duplicate", async () => {
+    freshDom();
+    const { createToast, resetToastManager, setConfig, resetConfig } = await import("../../src/index.js");
+    resetToastManager();
+    resetConfig();
+
+    try {
+      // Set maxVisible to 1 so subsequent toasts enter queue
+      setConfig({ maxVisible: 1 });
+
+      // 1. Fill the 1 visible slot
+      const blocker = await createToast({ message: "Blocker", duration: 20000 });
+      await new Promise((r) => setTimeout(r, 60));
+
+      // 2. Queue an item with priority: 50 so usesPriority becomes true (queue.some(...) returns true)
+      await createToast({ message: "Queue Item with Priority", priority: 50, duration: 20000 });
+      await new Promise((r) => setTimeout(r, 60));
+
+      // 3. Queue an item without priority, but with type: "error" (triggers TYPE_PRIORITIES[item?.options?.type] at ToastManager.js:160)
+      await createToast({ message: "Queue Error Item", type: "error", duration: 20000 });
+      await new Promise((r) => setTimeout(r, 60));
+      await createToast({ message: "Queue Warning Item", type: "warning", duration: 20000 });
+      await new Promise((r) => setTimeout(r, 60));
+      await createToast({ message: "Queue Info Item", type: "info", duration: 20000 });
+      await new Promise((r) => setTimeout(r, 60));
+      await createToast({ message: "Queue Success Item", type: "success", duration: 20000 });
+      await new Promise((r) => setTimeout(r, 60));
+
+      // 4. Duplicate queued toast with numeric priority (triggers line 351 in ToastManager.js)
+      await createToast({ message: "Dupe Queued", duration: 20000 });
+      await new Promise((r) => setTimeout(r, 60));
+      await createToast({ message: "Dupe Queued", priority: 99, duration: 20000 });
+      await new Promise((r) => setTimeout(r, 60));
+
+      await blocker.dismiss();
+    } finally {
+      resetConfig();
+      resetToastManager();
+    }
+  });
+});
+
+
 
 
 

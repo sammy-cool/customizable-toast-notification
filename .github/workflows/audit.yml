@@ -121,30 +121,32 @@ jobs:
 
             const issueTitle = `🔒 Security Audit: ${counts.critical > 0 ? 'CRITICAL' : counts.high > 0 ? 'HIGH' : 'MODERATE'} Vulnerabilities Detected (${new Date().toISOString().split('T')[0]})`;
 
-            const issueBody = `## 🔒 Automated Dependency Security Audit Report
-
-> **Last Run**: ${new Date().toUTCString()}
-> **Core Production Dependencies**: 0 (Purity intact — 100% dependency-free)
-
-### Summary Breakdown
-- 🔴 **Critical**: ${counts.critical || 0}
-- 🟠 **High**: ${counts.high || 0}
-- 🟡 **Moderate**: ${counts.moderate || 0}
-- ⚪ **Low**: ${counts.low || 0}
-
----
-
-### Detected Issues in Tooling & DevDependencies
-${table}
-
----
-
-### Maintainer Action Checklist
-- [ ] Review any Direct dependencies with updates available.
-- [ ] For bundled/transitive dependencies inside \`@semantic-release/npm\`, check for semantic-release updates via \`npm outdated\`.
-- [ ] Run \`npm audit fix\` locally if applicable and run \`npm test\` to ensure zero regressions.
-
-*This issue is automatically updated by \`.github/workflows/audit.yml\` on weekly runs.*`;
+            const issueBody = [
+              '## 🔒 Automated Dependency Security Audit Report',
+              '',
+              `> **Last Run**: ${new Date().toUTCString()}`,
+              '> **Core Production Dependencies**: 0 (Purity intact — 100% dependency-free)',
+              '',
+              '### Summary Breakdown',
+              `- 🔴 **Critical**: ${counts.critical || 0}`,
+              `- 🟠 **High**: ${counts.high || 0}`,
+              `- 🟡 **Moderate**: ${counts.moderate || 0}`,
+              `- ⚪ **Low**: ${counts.low || 0}`,
+              '',
+              '---',
+              '',
+              '### Detected Issues in Tooling & DevDependencies',
+              table,
+              '',
+              '---',
+              '',
+              '### Maintainer Action Checklist',
+              '- [ ] Review any Direct dependencies with updates available.',
+              '- [ ] For bundled/transitive dependencies inside `@semantic-release/npm`, check for semantic-release updates via `npm outdated`.',
+              '- [ ] Run `npm audit fix` locally if applicable and run `npm test` to ensure zero regressions.',
+              '',
+              '*This issue is automatically updated by `.github/workflows/audit.yml` on weekly runs.*'
+            ].join('\n');
 
             if (existingIssue) {
               await github.rest.issues.update({
