@@ -1,10 +1,10 @@
 /src
-/old_not_in_use
-/.size-snapshot.json
 /bundle-analysis.html
-/esm.html
-/index.html
-/rollup.config.js
 /node_modules
 /coverage
 /dist/types
+/tests
+/.github
+/.agents
+/playwright-report
+/test-results
