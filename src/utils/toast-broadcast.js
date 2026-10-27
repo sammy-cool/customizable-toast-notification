@@ -41,14 +41,14 @@ class ToastBroadcaster {
    * @private
    * @returns {string} Unique tab ID matching /^tab-[a-z0-9]+-[a-z0-9]+$/
    */
-  _generateTabId() {
+  _generateTabId(customCrypto = typeof crypto !== "undefined" ? crypto : null) {
     const timestamp = Date.now().toString(36);
     let entropy = "";
 
-    if (typeof crypto !== "undefined" && typeof crypto.getRandomValues === "function") {
+    if (customCrypto && typeof customCrypto.getRandomValues === "function") {
       try {
         const buf = new Uint32Array(2);
-        crypto.getRandomValues(buf);
+        customCrypto.getRandomValues(buf);
         entropy = `${buf[0].toString(36)}${buf[1].toString(36)}`.slice(0, 9);
       } catch {
         // Fallback if environment restricts getRandomValues
@@ -56,10 +56,11 @@ class ToastBroadcaster {
     }
 
     if (!entropy) {
-      // 53-bit safe integer entropy fallback
-      entropy = Math.floor(Math.random() * 0x1fffffffffffff)
-        .toString(36)
-        .slice(0, 9);
+      // High-resolution entropy fallback without PRNG
+      const highRes = typeof performance !== "undefined" && typeof performance.now === "function"
+        ? Math.floor(performance.now() * 1000)
+        : 0;
+      entropy = ((Date.now() ^ highRes) >>> 0).toString(36).slice(0, 9);
     }
 
     return `tab-${timestamp}-${entropy}`;

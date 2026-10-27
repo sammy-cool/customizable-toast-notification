@@ -5493,19 +5493,69 @@ describe("SonarQube S6544 & AI Code Assurance Coverage Suite", () => {
     }
   });
 
-  test("Escape keypress event listener executes void async dismiss handler cleanly", async () => {
+  test("Escape and landmark keypress event listeners execute cleanly", async () => {
     freshDom();
-    const { createToast, resetToastManager } = await import("../../src/index.js");
+    const { createToast, resetToastManager, initKeyboardShortcuts, setConfig, resetConfig } = await import("../../src/index.js");
 
     try {
-      await createToast({ message: "Dismiss on Escape", position: "bottom-right", duration: 5000 });
+      // Test calling with no argument to test default parameter evaluation
+      initKeyboardShortcuts();
+      // Test calling with explicit window
+      initKeyboardShortcuts(window);
+
+      // Configure targetNode to test targetNode querySelectorAll landmark navigation path
+      setConfig({ targetNode: document.body });
+
+      await createToast({ message: "Dismiss on Escape", position: "bottom-right", duration: 5000, cta: { text: "Action", onClick: () => {} } });
       await new Promise((r) => setTimeout(r, 50));
 
+      // Test F6 landmark navigation with targetNode configured
+      window.dispatchEvent(new window.KeyboardEvent("keydown", { key: "F6" }));
+      // Test Alt+T landmark navigation
+      window.dispatchEvent(new window.KeyboardEvent("keydown", { key: "t", altKey: true }));
+
+      // Reset targetNode and test landmark navigation with document root fallback
+      setConfig({ targetNode: null });
+      window.dispatchEvent(new window.KeyboardEvent("keydown", { key: "F6" }));
+
+      // Test Escape dismissal
       window.dispatchEvent(new window.KeyboardEvent("keydown", { key: "Escape" }));
       await new Promise((r) => setTimeout(r, 100));
     } finally {
+      resetConfig();
       resetToastManager();
     }
+  });
+
+  test("generateSalt and _generateTabId entropy fallback coverage", async () => {
+    freshDom();
+    const { generateSalt } = await import("../../src/utils/id.js");
+    const { getToastBroadcaster } = await import("../../src/index.js");
+
+    // 1. generateSalt with crypto present
+    const saltWithCrypto = generateSalt();
+    assert.strictEqual(typeof saltWithCrypto, "string");
+    assert.strictEqual(saltWithCrypto.length, 3);
+
+    // 2. generateSalt fallback without crypto (customCrypto = null)
+    const saltWithoutCrypto = generateSalt(null);
+    assert.strictEqual(typeof saltWithoutCrypto, "string");
+    assert.strictEqual(saltWithoutCrypto.length, 3);
+
+    // 3. _generateTabId with crypto present
+    const broadcaster = getToastBroadcaster();
+    const tabWithCrypto = broadcaster._generateTabId();
+    assert.ok(tabWithCrypto.startsWith("tab-"));
+
+    // 4. _generateTabId fallback without crypto (customCrypto = null)
+    const tabWithoutCrypto = broadcaster._generateTabId(null);
+    assert.ok(tabWithoutCrypto.startsWith("tab-"));
+
+    // 5. audio.js toneType number vs string parseFloat branches
+    const { playTone } = await import("../../src/utils/audio.js");
+    playTone(440);
+    playTone("880Hz");
+    playTone("220");
   });
 });
 

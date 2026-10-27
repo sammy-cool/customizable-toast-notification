@@ -605,7 +605,7 @@ export function playTone(toneType = "info", preset) {
     const now = ctx.currentTime;
 
     // Check direct numeric frequency tone (e.g. 880 or "440Hz")
-    const numFreq = typeof toneType === "number" ? toneType : parseFloat(toneType);
+    const numFreq = typeof toneType === "number" ? toneType : Number.parseFloat(toneType);
     if (
       Number.isFinite(numFreq) &&
       numFreq >= 20 &&

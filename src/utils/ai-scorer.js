@@ -408,9 +408,7 @@ export function createPriorityQueueManager(config = {}) {
         options: item.options,
       };
 
-      const scoreResult = useAI && aiApiKey
-        ? calculateToastPriority(context) // In production: await scoreWithTypeSafeAI(context, { useAI, apiKey: aiApiKey })
-        : calculateToastPriority(context);
+      const scoreResult = calculateToastPriority(context);
 
       const scoredItem = {
         ...item,

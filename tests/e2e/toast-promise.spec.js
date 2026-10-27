@@ -73,7 +73,11 @@ test.describe("createToast() dismissal handle", () => {
     await page.waitForTimeout(1000); // well past its 300ms duration
 
     // Should not throw
-    await page.evaluate(() => window.__shortHandle.dismiss());
+    const dismissed = await page.evaluate(async () => {
+      await window.__shortHandle.dismiss();
+      return true;
+    });
+    expect(dismissed).toBe(true);
   });
 });
 
