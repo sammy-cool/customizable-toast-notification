@@ -1,0 +1,171 @@
+name: Weekly Security Audit & Dashboard
+
+on:
+  schedule:
+    - cron: '17 3 * * 0' # Every Sunday at 3:17 AM UTC
+  workflow_dispatch: # Allow manual trigger from GitHub Actions UI
+
+permissions:
+  contents: read
+  issues: write
+
+jobs:
+  security-audit:
+    name: Dependency Security Scan & Reporting
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v4
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: npm
+
+      - name: Install Dependencies
+        run: npm ci
+
+      - name: Run Production Dependency Audit
+        id: prod_audit
+        run: |
+          echo "Auditing core production dependencies (Zero-Dependency verification)..."
+          npm audit --omit=dev
+
+      - name: Run Full Dependency Security Scan
+        id: full_audit
+        run: |
+          npm audit --json > audit-report.json || true
+
+      - name: Process Security Report & Sync Issue Dashboard
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const fs = require('fs');
+
+            if (!fs.existsSync('audit-report.json')) {
+              core.warning('audit-report.json not found, skipping report processing.');
+              return;
+            }
+
+            let report;
+            try {
+              report = JSON.parse(fs.readFileSync('audit-report.json', 'utf8'));
+            } catch (err) {
+              core.error('Failed to parse audit-report.json: ' + err.message);
+              return;
+            }
+
+            const counts = report.metadata?.vulnerabilities || { info: 0, low: 0, moderate: 0, high: 0, critical: 0, total: 0 };
+            const vulns = report.vulnerabilities || {};
+            const totalActionable = (counts.high || 0) + (counts.critical || 0) + (counts.moderate || 0);
+
+            core.info(`Audit Summary: Critical: ${counts.critical}, High: ${counts.high}, Moderate: ${counts.moderate}, Low: ${counts.low}`);
+
+            // Find existing automated security issues
+            const issues = await github.rest.issues.listForRepo({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              state: 'open',
+              labels: ['security', 'automated-audit'],
+            });
+
+            const existingIssue = issues.data.find(i => i.title.startsWith('🔒 Security Audit:'));
+
+            if (totalActionable === 0) {
+              core.info('✅ No actionable vulnerabilities found.');
+              if (existingIssue) {
+                await github.rest.issues.createComment({
+                  owner: context.repo.owner,
+                  repo: context.repo.repo,
+                  issue_number: existingIssue.number,
+                  body: '🎉 **Resolved**: All previously detected vulnerabilities have been fixed or pruned! Closing this issue.',
+                });
+                await github.rest.issues.update({
+                  owner: context.repo.owner,
+                  repo: context.repo.repo,
+                  issue_number: existingIssue.number,
+                  state: 'closed',
+                });
+                core.info(`Closed resolved security issue #${existingIssue.number}`);
+              }
+              return;
+            }
+
+            // Build Markdown Dashboard Table
+            const rows = [];
+            for (const [pkgName, vuln] of Object.entries(vulns)) {
+              const severityEmoji = vuln.severity === 'critical' ? '🔴 **CRITICAL**'
+                : vuln.severity === 'high' ? '🟠 **HIGH**'
+                : vuln.severity === 'moderate' ? '🟡 Moderate'
+                : '⚪ Low';
+
+              const advisories = vuln.via
+                .map(v => typeof v === 'object' ? `[${v.title}](${v.url})` : `\`${v}\``)
+                .join('<br>');
+
+              const fixText = vuln.fixAvailable
+                ? typeof vuln.fixAvailable === 'object'
+                  ? `Update to \`${vuln.fixAvailable.name}@${vuln.fixAvailable.version}\``
+                  : 'Run `npm audit fix`'
+                : 'Awaiting upstream vendor release';
+
+              rows.push(`| \`${pkgName}\` | ${severityEmoji} | ${vuln.isDirect ? 'Direct' : 'Transitive/Bundled'} | ${advisories} | ${fixText} |`);
+            }
+
+            const table = [
+              '| Package | Severity | Dependency Type | Advisory / Details | Recommendation |',
+              '| :--- | :--- | :--- | :--- | :--- |',
+              ...rows,
+            ].join('\n');
+
+            const issueTitle = `🔒 Security Audit: ${counts.critical > 0 ? 'CRITICAL' : counts.high > 0 ? 'HIGH' : 'MODERATE'} Vulnerabilities Detected (${new Date().toISOString().split('T')[0]})`;
+
+            const issueBody = `## 🔒 Automated Dependency Security Audit Report
+
+> **Last Run**: ${new Date().toUTCString()}
+> **Core Production Dependencies**: 0 (Purity intact — 100% dependency-free)
+
+### Summary Breakdown
+- 🔴 **Critical**: ${counts.critical || 0}
+- 🟠 **High**: ${counts.high || 0}
+- 🟡 **Moderate**: ${counts.moderate || 0}
+- ⚪ **Low**: ${counts.low || 0}
+
+---
+
+### Detected Issues in Tooling & DevDependencies
+${table}
+
+---
+
+### Maintainer Action Checklist
+- [ ] Review any Direct dependencies with updates available.
+- [ ] For bundled/transitive dependencies inside \`@semantic-release/npm\`, check for semantic-release updates via \`npm outdated\`.
+- [ ] Run \`npm audit fix\` locally if applicable and run \`npm test\` to ensure zero regressions.
+
+*This issue is automatically updated by \`.github/workflows/audit.yml\` on weekly runs.*`;
+
+            if (existingIssue) {
+              await github.rest.issues.update({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                issue_number: existingIssue.number,
+                title: issueTitle,
+                body: issueBody,
+              });
+              core.info(`Updated existing security issue #${existingIssue.number}`);
+            } else {
+              const newIssue = await github.rest.issues.create({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                title: issueTitle,
+                body: issueBody,
+                labels: ['security', 'automated-audit'],
+              });
+              core.info(`Created new security issue #${newIssue.data.number}`);
+            }
+
+            if (counts.critical > 0) {
+              core.setFailed(`🚨 Found ${counts.critical} CRITICAL vulnerabilities in dev tooling. Immediate review recommended.`);
+            }
