@@ -1,3 +1,10 @@
+## [3.20.1](https://github.com/sammy-cool/customizable-toast-notification/compare/v3.20.0...v3.20.1) (2026-10-27)
+
+
+### Bug Fixes
+
+* resolve sonar vulnerabilities and bugs for security rating a ([92a2331](https://github.com/sammy-cool/customizable-toast-notification/commit/92a2331860f9299dcdd9c555bbf0d9c9e7968828))
+
 # [3.20.0](https://github.com/sammy-cool/customizable-toast-notification/compare/v3.19.0...v3.20.0) (2026-10-26)
 
 

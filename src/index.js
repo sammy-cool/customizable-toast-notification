@@ -795,7 +795,7 @@ createToastWithPriority.getHistory = getToastHistory;
 createToastWithPriority.clearHistory = clearToastHistory;
 
 /** @type {string} */
-const version = typeof __VERSION__ !== "undefined" ? __VERSION__ : "3.20.0";
+const version = typeof __VERSION__ !== "undefined" ? __VERSION__ : "3.20.1";
 
 export {
   version,
