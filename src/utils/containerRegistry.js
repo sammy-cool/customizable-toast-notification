@@ -101,7 +101,7 @@ function applyContainerBaseStyles(el) {
   el.style.justifyContent = "space-between";
   el.style.alignItems = "center";
   el.style.flexDirection = "column";
-  el.style.overflow = "hidden";
+  el.style.overflow = "visible";
 }
 
 /**
@@ -153,7 +153,7 @@ export async function getOrCreateToastContainer(options = {}, setPosition) {
             justify-content: space-between;
             align-items: center;
             flex-direction: column;
-            overflow: hidden;
+            overflow: visible;
             inset: auto 10px 10px auto;
             contain: layout style;
           }
@@ -185,6 +185,8 @@ export async function getOrCreateToastContainer(options = {}, setPosition) {
           }
           [data-stacked="true"][id*="top"] .toast-outer-wrapper[data-stacked-depth="1"] {
             transform: scale(0.95) translateY(10px);
+            margin-top: 0px;
+            margin-bottom: -55px;
           }
           [data-stacked="true"] .toast-outer-wrapper[data-stacked-depth="2"] {
             transform: scale(0.90) translateY(-20px);
@@ -196,6 +198,8 @@ export async function getOrCreateToastContainer(options = {}, setPosition) {
           }
           [data-stacked="true"][id*="top"] .toast-outer-wrapper[data-stacked-depth="2"] {
             transform: scale(0.90) translateY(20px);
+            margin-top: 0px;
+            margin-bottom: -55px;
           }
           [data-stacked="true"] .toast-outer-wrapper[data-stacked-depth="overflow"] {
             transform: scale(0.85) translateY(-30px);
@@ -204,6 +208,11 @@ export async function getOrCreateToastContainer(options = {}, setPosition) {
             opacity: 0;
             z-index: 1;
             pointer-events: none;
+          }
+          [data-stacked="true"][id*="top"] .toast-outer-wrapper[data-stacked-depth="overflow"] {
+            transform: scale(0.85) translateY(30px);
+            margin-top: 0px;
+            margin-bottom: -55px;
           }
         `;
         root.appendChild(shadowStyle);

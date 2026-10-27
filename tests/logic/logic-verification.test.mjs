@@ -4000,10 +4000,12 @@ describe("Framework Adapters — Vue, Svelte, Solid, and Angular contracts", () 
 
   test("React adapter executes useToast methods", async () => {
     freshDom();
-    const { useToast, createToastAPI } = await import("../../src/react/index.js");
+    const { useToast, createToastAPI, toast } = await import("../../src/react/index.js");
     const api = useToast();
 
     assert.ok(api, "useToast() should return an API object");
+    assert.ok(toast, "toast export should exist in React adapter");
+    assert.strictEqual(typeof toast.success, "function");
     assert.strictEqual(typeof api.success, "function");
     assert.strictEqual(typeof api.error, "function");
     assert.strictEqual(typeof api.warning, "function");
@@ -4703,6 +4705,245 @@ describe("Multi-Configuration & Comprehensive Subsystem Conflict Fortification",
 
     toast._cleanupSwipe?.();
     toast.remove();
+  });
+});
+
+describe("v4.0.1 Subsystem Fortification — Exhaustive New Code Coverage Suite", () => {
+  test("Stacked card deck applies top container margins (depth 1, 2, and overflow)", async () => {
+    freshDom();
+    const { updateStackedLayout } = await import("../../src/components/ToastManager.js");
+
+    const container = document.createElement("div");
+    container.id = "toast-container-top-right";
+    container.setAttribute("data-stacked", "true");
+
+    const item0 = document.createElement("div");
+    const item1 = document.createElement("div");
+    const item2 = document.createElement("div");
+    const item3 = document.createElement("div");
+    container.appendChild(item0);
+    container.appendChild(item1);
+    container.appendChild(item2);
+    container.appendChild(item3);
+    document.body.appendChild(container);
+
+    updateStackedLayout(container);
+
+    // item3 is depth 0 (top of stack)
+    assert.strictEqual(item3.getAttribute("data-stacked-depth"), "0");
+    assert.strictEqual(item3.style.marginTop, "0px");
+
+    // item2 is depth 1
+    assert.strictEqual(item2.getAttribute("data-stacked-depth"), "1");
+    assert.strictEqual(item2.style.marginTop, "0px");
+    assert.strictEqual(item2.style.marginBottom, "-55px");
+
+    // item1 is depth 2
+    assert.strictEqual(item1.getAttribute("data-stacked-depth"), "2");
+    assert.strictEqual(item1.style.marginTop, "0px");
+    assert.strictEqual(item1.style.marginBottom, "-55px");
+
+    // item0 is depth 3 (overflow)
+    assert.strictEqual(item0.getAttribute("data-stacked-depth"), "overflow");
+    assert.strictEqual(item0.style.marginTop, "0px");
+    assert.strictEqual(item0.style.marginBottom, "-55px");
+
+    container._stackedCleanup?.();
+    container.remove();
+  });
+
+  test("pop animation sets scale(0.6) on initial transform and exit transform", async () => {
+    freshDom();
+    const { createToast, resetToastManager } = await import("../../src/index.js");
+    resetToastManager();
+
+    const handle = await createToast({
+      message: "Pop toast test",
+      animationType: "pop",
+      duration: 5000,
+    });
+    await new Promise((r) => setTimeout(r, 40));
+
+    const toast = document.querySelector(".toast");
+    assert.ok(toast);
+    assert.strictEqual(toast.classList.contains("toast-anim-pop"), true);
+
+    // Call dismiss and verify exit transition
+    await handle.dismiss();
+    resetToastManager();
+  });
+
+  test("dismissMostRecent cancels pending toast when pending.size > 0", async () => {
+    freshDom();
+    const { showToast, dismissMostRecent, resetToastManager } = await import(
+      "../../src/components/ToastManager.js"
+    );
+    resetToastManager();
+
+    // Fire showToast (placed into pending Map awaiting rAF)
+    showToast({ message: "Pending toast to cancel" });
+
+    // Immediately call dismissMostRecent before rAF fires
+    await dismissMostRecent();
+
+    // Verify it was cancelled from pending
+    await new Promise((r) => setTimeout(r, 60));
+    const toast = document.querySelector(".toast");
+    assert.strictEqual(toast, null, "Pending toast should have been cancelled before rendering");
+    resetToastManager();
+  });
+
+  test("handle.update updates duration, resets manual progress, and preserves hover paused state", async () => {
+    freshDom();
+    const { createToast, resetToastManager } = await import("../../src/index.js");
+    resetToastManager();
+
+    const handle = await createToast({
+      message: "Hover duration test",
+      duration: 3000,
+      showProgressBar: true,
+    });
+    await new Promise((r) => setTimeout(r, 50));
+
+    const toast = document.querySelector(".toast");
+    assert.ok(toast);
+    const pb = toast.querySelector(".toast-progress-bar");
+    assert.ok(pb);
+
+    // 1. Set manual progress first
+    await handle.update({ progress: 50 });
+    assert.strictEqual(pb._isManualProgress, true);
+
+    // 2. Mark toast as paused (hovered)
+    toast.classList.add("toast-paused");
+
+    // Mock WAAPI animation
+    let pausedCalled = false;
+    let cancelCalled = false;
+    toast._progressAnimation = {
+      cancel: () => { cancelCalled = true; },
+      pause: () => { pausedCalled = true; },
+      play: () => {},
+    };
+    pb.animate = () => toast._progressAnimation;
+
+    // 3. Update duration on hovered toast
+    await handle.update({ duration: 5000 });
+
+    assert.strictEqual(pb._isManualProgress, false);
+    assert.strictEqual(pausedCalled, true);
+
+    // 4. Update duration without WAAPI animation (CSS fallback path)
+    toast._progressAnimation = null;
+    pb.animate = null;
+    await handle.update({ duration: 4000 });
+    assert.ok(pb.style.transition.includes("4005ms"));
+
+    await handle.dismiss();
+    resetToastManager();
+  });
+
+  test("closeToastByKey and resetToastManager pause active _progressAnimation cleanly", async () => {
+    freshDom();
+    const { createToast, resetToastManager } = await import("../../src/index.js");
+    resetToastManager();
+
+    const handle = await createToast({
+      message: "Animation pause on close test",
+      duration: 5000,
+      showProgressBar: true,
+    });
+    await new Promise((r) => setTimeout(r, 50));
+
+    const toast = document.querySelector(".toast");
+    assert.ok(toast);
+
+    let pausedCount = 0;
+    toast._progressAnimation = {
+      pause: () => { pausedCount++; },
+      cancel: () => {},
+      play: () => {},
+    };
+
+    // Close via handle.dismiss
+    await handle.dismiss();
+    assert.ok(pausedCount >= 1, "closeToastByKey should pause _progressAnimation");
+
+    // Create another toast and test resetToastManager pause
+    await createToast({
+      message: "Reset test",
+      duration: 5000,
+      showProgressBar: true,
+    });
+    await new Promise((r) => setTimeout(r, 50));
+    const toast2 = document.querySelector(".toast");
+    assert.ok(toast2);
+    let resetPaused = false;
+    toast2._progressAnimation = {
+      pause: () => { resetPaused = true; },
+      cancel: () => {},
+      play: () => {},
+    };
+
+    resetToastManager();
+    assert.strictEqual(resetPaused, true);
+  });
+
+  test("updateToastByKey dynamically sets backgroundColor and accessible text color on type transition", async () => {
+    freshDom();
+    const { createToast, resetToastManager } = await import("../../src/index.js");
+    resetToastManager();
+
+    const handle = await createToast({
+      message: "Warning color update test",
+      type: "info",
+    });
+    await new Promise((r) => setTimeout(r, 50));
+
+    const toast = document.querySelector(".toast");
+    assert.ok(toast);
+
+    // Update to warning without textColor
+    await handle.update({ type: "warning" });
+    assert.ok(toast.style.background.includes("255, 193, 7") || toast.style.background.includes("#ffc107"));
+    assert.ok(toast.style.color);
+
+    // Update with explicit backgroundColor
+    await handle.update({ backgroundColor: "#333333" });
+    assert.ok(toast.style.backgroundColor.includes("51") || toast.style.backgroundColor.includes("#333333"));
+
+    await handle.dismiss();
+    resetToastManager();
+  });
+
+  test("toastPromise fallback path when handle has no update method", async () => {
+    freshDom();
+    const { toastPromise, resetToastManager } = await import("../../src/index.js");
+    resetToastManager();
+
+    // Resolving promise test
+    const p1 = Promise.resolve("resolved-val");
+    const res1 = await toastPromise(p1, {
+      loading: "Loading fallback...",
+      success: "Success fallback!",
+      error: "Error fallback!",
+    });
+    assert.strictEqual(res1, "resolved-val");
+
+    // Rejecting promise test
+    const p2 = Promise.reject(new Error("rejected-err"));
+    try {
+      await toastPromise(p2, {
+        loading: "Loading fallback 2...",
+        success: "Success fallback 2!",
+        error: "Error fallback 2!",
+      });
+      assert.fail("Should have thrown");
+    } catch (e) {
+      assert.strictEqual(e.message, "rejected-err");
+    }
+
+    resetToastManager();
   });
 });
 

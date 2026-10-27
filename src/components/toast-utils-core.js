@@ -464,6 +464,7 @@ export function createProgressBar(toast, options = {}) {
   progressBar._isRtl = isRtl;
 
   const progressBg = options.progressBarColor || options.progressColor || "currentColor";
+  const hasWaapi = typeof progressBar.animate === "function";
 
   if (!getConfig().disableInlineStyles) {
     Object.assign(progressBar.style, {
@@ -473,7 +474,7 @@ export function createProgressBar(toast, options = {}) {
       height: progressHeightStyle,
       background: progressBg,
       width: isReverse ? "0%" : `${finalWidth}`,
-      transition: `width ${progressDuration}ms linear`,
+      transition: hasWaapi ? "none" : `width ${progressDuration}ms linear`,
       [options.progressPosition === "top" ? "top" : "bottom"]: "0",
       borderRadius: `${progressHeightPx / 2}px`,
       opacity: "0.8",
@@ -801,7 +802,7 @@ export function attachFocusTrap(toast) {
     });
 
   const onKeyDown = (e) => {
-    if (e.key !== "Tab") return;
+    if (e.defaultPrevented || e.key !== "Tab") return;
     if (!toast.isConnected) return;
     const focusable = getFocusable();
     if (focusable.length === 0) return;

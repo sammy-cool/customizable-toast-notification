@@ -9,7 +9,6 @@ import {
   createUndoAction,
   createCloseButton,
   createProgressBar,
-  runToastAnimation,
   attachSwipeToDismiss,
   attachFocusTrap,
 } from "./toast-utils-core.js";
@@ -30,6 +29,7 @@ function getInitialTransform(position, animationType, isSpring) {
   const anim = String(animationType || "").toLowerCase().trim();
 
   if (anim === "fade") return "none";
+  if (anim === "pop") return "scale(0.6)";
   if (anim === "zoom" || anim === "scale") return "scale(0.75)";
   if (anim === "flip") return "perspective(600px) rotateX(45deg)";
   if (anim === "slide") {
@@ -73,7 +73,13 @@ export async function applyRichStyling(toast, options, onClose) {
   const customClass = typeof options?.className === "string" && options.className.trim()
     ? ` ${options.className.trim()}`
     : "";
-  toast.className = `toast toast-${options?.type ?? "info"}${customClass}`;
+  const animClass = animType ? ` toast-anim-${animType}` : "";
+  toast.className = `toast toast-${options?.type ?? "info"}${animClass}${customClass}`;
+
+  const themeToApply = options?.theme || config.theme;
+  if (themeToApply) {
+    toast.setAttribute("data-toast-theme", String(themeToApply).toLowerCase());
+  }
 
   const borderRadius =
     typeof options?.borderRadius === "number"
@@ -264,8 +270,6 @@ export async function applyRichStyling(toast, options, onClose) {
   if (options?.trapFocus ?? config.trapFocus) {
     attachFocusTrap(toast);
   }
-
-  runToastAnimation(toast);
 }
 
 /**
