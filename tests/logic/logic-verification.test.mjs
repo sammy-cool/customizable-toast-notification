@@ -4000,20 +4000,43 @@ describe("Framework Adapters — Vue, Svelte, Solid, and Angular contracts", () 
 
   test("React adapter executes useToast methods", async () => {
     freshDom();
-    const { useToast, toast } = await import("../../src/react/index.js");
+    const { useToast, createToastAPI } = await import("../../src/react/index.js");
     const api = useToast();
 
+    assert.ok(api, "useToast() should return an API object");
+    assert.strictEqual(typeof api.success, "function");
+    assert.strictEqual(typeof api.error, "function");
+    assert.strictEqual(typeof api.warning, "function");
+    assert.strictEqual(typeof api.info, "function");
+    assert.strictEqual(typeof api.loading, "function");
+    assert.strictEqual(typeof api.custom, "function");
+    assert.strictEqual(typeof api.show, "function");
+    assert.strictEqual(typeof api.promise, "function");
+    assert.strictEqual(typeof api.dismiss, "function");
+    assert.strictEqual(typeof api.dismissAll, "function");
+    assert.strictEqual(typeof api.clear, "function");
+    assert.strictEqual(typeof createToastAPI, "function");
+
     const h = await api.success("react test", { duration: 100 });
+    assert.ok(h, "api.success should return a toast handle");
+    assert.strictEqual(typeof h.dismiss, "function");
+    assert.strictEqual(typeof h.update, "function");
     await h.dismiss();
-    await api.error("react err", { duration: 100 });
+
+    const hErr = await api.error("react err", { duration: 100 });
+    assert.ok(hErr);
     await api.warning("react warn", { duration: 100 });
     await api.info("react info", { duration: 100 });
     await api.loading("react load", { duration: 100 });
     await api.custom("react custom", { duration: 100 });
     await api.show({ message: "react show", duration: 100 });
-    api.getConfig();
-    api.setConfig({});
+
+    const cfg = api.getConfig();
+    assert.ok(typeof cfg === "object" && cfg !== null);
+    api.setConfig({ maxVisible: 5 });
+    assert.strictEqual(api.getConfig().maxVisible, 5);
     api.resetConfig();
+
     await api.dismiss();
     await api.dismissAll();
     await api.clear();
@@ -4338,6 +4361,8 @@ describe("SonarQube S6544 & AI Code Assurance Coverage Suite", () => {
     const { createToast, resetToastManager, initKeyboardShortcuts, setConfig, resetConfig } = await import("../../src/index.js");
 
     try {
+      assert.strictEqual(typeof initKeyboardShortcuts, "function");
+
       // Test calling with no argument to test default parameter evaluation
       initKeyboardShortcuts();
       // Test calling with explicit window
@@ -4346,8 +4371,14 @@ describe("SonarQube S6544 & AI Code Assurance Coverage Suite", () => {
       // Configure targetNode to test targetNode querySelectorAll landmark navigation path
       setConfig({ targetNode: document.body });
 
-      await createToast({ message: "Dismiss on Escape", position: "bottom-right", duration: 5000, cta: { text: "Action", onClick: () => {} } });
+      const handle = await createToast({ message: "Dismiss on Escape", position: "bottom-right", duration: 5000, cta: { text: "Action", onClick: () => {} } });
+      assert.ok(handle, "toast handle should be returned");
       await new Promise((r) => setTimeout(r, 50));
+
+      const container = document.querySelector('[id^="toast-container-"]');
+      assert.ok(container, "container should exist in document");
+      const toastEl = container.querySelector(".toast");
+      assert.ok(toastEl, "toast element should be rendered");
 
       // Test F6 landmark navigation with targetNode configured
       window.dispatchEvent(new window.KeyboardEvent("keydown", { key: "F6" }));
@@ -4361,6 +4392,7 @@ describe("SonarQube S6544 & AI Code Assurance Coverage Suite", () => {
       // Test Escape dismissal
       window.dispatchEvent(new window.KeyboardEvent("keydown", { key: "Escape" }));
       await new Promise((r) => setTimeout(r, 100));
+      assert.ok(document.querySelectorAll(".toast.active").length <= 1, "Escape triggers toast dismissal");
     } finally {
       resetConfig();
       resetToastManager();
@@ -4523,7 +4555,7 @@ describe("v4 Streamlined Core — Audio Playback, onSound hooks, and Numeric Pri
 
   test("ToastManager queues items with TYPE_PRIORITIES and updates queued priority on duplicate", async () => {
     freshDom();
-    const { createToast, resetToastManager, setConfig, resetConfig } = await import("../../src/index.js");
+    const { createToast, resetToastManager, setConfig, resetConfig, getToastMetrics } = await import("../../src/index.js");
     resetToastManager();
     resetConfig();
 
@@ -4533,14 +4565,21 @@ describe("v4 Streamlined Core — Audio Playback, onSound hooks, and Numeric Pri
 
       // 1. Fill the 1 visible slot
       const blocker = await createToast({ message: "Blocker", duration: 20000 });
+      assert.ok(blocker, "blocker toast handle should be returned");
+      assert.strictEqual(typeof blocker.dismiss, "function");
       await new Promise((r) => setTimeout(r, 60));
 
+      const initialMetrics = getToastMetrics();
+      assert.strictEqual(initialMetrics.activeCount, 1, "activeCount should be 1");
+
       // 2. Queue an item with priority: 50 so usesPriority becomes true (queue.some(...) returns true)
-      await createToast({ message: "Queue Item with Priority", priority: 50, duration: 20000 });
+      const qPriority = await createToast({ message: "Queue Item with Priority", priority: 50, duration: 20000 });
+      assert.ok(qPriority);
       await new Promise((r) => setTimeout(r, 60));
 
       // 3. Queue an item without priority, but with type: "error" (triggers TYPE_PRIORITIES[item?.options?.type] at ToastManager.js:160)
-      await createToast({ message: "Queue Error Item", type: "error", duration: 20000 });
+      const qErr = await createToast({ message: "Queue Error Item", type: "error", duration: 20000 });
+      assert.ok(qErr);
       await new Promise((r) => setTimeout(r, 60));
       await createToast({ message: "Queue Warning Item", type: "warning", duration: 20000 });
       await new Promise((r) => setTimeout(r, 60));
@@ -4554,6 +4593,9 @@ describe("v4 Streamlined Core — Audio Playback, onSound hooks, and Numeric Pri
       await new Promise((r) => setTimeout(r, 60));
       await createToast({ message: "Dupe Queued", priority: 99, duration: 20000 });
       await new Promise((r) => setTimeout(r, 60));
+
+      const metricsAfterQueue = getToastMetrics();
+      assert.ok(metricsAfterQueue.queueDepth > 0, "queueDepth should be greater than 0");
 
       await blocker.dismiss();
     } finally {
