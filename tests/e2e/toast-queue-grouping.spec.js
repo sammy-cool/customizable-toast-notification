@@ -57,27 +57,24 @@ test.describe("queue management (MAX_VISIBLE = 3)", () => {
         duration: 60000,
       });
     });
-    await page.waitForTimeout(50);
+    await expect(page.locator('.toast-message:has-text("first (oldest)")')).toBeVisible();
+
     await page.evaluate(() => {
       window.customizableToast.createToast({
         message: "second (newest)",
         duration: 60000,
       });
     });
-    await page.waitForTimeout(50);
+    await expect(page.locator('.toast-message:has-text("second (newest)")')).toBeVisible();
 
     await page.evaluate(() => window.customizableToast.dismiss());
     await page.waitForTimeout(300);
 
     const remaining = page.locator('[id^="toast-container-"] [id^="toast-"]');
     await expect(remaining).toHaveCount(1);
-    // TEST FIX (round 4): this assertion had the polarity backwards.
     // dismissMostRecent() removes the MOST RECENT toast ("second
     // (newest)") — so the toast left BEHIND should be the OLDEST one
-    // ("first (oldest)"), not the newest. Verified against the actual
-    // built dist/index.umd.js bundle directly (not just raw source): after
-    // dismiss(), exactly "first (oldest)" remains — the fix is working
-    // correctly, this test was just asserting the wrong survivor.
+    // ("first (oldest)"), not the newest.
     await expect(remaining).toContainText("first (oldest)");
   });
 });

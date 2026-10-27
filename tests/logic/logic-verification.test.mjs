@@ -5019,8 +5019,106 @@ describe("v4 Streamlined Core — Audio Playback, onSound hooks, and Numeric Pri
   });
 });
 
+describe("Multi-Configuration & Comprehensive Subsystem Conflict Fortification", () => {
+  test("attachFocusTrap restores focus to previously active element on dismissal", async () => {
+    freshDom();
+    const { attachFocusTrap } = await import(
+      "../../src/components/toast-utils-core.js?fresh=" + Date.now() + Math.random()
+    );
 
+    const triggerBtn = document.createElement("button");
+    triggerBtn.textContent = "Trigger";
+    document.body.appendChild(triggerBtn);
+    triggerBtn.focus();
+    assert.equal(document.activeElement, triggerBtn);
 
+    const toast = document.createElement("div");
+    const closeBtn = document.createElement("button");
+    closeBtn.textContent = "Close";
+    toast.appendChild(closeBtn);
+    document.body.appendChild(toast);
+
+    const cleanup = attachFocusTrap(toast);
+    await new Promise((r) => setTimeout(r, 50));
+    assert.equal(document.activeElement, closeBtn);
+
+    cleanup();
+    assert.equal(document.activeElement, triggerBtn, "Focus should be restored to trigger button");
+    triggerBtn.remove();
+    toast.remove();
+  });
+
+  test("updateToastByKey dynamically updates CTA and close button margins when fontDirection toggles", async () => {
+    freshDom();
+    const { createToast, resetToastManager } = await import(
+      "../../src/index.js?fresh=" + Date.now() + Math.random()
+    );
+
+    const handle = await createToast({
+      message: "RTL Toggle Test",
+      cta: { label: "Action" },
+      showCloseButton: true,
+      fontDirection: "ltr",
+      duration: 60000,
+    });
+    await new Promise((r) => setTimeout(r, 60));
+
+    const ctaBtn = document.querySelector(".toast-cta");
+    const closeBtn = document.querySelector(".toast-close-btn");
+    assert.ok(ctaBtn);
+    assert.ok(closeBtn);
+    assert.equal(ctaBtn.style.marginLeft, "10px");
+    assert.equal(ctaBtn.style.marginRight, "0px");
+
+    await handle.update({ fontDirection: "rtl" });
+    assert.equal(ctaBtn.style.marginLeft, "0px");
+    assert.equal(ctaBtn.style.marginRight, "10px");
+    assert.equal(closeBtn.style.marginLeft, "0px");
+    assert.equal(closeBtn.style.marginRight, "10px");
+
+    await handle.dismiss();
+    resetToastManager();
+  });
+
+  test("Shadow DOM container includes encapsulated stacked card deck styles", async () => {
+    freshDom();
+    const { getOrCreateToastContainer, resetContainerRegistry } = await import(
+      "../../src/utils/containerRegistry.js?fresh=" + Date.now() + Math.random()
+    );
+
+    const container = await getOrCreateToastContainer({ shadowDom: true });
+    const host = document.querySelector("#toast-shadow-host");
+    assert.ok(host && host.shadowRoot);
+    const styleEl = host.shadowRoot.querySelector("style[data-toast-shadow-style]");
+    assert.ok(styleEl);
+    assert.ok(styleEl.textContent.includes(".toast-container-base"));
+    assert.ok(styleEl.textContent.includes('[data-stacked="true"]'));
+    resetContainerRegistry();
+  });
+
+  test("attachSwipeToDismiss clears transform to 'none' on snapback", async () => {
+    freshDom();
+    const { attachSwipeToDismiss } = await import(
+      "../../src/components/toast-utils-core.js?fresh=" + Date.now() + Math.random()
+    );
+
+    const toast = document.createElement("div");
+    document.body.appendChild(toast);
+    attachSwipeToDismiss(toast);
+
+    const MouseEv = window.MouseEvent || Event;
+    toast.dispatchEvent(new MouseEv("mousedown", { clientX: 100, clientY: 100, button: 0 }));
+    window.dispatchEvent(new MouseEv("mousemove", { clientX: 120, clientY: 100 }));
+    window.dispatchEvent(new MouseEv("mouseup"));
+
+    assert.equal(toast.style.transform, "translateX(0)");
+    await new Promise((r) => setTimeout(r, 220));
+    assert.equal(toast.style.transform, "none");
+
+    toast._cleanupSwipe?.();
+    toast.remove();
+  });
+});
 
 
 

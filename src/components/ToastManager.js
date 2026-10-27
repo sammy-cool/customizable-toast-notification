@@ -715,7 +715,7 @@ async function setupPauseOnHover(data) {
   };
 
   const onFocusIn = (e) => {
-    if (e.target.matches("[tabindex], div, span, button, a")) {
+    if (e?.target && typeof e.target.matches === "function" && e.target.matches("[tabindex], div, span, button, a")) {
       timer.pause();
       pauseProgressBar();
       toast?._pauseUndo?.();
@@ -1244,6 +1244,11 @@ export async function updateToastByKey(key, newOptions = {}) {
     const dir = newOptions.fontDirection !== "auto" ? newOptions.fontDirection : "";
     toast.style.direction = dir;
     if (messageSpan) messageSpan.style.direction = dir;
+    const isRtl = dir === "rtl";
+    toast.querySelectorAll(".toast-cta, .toast-undo-btn, .toast-close-btn").forEach((btn) => {
+      btn.style.marginLeft = isRtl ? "0px" : "10px";
+      btn.style.marginRight = isRtl ? "10px" : "0px";
+    });
   }
 
   if (newOptions.fontSize !== undefined) {

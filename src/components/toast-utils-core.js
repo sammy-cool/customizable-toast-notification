@@ -725,6 +725,7 @@ export function attachSwipeToDismiss(toast, onClose) {
           if (toast._snapbackTimer) clearTimeout(toast._snapbackTimer);
           toast._snapbackTimer = setTimeout(() => {
             toast._snapbackTimer = null;
+            toast.style.transform = "none";
             if (toast._originalTransition) {
               toast.style.transition = toast._originalTransition;
             }
@@ -771,6 +772,11 @@ export function attachSwipeToDismiss(toast, onClose) {
 export function attachFocusTrap(toast) {
   if (!toast || typeof toast.querySelectorAll !== "function") return null;
 
+  const previouslyFocused =
+    typeof document !== "undefined" && document.activeElement && document.activeElement !== document.body
+      ? document.activeElement
+      : null;
+
   const getFocusable = () =>
     Array.from(
       toast.querySelectorAll(
@@ -794,7 +800,7 @@ export function attachFocusTrap(toast) {
 
   const onKeyDown = (e) => {
     if (e.key !== "Tab") return;
-    if (!toast.isConnected && toast.parentNode !== document.body) return;
+    if (!toast.isConnected) return;
     const focusable = getFocusable();
     if (focusable.length === 0) return;
 
@@ -832,6 +838,11 @@ export function attachFocusTrap(toast) {
     toast.removeEventListener("keydown", onKeyDown);
     if (typeof document !== "undefined") {
       document.removeEventListener("keydown", onKeyDown);
+    }
+    if (previouslyFocused && typeof previouslyFocused.focus === "function" && previouslyFocused.isConnected) {
+      try {
+        previouslyFocused.focus();
+      } catch {}
     }
   };
 
