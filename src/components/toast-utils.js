@@ -57,7 +57,8 @@ function getInitialTransform(position, animationType, isSpring) {
 
 export async function applyRichStyling(toast, options, onClose) {
   const config = getConfig();
-  const isSpring = Boolean(options?.spring);
+  const animType = String(options?.animationType || "").toLowerCase().trim();
+  const isSpring = Boolean(options?.spring) || animType === "spring";
   const durationMs = isSpring
     ? 400
     : await parseAnimationDuration(options?.animationDuration);

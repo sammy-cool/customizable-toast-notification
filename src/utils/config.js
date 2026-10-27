@@ -32,7 +32,6 @@
  * @property {boolean} stacked
  * @property {boolean} swipeToDismiss
  * @property {boolean} sound
- * @property {'modern' | 'retro' | 'futuristic' | 'subtle' | 'bell' | string} [soundPreset]
  * @property {boolean} [icon]
  * @property {boolean} [pauseOnHover]
  * @property {boolean} syncTabs

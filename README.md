@@ -203,6 +203,7 @@ auto-dismissed on its own — they no-op gracefully rather than throwing. You ca
 | `showProgressBar`   | `boolean`          | `true`                          | Show countdown progress bar                                                    |
 | `animationDuration` | `string`           | `"0.4s"`                        | CSS animation duration                                                         |
 | `animationEasing`   | `string`           | `"ease"`                        | CSS animation easing function                                                  |
+| `animationType`     | `string`           | `"default"`                     | Entrance & exit animation: `"default"`, `"fade"`, `"slide"`, `"zoom"`, `"bounce"`, `"spring"`, `"flip"` |
 | `progressColor`     | `string`           | Falls back to `textColor`       | Progress bar color                                                             |
 | `progressHeight`    | `string`           | `"4px"`                         | Progress bar height                                                            |
 | `progressPosition`  | `string`           | `"bottom"`                      | Progress bar position: `"top"` or `"bottom"`                                   |
@@ -584,7 +585,7 @@ if (shouldReduceMotion()) {
 | `theme`                | `"light" \| "dark" \| "high-contrast" \| "compact" \| "spacious" \| "glass"` | `"light"` | Built-in CSS theme applied via `data-toast-theme` on document root.                                  |
 | `stacked`              | `boolean`                         | `false`           | Enable iOS-style 3D card deck layout with depth scaling and hover expansion.                                     |
 | `swipeToDismiss`       | `boolean`                         | `true`            | Enable touch / mouse drag swipe gesture to dismiss toasts with spring snap-back physics.                         |
-| `sound`                | `boolean`                         | `true`            | Enable sound notification support (audio URLs or `onSound` callbacks).                                            |
+| `sound`                | `boolean`                         | `false`           | Enable sound notification support (audio URLs or `onSound` callbacks).                                            |
 | `pauseOnHover`         | `boolean`                         | `false`           | When `true`, automatically pauses countdown timers for all toasts on mouse hover or keyboard focus.               |
 | `syncTabs`             | `boolean`                         | `false`           | Synchronize toast notifications across browser tabs using BroadcastChannel.                                      |
 | `aiPrioritization`     | `boolean`                         | `false`           | Enable offline content-aware queue priority sorting (critical alerts jump ahead of routine messages).            |

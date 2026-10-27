@@ -68,17 +68,6 @@ import {
  */
 
 /**
- * @typedef {Object} SpringConfig
- * @property {number} [stiffness=100] - Spring stiffness constant (k > 0)
- * @property {number} [damping=10] - Damping friction coefficient (c > 0)
- * @property {number} [mass=1] - Inertial mass (m > 0)
- */
-
-/**
- * @typedef {'default' | 'gentle' | 'wobbly' | 'stiff' | 'bouncy' | string} SpringPreset
- */
-
-/**
  * @typedef {Object} ToastLoaderOptions
  * @property {number} [size] - Spinner size in pixels (default 14)
  * @property {string} [color] - Spinner SVG stroke color (default 'currentColor')
@@ -87,6 +76,7 @@ import {
 
 /**
  * @typedef {Object} ToastOptions
+ * @property {string} [id] - Optional custom unique identifier for the toast notification
  * @property {string} [message]
  * @property {ToastType} [type]
  * @property {number} [duration]
@@ -98,7 +88,7 @@ import {
  * @property {boolean} [showProgressBar]
  * @property {string} [animationDuration]
  * @property {string} [animationEasing]
- * @property {'default' | 'fade' | 'slide' | 'zoom' | 'bounce' | 'flip' | string} [animationType]
+ * @property {'default' | 'fade' | 'slide' | 'zoom' | 'bounce' | 'flip' | 'spring' | string} [animationType]
  * @property {string} [progressColor]
  * @property {string} [progressBarColor]
  * @property {string} [progressHeight]
@@ -120,10 +110,10 @@ import {
  * @property {string} [className]
  * @property {CTAOptions | CTAOptions[]} [cta]
  * @property {((e: MouseEvent, toast: HTMLElement) => void | Promise<void>) | UndoOptions} [undo]
- * @property {boolean | SpringPreset | SpringConfig} [spring]
+ * @property {boolean} [spring]
  * @property {boolean} [stacked]
- * @property {boolean | 'success' | 'error' | 'warning' | 'info' | 'pop' | string} [sound]
- * @property {SoundPreset} [soundPreset]
+ * @property {boolean | string} [sound]
+ * @property {((options: ToastOptions) => void)} [onSound] - Sound playback handler callback
  * @property {boolean | string | HTMLElement | ((options: ToastOptions) => boolean | string | HTMLElement | null | undefined)} [icon]
  * @property {boolean} [swipeToDismiss]
  * @property {number | string | 'indeterminate'} [progress]
@@ -132,11 +122,12 @@ import {
  * @property {boolean} [syncDismiss]
  * @property {boolean} [aiPrioritization]
  * @property {number} [priority]
- * @property {boolean} [usePool]
  * @property {string} [tag] - Optional thread/tag identifier for replacement/updating
  * @property {string} [groupId] - Optional group identifier for grouping related toasts
  * @property {boolean} [trapFocus] - Whether to trap keyboard Tab focus within the toast
  * @property {boolean} [shadowDom] - Whether to isolate the container in an attached Shadow DOM root
+ * @property {'alert' | 'status' | string} [role] - ARIA role attribute (default: 'alert')
+ * @property {'polite' | 'assertive' | 'off'} [ariaLive] - ARIA live region politeness
  */
 
 /**
@@ -185,7 +176,8 @@ import {
  * @property {boolean} [stacked]
  * @property {boolean} [swipeToDismiss]
  * @property {boolean} [sound]
- * @property {SoundPreset} [soundPreset]
+ * @property {boolean} [icon]
+ * @property {boolean} [pauseOnHover]
  * @property {boolean} [syncTabs]
  * @property {boolean} [aiPrioritization]
  * @property {boolean} [shadowDom]

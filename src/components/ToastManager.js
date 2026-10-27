@@ -864,7 +864,7 @@ export async function closeToastByKey(key, fromSync = false) {
             exitTransform = isLeft ? "translateX(-100%)" : isRight ? "translateX(100%)" : isTop ? "translateY(-100%)" : "translateY(100%)";
           } else if (anim === "bounce") {
             exitTransform = isTop ? "translateY(-36px) scale(0.9)" : "translateY(36px) scale(0.9)";
-          } else if (data.options?.spring) {
+          } else if (data.options?.spring || anim === "spring") {
             exitTransform = isTop ? "translateY(-28px) scale(0.94)" : "translateY(28px) scale(0.94)";
           }
 
