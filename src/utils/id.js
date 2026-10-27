@@ -12,13 +12,13 @@ export function generateSalt(customCrypto = typeof globalThis !== "undefined" ? 
   if (customCrypto && typeof customCrypto.getRandomValues === "function") {
     const arr = new Uint16Array(1);
     customCrypto.getRandomValues(arr);
-    return arr[0].toString(36).padStart(3, "0");
+    return arr[0].toString(36).padStart(3, "0").slice(-3);
   }
   const highRes = typeof performance !== "undefined" && typeof performance.now === "function"
     ? Math.floor(performance.now() * 1000)
     : 0;
   const entropy = (Date.now() ^ highRes) & 0xffff;
-  return entropy.toString(36).padStart(3, "0");
+  return entropy.toString(36).padStart(3, "0").slice(-3);
 }
 const sessionSalt = generateSalt();
 
