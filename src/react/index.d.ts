@@ -24,8 +24,6 @@ export interface UseToastAPI {
   setConfig: (options?: Partial<ToastGlobalConfig>) => ToastGlobalConfig;
   getConfig: () => ToastGlobalConfig;
   resetConfig: () => ToastGlobalConfig;
-  setLocale: (locale: string) => string;
-  getLocale: () => string;
 }
 
 /**
@@ -43,6 +41,4 @@ export {
   setConfig,
   getConfig,
   resetConfig,
-  setLocale,
-  getLocale,
 } from '../index.js';

@@ -34,8 +34,7 @@
  * @property {boolean} sound
  * @property {boolean} [icon]
  * @property {boolean} [pauseOnHover]
- * @property {boolean} syncTabs
- * @property {boolean} aiPrioritization
+ * @property {boolean} priorityQueue
  * @property {boolean} [shadowDom]
  * @property {boolean} [trapFocus]
  * @property {boolean} [debug]
@@ -57,8 +56,7 @@ const DEFAULT_GLOBAL_CONFIG = Object.freeze({
   sound: false,
   icon: true,
   pauseOnHover: false,
-  syncTabs: false,
-  aiPrioritization: false,
+  priorityQueue: false,
   shadowDom: false,
   trapFocus: false,
   priorityScorer: null,
@@ -96,8 +94,7 @@ export function setConfig(options = {}) {
     sound,
     icon,
     pauseOnHover,
-    syncTabs,
-    aiPrioritization,
+    priorityQueue,
     shadowDom,
     trapFocus,
     priorityScorer,
@@ -200,12 +197,8 @@ export function setConfig(options = {}) {
     globalConfig.pauseOnHover = Boolean(pauseOnHover);
   }
 
-  if (syncTabs !== undefined) {
-    globalConfig.syncTabs = Boolean(syncTabs);
-  }
-
-  if (aiPrioritization !== undefined) {
-    globalConfig.aiPrioritization = Boolean(aiPrioritization);
+  if (priorityQueue !== undefined) {
+    globalConfig.priorityQueue = Boolean(priorityQueue);
   }
 
   if (priorityScorer !== undefined) {

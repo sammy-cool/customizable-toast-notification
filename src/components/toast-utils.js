@@ -15,7 +15,6 @@ import {
 } from "./toast-utils-core.js";
 import { getConfig } from "../utils/config.js";
 import { createToastIcon } from "./icons.js";
-import { isRtlLocale } from "../utils/i18n.js";
 
 /**
  * Applies rich styling and content to a toast element.
@@ -114,8 +113,6 @@ export async function applyRichStyling(toast, options, onClose) {
       direction:
         options?.fontDirection && options.fontDirection !== "auto"
           ? options.fontDirection
-          : isRtlLocale()
-          ? "rtl"
           : undefined,
     });
   }

@@ -14,23 +14,7 @@ import {
 import { getOrCreateToastContainer, resetContainerRegistry } from "./utils/containerRegistry.js";
 import { getDynamicAccessibleTextColorHex } from "./utils/dom.js";
 import { setPosition } from "./utils/position.js";
-import { getToastBroadcaster, resetToastBroadcaster } from "./utils/toast-broadcast.js";
 import { generateToastId, resetToastIdCounter } from "./utils/id.js";
-import {
-  setLocale,
-  getLocale,
-  getAvailableLocales,
-  registerLocale,
-  getLocaleMessage,
-  isRtlLocale,
-  resetLocale,
-} from "./utils/i18n.js";
-import {
-  getToastHistory,
-  clearToastHistory,
-  setHistoryCapacity,
-  resetToastHistory,
-} from "./utils/history.js";
 
 /**
  * @typedef {'modern' | 'retro' | 'futuristic' | 'subtle' | 'bell' | string} SoundPreset
@@ -118,10 +102,8 @@ import {
  * @property {boolean} [swipeToDismiss]
  * @property {number | string | 'indeterminate'} [progress]
  * @property {boolean} [progressNormalized]
- * @property {boolean} [syncTabs]
- * @property {boolean} [syncDismiss]
- * @property {boolean} [aiPrioritization]
- * @property {number} [priority]
+ * @property {boolean} [priorityQueue] - Whether to sort toasts by priority
+ * @property {number} [priority] - Numeric priority score (higher = shown sooner)
  * @property {string} [tag] - Optional thread/tag identifier for replacement/updating
  * @property {string} [groupId] - Optional group identifier for grouping related toasts
  * @property {boolean} [trapFocus] - Whether to trap keyboard Tab focus within the toast
@@ -130,17 +112,6 @@ import {
  * @property {'polite' | 'assertive' | 'off'} [ariaLive] - ARIA live region politeness
  */
 
-/**
- * @typedef {Object} ToastHistoryEntry
- * @property {string} id - Unique toast key or identifier
- * @property {string} message - Notification text message
- * @property {ToastType} type - Notification status type
- * @property {string} position - Toast placement coordinates
- * @property {number} timestamp - Unix timestamp (ms) when created
- * @property {number} [dismissedAt] - Unix timestamp (ms) when dismissed
- * @property {'active' | 'dismissed' | 'dropped'} status - Current lifecycle status
- * @property {Record<string, unknown>} [options] - Snapshot of configured options
- */
 
 /**
  * @typedef {'auto' | 'always' | 'never'} ReducedMotionMode
@@ -178,8 +149,7 @@ import {
  * @property {boolean} [sound]
  * @property {boolean} [icon]
  * @property {boolean} [pauseOnHover]
- * @property {boolean} [syncTabs]
- * @property {boolean} [aiPrioritization]
+ * @property {boolean} [priorityQueue]
  * @property {boolean} [shadowDom]
  * @property {boolean} [trapFocus]
  * @property {boolean} [debug]
@@ -206,6 +176,14 @@ let defaultColors = {
   error: "#dc3545",
   warning: "#ffc107",
   info: "#17a2b8",
+};
+
+const DEFAULT_TYPE_MESSAGES = {
+  success: "Operation completed successfully!",
+  error: "Something went wrong!",
+  warning: "Warning message!",
+  info: "Information message!",
+  loading: "Loading, please wait...",
 };
 
 let customDefaultMessages = {};
@@ -384,17 +362,11 @@ async function sanitizeToastOptions(rawOptions) {
     final.message =
       final.message ||
       customDefaultMessages[final.type] ||
-      getLocaleMessage(final.type) ||
+      DEFAULT_TYPE_MESSAGES[final.type] ||
       "No Message Provided!";
   } catch (error) {
     console.warn("Default message resolution failed:", error);
   }
-
-  try {
-    if ((!final.fontDirection || final.fontDirection === "auto") && isRtlLocale()) {
-      final.fontDirection = "rtl";
-    }
-  } catch {}
 
   try {
     if (!final.textColor && final.backgroundColor) {
@@ -759,8 +731,6 @@ createToastWithPriority.promise = toastPromise;
 createToastWithPriority.dismiss = dismissToast;
 createToastWithPriority.dismissAll = noopAll;
 createToastWithPriority.clear = noopAll;
-createToastWithPriority.getHistory = getToastHistory;
-createToastWithPriority.clearHistory = clearToastHistory;
 
 /** @type {string} */
 const version = typeof __VERSION__ !== "undefined" ? __VERSION__ : "3.20.2";
@@ -775,20 +745,9 @@ export {
   resetToastManager,
   resetContainerRegistry,
   updateToastByKey,
-  getToastBroadcaster,
-  resetToastBroadcaster,
   generateToastId,
   resetToastIdCounter,
   getToastMetrics,
-  setLocale,
-  getLocale,
-  getAvailableLocales,
-  registerLocale,
-  resetLocale,
-  getToastHistory,
-  clearToastHistory,
-  setHistoryCapacity,
-  resetToastHistory,
 };
 
 /**
@@ -866,20 +825,9 @@ try {
       toastPromise,
       promise: toastPromise,
       updateToastByKey,
-      getToastBroadcaster,
-      resetToastBroadcaster,
       generateToastId,
       resetToastIdCounter,
       getToastMetrics,
-      setLocale,
-      getLocale,
-      getAvailableLocales,
-      registerLocale,
-      resetLocale,
-      getToastHistory,
-      clearToastHistory,
-      setHistoryCapacity,
-      resetToastHistory,
       initKeyboardShortcuts,
     };
   }

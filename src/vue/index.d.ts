@@ -3,7 +3,6 @@ import type {
   ToastHandle,
   ToastPromiseMessages,
   ToastGlobalConfig,
-  ToastHistoryEntry,
 } from '../index.js';
 
 export interface UseToastAPI {
@@ -25,10 +24,6 @@ export interface UseToastAPI {
   setConfig: (options?: Partial<ToastGlobalConfig>) => ToastGlobalConfig;
   getConfig: () => ToastGlobalConfig;
   resetConfig: () => ToastGlobalConfig;
-  setLocale: (locale: string) => string;
-  getLocale: () => string;
-  getHistory: () => ToastHistoryEntry[];
-  clearHistory: () => void;
 }
 
 /**
@@ -47,8 +42,4 @@ export {
   setConfig,
   getConfig,
   resetConfig,
-  setLocale,
-  getLocale,
-  getToastHistory,
-  clearToastHistory,
 } from '../index.js';

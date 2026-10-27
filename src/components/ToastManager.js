@@ -11,16 +11,6 @@ import { createProgressBar, createCTA, createUndoAction, createCloseButton, runT
 import { createLoader } from "./loader.js";
 import { createToastIcon } from "./icons.js";
 import { getConfig, shouldReduceMotion } from "../utils/config.js";
-import { getToastBroadcaster } from "../utils/toast-broadcast.js";
-import {
-  recordToastHistory,
-  markToastHistoryDismissed,
-  markToastHistoryDropped,
-  getToastHistory,
-  clearToastHistory,
-  setHistoryCapacity,
-  resetToastHistory,
-} from "../utils/history.js";
 
 
 const active = new Map();
@@ -58,75 +48,7 @@ function emitMetrics() {
 }
 
 
-// Cross-tab toast synchronization
-let broadcaster = getToastBroadcaster();
-
-export function initBroadcastListeners() {
-  broadcaster = getToastBroadcaster();
-  if (!broadcaster.isSupported() || typeof window === 'undefined') return;
-
-  broadcaster.registerActiveToastsGetter(() => Array.from(active.keys()));
-  broadcaster.registerQueuedToastsGetter(() => queue.map(item => ({
-    key: item.key,
-    options: item.options,
-    count: item.count
-  })));
-
-  broadcaster.on('create', ({ toastId, payload }) => {
-    if (!getConfig().syncTabs) return;
-    // Another tab created a toast - show it in this tab
-    if (toastId && payload && !active.has(toastId) && !pending.has(toastId)) {
-      void showToast({ ...payload.options, fromSync: true }).catch(console.error);
-    }
-  });
-
-  broadcaster.on('update', ({ toastId, payload }) => {
-    if (!getConfig().syncTabs) return;
-    // Another tab updated a toast - update in this tab
-    if (toastId && payload && active.has(toastId)) {
-      const data = active.get(toastId);
-      if (data && payload.count !== undefined && data.count !== payload.count) {
-        data.count = payload.count;
-        void updateBadge(data).catch(console.error);
-      }
-      if (payload.newOptions && typeof payload.newOptions === "object") {
-        void updateToastByKey(toastId, { ...payload.newOptions, fromSync: true }).catch(console.error);
-      }
-    }
-  });
-
-  broadcaster.on('dismiss', ({ toastId }) => {
-    if (!getConfig().syncTabs) return;
-    // Another tab dismissed a toast - dismiss in this tab without re-broadcasting
-    if (!toastId) return;
-    if (active.has(toastId) || pending.has(toastId)) {
-      void closeToastByKey(toastId, true).catch(console.error);
-    } else {
-      // If the toast was buffered in queue in this tab, purge it so it doesn't pop up later
-      const qIdx = queue.findIndex((item) => item.key === toastId);
-      if (qIdx !== -1) {
-        queue.splice(qIdx, 1);
-        emitMetrics();
-      }
-    }
-  });
-
-  broadcaster.on('sync-response', ({ payload }) => {
-    if (!getConfig().syncTabs) return;
-    // Another tab responded with its toast state
-    if (payload && Array.isArray(payload.queue)) {
-      for (const item of payload.queue) {
-        if (item?.options && !active.has(item.key) && !pending.has(item.key)) {
-          void showToast({ ...item.options, fromSync: true }).catch(console.error);
-        }
-      }
-    }
-  });
-}
-
-initBroadcastListeners();
-
-// AI Priority Queue Manager - Initialized with default settings
+// Priority Queue Manager - Standard numeric priority scoring
 
 /**
  * Numeric priority score for a queued toast item (higher = shown sooner).
@@ -308,10 +230,6 @@ export async function showToast(options = {}) {
       await updateBadge(data);
       emitMetrics();
 
-      // Broadcast update to other tabs if not from sync
-      if (!options.fromSync && options.syncTabs !== false && getConfig().syncTabs && broadcaster.isSupported()) {
-        broadcaster.broadcast('update', key, { count: data.count });
-      }
       return key;
     }
 
@@ -338,7 +256,6 @@ export async function showToast(options = {}) {
         const maxQ = getConfig().maxQueueSize ?? 100;
         if (maxQ <= 0) {
           droppedCount++;
-          markToastHistoryDropped(key, current.options);
           emitMetrics();
           return;
         }
@@ -378,16 +295,13 @@ export async function showToast(options = {}) {
 
             if (incomingPriority <= lowestPriority) {
               droppedCount++;
-              markToastHistoryDropped(key, current.options);
               emitMetrics();
               return;
             }
 
-            const removed = queue.splice(lowestIndex, 1)[0];
-            if (removed) markToastHistoryDropped(removed.key, removed.options);
+            queue.splice(lowestIndex, 1);
           } else {
-            const removed = queue.shift();
-            if (removed) markToastHistoryDropped(removed.key, removed.options);
+            queue.shift();
           }
           droppedCount++;
         }
@@ -407,11 +321,6 @@ export async function showToast(options = {}) {
         console.error("showToast failed:", error);
       }
     });
-
-    // Broadcast creation to other tabs if not from sync
-    if (!options.fromSync && options.syncTabs !== false && getConfig().syncTabs && broadcaster.isSupported()) {
-      broadcaster.broadcast('create', key, { options });
-    }
 
     return key;
   } catch (error) {
@@ -490,7 +399,6 @@ async function createOne(options, key, initialCount) {
     active.set(key, data);
     toast._key = key;
 
-    recordToastHistory(key, options, "active");
     emitMetrics();
 
     if (data.count > 1) await updateBadge(data);
@@ -629,12 +537,10 @@ export function resetToastManager() {
   droppedCount = 0;
   isDraining = false;
   emitMetrics();
-  initBroadcastListeners();
 }
 
 export const dismiss = dismissMostRecent;
 export const noop = closeAllToasts;
-export { getToastHistory, clearToastHistory, setHistoryCapacity, resetToastHistory };
 
 function createDismissTimer(toast, options) {
   const raw = Number(options?.duration);
@@ -758,18 +664,11 @@ export async function closeToast(toast) {
 // key, not a live element reference) target a SPECIFIC toast for removal
 // — e.g. the loading toast — rather than only being able to close
 // "whatever toast a DOM element currently points to."
-export async function closeToastByKey(key, fromSync = false) {
+export async function closeToastByKey(key) {
   try {
     if (!key) return;
 
     const data = active.get(key);
-    const allowSyncDismiss =
-      data?.options?.syncDismiss !== false && data?.options?.syncTabs !== false;
-
-    // Broadcast dismissal to other tabs if not initiated from a remote sync event
-    if (!fromSync && allowSyncDismiss && getConfig().syncTabs && broadcaster.isSupported()) {
-      broadcaster.broadcast('dismiss', key, {});
-    }
 
     // AUDIT/FEATURE FIX: toast creation is deferred one animation frame
     // (see showToast's rAF coalescing, used for grouping/dedup) — so a
@@ -805,8 +704,6 @@ export async function closeToastByKey(key, fromSync = false) {
     }
 
     if (!data) return;
-
-    markToastHistoryDismissed(key);
 
     data.timer?.clear();
     data.outer?._pauseCleanup?.();
@@ -908,7 +805,7 @@ async function drainQueue() {
     const config = getConfig();
 
     // Apply priority sorting if enabled globally or on queued items
-    if ((config.aiPrioritization || typeof config.priorityScorer === "function" || queue.some(i => i.options?.aiPrioritization || typeof i.options?.priority === "number")) && queue.length > 1) {
+    if ((config.priorityQueue || typeof config.priorityScorer === "function" || queue.some(i => i.options?.priorityQueue || typeof i.options?.priority === "number")) && queue.length > 1) {
       queue.sort((a, b) => getItemPriority(b) - getItemPriority(a)); // Higher priority first
     }
 
@@ -1565,17 +1462,6 @@ export async function updateToastByKey(key, newOptions = {}) {
     } else if (container.getAttribute("data-stacked") === "true") {
       updateStackedLayout(container);
     }
-  }
-
-  // 8. Cross-tab synchronization
-  if (
-    !newOptions.fromSync &&
-    data.options?.syncTabs !== false &&
-    newOptions.syncTabs !== false &&
-    getConfig().syncTabs &&
-    broadcaster.isSupported()
-  ) {
-    broadcaster.broadcast('update', key, { newOptions });
   }
 }
 

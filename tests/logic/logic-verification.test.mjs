@@ -899,11 +899,12 @@ describe("position.js — frozen options immutability on full-width", () => {
   });
 });
 
-describe("ToastContainer.js — position normalization", () => {
-  test("createToastContainer normalizes position and creates canonical container ID", async () => {
+describe("containerRegistry.js — position normalization", () => {
+  test("getOrCreateToastContainer normalizes position and creates canonical container ID", async () => {
     freshDom();
-    const { createToastContainer } = await import("../../src/components/ToastContainer.js");
-    const container = await createToastContainer({ position: "Top-Right " });
+    const { getOrCreateToastContainer } = await import("../../src/utils/containerRegistry.js");
+    const { setPosition } = await import("../../src/utils/position.js");
+    const container = await getOrCreateToastContainer({ position: "Top-Right " }, setPosition);
     assert.equal(container.id, "toast-container-top-right");
   });
 });
@@ -1569,40 +1570,16 @@ describe("toast-utils-core.js — progress bar options and live update robustnes
   });
 });
 
-describe("toast-broadcast.js — Phase 3 Cross-tab Synchronization", () => {
-  test("ToastBroadcaster handles listener registration and message dispatch", async () => {
-    freshDom();
-    const { getToastBroadcaster, resetToastBroadcaster } = await import("../../src/utils/toast-broadcast.js");
-    resetToastBroadcaster();
-
-    const broadcaster = getToastBroadcaster();
-    assert.ok(broadcaster);
-    assert.equal(typeof broadcaster.getTabId(), "string");
-    assert.equal(typeof broadcaster.broadcast, "function");
-
-    let received = null;
-    const unsubscribe = broadcaster.on("custom-event", (data) => {
-      received = data;
-    });
-
-    assert.equal(typeof unsubscribe, "function");
-    unsubscribe();
-    resetToastBroadcaster();
-  });
-});
-
-describe("config.js — Phase 3 configuration options", () => {
-  test("setConfig handles syncTabs and aiPrioritization with strict type safety", async () => {
+describe("config.js — configuration options", () => {
+  test("setConfig handles priorityQueue with strict type safety", async () => {
     freshDom();
     const { setConfig, getConfig } = await import("../../src/utils/config.js");
 
-    setConfig({ syncTabs: true, aiPrioritization: true });
-    assert.equal(getConfig().syncTabs, true);
-    assert.equal(getConfig().aiPrioritization, true);
+    setConfig({ priorityQueue: true });
+    assert.equal(getConfig().priorityQueue, true);
 
-    setConfig({ syncTabs: false, aiPrioritization: false });
-    assert.equal(getConfig().syncTabs, false);
-    assert.equal(getConfig().aiPrioritization, false);
+    setConfig({ priorityQueue: false });
+    assert.equal(getConfig().priorityQueue, false);
   });
 
   test("resetConfig resets all properties and cleans document attributes", async () => {
@@ -1658,25 +1635,6 @@ describe("config.js — Phase 3 configuration options", () => {
   });
 });
 
-describe("toast-broadcast.js — broadcast parameter normalization", () => {
-  test("broadcast handles omitted toastId parameter gracefully", async () => {
-    freshDom();
-    const { getToastBroadcaster, resetToastBroadcaster } = await import("../../src/utils/toast-broadcast.js");
-    resetToastBroadcaster();
-
-    const broadcaster = getToastBroadcaster();
-    // Test broadcast with (type, payload) omitting toastId
-    assert.doesNotThrow(() => {
-      broadcaster.broadcast("ping", { test: true });
-    });
-    assert.doesNotThrow(() => {
-      broadcaster.broadcast("sync", "toast-123", { count: 2 });
-    });
-
-    resetToastBroadcaster();
-  });
-});
-
 describe("id.js — monotonic counter, collision resistance, and prefix sanitization", () => {
   test("generates 1,000 unique IDs synchronously with 0 collisions", async () => {
     const { generateToastId, resetToastIdCounter } = await import("../../src/utils/id.js");
@@ -1702,28 +1660,11 @@ describe("id.js — monotonic counter, collision resistance, and prefix sanitiza
   });
 });
 
-describe("toast-broadcast.js — tabId generation entropy and modern methods", () => {
-  test("_generateTabId generates valid and unique tab IDs", async () => {
-    const { getToastBroadcaster, resetToastBroadcaster } = await import("../../src/utils/toast-broadcast.js");
-    resetToastBroadcaster();
-
-    const broadcaster = getToastBroadcaster();
-    const id1 = broadcaster._generateTabId();
-    const id2 = broadcaster._generateTabId();
-
-    assert.match(id1, /^tab-[a-z0-9]+-[a-z0-9]+$/);
-    assert.match(id2, /^tab-[a-z0-9]+-[a-z0-9]+$/);
-    assert.notEqual(id1, id2);
-
-    resetToastBroadcaster();
-  });
-});
-
 describe("ToastManager.js — high-frequency notifications and queue bounding", () => {
   test("bounds queue to maxQueueSize and prevents memory explosion under high-frequency bursts", async () => {
     freshDom();
     const { setConfig, resetConfig } = await import("../../src/utils/config.js");
-    const { showToast, resetToastManager } = await import("../../src/components/ToastManager.js");
+    const { showToast, resetToastManager, getToastMetrics } = await import("../../src/components/ToastManager.js");
 
     resetToastManager();
     setConfig({ maxVisible: 2, maxQueueSize: 5 });
@@ -1738,13 +1679,8 @@ describe("ToastManager.js — high-frequency notifications and queue bounding", 
     // Give rAF microtasks a cycle to process
     await new Promise((r) => setTimeout(r, 50));
 
-    // Queued items getter via broadcaster
-    const { getToastBroadcaster } = await import("../../src/utils/toast-broadcast.js");
-    const queuedGetter = getToastBroadcaster().queuedToastsGetter;
-    if (queuedGetter) {
-      const queued = queuedGetter();
-      assert.ok(queued.length <= 5, `Queue length (${queued.length}) must not exceed maxQueueSize (5)`);
-    }
+    const metrics = getToastMetrics();
+    assert.ok(metrics.queueDepth <= 5, `Queue length (${metrics.queueDepth}) must not exceed maxQueueSize (5)`);
 
     resetToastManager();
     resetConfig();
@@ -2584,28 +2520,7 @@ describe("icons.js & UI/UX enhancements — Toast status icons and hotkey naviga
   });
 });
 
-describe("Hardenings — broadcast and global pauseOnHover", () => {
-  test("toast-broadcast.js: cancels pending leader election timer when leader-elected is received", async () => {
-    const { ToastBroadcaster } = await import("../../src/utils/toast-broadcast.js");
-    const broadcaster = new ToastBroadcaster();
-
-    // Verify leaderTimer is set upon election attempt
-    broadcaster._becomeLeadIfNeeded();
-    assert.ok(broadcaster.leaderTimer, "Leader timer must be scheduled");
-
-    // Simulate incoming message from existing leader tab
-    broadcaster._handleMessage({
-      type: "leader-elected",
-      toastId: "",
-      payload: { tabId: "tab-other-leader" },
-      timestamp: Date.now(),
-      tabId: "tab-other-leader",
-    });
-
-    assert.strictEqual(broadcaster.leaderTimer, null, "Leader timer must be cancelled to prevent split-brain");
-    assert.strictEqual(broadcaster.isLeadTab, false, "Must not be lead tab");
-    broadcaster.destroy();
-  });
+describe("Hardenings — global pauseOnHover and aliases", () => {
 
   test("config.js & ToastManager.js: setConfig pauseOnHover and persistent toast progress bar", async () => {
     freshDom();
@@ -3835,182 +3750,7 @@ describe("Subsystems & Option Matrix Conflict Fortification", { concurrency: 1 }
   });
 });
 
-describe("Omni-Channel Upgrades: i18n, Multi-Tab Queue Sync, React Adapter, and A11y", { concurrency: 1 }, () => {
-  test("i18n engine: setLocale, getLocale, getAvailableLocales, registerLocale, and isRtlLocale", async () => {
-    freshDom();
-    const {
-      setLocale,
-      getLocale,
-      getAvailableLocales,
-      registerLocale,
-      isRtlLocale,
-      resetLocale,
-    } = await import("../../src/utils/i18n.js");
-
-    resetLocale();
-    assert.strictEqual(getLocale(), "en");
-    assert.strictEqual(isRtlLocale("en"), false);
-    assert.strictEqual(isRtlLocale("ar"), true);
-    assert.strictEqual(isRtlLocale("he"), true);
-
-    const locales = getAvailableLocales();
-    assert.ok(locales.includes("en"));
-    assert.ok(locales.includes("hi"));
-    assert.ok(locales.includes("es"));
-    assert.ok(locales.includes("fr"));
-    assert.ok(locales.includes("de"));
-    assert.ok(locales.includes("ar"));
-    assert.ok(locales.includes("ja"));
-
-    setLocale("hi");
-    assert.strictEqual(getLocale(), "hi");
-
-    // Custom locale registration
-    registerLocale("it", {
-      success: "Operazione completata con successo!",
-      error: "Si è verificato un errore!",
-    });
-    setLocale("it");
-    assert.strictEqual(getLocale(), "it");
-
-    resetLocale();
-    assert.strictEqual(getLocale(), "en");
-  });
-
-  test("i18n toast integration: Hindi, Arabic auto-RTL, and custom default messages", async () => {
-    freshDom();
-    const {
-      createToast,
-      setLocale,
-      resetLocale,
-      setDefaultMessages,
-      resetToastManager,
-    } = await import("../../src/index.js");
-    resetToastManager();
-    resetLocale();
-
-    // Hindi default message
-    setLocale("hi");
-    const posHi = "test-i18n-hi-" + Date.now();
-    const handleHi = await createToast({ type: "success", position: posHi });
-    await new Promise((r) => setTimeout(r, 60));
-    const containerHi = document.getElementById(`toast-container-${posHi}`);
-    const toastHi = containerHi?.querySelector(".toast");
-    assert.ok(toastHi?.textContent.includes("कार्य सफलतापूर्वक संपन्न हुआ!"));
-    await handleHi.dismiss();
-
-    // Arabic auto-RTL detection
-    setLocale("ar");
-    const posAr = "test-i18n-ar-" + Date.now();
-    const handleAr = await createToast({ type: "warning", position: posAr });
-    await new Promise((r) => setTimeout(r, 60));
-    const containerAr = document.getElementById(`toast-container-${posAr}`);
-    const toastAr = containerAr?.querySelector(".toast");
-    assert.strictEqual(toastAr?.style.direction, "rtl");
-    assert.ok(toastAr?.textContent.includes("تحذير!"));
-    await handleAr.dismiss();
-
-    // Custom setDefaultMessages overrides locale default
-    setDefaultMessages({ success: "Custom Override" });
-    const posCustom = "test-i18n-custom-" + Date.now();
-    const handleCustom = await createToast({ type: "success", position: posCustom });
-    await new Promise((r) => setTimeout(r, 60));
-    const containerCustom = document.getElementById(`toast-container-${posCustom}`);
-    const toastCustom = containerCustom?.querySelector(".toast");
-    assert.ok(toastCustom?.textContent.includes("Custom Override"));
-    await handleCustom.dismiss();
-
-    resetLocale();
-    resetToastManager();
-  });
-
-  test("Multi-tab queue sync: remote dismiss message purges queued toast to prevent ghost popup", async () => {
-    freshDom();
-    const {
-      createToast,
-      setConfig,
-      resetConfig,
-      getToastBroadcaster,
-      resetToastManager,
-    } = await import("../../src/index.js");
-    resetToastManager();
-    resetConfig();
-    setConfig({ syncTabs: true, maxVisible: 1 });
-
-    const position = "top-left";
-    const broadcaster = getToastBroadcaster();
-
-    // Fill active slot (1 toast)
-    const handleActive = await createToast({ message: "Active Toast", position, duration: 20000 });
-    await new Promise((r) => setTimeout(r, 60));
-
-    // Queue second toast (will be buffered in queue because maxVisible is 1)
-    const handleQueued = await createToast({ message: "Queued Toast", position, duration: 20000 });
-    await new Promise((r) => setTimeout(r, 60));
-
-    // Simulate remote tab broadcasting dismissal of the queued toast
-    broadcaster._handleMessage({
-      type: "dismiss",
-      toastId: handleQueued.id,
-      tabId: "other-tab",
-      timestamp: Date.now(),
-      payload: {},
-    });
-
-    // Dismiss active toast -> queue should drain, but the queued toast was purged, so container becomes empty
-    await handleActive.dismiss();
-    await new Promise((r) => setTimeout(r, 550));
-
-    const container = document.getElementById(`toast-container-${position}`);
-    assert.strictEqual(container?.children.length || 0, 0, "Queued toast must be purged, no ghost toast should appear");
-
-    resetConfig();
-    resetToastManager();
-  });
-
-  test("Per-toast syncDismiss: false and syncTabs: false prevent remote tab broadcast", async () => {
-    freshDom();
-    const {
-      createToast,
-      setConfig,
-      resetConfig,
-      getToastBroadcaster,
-      resetToastManager,
-    } = await import("../../src/index.js");
-    resetToastManager();
-    resetConfig();
-    setConfig({ syncTabs: true });
-
-    const broadcaster = getToastBroadcaster();
-    const broadcasts = [];
-    const origBroadcast = broadcaster.broadcast.bind(broadcaster);
-    broadcaster.broadcast = (type, toastId, payload) => {
-      broadcasts.push({ type, toastId, payload });
-      return origBroadcast(type, toastId, payload);
-    };
-
-    // Toast with syncTabs: false should not broadcast 'create'
-    broadcasts.length = 0;
-    const pos1 = "test-sync-tabs-false-" + Date.now();
-    const handle1 = await createToast({ message: "Local Only", syncTabs: false, position: pos1 });
-    await new Promise((r) => setTimeout(r, 60));
-    assert.strictEqual(broadcasts.some((b) => b.type === "create"), false, "syncTabs: false must not broadcast create");
-
-    // Toast with syncDismiss: false should not broadcast 'dismiss'
-    broadcasts.length = 0;
-    const pos2 = "test-sync-dismiss-false-" + Date.now();
-    const handle2 = await createToast({ message: "Local Dismiss Only", syncDismiss: false, position: pos2 });
-    await new Promise((r) => setTimeout(r, 60));
-    await handle2.dismiss();
-    await new Promise((r) => setTimeout(r, 60));
-    assert.strictEqual(broadcasts.some((b) => b.type === "dismiss"), false, "syncDismiss: false must not broadcast dismiss");
-
-    await handle1.dismiss();
-    broadcaster.broadcast = origBroadcast;
-    resetConfig();
-    resetToastManager();
-  });
-
+describe("Omni-Channel Upgrades: React Adapter and A11y", { concurrency: 1 }, () => {
   test("Accessibility: Error toasts receive role='alert' and aria-live='assertive'", async () => {
     freshDom();
     const { createToast, resetToastManager } = await import("../../src/index.js");
@@ -4059,88 +3799,6 @@ describe("Omni-Channel Upgrades: i18n, Multi-Tab Queue Sync, React Adapter, and 
     assert.ok(typeof api.setConfig === "function");
     assert.ok(typeof api.getConfig === "function");
     assert.ok(typeof api.resetConfig === "function");
-    assert.ok(typeof api.setLocale === "function");
-    assert.ok(typeof api.getLocale === "function");
-  });
-});
-
-describe("history.js — Notification History & Telemetry Subsystem", () => {
-  test("records, retrieves, and clears toast history entries accurately", async () => {
-    const {
-      recordToastHistory,
-      markToastHistoryDismissed,
-      markToastHistoryDropped,
-      getToastHistory,
-      clearToastHistory,
-      setHistoryCapacity,
-      resetToastHistory,
-    } = await import("../../src/utils/history.js");
-
-    resetToastHistory();
-
-    const entry1 = recordToastHistory("toast-1", { message: "Hello", type: "success" }, "active");
-    assert.strictEqual(entry1.id, "toast-1");
-    assert.strictEqual(entry1.message, "Hello");
-    assert.strictEqual(entry1.type, "success");
-    assert.strictEqual(entry1.status, "active");
-    assert.ok(entry1.timestamp > 0);
-
-    markToastHistoryDismissed("toast-1");
-    let history = getToastHistory();
-    assert.strictEqual(history.length, 1);
-    assert.strictEqual(history[0].status, "dismissed");
-    assert.ok(history[0].dismissedAt > 0);
-
-    markToastHistoryDropped("toast-2", { message: "Dropped item" });
-    history = getToastHistory();
-    assert.strictEqual(history.length, 2);
-    assert.strictEqual(history[0].id, "toast-2");
-    assert.strictEqual(history[0].status, "dropped");
-
-    // Capacity limiting
-    setHistoryCapacity(3);
-    recordToastHistory("toast-3", { message: "Item 3" });
-    recordToastHistory("toast-4", { message: "Item 4" });
-    recordToastHistory("toast-5", { message: "Item 5" });
-    history = getToastHistory();
-    assert.strictEqual(history.length, 3);
-    assert.strictEqual(history[0].id, "toast-5");
-
-    // Immutability of returned array
-    history[0].message = "Tampered";
-    const freshHistory = getToastHistory();
-    assert.strictEqual(freshHistory[0].message, "Item 5");
-
-    clearToastHistory();
-    assert.strictEqual(getToastHistory().length, 0);
-
-    resetToastHistory();
-  });
-
-  test("ToastManager integrates with history automatically on create and dismiss", async () => {
-    freshDom();
-    const { createToast, getToastHistory, resetToastHistory, resetToastManager } = await import("../../src/index.js");
-    resetToastHistory();
-    resetToastManager();
-
-    const handle = await createToast({ message: "History integration test", type: "info" });
-    await new Promise((r) => setTimeout(r, 60));
-
-    let history = getToastHistory();
-    assert.ok(history.length >= 1);
-    const item = history.find((h) => h.message === "History integration test");
-    assert.ok(item);
-    assert.strictEqual(item.status, "active");
-
-    await handle.dismiss();
-    await new Promise((r) => setTimeout(r, 60));
-
-    history = getToastHistory();
-    const dismissedItem = history.find((h) => h.message === "History integration test");
-    assert.strictEqual(dismissedItem.status, "dismissed");
-
-    resetToastHistory();
-    resetToastManager();
   });
 });
 
@@ -4321,8 +3979,6 @@ describe("Framework Adapters — Vue, Svelte, Solid, and Angular contracts", () 
     assert.ok(typeof api.dismiss === "function");
     assert.ok(typeof api.dismissAll === "function");
     assert.ok(typeof api.clear === "function");
-    assert.ok(typeof api.getHistory === "function");
-    assert.ok(typeof api.clearHistory === "function");
     assert.strictEqual(toast, api);
     assert.strictEqual(typeof createToastAPI, "function");
 
@@ -4337,10 +3993,6 @@ describe("Framework Adapters — Vue, Svelte, Solid, and Angular contracts", () 
     api.getConfig();
     api.setConfig({});
     api.resetConfig();
-    api.getLocale();
-    api.setLocale("en");
-    api.getHistory();
-    api.clearHistory();
     await api.dismiss();
     await api.dismissAll();
     await api.clear();
@@ -4362,10 +4014,6 @@ describe("Framework Adapters — Vue, Svelte, Solid, and Angular contracts", () 
     api.getConfig();
     api.setConfig({});
     api.resetConfig();
-    api.getLocale();
-    api.setLocale("en");
-    api.getHistory();
-    api.clearHistory();
     await api.dismiss();
     await api.dismissAll();
     await api.clear();
@@ -4383,7 +4031,6 @@ describe("Framework Adapters — Vue, Svelte, Solid, and Angular contracts", () 
 
     assert.ok(state);
     assert.ok(state.metrics);
-    assert.ok(Array.isArray(state.history));
     assert.strictEqual(typeof unsubscribe, "function");
     unsubscribe();
 
@@ -4391,8 +4038,6 @@ describe("Framework Adapters — Vue, Svelte, Solid, and Angular contracts", () 
     assert.ok(typeof toast.error === "function");
     assert.ok(typeof toast.warning === "function");
     assert.ok(typeof toast.info === "function");
-    assert.ok(typeof toast.getHistory === "function");
-    assert.ok(typeof toast.clearHistory === "function");
     assert.strictEqual(useToast(), toast);
     assert.strictEqual(typeof createToastStore, "function");
 
@@ -4407,10 +4052,6 @@ describe("Framework Adapters — Vue, Svelte, Solid, and Angular contracts", () 
     toast.getConfig();
     toast.setConfig({});
     toast.resetConfig();
-    toast.getLocale();
-    toast.setLocale("en");
-    toast.getHistory();
-    toast.clearHistory();
     await toast.dismiss();
     await toast.dismissAll();
     await toast.clear();
@@ -4425,7 +4066,6 @@ describe("Framework Adapters — Vue, Svelte, Solid, and Angular contracts", () 
     assert.ok(typeof api.error === "function");
     assert.ok(typeof api.warning === "function");
     assert.ok(typeof api.info === "function");
-    assert.ok(typeof api.getHistory === "function");
     assert.strictEqual(toast, api);
     assert.strictEqual(typeof createToastAPI, "function");
 
@@ -4440,10 +4080,6 @@ describe("Framework Adapters — Vue, Svelte, Solid, and Angular contracts", () 
     api.getConfig();
     api.setConfig({});
     api.resetConfig();
-    api.getLocale();
-    api.setLocale("en");
-    api.getHistory();
-    api.clearHistory();
     await api.dismiss();
     await api.dismissAll();
     await api.clear();
@@ -4465,8 +4101,6 @@ describe("Framework Adapters — Vue, Svelte, Solid, and Angular contracts", () 
     assert.ok(typeof instance.info === "function");
     assert.ok(typeof instance.loading === "function");
     assert.ok(typeof instance.custom === "function");
-    assert.ok(typeof instance.getHistory === "function");
-    assert.ok(typeof instance.clearHistory === "function");
 
     const injected = injectToast();
     assert.ok(injected instanceof ToastService);
@@ -4483,10 +4117,6 @@ describe("Framework Adapters — Vue, Svelte, Solid, and Angular contracts", () 
     instance.getConfig();
     instance.setConfig({});
     instance.resetConfig();
-    instance.getLocale();
-    instance.setLocale("en");
-    instance.getHistory();
-    instance.clearHistory();
     await instance.dismiss();
     await instance.dismissAll();
     await instance.clear();
@@ -4494,14 +4124,13 @@ describe("Framework Adapters — Vue, Svelte, Solid, and Angular contracts", () 
 });
 
 describe("Architecture & Edge-Case Fortification Suite", () => {
-  test("RTL fontDirection auto-detects from active locale and applies to toast container & icon margins", async () => {
+  test("RTL fontDirection applies cleanly to toast container & icon margins", async () => {
     freshDom();
-    const { createToast, setLocale, resetLocale, resetToastManager } = await import("../../src/index.js");
+    const { createToast, resetToastManager } = await import("../../src/index.js");
     resetToastManager();
-    setLocale("ar");
 
-    const pos = "test-rtl-auto-" + Date.now();
-    const handle = await createToast({ message: "مرحبا", position: pos, icon: true });
+    const pos = "test-rtl-explicit-" + Date.now();
+    const handle = await createToast({ message: "مرحبا", position: pos, fontDirection: "rtl", icon: true });
     await new Promise((r) => setTimeout(r, 60));
 
     const container = document.getElementById(`toast-container-${pos}`);
@@ -4515,56 +4144,49 @@ describe("Architecture & Edge-Case Fortification Suite", () => {
     assert.strictEqual(icon.style.marginRight, "0px");
 
     await handle.dismiss();
-    resetLocale();
     resetToastManager();
   });
 
-  test("createUndoAction and createCloseButton localize labels and aria-labels via i18n", async () => {
+  test("createUndoAction and createCloseButton configure custom labels cleanly", async () => {
     freshDom();
     const { createCloseButton, createUndoAction } = await import("../../src/components/toast-utils-core.js");
-    const { setLocale, resetLocale } = await import("../../src/utils/i18n.js");
 
-    setLocale("hi");
     const toast = document.createElement("div");
 
-    createCloseButton(toast, {}, () => {});
+    createCloseButton(toast, { closeAriaLabel: "Fermer la notification" }, () => {});
     const closeBtn = toast.querySelector(".toast-close-btn");
     assert.ok(closeBtn);
-    assert.strictEqual(closeBtn.getAttribute("aria-label"), "सूचना बंद करें");
-    assert.strictEqual(closeBtn.getAttribute("title"), "सूचना बंद करें");
+    assert.strictEqual(closeBtn.getAttribute("aria-label"), "Fermer la notification");
+    assert.strictEqual(closeBtn.getAttribute("title"), "Fermer la notification");
 
-    createUndoAction(toast, { duration: 5000, undo: () => {} }, () => {});
+    createUndoAction(toast, { duration: 5000, undoText: "Annuler", undo: () => {} }, () => {});
     const undoBtn = toast.querySelector(".toast-undo-btn");
     assert.ok(undoBtn);
-    assert.ok(undoBtn.textContent.includes("पूर्ववत करें"));
+    assert.ok(undoBtn.textContent.includes("Annuler"));
 
     toast._cleanupCloseButton?.();
     toast._cleanupUndo?.();
-    resetLocale();
   });
 
-  test("maxQueueSize: 0 records dropped toasts in history telemetry buffer", async () => {
+  test("maxQueueSize: 0 increments droppedCount in getToastMetrics()", async () => {
     freshDom();
-    const { createToast, setConfig, resetConfig, getToastHistory, resetToastHistory, resetToastManager } = await import("../../src/index.js");
+    const { createToast, setConfig, resetConfig, getToastMetrics, resetToastManager } = await import("../../src/index.js");
     resetToastManager();
-    resetToastHistory();
+    resetConfig();
     setConfig({ maxVisible: 1, maxQueueSize: 0 });
 
-    const pos = "test-drop-history-" + Date.now();
+    const pos = "test-drop-metrics-" + Date.now();
     const h1 = await createToast({ message: "Showing Toast", position: pos });
     await new Promise((r) => setTimeout(r, 60));
 
     await createToast({ message: "Dropped Toast 1", position: pos });
     await new Promise((r) => setTimeout(r, 60));
 
-    const history = getToastHistory();
-    const droppedItem = history.find((h) => h.message === "Dropped Toast 1");
-    assert.ok(droppedItem, "Dropped toast must be recorded in history when maxQueueSize is 0");
-    assert.strictEqual(droppedItem.status, "dropped");
+    const metrics = getToastMetrics();
+    assert.strictEqual(metrics.droppedCount, 1, "Dropped toast must increment droppedCount in getToastMetrics()");
 
     await h1.dismiss();
     resetConfig();
-    resetToastHistory();
     resetToastManager();
   });
 
@@ -4592,73 +4214,6 @@ describe("Architecture & Edge-Case Fortification Suite", () => {
 });
 
 describe("SonarQube S6544 & AI Code Assurance Coverage Suite", () => {
-  test("broadcaster.on event listeners execute synced create, update, dismiss, and sync-response cleanly", async () => {
-    freshDom();
-    const {
-      createToast,
-      getToastBroadcaster,
-      setConfig,
-      resetConfig,
-      resetToastManager,
-    } = await import("../../src/index.js");
-
-    resetToastManager();
-    setConfig({ syncTabs: true });
-    const broadcaster = getToastBroadcaster();
-
-    try {
-      // 1. broadcaster 'create'
-      broadcaster._handleMessage({
-        type: "create",
-        toastId: "sync-toast-create-" + Date.now(),
-        payload: { options: { message: "Synced Toast Create", position: "bottom-right", duration: 5000 } },
-      });
-      await new Promise((r) => setTimeout(r, 60));
-
-      // 2. create active toast for update & dismiss
-      const testKey = "sync-test-active-" + Date.now();
-      await createToast({
-        id: testKey,
-        message: "Original Toast",
-        position: "bottom-right",
-        duration: 5000,
-      });
-      await new Promise((r) => setTimeout(r, 60));
-
-      // 3. broadcaster 'update' with count and newOptions
-      broadcaster._handleMessage({
-        type: "update",
-        toastId: testKey,
-        payload: { count: 2, newOptions: { message: "Updated via Sync" } },
-      });
-      await new Promise((r) => setTimeout(r, 60));
-
-      // 4. broadcaster 'dismiss' with active toast
-      broadcaster._handleMessage({
-        type: "dismiss",
-        toastId: testKey,
-      });
-      await new Promise((r) => setTimeout(r, 100));
-
-      // 5. broadcaster 'sync-response'
-      broadcaster._handleMessage({
-        type: "sync-response",
-        payload: {
-          queue: [
-            {
-              key: "sync-queued-" + Date.now(),
-              options: { message: "Synced Queued Toast", position: "bottom-right", duration: 5000 },
-            },
-          ],
-        },
-      });
-      await new Promise((r) => setTimeout(r, 60));
-    } finally {
-      resetConfig();
-      resetToastManager();
-    }
-  });
-
   test("toast-utils-core event handlers: CTA keydown Enter/Space, CTA autoClose onClose, Undo onClose, CloseButton onClose, and swipe onClose", async () => {
     freshDom();
     const {
@@ -4812,10 +4367,9 @@ describe("SonarQube S6544 & AI Code Assurance Coverage Suite", () => {
     }
   });
 
-  test("generateSalt and _generateTabId entropy fallback coverage", async () => {
+  test("generateSalt entropy and deterministic length coverage", async () => {
     freshDom();
     const { generateSalt } = await import("../../src/utils/id.js");
-    const { getToastBroadcaster } = await import("../../src/index.js");
 
     // 1. generateSalt with crypto present
     const saltWithCrypto = generateSalt();
@@ -4826,16 +4380,6 @@ describe("SonarQube S6544 & AI Code Assurance Coverage Suite", () => {
     const saltWithoutCrypto = generateSalt(null);
     assert.strictEqual(typeof saltWithoutCrypto, "string");
     assert.strictEqual(saltWithoutCrypto.length, 3);
-
-    // 3. _generateTabId with crypto present
-    const broadcaster = getToastBroadcaster();
-    const tabWithCrypto = broadcaster._generateTabId();
-    assert.ok(tabWithCrypto.startsWith("tab-"));
-
-    // 4. _generateTabId fallback without crypto (customCrypto = null)
-    const tabWithoutCrypto = broadcaster._generateTabId(null);
-    assert.ok(tabWithoutCrypto.startsWith("tab-"));
-
   });
 });
 

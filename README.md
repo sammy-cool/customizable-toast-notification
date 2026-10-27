@@ -587,9 +587,8 @@ if (shouldReduceMotion()) {
 | `swipeToDismiss`       | `boolean`                         | `true`            | Enable touch / mouse drag swipe gesture to dismiss toasts with spring snap-back physics.                         |
 | `sound`                | `boolean`                         | `false`           | Enable sound notification support (audio URLs or `onSound` callbacks).                                            |
 | `pauseOnHover`         | `boolean`                         | `false`           | When `true`, automatically pauses countdown timers for all toasts on mouse hover or keyboard focus.               |
-| `syncTabs`             | `boolean`                         | `false`           | Synchronize toast notifications across browser tabs using BroadcastChannel.                                      |
-| `aiPrioritization`     | `boolean`                         | `false`           | Enable offline content-aware queue priority sorting (critical alerts jump ahead of routine messages).            |
-| `priorityScorer`       | `((context) => number) \| null`   | `null`            | Custom priority scoring function for custom business logic or external AI models.                               |
+| `priorityQueue`        | `boolean`                         | `false`           | Enable content-aware queue priority sorting (critical alerts jump ahead of routine messages).                     |
+| `priorityScorer`       | `((context) => number) \| null`   | `null`            | Custom priority scoring function for custom business logic or external classifiers.                              |
 | `onMetrics`            | `((metrics: ToastMetrics) => void) \| null` | `null`  | Real-time telemetry callback emitting `{ activeCount, queueDepth, visibleCount, droppedCount, timestamp }`.      |
 | `disableInlineStyles`  | `boolean`                         | `false`           | When `true`, toasts use CSS classes instead of inline `style.*` for stricter CSP compliance.                      |
 | `reducedMotion`        | `"auto" \| "always" \| "never"`   | `"auto"`          | Control animation behavior. `"auto"` respects `prefers-reduced-motion`, `"always"` disables, `"never"` enables.  |
@@ -666,27 +665,12 @@ setConfig({ zIndex: 50000 });
 
 The following enterprise-grade features are available in v3.17.0+ and are opt-in via global config or toast options:
 
-### 🔄 Cross-Tab Toast Synchronization
+### ⚡ Priority Queue Routing
 
-Broadcast toasts to other tabs of the same application using the `BroadcastChannel` API. The first tab becomes the leader and mirrors queued / active toasts to follower tabs.
-
-```js
-import { setConfig, createToast } from "customizable-toast-notification";
-
-// Enable cross-tab sync globally
-setConfig({ syncTabs: true });
-
-createToast({ message: "Shared across all open tabs!", type: "info" });
-```
-
-Graceful degradation: if `BroadcastChannel` is unavailable (e.g. Node.js or older browsers), the library simply runs in single-tab mode — no errors.
-
-### 🧠 Intelligent Priority Queue Routing
-
-When the queue fills (more than `maxVisible` toasts), the `aiPrioritization` flag and `priority` options reorder the queue by urgency instead of strict FIFO. Priority is derived from `priority` option or `type` (error > warning > info > success), with support for custom priority scorers or consumer AI triage classifiers (`examples/ai-triage/`).
+When the queue fills (more than `maxVisible` toasts), the `priorityQueue` flag and `priority` options reorder the queue by urgency instead of strict FIFO. Priority is derived from `priority` option or `type` (error > warning > info > success), with support for custom priority scorers or consumer classifiers (`examples/ai-triage/`).
 
 ```js
-setConfig({ aiPrioritization: true });
+setConfig({ priorityQueue: true });
 
 createToast({ message: "Payment failed", type: "error" });   // Highest priority (score: 80)
 createToast({ message: "Background sync", type: "info" });  // Queued behind the error (score: 40)
@@ -710,8 +694,7 @@ import { setConfig, createToast } from "customizable-toast-notification";
 
 setConfig({
   maxVisible: 3,
-  syncTabs: true,        // mirror to other tabs
-  aiPrioritization: true,// sort the queue by urgency
+  priorityQueue: true,   // sort the queue by urgency
   stacked: true,         // iOS-style card deck
   swipeToDismiss: true,  // touch & pointer gestures
   sound: true,           // notification chimes
@@ -1236,40 +1219,6 @@ Render notifications in an isolated Shadow Root to prevent host application CSS 
 toast.info("Protected from global styles", {
   shadowDom: true
 });
-```
-
-## 🌍 Internationalization (i18n) Engine
-
-Built-in multi-locale support with automatic RTL layout switching:
-
-```javascript
-import { setLocale, registerLocale } from "customizable-toast-notification";
-
-// Built-in support for "en", "hi", "ar"
-setLocale("ar"); // Automatically switches to right-to-left layout
-
-// Register custom translations
-registerLocale("fr", {
-  undo: "Annuler",
-  close: "Fermer la notification",
-  success: "Opération réussie"
-});
-```
-
-## 📜 Notification History & Telemetry Ring Buffer
-
-Track and inspect notification delivery, dismissals, and drop telemetry:
-
-```javascript
-import { getToastHistory, clearToastHistory, setHistoryCapacity } from "customizable-toast-notification";
-
-// Set capacity (default 50)
-setHistoryCapacity(100);
-
-// Get immutable snapshot of recent toasts with timestamps, status, and metadata
-const history = getToastHistory();
-console.log(history);
-// Output: [{ id: "...", message: "...", type: "...", status: "active" | "dismissed" | "dropped", timestamp: ... }]
 ```
 
 ## 🤝 Contributing

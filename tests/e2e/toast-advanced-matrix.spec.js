@@ -91,7 +91,7 @@ test.describe('Omni-Channel Capabilities & Real Browser DOM', () => {
     await expect(progressBar).toBeVisible();
   });
 
-  test('Multi-tab cross-tab synchronization: creation and dismissal sync across pages', async ({ context }) => {
+  test('Multi-page independent isolation: pages maintain pristine state with zero cross-talk', async ({ context }) => {
     const page1 = await context.newPage();
     const page2 = await context.newPage();
 
@@ -101,31 +101,41 @@ test.describe('Omni-Channel Capabilities & Real Browser DOM', () => {
     await page1.waitForFunction(() => !!window.customizableToast);
     await page2.waitForFunction(() => !!window.customizableToast);
 
-    // Enable cross-tab sync on both pages
-    await page1.evaluate(() => window.customizableToast.setConfig({ syncTabs: true }));
-    await page2.evaluate(() => window.customizableToast.setConfig({ syncTabs: true }));
-
     // Create toast on Page 1
-    const toastId = await page1.evaluate(async () => {
+    const toastId1 = await page1.evaluate(async () => {
       const handle = await window.customizableToast.createToast({
-        message: 'Sync broadcast message',
+        message: 'Page 1 Isolated Toast',
         duration: 10000,
         position: 'bottom-right',
       });
       return handle.id;
     });
 
-    // Wait for BroadcastChannel propagation and verify toast appears on Page 2
+    // Page 1 has 1 toast, Page 2 has 0 toasts (complete isolation)
+    await expect(page1.locator('.toast')).toBeVisible({ timeout: 4000 });
+    await expect(page1.locator('.toast')).toContainText('Page 1 Isolated Toast');
+    await expect(page2.locator('.toast')).toHaveCount(0);
+
+    // Create toast on Page 2
+    await page2.evaluate(async () => {
+      await window.customizableToast.createToast({
+        message: 'Page 2 Isolated Toast',
+        duration: 10000,
+        position: 'top-left',
+      });
+    });
+
     await expect(page2.locator('.toast')).toBeVisible({ timeout: 4000 });
-    await expect(page2.locator('.toast')).toContainText('Sync broadcast message');
+    await expect(page2.locator('.toast')).toContainText('Page 2 Isolated Toast');
 
     // Dismiss toast on Page 1
     await page1.evaluate(async (id) => {
       await window.customizableToast.dismiss(id);
-    }, toastId);
+    }, toastId1);
 
-    // Verify toast is dismissed on Page 2 as well
-    await expect(page2.locator('.toast')).toHaveCount(0, { timeout: 4000 });
+    await expect(page1.locator('.toast')).toHaveCount(0, { timeout: 4000 });
+    // Page 2 still has its toast intact
+    await expect(page2.locator('.toast')).toHaveCount(1);
 
     await page1.close();
     await page2.close();

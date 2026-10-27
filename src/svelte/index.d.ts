@@ -4,12 +4,10 @@ import type {
   ToastPromiseMessages,
   ToastGlobalConfig,
   ToastMetrics,
-  ToastHistoryEntry,
 } from '../index.js';
 
 export interface ToastStoreState {
   metrics: ToastMetrics;
-  history: ToastHistoryEntry[];
 }
 
 export interface SvelteToastStore {
@@ -32,10 +30,6 @@ export interface SvelteToastStore {
   setConfig: (options?: Partial<ToastGlobalConfig>) => ToastGlobalConfig;
   getConfig: () => ToastGlobalConfig;
   resetConfig: () => ToastGlobalConfig;
-  setLocale: (locale: string) => string;
-  getLocale: () => string;
-  getHistory: () => ToastHistoryEntry[];
-  clearHistory: () => void;
 }
 
 export function createToastStore(): SvelteToastStore;
@@ -52,9 +46,5 @@ export {
   setConfig,
   getConfig,
   resetConfig,
-  setLocale,
-  getLocale,
   getToastMetrics,
-  getToastHistory,
-  clearToastHistory,
 } from '../index.js';

@@ -1198,14 +1198,10 @@
             </div>
           </div>
 
-          <div class="form-row-3" style="margin-top: 8px;">
+          <div class="form-row-2" style="margin-top: 8px;">
             <label class="toggle-label">
-              <span>Cross-Tab Sync</span>
-              <label class="switch"><input type="checkbox" id="toggleSyncTabs"><span class="slider"></span></label>
-            </label>
-            <label class="toggle-label">
-              <span>AI Prioritization</span>
-              <label class="switch"><input type="checkbox" id="toggleAiScorer"><span class="slider"></span></label>
+              <span>Priority Queue</span>
+              <label class="switch"><input type="checkbox" id="togglePriorityQueue"><span class="slider"></span></label>
             </label>
             <label class="toggle-label">
               <span>Inline Loader</span>
@@ -1374,16 +1370,10 @@ createToast({
                   <td>Enables mobile touch swipe gesture and mouse drag with spring velocity snap-back.</td>
                 </tr>
                 <tr>
-                  <td class="opt-name">syncTabs</td>
+                  <td class="opt-name">priorityQueue</td>
                   <td class="opt-type">boolean</td>
                   <td class="opt-default">false</td>
-                  <td>Synchronizes toasts across multiple browser tabs via BroadcastChannel.</td>
-                </tr>
-                <tr>
-                  <td class="opt-name">aiPrioritization</td>
-                  <td class="opt-type">boolean</td>
-                  <td class="opt-default">false</td>
-                  <td>Analyzes event semantics and urgency to calculate priority scores for dynamic queue ordering.</td>
+                  <td>Enables priority-based queue sorting (higher priority toasts shown first).</td>
                 </tr>
 
                 <tr>
@@ -1916,8 +1906,7 @@ createToast({
           if (document.getElementById("toggleIcon").checked === false) opts.icon = false;
           if (document.getElementById("toggleAllowHtml").checked) opts.allowHtml = true;
           if (document.getElementById("toggleStacked").checked) opts.stacked = true;
-          if (document.getElementById("toggleSyncTabs").checked) opts.syncTabs = true;
-          if (document.getElementById("toggleAiScorer").checked) opts.aiPrioritization = true;
+          if (document.getElementById("togglePriorityQueue").checked) opts.priorityQueue = true;
           if (document.getElementById("toggleShowLoader") && document.getElementById("toggleShowLoader").checked) opts.showLoader = true;
 
           if (soundPreset === "none") {
@@ -2167,8 +2156,7 @@ createToast({
             document.getElementById("toggleIcon").checked = true;
             document.getElementById("toggleAllowHtml").checked = false;
             document.getElementById("toggleStacked").checked = false;
-            document.getElementById("toggleSyncTabs").checked = false;
-            document.getElementById("toggleAiScorer").checked = false;
+            document.getElementById("togglePriorityQueue").checked = false;
             if (document.getElementById("toggleShowLoader")) document.getElementById("toggleShowLoader").checked = false;
             document.getElementById("toggleUndoAction").checked = false;
             document.getElementById("animationTypeSelect").value = "spring";

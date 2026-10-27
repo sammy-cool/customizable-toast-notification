@@ -13,11 +13,8 @@ Complete reference for all functions, configuration options, handles, and TypeSc
    - [`setConfig(config)`](#setconfigconfig)
    - [`getConfig()`](#getconfig)
    - [`shouldReduceMotion()`](#shouldreducemotion)
-2. [Advanced Telemetry & Synchronization](#advanced-telemetry--synchronization)
-   - [`getToastBroadcaster()`](#gettoastbroadcaster)
-   - [`getToastHistory()`](#gettoasthistory)
+2. [Telemetry & Metrics](#telemetry--metrics)
    - [`getToastMetrics()`](#gettoastmetrics)
-   - [`setLocale(locale)`](#setlocalelocale)
 3. [Types & Configuration](#types--configuration)
    - [`ToastOptions`](#toastoptions)
    - [`ToastHandle`](#toasthandle)
@@ -93,8 +90,7 @@ setConfig({
   stacked: true, // iOS-style card deck mode
   swipeToDismiss: true,
   sound: true,
-  syncTabs: true, // Cross-tab synchronization via BroadcastChannel
-  aiPrioritization: true, // Priority queue routing
+  priorityQueue: true, // Priority queue routing (higher priority shown first)
 });
 ```
 
@@ -103,19 +99,10 @@ Returns a snapshot of the current global configuration object.
 
 ---
 
-## Advanced Telemetry & Synchronization
-
-### `getToastBroadcaster()`
-Returns the singleton `ToastBroadcaster` for cross-tab notification synchronization using `BroadcastChannel`.
-
-### `getToastHistory()`
-Returns telemetry history of recent toasts, dismissals, and dropped notifications.
+## Telemetry & Metrics
 
 ### `getToastMetrics()`
 Returns live operational metrics: active count, queue depth, visible count, and dropped count.
-
-### `setLocale(locale)`
-Switches the active internationalization locale (e.g. `'en'`, `'hi'`, `'es'`, `'ar'`).
 
 ---
 

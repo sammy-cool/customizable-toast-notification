@@ -9,10 +9,6 @@ import {
   setConfig,
   getConfig,
   resetConfig,
-  setLocale,
-  getLocale,
-  getToastHistory,
-  clearToastHistory,
 } from "../index.js";
 
 /**
@@ -35,10 +31,6 @@ export function createToastAPI() {
     setConfig,
     getConfig,
     resetConfig,
-    setLocale,
-    getLocale,
-    getHistory: getToastHistory,
-    clearHistory: clearToastHistory,
   };
 }
 
@@ -74,6 +66,4 @@ export {
   setConfig,
   getConfig,
   resetConfig,
-  setLocale,
-  getLocale,
 };
