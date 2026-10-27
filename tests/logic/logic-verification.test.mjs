@@ -4000,10 +4000,12 @@ describe("Framework Adapters — Vue, Svelte, Solid, and Angular contracts", () 
 
   test("React adapter executes useToast methods", async () => {
     freshDom();
-    const { useToast, createToastAPI } = await import("../../src/react/index.js");
+    const { useToast, createToastAPI, toast } = await import("../../src/react/index.js");
     const api = useToast();
 
     assert.ok(api, "useToast() should return an API object");
+    assert.ok(toast, "toast export should exist in React adapter");
+    assert.strictEqual(typeof toast.success, "function");
     assert.strictEqual(typeof api.success, "function");
     assert.strictEqual(typeof api.error, "function");
     assert.strictEqual(typeof api.warning, "function");

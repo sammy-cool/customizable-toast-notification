@@ -681,14 +681,6 @@ async function toastPromise(promiseOrFn, messages = {}, options = {}) {
       typeof promiseOrFn === "function" ? promiseOrFn() : promiseOrFn;
     const result = await settledPromise;
 
-    if (loadingHandle && typeof loadingHandle.dismiss === "function") {
-      try {
-        await loadingHandle.dismiss();
-      } catch {
-        // Loading toast may already be dismissed
-      }
-    }
-
     const successResult =
       typeof safeMessages.success === "function"
         ? safeMessages.success(result)
@@ -696,21 +688,28 @@ async function toastPromise(promiseOrFn, messages = {}, options = {}) {
 
     const successOptions =
       typeof successResult === "object" && successResult !== null && !Array.isArray(successResult)
-        ? { ...baseOptions, type: "success", ...successResult }
-        : { ...baseOptions, type: "success", message: String(successResult) };
+        ? { ...baseOptions, type: "success", showLoader: false, ...successResult }
+        : { ...baseOptions, type: "success", showLoader: false, message: String(successResult) };
 
-    await createToastWithPriority(successOptions);
+    if (loadingHandle && typeof loadingHandle.update === "function") {
+      try {
+        await loadingHandle.update(successOptions);
+      } catch {
+        await createToastWithPriority(successOptions);
+      }
+    } else {
+      if (loadingHandle && typeof loadingHandle.dismiss === "function") {
+        try {
+          await loadingHandle.dismiss();
+        } catch {
+          // Loading toast may already be dismissed
+        }
+      }
+      await createToastWithPriority(successOptions);
+    }
 
     return result;
   } catch (err) {
-    if (loadingHandle && typeof loadingHandle.dismiss === "function") {
-      try {
-        await loadingHandle.dismiss();
-      } catch {
-        // Loading toast may already be dismissed
-      }
-    }
-
     const errorResult =
       typeof safeMessages.error === "function"
         ? safeMessages.error(err)
@@ -718,10 +717,25 @@ async function toastPromise(promiseOrFn, messages = {}, options = {}) {
 
     const errorOptions =
       typeof errorResult === "object" && errorResult !== null && !Array.isArray(errorResult)
-        ? { ...baseOptions, type: "error", ...errorResult }
-        : { ...baseOptions, type: "error", message: String(errorResult) };
+        ? { ...baseOptions, type: "error", showLoader: false, ...errorResult }
+        : { ...baseOptions, type: "error", showLoader: false, message: String(errorResult) };
 
-    await createToastWithPriority(errorOptions);
+    if (loadingHandle && typeof loadingHandle.update === "function") {
+      try {
+        await loadingHandle.update(errorOptions);
+      } catch {
+        await createToastWithPriority(errorOptions);
+      }
+    } else {
+      if (loadingHandle && typeof loadingHandle.dismiss === "function") {
+        try {
+          await loadingHandle.dismiss();
+        } catch {
+          // Loading toast may already be dismissed
+        }
+      }
+      await createToastWithPriority(errorOptions);
+    }
 
     throw err;
   }

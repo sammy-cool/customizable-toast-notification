@@ -57,6 +57,8 @@ export function useToast() {
   return cachedAPI;
 }
 
+export const toast = createToastAPI();
+
 export {
   createToast,
   toastPromise,

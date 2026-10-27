@@ -32,6 +32,8 @@ export interface UseToastAPI {
  */
 export function useToast(): UseToastAPI;
 
+export const toast: UseToastAPI;
+
 export {
   createToast,
   toastPromise,

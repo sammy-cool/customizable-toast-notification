@@ -73,7 +73,8 @@ function resetContainerStyles(container) {
   container.style.left = "auto";
   container.style.right = "auto";
   container.style.transform = "none";
-  container.style.maxWidth = "none";
+  container.style.maxWidth = "calc(100vw - 20px)";
+  container.style.boxSizing = "border-box";
 }
 
 function parsePosition(position) {

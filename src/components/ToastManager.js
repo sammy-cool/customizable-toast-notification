@@ -158,24 +158,24 @@ export function updateStackedLayout(container) {
         } else if (depthFromTop === 1) {
           const y = isTop ? 10 : -10;
           item.style.transform = `scale(0.95) translateY(${y}px)`;
-          item.style.marginTop = "-55px";
-          item.style.marginBottom = "0px";
+          item.style.marginTop = isTop ? "0px" : "-55px";
+          item.style.marginBottom = isTop ? "-55px" : "0px";
           item.style.opacity = "0.9";
           item.style.zIndex = "20";
           item.style.pointerEvents = "auto";
         } else if (depthFromTop === 2) {
           const y = isTop ? 20 : -20;
           item.style.transform = `scale(0.90) translateY(${y}px)`;
-          item.style.marginTop = "-55px";
-          item.style.marginBottom = "0px";
+          item.style.marginTop = isTop ? "0px" : "-55px";
+          item.style.marginBottom = isTop ? "-55px" : "0px";
           item.style.opacity = "0.75";
           item.style.zIndex = "10";
           item.style.pointerEvents = "auto";
         } else {
           const y = isTop ? 30 : -30;
           item.style.transform = `scale(0.85) translateY(${y}px)`;
-          item.style.marginTop = "-55px";
-          item.style.marginBottom = "0px";
+          item.style.marginTop = isTop ? "0px" : "-55px";
+          item.style.marginBottom = isTop ? "-55px" : "0px";
           item.style.opacity = "0";
           item.style.zIndex = "1";
           item.style.pointerEvents = "none";
@@ -417,15 +417,15 @@ async function createOne(options, key, initialCount) {
 
 export async function dismissMostRecent() {
   try {
-    if (active.size === 0) {
-      if (pending.size > 0) {
-        const [pendingKey, pendingEntry] = Array.from(pending.entries()).at(-1);
-        if (pendingEntry?.rafId) cancelAnimationFrame(pendingEntry.rafId);
-        pending.delete(pendingKey);
-        emitMetrics();
-        return;
-      }
+    if (pending.size > 0) {
+      const [pendingKey, pendingEntry] = Array.from(pending.entries()).at(-1);
+      if (pendingEntry?.rafId) cancelAnimationFrame(pendingEntry.rafId);
+      pending.delete(pendingKey);
+      emitMetrics();
+      return;
+    }
 
+    if (active.size === 0) {
       if (queue.length > 0) {
         queue.pop();
         emitMetrics();
@@ -514,15 +514,17 @@ export function resetToastManager() {
     data.toast?._cleanup?.();
     if (data.toast?._progressAnimation) {
       try {
-        data.toast._progressAnimation.cancel();
+        data.toast._progressAnimation.pause();
       } catch {}
-      data.toast._progressAnimation = null;
     }
     const badge = data.outer?.querySelector(".toast-count-badge");
     if (badge?._scaleTimer) {
       clearTimeout(badge._scaleTimer);
       badge._scaleTimer = null;
     }
+    try {
+      data.outer?.remove?.();
+    } catch {}
   }
   if (typeof document !== "undefined") {
     const containers = document.querySelectorAll('[id^="toast-container-"]');
@@ -600,6 +602,7 @@ async function setupPauseOnHover(data) {
           const isReverse = toast._progressBar._isReverse;
           const finalWidth = toast._progressBar._finalWidth || "100%";
           toast._progressBar.style.transition = `width ${Math.max(0, remainingMs)}ms linear`;
+          void toast._progressBar.offsetWidth;
           toast._progressBar.style.width = isReverse ? finalWidth : "0%";
           toast._progressBar._pausedWidth = null;
         }
@@ -715,9 +718,8 @@ export async function closeToastByKey(key) {
     data.toast?._cleanup?.();
     if (data.toast?._progressAnimation) {
       try {
-        data.toast._progressAnimation.cancel();
+        data.toast._progressAnimation.pause();
       } catch {}
-      data.toast._progressAnimation = null;
     }
     const badge = data.outer?.querySelector(".toast-count-badge");
     if (badge?._scaleTimer) {
@@ -753,6 +755,8 @@ export async function closeToastByKey(key) {
         } else {
           if (anim === "fade") {
             exitTransform = "none";
+          } else if (anim === "pop") {
+            exitTransform = "scale(0.6)";
           } else if (anim === "zoom" || anim === "scale") {
             exitTransform = "scale(0.75)";
           } else if (anim === "flip") {
@@ -765,7 +769,10 @@ export async function closeToastByKey(key) {
             exitTransform = isTop ? "translateY(-28px) scale(0.94)" : "translateY(28px) scale(0.94)";
           }
 
-          data.toast.style.transition = `opacity ${exitDuration}ms ease-in, transform ${exitDuration}ms ease-in`;
+          const exitEasing = typeof data.options?.animationEasing === "string" && data.options.animationEasing.trim()
+            ? data.options.animationEasing.trim()
+            : (data.options?.spring || anim === "spring" ? "cubic-bezier(0.16, 1, 0.3, 1)" : "ease-in");
+          data.toast.style.transition = `opacity ${exitDuration}ms ${exitEasing}, transform ${exitDuration}ms ${exitEasing}`;
           data.toast.style.opacity = "0";
           data.toast.style.transform = exitTransform;
         }
@@ -1092,6 +1099,7 @@ export async function updateToastByKey(key, newOptions = {}) {
       };
       if (typeColors[newType]) {
         toast.style.background = typeColors[newType];
+        toast.style.backgroundColor = typeColors[newType];
       }
     }
   }
@@ -1113,13 +1121,14 @@ export async function updateToastByKey(key, newOptions = {}) {
 
   if (newOptions.backgroundColor) {
     toast.style.background = newOptions.backgroundColor;
+    toast.style.backgroundColor = newOptions.backgroundColor;
   }
 
   if (newOptions.textColor) {
     toast.style.color = newOptions.textColor;
     if (messageSpan) messageSpan.style.color = newOptions.textColor;
   } else if (newOptions.type || newOptions.backgroundColor) {
-    const bg = toast.style.background;
+    const bg = toast.style.backgroundColor || toast.style.background;
     if (bg) {
       const dynamicColor = getDynamicAccessibleTextColorHex(bg);
       toast.style.color = dynamicColor;
@@ -1240,7 +1249,9 @@ export async function updateToastByKey(key, newOptions = {}) {
   } else if (
     !progressBar &&
     newOptions.showProgressBar !== false &&
-    (newOptions.progress !== undefined || newOptions.showProgressBar === true)
+    (newOptions.progress !== undefined ||
+      newOptions.showProgressBar === true ||
+      ((newOptions.duration && Number(newOptions.duration) > 0) || (data.options.duration && Number(data.options.duration) > 0)))
   ) {
     createProgressBar(toast, {
       ...data.options,
@@ -1279,11 +1290,19 @@ export async function updateToastByKey(key, newOptions = {}) {
         progressBar.classList.remove("toast-progress-bar-indeterminate");
         progressBar.classList.remove("toast-progress-bar-indeterminate-rtl");
         progressBar.style.animation = "none";
+        const currentWidth = (typeof window !== "undefined" && window.getComputedStyle)
+          ? window.getComputedStyle(progressBar).width
+          : null;
         if (toast._progressAnimation) {
           try {
             toast._progressAnimation.cancel();
           } catch {}
           toast._progressAnimation = null;
+        }
+        if (currentWidth) {
+          progressBar.style.transition = "none";
+          progressBar.style.width = currentWidth;
+          void progressBar.offsetWidth;
         }
         progressBar.style.transition = "width 200ms ease";
         progressBar.style.width = `${pct}%`;
@@ -1331,28 +1350,41 @@ export async function updateToastByKey(key, newOptions = {}) {
     if (Number.isFinite(raw) && raw > 0) {
       data.timer = createDismissTimer(toast, { duration: raw });
       await setupPauseOnHover(data);
-      if (progressBar && !progressBar._isManualProgress && !progressBar._isIndeterminate) {
-        const newDuration = raw + 5;
+      if (progressBar) {
+        if (newOptions.progress === undefined) {
+          progressBar._isManualProgress = false;
+        }
+        if (!progressBar._isManualProgress && !progressBar._isIndeterminate) {
+          const newDuration = raw + 5;
+          if (toast._progressAnimation) {
+            try {
+              toast._progressAnimation.cancel();
+            } catch {}
+            const isReverse = progressBar._isReverse;
+            const finalWidth = progressBar._finalWidth || "100%";
+            const keyframes = isReverse
+              ? [{ width: "0%" }, { width: finalWidth }]
+              : [{ width: finalWidth }, { width: "0%" }];
+            toast._progressAnimation = progressBar.animate(keyframes, {
+              duration: newDuration,
+              easing: "linear",
+              fill: "forwards",
+              delay: 0,
+            });
+          } else {
+            progressBar.style.transition = `width ${newDuration}ms linear`;
+            const isReverse = progressBar._isReverse;
+            const finalWidth = progressBar._finalWidth || "100%";
+            progressBar.style.width = isReverse ? finalWidth : "0%";
+          }
+        }
+      }
+      if (toast.classList.contains("toast-paused")) {
+        data.timer.pause();
         if (toast._progressAnimation) {
           try {
-            toast._progressAnimation.cancel();
+            toast._progressAnimation.pause();
           } catch {}
-          const isReverse = progressBar._isReverse;
-          const finalWidth = progressBar._finalWidth || "100%";
-          const keyframes = isReverse
-            ? [{ width: "0%" }, { width: finalWidth }]
-            : [{ width: finalWidth }, { width: "0%" }];
-          toast._progressAnimation = progressBar.animate(keyframes, {
-            duration: newDuration,
-            easing: "linear",
-            fill: "forwards",
-            delay: 0,
-          });
-        } else {
-          progressBar.style.transition = `width ${newDuration}ms linear`;
-          const isReverse = progressBar._isReverse;
-          const finalWidth = progressBar._finalWidth || "100%";
-          progressBar.style.width = isReverse ? finalWidth : "0%";
         }
       }
     } else {
