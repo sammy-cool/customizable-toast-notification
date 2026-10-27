@@ -692,20 +692,7 @@ async function toastPromise(promiseOrFn, messages = {}, options = {}) {
         : { ...baseOptions, type: "success", showLoader: false, message: String(successResult) };
 
     if (loadingHandle && typeof loadingHandle.update === "function") {
-      try {
-        await loadingHandle.update(successOptions);
-      } catch {
-        await createToastWithPriority(successOptions);
-      }
-    } else {
-      if (loadingHandle && typeof loadingHandle.dismiss === "function") {
-        try {
-          await loadingHandle.dismiss();
-        } catch {
-          // Loading toast may already be dismissed
-        }
-      }
-      await createToastWithPriority(successOptions);
+      await loadingHandle.update(successOptions);
     }
 
     return result;
@@ -721,20 +708,7 @@ async function toastPromise(promiseOrFn, messages = {}, options = {}) {
         : { ...baseOptions, type: "error", showLoader: false, message: String(errorResult) };
 
     if (loadingHandle && typeof loadingHandle.update === "function") {
-      try {
-        await loadingHandle.update(errorOptions);
-      } catch {
-        await createToastWithPriority(errorOptions);
-      }
-    } else {
-      if (loadingHandle && typeof loadingHandle.dismiss === "function") {
-        try {
-          await loadingHandle.dismiss();
-        } catch {
-          // Loading toast may already be dismissed
-        }
-      }
-      await createToastWithPriority(errorOptions);
+      await loadingHandle.update(errorOptions);
     }
 
     throw err;
