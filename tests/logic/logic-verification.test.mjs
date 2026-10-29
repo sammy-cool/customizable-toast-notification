@@ -4948,7 +4948,7 @@ describe("v4.0.1 Subsystem Fortification — Exhaustive New Code Coverage Suite"
 });
 
 describe("v4.0.2 Mobile & Desktop Viewport Parity — Progress Bar Visibility & Accessible Color Suite", () => {
-  test("createProgressBar and runToastAnimation keep progress bar visible under reducedMotion: 'always'", async () => {
+  test("createProgressBar and runToastAnimation keep progress bar visible and running smoothly under reducedMotion: 'always'", async () => {
     freshDom();
     const { setConfig, resetConfig } = await import("../../src/utils/config.js");
     const { createProgressBar, runToastAnimation } = await import("../../src/components/toast-utils-core.js");
@@ -4962,8 +4962,10 @@ describe("v4.0.2 Mobile & Desktop Viewport Parity — Progress Bar Visibility & 
     assert.ok(bar, "progress bar element must exist");
     assert.notStrictEqual(bar.style.display, "none", "progress bar must NOT be hidden with display: none");
     assert.ok(bar.style.width, "progress bar width must be populated");
-    assert.strictEqual(bar.style.animation, "none");
-    assert.strictEqual(bar.style.transition, "none");
+    assert.ok(
+      toast._progressAnimation || bar.style.transition.includes("width"),
+      "progress bar animation or transition must be active"
+    );
 
     document.body.appendChild(toast);
     runToastAnimation(toast);
@@ -5070,7 +5072,7 @@ describe("v4.0.2 Mobile & Desktop Viewport Parity — Progress Bar Visibility & 
     resetToastManager();
   });
 
-  test("handle.update preserves progress bar visibility when duration changes under reduced motion", async () => {
+  test("handle.update preserves progress bar visibility and animation when duration changes under reduced motion", async () => {
     freshDom();
     const { setConfig, resetConfig } = await import("../../src/utils/config.js");
     const { createToast, resetToastManager } = await import("../../src/index.js");
@@ -5088,12 +5090,19 @@ describe("v4.0.2 Mobile & Desktop Viewport Parity — Progress Bar Visibility & 
     const bar = document.querySelector(".toast-progress-bar");
     assert.ok(toast && bar);
     assert.notStrictEqual(bar.style.display, "none");
+    assert.ok(
+      toast._progressAnimation || bar.style.transition.includes("width"),
+      "progress bar animation or transition must exist"
+    );
 
     // Update duration under reduced motion
     await handle.update({ duration: 5000, message: "Updated message" });
     assert.notStrictEqual(bar.style.display, "none");
     assert.ok(bar.style.width);
-    assert.strictEqual(bar.style.animation, "none");
+    assert.ok(
+      toast._progressAnimation || bar.style.transition.includes("width"),
+      "progress bar animation or transition must remain active upon duration change"
+    );
 
     await handle.dismiss();
     resetToastManager();

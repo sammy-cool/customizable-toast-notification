@@ -548,11 +548,7 @@ export function createProgressBar(toast, options = {}) {
     return;
   }
 
-  if (shouldReduceMotion()) {
-    progressBar.style.width = finalWidth;
-    progressBar.style.transition = "none";
-    progressBar.style.animation = "none";
-  } else if (typeof progressBar.animate === "function") {
+  if (typeof progressBar.animate === "function") {
     const keyframes = isReverse
       ? [{ width: "0%" }, { width: finalWidth }]
       : [{ width: finalWidth }, { width: "0%" }];
@@ -581,12 +577,12 @@ export function runToastAnimation(toast) {
     toast._hasAnimated = true;
     toast.style.transition = "none";
     toast.style.opacity = "1";
-    toast.style.transform = "translateY(0)";
+    toast.style.transform = "none";
     toast.classList.add("active");
-    if (toast._progressBar && !toast._progressBar._isIndeterminate && !toast._progressBar._isManualProgress) {
-      toast._progressBar.style.width = toast._progressBar._finalWidth || "100%";
-      toast._progressBar.style.transition = "none";
-      toast._progressBar.style.animation = "none";
+    if (toast._progressAnimation && (toast._progressAnimation.playState === "idle" || toast._progressAnimation.playState === "paused")) {
+      try {
+        toast._progressAnimation.play();
+      } catch {}
     }
     return;
   }

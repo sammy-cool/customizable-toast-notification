@@ -1426,15 +1426,21 @@ export async function updateToastByKey(key, newOptions = {}) {
         if (!progressBar._isManualProgress && !progressBar._isIndeterminate) {
           const newDuration = raw + 5;
           const finalWidth = progressBar._finalWidth || "100%";
-          if (shouldReduceMotion()) {
-            progressBar.style.width = finalWidth;
-            progressBar.style.transition = "none";
-            progressBar.style.animation = "none";
-          } else if (toast._progressAnimation) {
+          const isReverse = progressBar._isReverse;
+          if (toast._progressAnimation) {
             try {
               toast._progressAnimation.cancel();
             } catch {}
-            const isReverse = progressBar._isReverse;
+            const keyframes = isReverse
+              ? [{ width: "0%" }, { width: finalWidth }]
+              : [{ width: finalWidth }, { width: "0%" }];
+            toast._progressAnimation = progressBar.animate(keyframes, {
+              duration: newDuration,
+              easing: "linear",
+              fill: "forwards",
+              delay: 0,
+            });
+          } else if (typeof progressBar.animate === "function") {
             const keyframes = isReverse
               ? [{ width: "0%" }, { width: finalWidth }]
               : [{ width: finalWidth }, { width: "0%" }];
@@ -1446,7 +1452,6 @@ export async function updateToastByKey(key, newOptions = {}) {
             });
           } else {
             progressBar.style.transition = `width ${newDuration}ms linear`;
-            const isReverse = progressBar._isReverse;
             progressBar.style.width = isReverse ? finalWidth : "0%";
           }
         }
@@ -1489,27 +1494,21 @@ export async function updateToastByKey(key, newOptions = {}) {
       progressBar.style.animation = "none";
       const newDuration = 2505;
       const finalWidth = progressBar._finalWidth || "100%";
-      if (shouldReduceMotion()) {
-        progressBar.style.width = finalWidth;
-        progressBar.style.transition = "none";
-        progressBar.style.animation = "none";
+      const isReverse = progressBar._isReverse;
+      if (typeof progressBar.animate === "function") {
+        try { toast._progressAnimation?.cancel(); } catch {}
+        const keyframes = isReverse
+          ? [{ width: "0%" }, { width: finalWidth }]
+          : [{ width: finalWidth }, { width: "0%" }];
+        toast._progressAnimation = progressBar.animate(keyframes, {
+          duration: newDuration,
+          easing: "linear",
+          fill: "forwards",
+          delay: 0,
+        });
       } else {
-        const isReverse = progressBar._isReverse;
-        if (typeof progressBar.animate === "function") {
-          try { toast._progressAnimation?.cancel(); } catch {}
-          const keyframes = isReverse
-            ? [{ width: "0%" }, { width: finalWidth }]
-            : [{ width: finalWidth }, { width: "0%" }];
-          toast._progressAnimation = progressBar.animate(keyframes, {
-            duration: newDuration,
-            easing: "linear",
-            fill: "forwards",
-            delay: 0,
-          });
-        } else {
-          progressBar.style.transition = `width ${newDuration}ms linear`;
-          progressBar.style.width = isReverse ? finalWidth : "0%";
-        }
+        progressBar.style.transition = `width ${newDuration}ms linear`;
+        progressBar.style.width = isReverse ? finalWidth : "0%";
       }
     }
   }

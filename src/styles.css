@@ -788,7 +788,6 @@
 /* ========== ACCESSIBILITY: REDUCED MOTION ========== */
 @media (prefers-reduced-motion: reduce) {
   .toast,
-  .toast-progress-bar,
   .toast-loader-circle,
   .toast-count-badge,
   .toast-cta,
@@ -801,7 +800,6 @@
 }
 
 [data-toast-reduced-motion="always"] .toast,
-[data-toast-reduced-motion="always"] .toast-progress-bar,
 [data-toast-reduced-motion="always"] .toast-loader-circle,
 [data-toast-reduced-motion="always"] .toast-count-badge,
 [data-toast-reduced-motion="always"] .toast-cta,
