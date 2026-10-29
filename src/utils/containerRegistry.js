@@ -26,6 +26,7 @@ export function normalizePositionKey(position) {
     "center-bottom": "bottom-center",
     "center-left": "left-center",
     "center-right": "right-center",
+    "center-center": "center",
     "top": "top-center",
     "bottom": "bottom-center",
   };
@@ -53,6 +54,12 @@ export function resetContainerRegistry() {
         host.remove();
       } catch {}
     }
+    const containers = document.querySelectorAll('[id^="toast-container-"]');
+    containers.forEach((c) => {
+      try {
+        c.remove();
+      } catch {}
+    });
   }
 }
 
@@ -183,7 +190,8 @@ export async function getOrCreateToastContainer(options = {}, setPosition) {
             z-index: 20;
             pointer-events: auto;
           }
-          [data-stacked="true"][id*="top"] .toast-outer-wrapper[data-stacked-depth="1"] {
+          [data-stacked="true"][id*="top"] .toast-outer-wrapper[data-stacked-depth="1"],
+          [data-stacked="true"][class*="toast-position-top"] .toast-outer-wrapper[data-stacked-depth="1"] {
             transform: scale(0.95) translateY(10px);
             margin-top: 0px;
             margin-bottom: -55px;
@@ -196,7 +204,8 @@ export async function getOrCreateToastContainer(options = {}, setPosition) {
             z-index: 10;
             pointer-events: auto;
           }
-          [data-stacked="true"][id*="top"] .toast-outer-wrapper[data-stacked-depth="2"] {
+          [data-stacked="true"][id*="top"] .toast-outer-wrapper[data-stacked-depth="2"],
+          [data-stacked="true"][class*="toast-position-top"] .toast-outer-wrapper[data-stacked-depth="2"] {
             transform: scale(0.90) translateY(20px);
             margin-top: 0px;
             margin-bottom: -55px;
@@ -209,7 +218,8 @@ export async function getOrCreateToastContainer(options = {}, setPosition) {
             z-index: 1;
             pointer-events: none;
           }
-          [data-stacked="true"][id*="top"] .toast-outer-wrapper[data-stacked-depth="overflow"] {
+          [data-stacked="true"][id*="top"] .toast-outer-wrapper[data-stacked-depth="overflow"],
+          [data-stacked="true"][class*="toast-position-top"] .toast-outer-wrapper[data-stacked-depth="overflow"] {
             transform: scale(0.85) translateY(30px);
             margin-top: 0px;
             margin-bottom: -55px;

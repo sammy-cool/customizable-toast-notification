@@ -1,7 +1,7 @@
 // src/components/toast-utils.js
 "use strict";
 
-import { parseAnimationDuration } from "../utils/dom.js";
+import { parseAnimationDuration, getDynamicAccessibleTextColorHex } from "../utils/dom.js";
 import { sanitizeHtml } from "../utils/html-sanitizer.js";
 import { createLoader } from "./loader.js";
 import {
@@ -97,6 +97,11 @@ export async function applyRichStyling(toast, options, onClose) {
   if (!config.disableInlineStyles) {
     Object.assign(toast.style, {
       background: options?.backgroundColor,
+      color:
+        options?.textColor ||
+        (options?.backgroundColor
+          ? getDynamicAccessibleTextColorHex(options.backgroundColor)
+          : undefined),
       padding: "12px 16px",
       marginBottom: "10px",
       borderRadius,
@@ -113,6 +118,7 @@ export async function applyRichStyling(toast, options, onClose) {
       boxSizing: "border-box",
       userSelect: "text",
       pointerEvents: "auto",
+      touchAction: options?.swipeToDismiss === false ? "auto" : "pan-y",
       transition: `opacity ${opacityDuration} ${opacityEasing}, transform ${validAnimationDuration} ${easing}`,
       transform: getInitialTransform(options?.position, options?.animationType, isSpring),
       zIndex: String(config.zIndex),

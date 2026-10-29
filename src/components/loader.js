@@ -41,6 +41,7 @@ export function createLoader(opts = {}) {
     circle.style.strokeDasharray = "90";
     circle.style.strokeDashoffset = "60";
     circle.style.transformOrigin = "center";
+    circle.style.transformBox = "fill-box";
     if (!shouldReduceMotion()) {
       circle.style.animation = "toast-spinner 1s linear infinite";
     }

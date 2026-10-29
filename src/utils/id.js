@@ -17,7 +17,7 @@ export function generateSalt(customCrypto = typeof globalThis !== "undefined" ? 
   const highRes = typeof performance !== "undefined" && typeof performance.now === "function"
     ? Math.floor(performance.now() * 1000)
     : 0;
-  const entropy = (Date.now() ^ highRes) & 0xffff;
+  const entropy = ((Date.now() ^ highRes) + (++counter)) & 0xffff;
   return entropy.toString(36).padStart(3, "0").slice(-3);
 }
 const sessionSalt = generateSalt();

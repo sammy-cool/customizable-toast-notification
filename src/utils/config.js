@@ -55,6 +55,7 @@ const DEFAULT_GLOBAL_CONFIG = Object.freeze({
   swipeToDismiss: true,
   sound: false,
   icon: true,
+  iconColor: undefined,
   pauseOnHover: false,
   priorityQueue: false,
   shadowDom: false,
@@ -93,6 +94,7 @@ export function setConfig(options = {}) {
     swipeToDismiss,
     sound,
     icon,
+    iconColor,
     pauseOnHover,
     priorityQueue,
     shadowDom,
@@ -116,8 +118,8 @@ export function setConfig(options = {}) {
 
   if (maxVisible !== undefined) {
     const v = Number(maxVisible);
-    if (Number.isFinite(v) && v > 0) {
-      globalConfig.maxVisible = Math.max(1, Math.floor(v));
+    if (Number.isFinite(v) && v >= 0) {
+      globalConfig.maxVisible = Math.max(0, Math.floor(v));
     }
   }
 
@@ -193,6 +195,10 @@ export function setConfig(options = {}) {
     globalConfig.icon = Boolean(icon);
   }
 
+  if (iconColor !== undefined) {
+    globalConfig.iconColor = typeof iconColor === "string" ? iconColor.trim() : (iconColor === null ? null : undefined);
+  }
+
   if (pauseOnHover !== undefined) {
     globalConfig.pauseOnHover = Boolean(pauseOnHover);
   }
@@ -240,7 +246,7 @@ export function getConfig() {
  */
 export function getToastRoot() {
   if (isValidMountTarget(globalConfig.targetNode)) return globalConfig.targetNode;
-  if (typeof document !== "undefined") return document.body;
+  if (typeof document !== "undefined") return document.body || document.documentElement || null;
   return null;
 }
 

@@ -68,6 +68,7 @@ export async function setPosition(container, options = {}) {
 }
 
 function resetContainerStyles(container) {
+  container.style.inset = "auto";
   container.style.top = "auto";
   container.style.bottom = "auto";
   container.style.left = "auto";

@@ -7,6 +7,10 @@ import {
   setConfig,
   getConfig,
   resetConfig,
+  getToastMetrics,
+  setDefaultColors,
+  setDefaultMessages,
+  version,
 } from "../index.js";
 
 /**
@@ -69,6 +73,22 @@ export class ToastService {
   resetConfig() {
     return resetConfig();
   }
+
+  getToastMetrics() {
+    return getToastMetrics();
+  }
+
+  setDefaultColors(colors) {
+    return setDefaultColors(colors);
+  }
+
+  setDefaultMessages(messages) {
+    return setDefaultMessages(messages);
+  }
+
+  get version() {
+    return version;
+  }
 }
 
 // Angular Ivy dependency injection token compatibility metadata
@@ -105,4 +125,8 @@ export {
   setConfig,
   getConfig,
   resetConfig,
+  getToastMetrics,
+  setDefaultColors,
+  setDefaultMessages,
+  version,
 };

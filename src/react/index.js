@@ -9,6 +9,10 @@ import {
   setConfig,
   getConfig,
   resetConfig,
+  getToastMetrics,
+  setDefaultColors,
+  setDefaultMessages,
+  version,
 } from "../index.js";
 
 /**
@@ -31,6 +35,10 @@ export function createToastAPI() {
     setConfig,
     getConfig,
     resetConfig,
+    getToastMetrics,
+    setDefaultColors,
+    setDefaultMessages,
+    version,
   };
 }
 
@@ -68,4 +76,8 @@ export {
   setConfig,
   getConfig,
   resetConfig,
+  getToastMetrics,
+  setDefaultColors,
+  setDefaultMessages,
+  version,
 };

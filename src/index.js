@@ -6,7 +6,7 @@ import {
   showToast,
   closeToastByKey,
   updateToastByKey,
-  resetToastManager,
+  resetToastManager as coreResetToastManager,
   dismiss,
   noop as managerNoop,
   getToastMetrics,
@@ -99,6 +99,7 @@ import { generateToastId, resetToastIdCounter } from "./utils/id.js";
  * @property {boolean | string} [sound]
  * @property {((options: ToastOptions) => void)} [onSound] - Sound playback handler callback
  * @property {boolean | string | HTMLElement | ((options: ToastOptions) => boolean | string | HTMLElement | null | undefined)} [icon]
+ * @property {string} [iconColor] - Custom color for the toast icon (overriding currentColor / text color)
  * @property {boolean} [swipeToDismiss]
  * @property {number | string | 'indeterminate'} [progress]
  * @property {boolean} [progressNormalized]
@@ -148,6 +149,7 @@ import { generateToastId, resetToastIdCounter } from "./utils/id.js";
  * @property {boolean} [swipeToDismiss]
  * @property {boolean} [sound]
  * @property {boolean} [icon]
+ * @property {string} [iconColor]
  * @property {boolean} [pauseOnHover]
  * @property {boolean} [priorityQueue]
  * @property {boolean} [shadowDom]
@@ -161,7 +163,7 @@ import { generateToastId, resetToastIdCounter } from "./utils/id.js";
  * @typedef {Object} ToastHandle
  * @property {string} [id] - The unique identifier/key of the toast notification.
  * @property {() => Promise<void>} dismiss
- * @property {(newOptions: Partial<ToastOptions>) => Promise<void>} update
+ * @property {(newOptions: Partial<ToastOptions>) => Promise<boolean>} update
  */
 
 /**
@@ -256,7 +258,8 @@ async function createFirstToastContainer(options) {
     return await getOrCreateToastContainer(options, setPosition);
   } catch (error) {
     console.error("Failed to create toast container:", error);
-    return getConfig().targetNode || document.body;
+    const targetNode = getConfig().targetNode;
+    return (targetNode && targetNode.isConnected) ? targetNode : (document.body || document.documentElement);
   }
 }
 
@@ -270,11 +273,14 @@ function normalizeToastOptions(messageOrOptions, maybeOptions) {
     typeof messageOrOptions === "string" ||
     typeof messageOrOptions === "number" ||
     typeof messageOrOptions === "boolean" ||
-    typeof messageOrOptions === "bigint"
+    typeof messageOrOptions === "bigint" ||
+    typeof messageOrOptions === "symbol"
   ) {
     return {
       ...extra,
-      message: String(messageOrOptions),
+      message: typeof messageOrOptions === "symbol"
+        ? (messageOrOptions.description || String(messageOrOptions))
+        : String(messageOrOptions),
     };
   }
 
@@ -316,6 +322,7 @@ async function sanitizeToastOptions(rawOptions) {
     backgroundColor: undefined,
     textColor: undefined,
     showCloseButton: true,
+    iconColor: undefined,
     animationDuration: "0.4s",
     animationEasing: "ease",
     showProgressBar: true,
@@ -349,7 +356,7 @@ async function sanitizeToastOptions(rawOptions) {
         typeof window.matchMedia === "function" &&
         window.matchMedia("(prefers-color-scheme: dark)")?.matches;
       final.backgroundColor =
-        defaultColors?.[final.type] ?? (prefersDark ? "#f5f5f5" : "#111111");
+        defaultColors?.[final.type] ?? (prefersDark ? "#111111" : "#f5f5f5");
     }
   } catch (error) {
     console.warn("Background color resolution failed:", error);
@@ -405,11 +412,10 @@ async function sanitizeToastOptions(rawOptions) {
 function setDefaultColors(colors) {
   try {
     if (colors && typeof colors === "object" && !Array.isArray(colors)) {
-      const validTypes = ["success", "error", "warning", "info"];
       const validated = {};
       for (const [key, value] of Object.entries(colors)) {
-        if (validTypes.includes(key) && typeof value === "string" && value.trim()) {
-          validated[key] = value.trim();
+        if (typeof key === "string" && key.trim() && typeof value === "string" && value.trim()) {
+          validated[key.trim()] = value.trim();
         }
       }
       if (Object.keys(validated).length > 0) {
@@ -428,11 +434,10 @@ function setDefaultColors(colors) {
 function setDefaultMessages(messages) {
   try {
     if (messages && typeof messages === "object" && !Array.isArray(messages)) {
-      const validTypes = ["success", "error", "warning", "info"];
       const validated = {};
       for (const [key, value] of Object.entries(messages)) {
-        if (validTypes.includes(key) && typeof value === "string" && value.trim()) {
-          validated[key] = value.trim();
+        if (typeof key === "string" && key.trim() && typeof value === "string" && value.trim()) {
+          validated[key.trim()] = value.trim();
         }
       }
       if (Object.keys(validated).length > 0) {
@@ -478,7 +483,7 @@ async function createToastWithPriority(messageOrOptions = {}, maybeOptions) {
     id: key,
     dismiss: () => (key ? closeToastByKey(key) : Promise.resolve()),
     update: (newOptions) =>
-      key ? updateToastByKey(key, newOptions) : Promise.resolve(),
+      key ? updateToastByKey(key, newOptions) : Promise.resolve(false),
   };
 }
 
@@ -587,7 +592,10 @@ const dismissToast = async (target) => {
   if (target && typeof target.then === "function") {
     try {
       resolvedTarget = await target;
-    } catch {
+    } catch (err) {
+      if (getConfig().debug) {
+        console.warn("dismissToast: target promise rejected before resolution", err);
+      }
       return;
     }
   }
@@ -644,6 +652,10 @@ const TOAST_PROMISE_LOADING_DURATION_MS = 24 * 60 * 60 * 1000;
  * @returns {Promise<T>}
  */
 async function toastPromise(promiseOrFn, messages = {}, options = {}) {
+  if (!promiseOrFn || (typeof promiseOrFn !== "function" && typeof promiseOrFn.then !== "function")) {
+    throw new TypeError("toastPromise requires a Promise or Promise-returning function");
+  }
+
   const safeMessages = messages && typeof messages === "object" ? messages : {};
   const safeOptions = options && typeof options === "object" ? options : {};
 
@@ -653,11 +665,11 @@ async function toastPromise(promiseOrFn, messages = {}, options = {}) {
       ? {
           ...safeOptions,
           type: "info",
-          duration: TOAST_PROMISE_LOADING_DURATION_MS,
           showProgressBar: false,
           pauseOnHover: false,
           showLoader: safeOptions.showLoader ?? true,
           ...loadingInput,
+          duration: loadingInput.duration !== undefined ? Number(loadingInput.duration) : TOAST_PROMISE_LOADING_DURATION_MS,
         }
       : {
           ...safeOptions,
@@ -692,7 +704,12 @@ async function toastPromise(promiseOrFn, messages = {}, options = {}) {
         : { ...baseOptions, type: "success", showLoader: false, message: String(successResult) };
 
     if (loadingHandle && typeof loadingHandle.update === "function") {
-      await loadingHandle.update(successOptions);
+      const updated = await loadingHandle.update(successOptions);
+      if (!updated) {
+        await createToastWithPriority(successOptions);
+      }
+    } else {
+      await createToastWithPriority(successOptions);
     }
 
     return result;
@@ -708,7 +725,12 @@ async function toastPromise(promiseOrFn, messages = {}, options = {}) {
         : { ...baseOptions, type: "error", showLoader: false, message: String(errorResult) };
 
     if (loadingHandle && typeof loadingHandle.update === "function") {
-      await loadingHandle.update(errorOptions);
+      const updated = await loadingHandle.update(errorOptions);
+      if (!updated) {
+        await createToastWithPriority(errorOptions);
+      }
+    } else {
+      await createToastWithPriority(errorOptions);
     }
 
     throw err;
@@ -719,6 +741,15 @@ createToastWithPriority.promise = toastPromise;
 createToastWithPriority.dismiss = dismissToast;
 createToastWithPriority.dismissAll = noopAll;
 createToastWithPriority.clear = noopAll;
+
+/**
+ * Resets all internal ToastManager state, active toasts, queues, timers, and index-level locks.
+ */
+function resetToastManager() {
+  closeInProgress = false;
+  closePromise = null;
+  coreResetToastManager();
+}
 
 /** @type {string} */
 const version = typeof __VERSION__ !== "undefined" ? __VERSION__ : "4.0.1";
@@ -741,7 +772,7 @@ export {
 /**
  * Attach global keyboard event listeners (Escape to dismiss, F6/Alt+T for landmark navigation)
  * @param {Window} [win]
- * @returns {void}
+ * @returns {(() => void) | void} Teardown/unsubscribe function
  */
 export function initKeyboardShortcuts(win = typeof window !== "undefined" ? window : null) {
   if (!win || !win.document || win.__customizableToastEscapeAttached) return;
@@ -768,8 +799,15 @@ export function initKeyboardShortcuts(win = typeof window !== "undefined" ? wind
       })();
     } else if (e.key === "F6" || ((e.altKey || e.metaKey) && (e.key === "t" || e.key === "T"))) {
       // Accessible landmark navigation: focus the most recent active toast
-      const root = (getConfig().targetNode && typeof getConfig().targetNode.querySelectorAll === "function") ? getConfig().targetNode : win.document;
-      const activeToasts = root.querySelectorAll('[id^="toast-container-"] [id^="toast-"]');
+      const targetNode = getConfig().targetNode;
+      const root = (targetNode && typeof targetNode.querySelectorAll === "function") ? targetNode : win.document;
+      let activeToasts = Array.from(root.querySelectorAll('[id^="toast-container-"] [id^="toast-"]'));
+      if (activeToasts.length === 0 && typeof root.querySelector === "function") {
+        const shadowHost = root.querySelector("#toast-shadow-host");
+        if (shadowHost?.shadowRoot?.querySelectorAll) {
+          activeToasts = Array.from(shadowHost.shadowRoot.querySelectorAll('[id^="toast-container-"] [id^="toast-"]'));
+        }
+      }
       if (activeToasts.length > 0) {
         const targetToast = activeToasts[activeToasts.length - 1];
         // Try focusing the interactive CTA, undo, or close button inside the toast first
@@ -783,6 +821,26 @@ export function initKeyboardShortcuts(win = typeof window !== "undefined" ? wind
     }
   };
   win.addEventListener("keydown", onKeyDown, { passive: true });
+  const cleanup = () => {
+    try {
+      win.removeEventListener("keydown", onKeyDown);
+      delete win.__customizableToastEscapeAttached;
+      delete win.__customizableToastEscapeCleanup;
+    } catch {}
+  };
+  win.__customizableToastEscapeCleanup = cleanup;
+  return cleanup;
+}
+
+/**
+ * Remove global keyboard event listeners attached by initKeyboardShortcuts.
+ * @param {Window} [win]
+ * @returns {void}
+ */
+export function destroyKeyboardShortcuts(win = typeof window !== "undefined" ? window : null) {
+  if (win && typeof win.__customizableToastEscapeCleanup === "function") {
+    win.__customizableToastEscapeCleanup();
+  }
 }
 
 if (typeof window !== "undefined" && typeof document !== "undefined") {
@@ -816,7 +874,10 @@ try {
       generateToastId,
       resetToastIdCounter,
       getToastMetrics,
+      resetToastManager,
+      resetContainerRegistry,
       initKeyboardShortcuts,
+      destroyKeyboardShortcuts,
     };
   }
 } catch (error) {

@@ -18,6 +18,7 @@ const pending = new Map();
 const queue = [];
 let visibleCount = 0;
 let droppedCount = 0;
+let queueSequence = 0;
 
 /**
  * Returns a real-time snapshot of toast manager telemetry metrics.
@@ -108,26 +109,64 @@ export function updateStackedLayout(container) {
         updateStackedLayout(container);
       }
     };
+    const onClick = (e) => {
+      if (
+        e?.target &&
+        typeof e.target.closest === "function" &&
+        e.target.closest("button, a, input, select, textarea, [role='button'], [role='link']")
+      ) {
+        return;
+      }
+      container._isExpanded = !container._isExpanded;
+      updateStackedLayout(container);
+    };
+
+    const onDocClick = (e) => {
+      if (container._isExpanded && e?.target && !container.contains(e.target)) {
+        container._isExpanded = false;
+        updateStackedLayout(container);
+      }
+    };
 
     container.addEventListener("mouseenter", onMouseEnter);
     container.addEventListener("mouseleave", onMouseLeave);
     container.addEventListener("focusin", onFocusIn);
     container.addEventListener("focusout", onFocusOut);
+    container.addEventListener("click", onClick);
+    if (typeof document !== "undefined" && typeof document.addEventListener === "function") {
+      document.addEventListener("click", onDocClick);
+    }
 
     container._stackedCleanup = () => {
       container.removeEventListener("mouseenter", onMouseEnter);
       container.removeEventListener("mouseleave", onMouseLeave);
       container.removeEventListener("focusin", onFocusIn);
       container.removeEventListener("focusout", onFocusOut);
+      container.removeEventListener("click", onClick);
+      if (typeof document !== "undefined" && typeof document.removeEventListener === "function") {
+        document.removeEventListener("click", onDocClick);
+      }
       container._stackedInitialized = false;
     };
   }
 
-  if (!container.children || container.children.length === 0) return;
+  if (!container.children || container.children.length === 0) {
+    container._isExpanded = false;
+    return;
+  }
   const items = Array.from(container.children);
   const count = items.length;
   const isExpanded = Boolean(container._isExpanded);
-  const isTop = Boolean(container.id && container.id.includes("top"));
+  const isTop = Boolean(
+    (container.id && container.id.includes("top")) ||
+    (container.className && container.className.includes("top")) ||
+    (typeof container.getAttribute === "function" && container.getAttribute("data-position")?.includes("top"))
+  );
+  const isCenter = Boolean(
+    (!isTop && (container.id && (container.id.includes("center") || container.id.includes("middle")))) ||
+    (container.className && (container.className.includes("center") || container.className.includes("middle"))) ||
+    (typeof container.getAttribute === "function" && !isTop && (container.getAttribute("data-position")?.includes("center") || container.getAttribute("data-position")?.includes("middle")))
+  );
 
   items.forEach((item, index) => {
     const depthFromTop = count - 1 - index;
@@ -137,6 +176,7 @@ export function updateStackedLayout(container) {
     }
 
     if (!getConfig().disableInlineStyles) {
+      item.style.cursor = isExpanded ? "default" : "pointer";
       item.style.transition =
         "transform 240ms cubic-bezier(0.16, 1, 0.3, 1), margin 240ms cubic-bezier(0.16, 1, 0.3, 1), opacity 240ms ease";
 
@@ -156,25 +196,25 @@ export function updateStackedLayout(container) {
           item.style.zIndex = "30";
           item.style.pointerEvents = "auto";
         } else if (depthFromTop === 1) {
-          const y = isTop ? 10 : -10;
+          const y = isTop ? 10 : (isCenter ? 6 : -10);
           item.style.transform = `scale(0.95) translateY(${y}px)`;
-          item.style.marginTop = isTop ? "0px" : "-55px";
+          item.style.marginTop = isTop ? "0px" : (isCenter ? "-48px" : "-55px");
           item.style.marginBottom = isTop ? "-55px" : "0px";
           item.style.opacity = "0.9";
           item.style.zIndex = "20";
           item.style.pointerEvents = "auto";
         } else if (depthFromTop === 2) {
-          const y = isTop ? 20 : -20;
+          const y = isTop ? 20 : (isCenter ? 12 : -20);
           item.style.transform = `scale(0.90) translateY(${y}px)`;
-          item.style.marginTop = isTop ? "0px" : "-55px";
+          item.style.marginTop = isTop ? "0px" : (isCenter ? "-48px" : "-55px");
           item.style.marginBottom = isTop ? "-55px" : "0px";
           item.style.opacity = "0.75";
           item.style.zIndex = "10";
           item.style.pointerEvents = "auto";
         } else {
-          const y = isTop ? 30 : -30;
+          const y = isTop ? 30 : (isCenter ? 18 : -30);
           item.style.transform = `scale(0.85) translateY(${y}px)`;
-          item.style.marginTop = isTop ? "0px" : "-55px";
+          item.style.marginTop = isTop ? "0px" : (isCenter ? "-48px" : "-55px");
           item.style.marginBottom = isTop ? "-55px" : "0px";
           item.style.opacity = "0";
           item.style.zIndex = "1";
@@ -306,9 +346,10 @@ export async function showToast(options = {}) {
           droppedCount++;
         }
 
+        item.seq = ++queueSequence;
         queue.push(item);
         if (usesPriority) {
-          queue.sort((a, b) => getItemPriority(b) - getItemPriority(a));
+          queue.sort((a, b) => (getItemPriority(b) - getItemPriority(a)) || (a.seq - b.seq));
         }
         emitMetrics();
         await drainQueue();
@@ -373,12 +414,12 @@ async function createOne(options, key, initialCount) {
     inner.appendChild(toast);
     outer.appendChild(inner);
 
-    if (container.id.includes("toast-container-")) {
+    if (container && typeof container.appendChild === "function") {
       container.appendChild(outer);
-      if (options.stacked) {
+      if (options.stacked && typeof container.setAttribute === "function") {
         container.setAttribute("data-stacked", "true");
       }
-      if (container.getAttribute("data-stacked") === "true") {
+      if (typeof container.getAttribute === "function" && container.getAttribute("data-stacked") === "true") {
         updateStackedLayout(container);
       }
     }
@@ -411,7 +452,12 @@ async function createOne(options, key, initialCount) {
     emitMetrics();
     const el =
       document.querySelector('[id^="toast-container-"]') || document.body;
-    el.appendChild(await createEmergencyToast(options, closeToast));
+    const emergencyEl = await createEmergencyToast(options, closeToast);
+    if (emergencyEl) {
+      emergencyEl._key = key;
+      el.appendChild(emergencyEl);
+      active.set(key, { toast: emergencyEl, outer: emergencyEl, count: 1, options });
+    }
   }
 }
 
@@ -624,7 +670,13 @@ async function setupPauseOnHover(data) {
   };
 
   const onFocusIn = (e) => {
-    if (e?.target && typeof e.target.matches === "function" && e.target.matches("[tabindex], div, span, button, a")) {
+    if (
+      e?.target &&
+      typeof e.target.matches === "function" &&
+      e.target.matches(
+        "button, a[href], input, select, textarea, [role='button'], [role='link'], [data-toast-interactive]"
+      )
+    ) {
       timer.pause();
       pauseProgressBar();
       toast?._pauseUndo?.();
@@ -788,11 +840,17 @@ export async function closeToastByKey(key) {
       parentContainer.children.length === 0 &&
       parentContainer.id?.startsWith("toast-container-")
     ) {
-      try {
-        parentContainer._stackedCleanup?.();
-        unregisterContainer(parentContainer.id);
-        parentContainer.remove();
-      } catch {}
+      const hasPendingForContainer = Array.from(pending.values()).some((p) => {
+        const pPos = normalizePositionKey(p.options?.position || getConfig().defaultPosition);
+        return parentContainer.id === `toast-container-${pPos}`;
+      });
+      if (!hasPendingForContainer) {
+        try {
+          parentContainer._stackedCleanup?.();
+          unregisterContainer(parentContainer.id);
+          parentContainer.remove();
+        } catch {}
+      }
     } else if (parentContainer && parentContainer.getAttribute("data-stacked") === "true") {
       updateStackedLayout(parentContainer);
     }
@@ -813,7 +871,7 @@ async function drainQueue() {
 
     // Apply priority sorting if enabled globally or on queued items
     if ((config.priorityQueue || typeof config.priorityScorer === "function" || queue.some(i => i.options?.priorityQueue || typeof i.options?.priority === "number")) && queue.length > 1) {
-      queue.sort((a, b) => getItemPriority(b) - getItemPriority(a)); // Higher priority first
+      queue.sort((a, b) => (getItemPriority(b) - getItemPriority(a)) || (a.seq - b.seq)); // Higher priority first, FIFO tie-breaker
     }
 
     while (visibleCount < config.maxVisible && queue.length) {
@@ -964,24 +1022,25 @@ async function updateBadge({ outer, count }) {
  * Updates an active, pending, or queued toast in-place with new options.
  * @param {string} key
  * @param {Partial<import('../index.js').ToastOptions>} [newOptions]
+ * @returns {Promise<boolean>}
  */
 export async function updateToastByKey(key, newOptions = {}) {
-  if (!key || typeof newOptions !== "object" || newOptions === null) return;
+  if (!key || typeof newOptions !== "object" || newOptions === null) return false;
 
   if (pending.has(key)) {
     const entry = pending.get(key);
     entry.options = { ...entry.options, ...newOptions };
-    return;
+    return true;
   }
 
   const queued = queue.find((q) => q.key === key);
   if (queued) {
     queued.options = { ...queued.options, ...newOptions };
-    return;
+    return true;
   }
 
   const data = active.get(key);
-  if (!data || !data.toast) return;
+  if (!data || !data.toast) return false;
 
   const prevOptions = { ...data.options };
   data.options = { ...data.options, ...newOptions };
@@ -1105,7 +1164,11 @@ export async function updateToastByKey(key, newOptions = {}) {
   }
 
   // 3.1 Update icon
-  if (newOptions.icon !== undefined || newOptions.type !== undefined) {
+  if (
+    newOptions.icon !== undefined ||
+    newOptions.iconColor !== undefined ||
+    newOptions.type !== undefined
+  ) {
     const existingIcon = toast?.querySelector(".toast-icon");
     if (existingIcon) existingIcon.remove();
     const mergedForIcon = { ...data.options, ...newOptions };
@@ -1225,10 +1288,12 @@ export async function updateToastByKey(key, newOptions = {}) {
   if (newOptions.className !== undefined) {
     const prevClass = prevOptions.className;
     if (prevClass && typeof prevClass === "string") {
-      toast.classList.remove(...prevClass.trim().split(/\s+/));
+      const tokens = prevClass.trim().split(/\s+/).filter(Boolean);
+      if (tokens.length > 0) toast.classList.remove(...tokens);
     }
     if (newOptions.className && typeof newOptions.className === "string") {
-      toast.classList.add(...newOptions.className.trim().split(/\s+/));
+      const tokens = newOptions.className.trim().split(/\s+/).filter(Boolean);
+      if (tokens.length > 0) toast.classList.add(...tokens);
     }
   }
   // 4. Progress bar updates
@@ -1353,15 +1418,23 @@ export async function updateToastByKey(key, newOptions = {}) {
       if (progressBar) {
         if (newOptions.progress === undefined) {
           progressBar._isManualProgress = false;
+          progressBar._isIndeterminate = false;
+          progressBar.classList.remove("toast-progress-bar-indeterminate");
+          progressBar.classList.remove("toast-progress-bar-indeterminate-rtl");
+          progressBar.style.animation = "none";
         }
         if (!progressBar._isManualProgress && !progressBar._isIndeterminate) {
           const newDuration = raw + 5;
-          if (toast._progressAnimation) {
+          const finalWidth = progressBar._finalWidth || "100%";
+          if (shouldReduceMotion()) {
+            progressBar.style.width = finalWidth;
+            progressBar.style.transition = "none";
+            progressBar.style.animation = "none";
+          } else if (toast._progressAnimation) {
             try {
               toast._progressAnimation.cancel();
             } catch {}
             const isReverse = progressBar._isReverse;
-            const finalWidth = progressBar._finalWidth || "100%";
             const keyframes = isReverse
               ? [{ width: "0%" }, { width: finalWidth }]
               : [{ width: finalWidth }, { width: "0%" }];
@@ -1374,7 +1447,6 @@ export async function updateToastByKey(key, newOptions = {}) {
           } else {
             progressBar.style.transition = `width ${newDuration}ms linear`;
             const isReverse = progressBar._isReverse;
-            const finalWidth = progressBar._finalWidth || "100%";
             progressBar.style.width = isReverse ? finalWidth : "0%";
           }
         }
@@ -1410,9 +1482,70 @@ export async function updateToastByKey(key, newOptions = {}) {
     data.timer?.clear();
     data.timer = createDismissTimer(toast, { duration: 2500 });
     await setupPauseOnHover(data);
+    if (progressBar && !progressBar._isManualProgress) {
+      progressBar._isIndeterminate = false;
+      progressBar.classList.remove("toast-progress-bar-indeterminate");
+      progressBar.classList.remove("toast-progress-bar-indeterminate-rtl");
+      progressBar.style.animation = "none";
+      const newDuration = 2505;
+      const finalWidth = progressBar._finalWidth || "100%";
+      if (shouldReduceMotion()) {
+        progressBar.style.width = finalWidth;
+        progressBar.style.transition = "none";
+        progressBar.style.animation = "none";
+      } else {
+        const isReverse = progressBar._isReverse;
+        if (typeof progressBar.animate === "function") {
+          try { toast._progressAnimation?.cancel(); } catch {}
+          const keyframes = isReverse
+            ? [{ width: "0%" }, { width: finalWidth }]
+            : [{ width: finalWidth }, { width: "0%" }];
+          toast._progressAnimation = progressBar.animate(keyframes, {
+            duration: newDuration,
+            easing: "linear",
+            fill: "forwards",
+            delay: 0,
+          });
+        } else {
+          progressBar.style.transition = `width ${newDuration}ms linear`;
+          progressBar.style.width = isReverse ? finalWidth : "0%";
+        }
+      }
+    }
   }
 
-  // 5.1 Update CTA
+  // 5.1 Update Position Migration
+  if (newOptions.position !== undefined) {
+    const targetPos = normalizePositionKey(newOptions.position || getConfig().defaultPosition);
+    const currentContainer =
+      (typeof toast.closest === "function" &&
+        toast.closest('.toast-container-base, [id^="toast-container-"]')) ||
+      data.outer?.parentElement;
+    const currentPos = currentContainer?.id?.startsWith("toast-container-")
+      ? normalizePositionKey(currentContainer.id.replace("toast-container-", ""))
+      : null;
+
+    if (currentPos && currentPos !== targetPos) {
+      const targetContainer = await getOrCreateToastContainer({ ...data.options, position: targetPos });
+      if (targetContainer && data.outer) {
+        targetContainer.appendChild(data.outer);
+        data.options.position = targetPos;
+        if (currentContainer && currentContainer.children.length === 0) {
+          try {
+            unregisterContainer(currentContainer.id);
+            currentContainer.remove();
+          } catch {}
+        } else if (currentContainer && currentContainer.getAttribute("data-stacked") === "true") {
+          updateStackedLayout(currentContainer);
+        }
+        if (targetContainer.getAttribute("data-stacked") === "true") {
+          updateStackedLayout(targetContainer);
+        }
+      }
+    }
+  }
+
+  // 5.2 Update CTA
   if (newOptions.cta !== undefined) {
     if (toast._cleanupCTA) {
       toast._cleanupCTA();
@@ -1426,7 +1559,7 @@ export async function updateToastByKey(key, newOptions = {}) {
     }
   }
 
-  // 5.2 Update Undo Action
+  // 5.3 Update Undo Action
   if (newOptions.undo !== undefined) {
     if (toast._cleanupUndo) {
       toast._cleanupUndo();
@@ -1440,7 +1573,7 @@ export async function updateToastByKey(key, newOptions = {}) {
     }
   }
 
-  // 5.3 Update Close Button
+  // 5.4 Update Close Button
   if (newOptions.showCloseButton !== undefined) {
     const existingCloseBtn = toast.querySelector(".toast-close-btn");
     if (newOptions.showCloseButton === false) {
@@ -1462,9 +1595,18 @@ export async function updateToastByKey(key, newOptions = {}) {
       : Boolean(newOptions.type && (data.options.sound || getConfig().sound));
 
   if (shouldPlayAudio) {
+    if (data._audio) {
+      try {
+        data._audio.pause();
+        data._audio.src = "";
+      } catch {}
+      data._audio = null;
+    }
     if (typeof newOptions.sound === "string" && typeof window !== "undefined" && typeof window.Audio === "function") {
       try {
-        new window.Audio(newOptions.sound).play().catch(() => {});
+        const audio = new window.Audio(newOptions.sound);
+        data._audio = audio;
+        audio.play().catch(() => {});
       } catch {}
     } else if (typeof newOptions.onSound === "function") {
       try {
@@ -1474,7 +1616,10 @@ export async function updateToastByKey(key, newOptions = {}) {
   }
 
   // 7. Stacked update
-  const container = toast.closest('[id^="toast-container-"]');
+  const container =
+    (typeof toast.closest === "function" &&
+      toast.closest('.toast-container-base, [id^="toast-container-"]')) ||
+    data.outer?.parentElement;
   if (container) {
     if (newOptions.stacked === true) {
       container.setAttribute("data-stacked", "true");
@@ -1495,5 +1640,7 @@ export async function updateToastByKey(key, newOptions = {}) {
       updateStackedLayout(container);
     }
   }
+
+  return true;
 }
 

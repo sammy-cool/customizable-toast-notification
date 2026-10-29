@@ -58,13 +58,19 @@ export function createCTA(toast, options, onClose) {
         : "rgba(255,255,255,0.15)");
 
     const trimmedColor = typeof ctaTextColor === "string" ? ctaTextColor.trim() : "";
-    const hexMatch = trimmedColor.match(/^#([0-9a-fA-F]{3}|[0-9a-fA-F]{6})$/);
+    const hexMatch = trimmedColor.match(/^#([0-9a-fA-F]{3,8})$/);
     let ctaBorderColor = "rgba(128, 128, 128, 0.3)";
     if (hexMatch) {
-      const h = hexMatch[1].length === 3
-        ? `#${hexMatch[1][0]}${hexMatch[1][0]}${hexMatch[1][1]}${hexMatch[1][1]}${hexMatch[1][2]}${hexMatch[1][2]}`
-        : `#${hexMatch[1]}`;
-      ctaBorderColor = `${h}44`;
+      const rawHex = hexMatch[1];
+      if (rawHex.length === 3) {
+        ctaBorderColor = `#${rawHex[0]}${rawHex[0]}${rawHex[1]}${rawHex[1]}${rawHex[2]}${rawHex[2]}44`;
+      } else if (rawHex.length === 6) {
+        ctaBorderColor = `#${rawHex}44`;
+      } else if (rawHex.length === 8) {
+        ctaBorderColor = `#${rawHex}`;
+      } else if (rawHex.length === 4) {
+        ctaBorderColor = `#${rawHex[0]}${rawHex[0]}${rawHex[1]}${rawHex[1]}${rawHex[2]}${rawHex[2]}${rawHex[3]}${rawHex[3]}`;
+      }
     }
 
     el.className = "toast-cta";
@@ -96,15 +102,29 @@ export function createCTA(toast, options, onClose) {
     const onClick = async (e) => {
       if (el._isExecuting) return;
       el._isExecuting = true;
+      el.setAttribute("aria-busy", "true");
+      const prevOpacity = el.style.opacity;
+      el.style.opacity = "0.7";
       try {
+        let defaultPrevented = false;
         if (typeof cfg.onClick === "function") {
           const res = cfg.onClick(e);
           if (res?.then) await res;
+          if (e && e.defaultPrevented) defaultPrevented = true;
+        }
+        if (!isLink && cfg.href && !defaultPrevented && typeof window !== "undefined") {
+          const trimmedHref = String(cfg.href).trim();
+          const isDangerous = /^(javascript:|vbscript:|data:(?!image\/[a-z0-9.+-]+;base64,))/i.test(trimmedHref);
+          if (!isDangerous) {
+            window.open(trimmedHref, cfg.target || "_self");
+          }
         }
       } catch (err) {
         console.error("CTA onClick handler error:", err);
       } finally {
         el._isExecuting = false;
+        el.removeAttribute("aria-busy");
+        el.style.opacity = prevOpacity;
         if (cfg.autoClose !== false && typeof onClose === "function") {
           await onClose(toast);
         }
@@ -262,6 +282,7 @@ export function createUndoAction(toast, options, onClose) {
   };
 
   const onClick = async (e) => {
+    btn.style.pointerEvents = "none";
     cleanupTimer();
     btn.removeEventListener("click", onClick);
     try {
@@ -308,7 +329,11 @@ export function createCloseButton(toast, options, onClose) {
       : "Close notification";
   closeBtn.setAttribute("aria-label", closeLabel);
   closeBtn.setAttribute("title", closeLabel);
-  closeBtn.textContent = "×";
+
+  const xSpan = document.createElement("span");
+  xSpan.setAttribute("aria-hidden", "true");
+  xSpan.textContent = "×";
+  closeBtn.appendChild(xSpan);
 
   const closeTextColor = options.textColor || getDynamicAccessibleTextColorHex(options.backgroundColor);
 
@@ -485,6 +510,10 @@ export function createProgressBar(toast, options = {}) {
 
   toast.appendChild(progressBar);
 
+  if (options.progressPosition === "top") {
+    progressBar.classList.add("toast-progress-top");
+  }
+
   // 1. Indeterminate mode or loading state (duration: 0 or Infinity with showProgressBar)
   const isIndeterminate = options.progress === "indeterminate" ||
     (Boolean(options.showProgressBar) && (options.duration === 0 || options.duration === Infinity) && options.progress === undefined);
@@ -520,7 +549,9 @@ export function createProgressBar(toast, options = {}) {
   }
 
   if (shouldReduceMotion()) {
-    progressBar.style.display = "none";
+    progressBar.style.width = finalWidth;
+    progressBar.style.transition = "none";
+    progressBar.style.animation = "none";
   } else if (typeof progressBar.animate === "function") {
     const keyframes = isReverse
       ? [{ width: "0%" }, { width: finalWidth }]
@@ -552,6 +583,11 @@ export function runToastAnimation(toast) {
     toast.style.opacity = "1";
     toast.style.transform = "translateY(0)";
     toast.classList.add("active");
+    if (toast._progressBar && !toast._progressBar._isIndeterminate && !toast._progressBar._isManualProgress) {
+      toast._progressBar.style.width = toast._progressBar._finalWidth || "100%";
+      toast._progressBar.style.transition = "none";
+      toast._progressBar.style.animation = "none";
+    }
     return;
   }
 
@@ -567,6 +603,11 @@ export function runToastAnimation(toast) {
       toast.style.opacity = "1";
       toast.style.transform = "none";
       toast.classList.add("active");
+      if (toast._progressAnimation && (toast._progressAnimation.playState === "idle" || toast._progressAnimation.playState === "paused")) {
+        try {
+          toast._progressAnimation.play();
+        } catch {}
+      }
     });
   };
 
@@ -599,11 +640,44 @@ export function attachSwipeToDismiss(toast, onClose) {
 
   let isWindowListening = false;
 
+  const snapBack = () => {
+    if (!getConfig().disableInlineStyles && !shouldReduceMotion()) {
+      const snapEasing = "cubic-bezier(0.34, 1.56, 0.64, 1)";
+      const snapDuration = 200;
+      toast.style.transition = `transform ${snapDuration}ms ${snapEasing}, opacity 200ms ease`;
+      toast.style.transform = "translateX(0)";
+      toast.style.opacity = "1";
+
+      if (toast._snapbackTimer) clearTimeout(toast._snapbackTimer);
+      toast._snapbackTimer = setTimeout(() => {
+        toast._snapbackTimer = null;
+        toast.style.transform = "none";
+        if (toast._originalTransition) {
+          toast.style.transition = toast._originalTransition;
+        }
+      }, snapDuration);
+      if (typeof toast._snapbackTimer?.unref === "function") {
+        toast._snapbackTimer.unref();
+      }
+    }
+  };
+
+  const onPointerCancel = () => {
+    cleanupWindowListeners();
+    touchId = null;
+    if (isDragging) {
+      isDragging = false;
+      toast.style.userSelect = "";
+      snapBack();
+    }
+  };
+
   const cleanupWindowListeners = () => {
-    if (isWindowListening) {
+    if (isWindowListening && typeof window !== "undefined") {
       isWindowListening = false;
       window.removeEventListener("mousemove", onPointerMove);
       window.removeEventListener("mouseup", onPointerEnd);
+      window.removeEventListener("blur", onPointerCancel);
     }
   };
 
@@ -639,6 +713,7 @@ export function attachSwipeToDismiss(toast, onClose) {
       isWindowListening = true;
       window.addEventListener("mousemove", onPointerMove, { passive: false });
       window.addEventListener("mouseup", onPointerEnd, { passive: true });
+      window.addEventListener("blur", onPointerCancel, { passive: true });
     }
   };
 
@@ -718,32 +793,14 @@ export function attachSwipeToDismiss(toast, onClose) {
           toast._swipeTimeout.unref();
         }
       } else {
-        if (!getConfig().disableInlineStyles && !shouldReduceMotion()) {
-          const snapEasing = "cubic-bezier(0.34, 1.56, 0.64, 1)";
-          const snapDuration = 200;
-          toast.style.transition = `transform ${snapDuration}ms ${snapEasing}, opacity 200ms ease`;
-          toast.style.transform = "translateX(0)";
-          toast.style.opacity = "1";
-
-          if (toast._snapbackTimer) clearTimeout(toast._snapbackTimer);
-          toast._snapbackTimer = setTimeout(() => {
-            toast._snapbackTimer = null;
-            toast.style.transform = "none";
-            if (toast._originalTransition) {
-              toast.style.transition = toast._originalTransition;
-            }
-          }, snapDuration);
-          if (typeof toast._snapbackTimer?.unref === "function") {
-            toast._snapbackTimer.unref();
-          }
-        }
+        snapBack();
       }
     };
 
   toast.addEventListener("touchstart", onPointerDown, { passive: true });
   toast.addEventListener("touchmove", onPointerMove, { passive: false });
   toast.addEventListener("touchend", onPointerEnd, { passive: true });
-  toast.addEventListener("touchcancel", onPointerEnd, { passive: true });
+  toast.addEventListener("touchcancel", onPointerCancel, { passive: true });
 
   toast.addEventListener("mousedown", onPointerDown, { passive: true });
 
@@ -761,7 +818,7 @@ export function attachSwipeToDismiss(toast, onClose) {
     toast.removeEventListener("touchstart", onPointerDown);
     toast.removeEventListener("touchmove", onPointerMove);
     toast.removeEventListener("touchend", onPointerEnd);
-    toast.removeEventListener("touchcancel", onPointerEnd);
+    toast.removeEventListener("touchcancel", onPointerCancel);
     toast.removeEventListener("mousedown", onPointerDown);
   };
 
@@ -772,7 +829,7 @@ export function attachSwipeToDismiss(toast, onClose) {
  * @param {HTMLElement} toast
  * @returns {(() => void) | null} Cleanup function
  */
-export function attachFocusTrap(toast) {
+export function attachFocusTrap(toast, options = {}) {
   if (!toast || typeof toast.querySelectorAll !== "function") return null;
 
   const previouslyFocused =
@@ -804,6 +861,7 @@ export function attachFocusTrap(toast) {
   const onKeyDown = (e) => {
     if (e.defaultPrevented || e.key !== "Tab") return;
     if (!toast.isConnected) return;
+    if (!toast.contains(document.activeElement)) return;
     const focusable = getFocusable();
     if (focusable.length === 0) return;
 
@@ -811,12 +869,12 @@ export function attachFocusTrap(toast) {
     const last = focusable[focusable.length - 1];
 
     if (e.shiftKey) {
-      if (document.activeElement === first || !toast.contains(document.activeElement)) {
+      if (document.activeElement === first) {
         last.focus();
         e.preventDefault();
       }
     } else {
-      if (document.activeElement === last || !toast.contains(document.activeElement)) {
+      if (document.activeElement === last) {
         first.focus();
         e.preventDefault();
       }
@@ -828,16 +886,19 @@ export function attachFocusTrap(toast) {
     document.addEventListener("keydown", onKeyDown);
   }
 
-  const initialFocusTimer = setTimeout(() => {
-    const focusable = getFocusable();
-    if (focusable.length > 0 && typeof focusable[0].focus === "function") {
-      focusable[0].focus();
-    }
-  }, 30);
-  if (typeof initialFocusTimer?.unref === "function") initialFocusTimer.unref();
+  let initialFocusTimer = null;
+  if (options?.autoFocus !== false) {
+    initialFocusTimer = setTimeout(() => {
+      const focusable = getFocusable();
+      if (focusable.length > 0 && typeof focusable[0].focus === "function") {
+        focusable[0].focus();
+      }
+    }, 30);
+    if (typeof initialFocusTimer?.unref === "function") initialFocusTimer.unref();
+  }
 
   const cleanup = () => {
-    clearTimeout(initialFocusTimer);
+    if (initialFocusTimer) clearTimeout(initialFocusTimer);
     toast.removeEventListener("keydown", onKeyDown);
     if (typeof document !== "undefined") {
       document.removeEventListener("keydown", onKeyDown);
