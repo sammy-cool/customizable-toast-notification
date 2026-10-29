@@ -916,6 +916,17 @@
             </div>
           </div>
 
+          <div class="form-row" style="margin-top: 8px;">
+            <div class="form-group">
+              <label class="form-label" for="customIconInput">Custom Icon (Emoji / SVG / Alias)</label>
+              <input type="text" id="customIconInput" class="input-text" placeholder="e.g. 🚀, check, or <svg...>" />
+            </div>
+            <div class="form-group">
+              <label class="form-label" for="toastIconColor">Custom Icon Color</label>
+              <input type="text" id="toastIconColor" class="input-text" placeholder="e.g. #3b82f6 or currentColor" />
+            </div>
+          </div>
+
           <div class="form-row-3">
             <label class="toggle-label">
               <span>Close Button</span>
@@ -1393,6 +1404,12 @@ createToast({
                   <td class="opt-type">boolean | string | HTMLElement | Function</td>
                   <td class="opt-default">true</td>
                   <td>Controls the built-in SVG status icon or renders custom SVG / HTML markup.</td>
+                </tr>
+                <tr>
+                  <td class="opt-name">iconColor</td>
+                  <td class="opt-type">string</td>
+                  <td class="opt-default">undefined</td>
+                  <td>Custom color for the toast icon (overriding currentColor / text color).</td>
                 </tr>
                 <tr>
                   <td class="opt-name">showCloseButton</td>
@@ -1898,7 +1915,14 @@ createToast({
           if (document.getElementById("toggleCloseBtn").checked === false) opts.showCloseButton = false;
           if (document.getElementById("togglePauseOnHover").checked === false) opts.pauseOnHover = false;
           if (document.getElementById("toggleSwipeToDismiss").checked === false) opts.swipeToDismiss = false;
-          if (document.getElementById("toggleIcon").checked === false) opts.icon = false;
+          if (document.getElementById("toggleIcon").checked === false) {
+            opts.icon = false;
+          } else {
+            var customIconVal = document.getElementById("customIconInput") ? document.getElementById("customIconInput").value.trim() : "";
+            if (customIconVal) opts.icon = customIconVal;
+          }
+          var customIconClr = document.getElementById("toastIconColor") ? document.getElementById("toastIconColor").value.trim() : "";
+          if (customIconClr) opts.iconColor = customIconClr;
           if (document.getElementById("toggleAllowHtml").checked) opts.allowHtml = true;
           if (document.getElementById("toggleStacked").checked) opts.stacked = true;
           if (document.getElementById("togglePriorityQueue").checked) opts.priorityQueue = true;
@@ -2115,7 +2139,17 @@ createToast({
             if (opts.showCloseButton !== undefined) document.getElementById("toggleCloseBtn").checked = opts.showCloseButton;
             if (opts.pauseOnHover !== undefined) document.getElementById("togglePauseOnHover").checked = opts.pauseOnHover;
             if (opts.swipeToDismiss !== undefined) document.getElementById("toggleSwipeToDismiss").checked = opts.swipeToDismiss;
-            if (opts.icon !== undefined) document.getElementById("toggleIcon").checked = Boolean(opts.icon);
+            if (opts.icon !== undefined) {
+              if (typeof opts.icon === "string" && document.getElementById("customIconInput")) {
+                document.getElementById("customIconInput").value = opts.icon;
+                document.getElementById("toggleIcon").checked = true;
+              } else {
+                document.getElementById("toggleIcon").checked = Boolean(opts.icon);
+              }
+            }
+            if (opts.iconColor && document.getElementById("toastIconColor")) {
+              document.getElementById("toastIconColor").value = opts.iconColor;
+            }
             if (opts.stacked !== undefined) document.getElementById("toggleStacked").checked = opts.stacked;
             if (opts.showLoader !== undefined && document.getElementById("toggleShowLoader")) {
               document.getElementById("toggleShowLoader").checked = Boolean(opts.showLoader);
@@ -2145,6 +2179,8 @@ createToast({
             durationBadge.textContent = "2500ms";
             document.getElementById("toastBgColor").value = "";
             document.getElementById("toastTextColor").value = "";
+            if (document.getElementById("customIconInput")) document.getElementById("customIconInput").value = "";
+            if (document.getElementById("toastIconColor")) document.getElementById("toastIconColor").value = "";
             document.getElementById("toggleCloseBtn").checked = true;
             document.getElementById("togglePauseOnHover").checked = true;
             document.getElementById("toggleSwipeToDismiss").checked = true;

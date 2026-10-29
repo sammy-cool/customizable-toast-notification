@@ -99,6 +99,7 @@ import { generateToastId, resetToastIdCounter } from "./utils/id.js";
  * @property {boolean | string} [sound]
  * @property {((options: ToastOptions) => void)} [onSound] - Sound playback handler callback
  * @property {boolean | string | HTMLElement | ((options: ToastOptions) => boolean | string | HTMLElement | null | undefined)} [icon]
+ * @property {string} [iconColor] - Custom color for the toast icon (overriding currentColor / text color)
  * @property {boolean} [swipeToDismiss]
  * @property {number | string | 'indeterminate'} [progress]
  * @property {boolean} [progressNormalized]
@@ -148,6 +149,7 @@ import { generateToastId, resetToastIdCounter } from "./utils/id.js";
  * @property {boolean} [swipeToDismiss]
  * @property {boolean} [sound]
  * @property {boolean} [icon]
+ * @property {string} [iconColor]
  * @property {boolean} [pauseOnHover]
  * @property {boolean} [priorityQueue]
  * @property {boolean} [shadowDom]
@@ -316,6 +318,7 @@ async function sanitizeToastOptions(rawOptions) {
     backgroundColor: undefined,
     textColor: undefined,
     showCloseButton: true,
+    iconColor: undefined,
     animationDuration: "0.4s",
     animationEasing: "ease",
     showProgressBar: true,

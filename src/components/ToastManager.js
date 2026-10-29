@@ -120,11 +120,21 @@ export function updateStackedLayout(container) {
       updateStackedLayout(container);
     };
 
+    const onDocClick = (e) => {
+      if (container._isExpanded && e?.target && !container.contains(e.target)) {
+        container._isExpanded = false;
+        updateStackedLayout(container);
+      }
+    };
+
     container.addEventListener("mouseenter", onMouseEnter);
     container.addEventListener("mouseleave", onMouseLeave);
     container.addEventListener("focusin", onFocusIn);
     container.addEventListener("focusout", onFocusOut);
     container.addEventListener("click", onClick);
+    if (typeof document !== "undefined" && typeof document.addEventListener === "function") {
+      document.addEventListener("click", onDocClick);
+    }
 
     container._stackedCleanup = () => {
       container.removeEventListener("mouseenter", onMouseEnter);
@@ -132,15 +142,25 @@ export function updateStackedLayout(container) {
       container.removeEventListener("focusin", onFocusIn);
       container.removeEventListener("focusout", onFocusOut);
       container.removeEventListener("click", onClick);
+      if (typeof document !== "undefined" && typeof document.removeEventListener === "function") {
+        document.removeEventListener("click", onDocClick);
+      }
       container._stackedInitialized = false;
     };
   }
 
-  if (!container.children || container.children.length === 0) return;
+  if (!container.children || container.children.length === 0) {
+    container._isExpanded = false;
+    return;
+  }
   const items = Array.from(container.children);
   const count = items.length;
   const isExpanded = Boolean(container._isExpanded);
-  const isTop = Boolean(container.id && container.id.includes("top"));
+  const isTop = Boolean(
+    (container.id && container.id.includes("top")) ||
+    (container.className && container.className.includes("top")) ||
+    (typeof container.getAttribute === "function" && container.getAttribute("data-position")?.includes("top"))
+  );
 
   items.forEach((item, index) => {
     const depthFromTop = count - 1 - index;
@@ -150,6 +170,7 @@ export function updateStackedLayout(container) {
     }
 
     if (!getConfig().disableInlineStyles) {
+      item.style.cursor = isExpanded ? "default" : "pointer";
       item.style.transition =
         "transform 240ms cubic-bezier(0.16, 1, 0.3, 1), margin 240ms cubic-bezier(0.16, 1, 0.3, 1), opacity 240ms ease";
 
@@ -386,12 +407,12 @@ async function createOne(options, key, initialCount) {
     inner.appendChild(toast);
     outer.appendChild(inner);
 
-    if (container.id.includes("toast-container-")) {
+    if (container && typeof container.appendChild === "function") {
       container.appendChild(outer);
-      if (options.stacked) {
+      if (options.stacked && typeof container.setAttribute === "function") {
         container.setAttribute("data-stacked", "true");
       }
-      if (container.getAttribute("data-stacked") === "true") {
+      if (typeof container.getAttribute === "function" && container.getAttribute("data-stacked") === "true") {
         updateStackedLayout(container);
       }
     }
@@ -1124,7 +1145,11 @@ export async function updateToastByKey(key, newOptions = {}) {
   }
 
   // 3.1 Update icon
-  if (newOptions.icon !== undefined || newOptions.type !== undefined) {
+  if (
+    newOptions.icon !== undefined ||
+    newOptions.iconColor !== undefined ||
+    newOptions.type !== undefined
+  ) {
     const existingIcon = toast?.querySelector(".toast-icon");
     if (existingIcon) existingIcon.remove();
     const mergedForIcon = { ...data.options, ...newOptions };
@@ -1496,7 +1521,10 @@ export async function updateToastByKey(key, newOptions = {}) {
   }
 
   // 7. Stacked update
-  const container = toast.closest('[id^="toast-container-"]');
+  const container =
+    (typeof toast.closest === "function" &&
+      toast.closest('.toast-container-base, [id^="toast-container-"]')) ||
+    data.outer?.parentElement;
   if (container) {
     if (newOptions.stacked === true) {
       container.setAttribute("data-stacked", "true");

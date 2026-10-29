@@ -5212,5 +5212,269 @@ describe("v4.0.2 Mobile & Desktop Viewport Parity — Progress Bar Visibility & 
   });
 });
 
+describe("Custom Icons, Color Customization & Multi-Directional Stack Fortification", () => {
+  const assertColor = (actual, hex, rgb) => {
+    assert.ok(
+      actual === hex || actual === rgb,
+      `Expected color to be ${hex} or ${rgb}, got ${actual}`
+    );
+  };
+
+  test("createToast supports iconColor on built-in type icons", async () => {
+    freshDom();
+    const { createToastIcon } = await import("../../src/components/icons.js");
+    const { createToast } = await import("../../src/index.js");
+
+    const directIcon = createToastIcon({ type: "success", iconColor: "#10b981" });
+    assert.ok(directIcon, "direct icon should exist");
+    assertColor(directIcon.style.color, "#10b981", "rgb(16, 185, 129)");
+    assert.ok(directIcon.querySelector("svg"));
+
+    await createToast({
+      message: "Success with custom iconColor",
+      type: "success",
+      iconColor: "#10b981",
+      duration: 10000,
+    });
+    await new Promise((r) => setTimeout(r, 60));
+
+    const iconEl = document.querySelector(".toast-icon");
+    assert.ok(iconEl, "toast icon element should exist");
+    assertColor(iconEl.style.color, "#10b981", "rgb(16, 185, 129)");
+    const svgEl = iconEl.querySelector("svg");
+    assert.ok(svgEl, "built-in SVG icon should exist inside iconTag");
+  });
+
+  test("createToast supports iconColor and synthesized viewBox on custom SVG strings", async () => {
+    freshDom();
+    const { createToastIcon } = await import("../../src/components/icons.js");
+    const { createToast } = await import("../../src/index.js");
+
+    const customSvg = '<svg width="24" height="24"><circle cx="12" cy="12" r="10"/></svg>';
+    const directSvgIcon = createToastIcon({ icon: customSvg, iconColor: "#ec4899" });
+    assert.ok(directSvgIcon);
+    assertColor(directSvgIcon.style.color, "#ec4899", "rgb(236, 72, 153)");
+    const directSvg = directSvgIcon.querySelector("svg");
+    assert.strictEqual(directSvg.getAttribute("viewBox"), "0 0 24 24");
+    assert.strictEqual(directSvg.getAttribute("width"), "18");
+    assert.strictEqual(directSvg.getAttribute("height"), "18");
+    assertColor(directSvg.style.color, "#ec4899", "rgb(236, 72, 153)");
+
+    await createToast({
+      message: "Custom SVG Notification",
+      icon: customSvg,
+      iconColor: "#ec4899",
+      duration: 10000,
+    });
+    await new Promise((r) => setTimeout(r, 60));
+
+    const iconEl = document.querySelector(".toast-icon");
+    assert.ok(iconEl, "toast icon element should exist");
+    assertColor(iconEl.style.color, "#ec4899", "rgb(236, 72, 153)");
+
+    const svg = iconEl.querySelector("svg");
+    assert.ok(svg, "SVG element should be sanitized and rendered");
+    assert.strictEqual(svg.getAttribute("viewBox"), "0 0 24 24");
+    assert.strictEqual(svg.getAttribute("width"), "18");
+    assert.strictEqual(svg.getAttribute("height"), "18");
+    assertColor(svg.style.color, "#ec4899", "rgb(236, 72, 153)");
+  });
+
+  test("createToast supports iconColor on emoji and custom DOM nodes", async () => {
+    freshDom();
+    const { createToastIcon } = await import("../../src/components/icons.js");
+    const { createToast } = await import("../../src/index.js");
+
+    // Direct check
+    const emojiDirect = createToastIcon({ icon: "⭐", iconColor: "#f59e0b" });
+    assert.strictEqual(emojiDirect.textContent, "⭐");
+    assertColor(emojiDirect.style.color, "#f59e0b", "rgb(245, 158, 11)");
+
+    // Emoji icon via createToast
+    await createToast({
+      message: "Emoji Star Toast",
+      icon: "⭐",
+      iconColor: "#f59e0b",
+      duration: 10000,
+    });
+    await new Promise((r) => setTimeout(r, 60));
+
+    const emojiIcon = document.querySelector(".toast-icon");
+    assert.ok(emojiIcon);
+    assert.strictEqual(emojiIcon.textContent, "⭐");
+    assertColor(emojiIcon.style.color, "#f59e0b", "rgb(245, 158, 11)");
+
+    // Custom DOM node icon
+    const customNode = document.createElement("span");
+    customNode.className = "my-custom-badge";
+    customNode.textContent = "🚀";
+
+    await createToast({
+      message: "Custom Element Toast",
+      icon: customNode,
+      iconColor: "#3b82f6",
+      duration: 10000,
+    });
+    await new Promise((r) => setTimeout(r, 60));
+
+    const nodeIcons = document.querySelectorAll(".toast-icon");
+    const customElIcon = nodeIcons[nodeIcons.length - 1];
+    assert.ok(customElIcon);
+    assertColor(customElIcon.style.color, "#3b82f6", "rgb(59, 130, 246)");
+    const badge = customElIcon.querySelector(".my-custom-badge");
+    assert.ok(badge);
+    assert.strictEqual(badge.getAttribute("aria-hidden"), "true");
+    assertColor(badge.style.color, "#3b82f6", "rgb(59, 130, 246)");
+  });
+
+  test("handle.update dynamically updates icon, iconColor, and icon removal in-place", async () => {
+    freshDom();
+    const { createToast } = await import("../../src/index.js");
+
+    const handle = await createToast({
+      message: "Dynamic Icon Toast",
+      type: "info",
+      duration: 10000,
+    });
+    await new Promise((r) => setTimeout(r, 60));
+
+    const toastEl = document.querySelector(".toast");
+    assert.ok(toastEl);
+    let iconEl = toastEl.querySelector(".toast-icon");
+    assert.ok(iconEl);
+
+    // 1. Update only iconColor in-place
+    await handle.update({ iconColor: "#ff0077" });
+    iconEl = toastEl.querySelector(".toast-icon");
+    assert.ok(iconEl);
+    assertColor(iconEl.style.color, "#ff0077", "rgb(255, 0, 119)");
+
+    // 2. Update icon to emoji in-place
+    await handle.update({ icon: "🎉" });
+    iconEl = toastEl.querySelector(".toast-icon");
+    assert.ok(iconEl);
+    assert.strictEqual(iconEl.textContent, "🎉");
+
+    // 3. Update icon to false (remove in-place)
+    await handle.update({ icon: false });
+    iconEl = toastEl.querySelector(".toast-icon");
+    assert.strictEqual(iconEl, null);
+  });
+
+  test("stacked card deck expands on click and collapses on outside document click", async () => {
+    freshDom();
+    const { updateStackedLayout } = await import("../../src/components/ToastManager.js");
+
+    const container = document.createElement("div");
+    container.id = "toast-container-bottom-right";
+    container.setAttribute("data-stacked", "true");
+    document.body.appendChild(container);
+
+    const outer0 = document.createElement("div");
+    const outer1 = document.createElement("div");
+    const outer2 = document.createElement("div");
+    container.appendChild(outer0);
+    container.appendChild(outer1);
+    container.appendChild(outer2);
+
+    updateStackedLayout(container);
+
+    assert.strictEqual(outer2.getAttribute("data-stacked-depth"), "0");
+    assert.strictEqual(outer1.getAttribute("data-stacked-depth"), "1");
+    assert.strictEqual(outer0.getAttribute("data-stacked-depth"), "2");
+    assert.strictEqual(outer2.style.cursor, "pointer");
+
+    // Expand on click
+    container.dispatchEvent(new window.MouseEvent("click", { bubbles: true }));
+    assert.strictEqual(container._isExpanded, true);
+    assert.strictEqual(outer2.getAttribute("data-stacked-depth"), "expanded");
+    assert.strictEqual(outer1.getAttribute("data-stacked-depth"), "expanded");
+    assert.strictEqual(outer0.getAttribute("data-stacked-depth"), "expanded");
+
+    // Outside click collapses back
+    const outsideEl = document.createElement("button");
+    document.body.appendChild(outsideEl);
+    document.dispatchEvent(new window.MouseEvent("click", { bubbles: true }));
+
+    assert.strictEqual(container._isExpanded, false);
+    assert.strictEqual(outer2.getAttribute("data-stacked-depth"), "0");
+    assert.strictEqual(outer1.getAttribute("data-stacked-depth"), "1");
+
+    container._stackedCleanup?.();
+  });
+
+  test("stacked container resets expansion state when all children are removed", async () => {
+    freshDom();
+    const { updateStackedLayout } = await import("../../src/components/ToastManager.js");
+
+    const container = document.createElement("div");
+    container.id = "toast-container-top-right";
+    container.setAttribute("data-stacked", "true");
+    container._isExpanded = true;
+    document.body.appendChild(container);
+
+    updateStackedLayout(container);
+    assert.strictEqual(container._isExpanded, false);
+  });
+
+  test("multi-directional positions differentiate top and bottom stack transforms", async () => {
+    freshDom();
+    const { updateStackedLayout } = await import("../../src/components/ToastManager.js");
+
+    // Top container: stacks downward (translateY 10px, margin-bottom: -55px)
+    const topCont = document.createElement("div");
+    topCont.id = "toast-container-top-left";
+    topCont.setAttribute("data-stacked", "true");
+    const topOuter0 = document.createElement("div");
+    const topOuter1 = document.createElement("div");
+    topCont.appendChild(topOuter0);
+    topCont.appendChild(topOuter1);
+    document.body.appendChild(topCont);
+
+    updateStackedLayout(topCont);
+    assert.strictEqual(topOuter0.getAttribute("data-stacked-depth"), "1");
+    assert.ok(topOuter0.style.transform.includes("translateY(10px)"));
+    assert.strictEqual(topOuter0.style.marginBottom, "-55px");
+
+    // Bottom container: stacks upward (translateY -10px, margin-top: -55px)
+    const botCont = document.createElement("div");
+    botCont.id = "toast-container-bottom-left";
+    botCont.setAttribute("data-stacked", "true");
+    const botOuter0 = document.createElement("div");
+    const botOuter1 = document.createElement("div");
+    botCont.appendChild(botOuter0);
+    botCont.appendChild(botOuter1);
+    document.body.appendChild(botCont);
+
+    updateStackedLayout(botCont);
+    assert.strictEqual(botOuter0.getAttribute("data-stacked-depth"), "1");
+    assert.ok(botOuter0.style.transform.includes("translateY(-10px)"));
+    assert.strictEqual(botOuter0.style.marginTop, "-55px");
+
+    topCont._stackedCleanup?.();
+    botCont._stackedCleanup?.();
+  });
+
+  test("custom container without toast-container- ID appends toast successfully via setConfig targetNode", async () => {
+    freshDom();
+    const { createToast, setConfig, resetConfig } = await import("../../src/index.js");
+
+    const customHub = document.createElement("div");
+    customHub.id = "my-custom-notification-hub";
+    document.body.appendChild(customHub);
+
+    setConfig({ targetNode: customHub });
+
+    await createToast({ message: "Custom Hub Toast", duration: 10000 });
+    await new Promise((r) => setTimeout(r, 60));
+
+    const mounted = customHub.querySelector(".toast");
+    assert.ok(mounted, "Toast should be mounted into custom container");
+    assert.strictEqual(mounted.textContent.includes("Custom Hub Toast"), true);
+
+    resetConfig();
+  });
+});
+
 
 

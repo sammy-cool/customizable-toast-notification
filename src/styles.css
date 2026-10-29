@@ -593,6 +593,10 @@
 }
 
 /* ========== STACKED CARD DECK (CSP MODE & DEFAULT) ========== */
+[data-stacked="true"] .toast {
+  cursor: pointer;
+}
+
 [data-stacked="true"] .toast-outer-wrapper {
   transition: transform 240ms cubic-bezier(0.16, 1, 0.3, 1), margin 240ms cubic-bezier(0.16, 1, 0.3, 1), opacity 240ms ease;
 }
@@ -623,7 +627,8 @@
   pointer-events: auto;
 }
 
-[data-stacked="true"][id*="top"] .toast-outer-wrapper[data-stacked-depth="1"] {
+[data-stacked="true"][id*="top"] .toast-outer-wrapper[data-stacked-depth="1"],
+[data-stacked="true"][class*="toast-position-top"] .toast-outer-wrapper[data-stacked-depth="1"] {
   transform: scale(0.95) translateY(10px);
   margin-top: 0px;
   margin-bottom: -55px;
@@ -638,7 +643,8 @@
   pointer-events: auto;
 }
 
-[data-stacked="true"][id*="top"] .toast-outer-wrapper[data-stacked-depth="2"] {
+[data-stacked="true"][id*="top"] .toast-outer-wrapper[data-stacked-depth="2"],
+[data-stacked="true"][class*="toast-position-top"] .toast-outer-wrapper[data-stacked-depth="2"] {
   transform: scale(0.90) translateY(20px);
   margin-top: 0px;
   margin-bottom: -55px;
@@ -653,7 +659,8 @@
   pointer-events: none;
 }
 
-[data-stacked="true"][id*="top"] .toast-outer-wrapper[data-stacked-depth="overflow"] {
+[data-stacked="true"][id*="top"] .toast-outer-wrapper[data-stacked-depth="overflow"],
+[data-stacked="true"][class*="toast-position-top"] .toast-outer-wrapper[data-stacked-depth="overflow"] {
   transform: scale(0.85) translateY(30px);
   margin-top: 0px;
   margin-bottom: -55px;
@@ -668,6 +675,7 @@
   margin-right: 8px;
   margin-inline-end: 8px;
   line-height: 1;
+  color: inherit;
 }
 
 [dir="rtl"] .toast-icon,

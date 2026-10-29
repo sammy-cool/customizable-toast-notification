@@ -186,6 +186,18 @@ export function createToastIcon(options = {}) {
   iconTag.className = "toast-icon";
   iconTag.setAttribute("aria-hidden", "true");
 
+  let iconColorOpt = safeOptions.iconColor;
+  if (iconColorOpt === undefined) {
+    const globalIconColor = getConfig().iconColor;
+    if (globalIconColor !== undefined) {
+      iconColorOpt = globalIconColor;
+    }
+  }
+
+  if (iconColorOpt && typeof iconColorOpt === "string" && iconColorOpt.trim()) {
+    iconTag.style.color = iconColorOpt.trim();
+  }
+
   const isRtl = safeOptions.fontDirection === "rtl";
   if (!config.disableInlineStyles) {
     Object.assign(iconTag.style, {
@@ -209,7 +221,14 @@ export function createToastIcon(options = {}) {
       (typeof HTMLElement !== "undefined" && iconOpt instanceof HTMLElement))
   ) {
     if (typeof iconOpt.cloneNode === "function") {
-      iconTag.appendChild(iconOpt.cloneNode(true));
+      const cloned = iconOpt.cloneNode(true);
+      if (cloned.nodeType === 1) {
+        cloned.setAttribute("aria-hidden", "true");
+        if (cloned.style && iconColorOpt && typeof iconColorOpt === "string" && iconColorOpt.trim()) {
+          cloned.style.color = iconColorOpt.trim();
+        }
+      }
+      iconTag.appendChild(cloned);
       return iconTag;
     }
   }
@@ -232,6 +251,9 @@ export function createToastIcon(options = {}) {
     if (matchedAlias) {
       const safeSvg = sanitizeInlineSvg(matchedAlias.trim());
       if (safeSvg) {
+        if (iconColorOpt && typeof iconColorOpt === "string" && iconColorOpt.trim()) {
+          safeSvg.style.color = iconColorOpt.trim();
+        }
         iconTag.appendChild(safeSvg);
       }
       return iconTag;
@@ -241,8 +263,18 @@ export function createToastIcon(options = {}) {
       if (safeSvg) {
         safeSvg.setAttribute("aria-hidden", "true");
         safeSvg.setAttribute("focusable", "false");
-        if (!safeSvg.getAttribute("width")) safeSvg.setAttribute("width", "18");
-        if (!safeSvg.getAttribute("height")) safeSvg.setAttribute("height", "18");
+        const rawW = safeSvg.getAttribute("width") || "18";
+        const rawH = safeSvg.getAttribute("height") || "18";
+        if (!safeSvg.getAttribute("viewBox") && !safeSvg.getAttribute("viewbox")) {
+          const wNum = Number.parseFloat(rawW) || 18;
+          const hNum = Number.parseFloat(rawH) || 18;
+          safeSvg.setAttribute("viewBox", `0 0 ${wNum} ${hNum}`);
+        }
+        safeSvg.setAttribute("width", "18");
+        safeSvg.setAttribute("height", "18");
+        if (iconColorOpt && typeof iconColorOpt === "string" && iconColorOpt.trim()) {
+          safeSvg.style.color = iconColorOpt.trim();
+        }
         iconTag.appendChild(safeSvg);
       } else {
         iconTag.textContent = trimmed;
@@ -258,6 +290,9 @@ export function createToastIcon(options = {}) {
   if ((iconOpt === true || iconOpt === undefined) && normalizedType && ICON_SVGS[normalizedType]) {
     const safeSvg = sanitizeInlineSvg(ICON_SVGS[normalizedType].trim());
     if (safeSvg) {
+      if (iconColorOpt && typeof iconColorOpt === "string" && iconColorOpt.trim()) {
+        safeSvg.style.color = iconColorOpt.trim();
+      }
       iconTag.appendChild(safeSvg);
     }
     return iconTag;

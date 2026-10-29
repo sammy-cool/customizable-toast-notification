@@ -219,6 +219,7 @@ auto-dismissed on its own — they no-op gracefully rather than throwing. You ca
 | `showLoader`        | `boolean`          | `false`                         | Show spinner loader before the message                                         |
 | `loader`            | `object`           | `null`                          | Custom loader config (`size`, `color`, `text`)                                 |
 | `icon`              | `boolean \| string \| HTMLElement` | `true` for typed, `null` | Status icon: `true` (built-in SVG), `false` (hide), emoji (`"🎉"`), SVG string, or DOM node |
+| `iconColor`         | `string`           | `undefined`                     | Custom icon color (e.g. `"#3b82f6"`, `"currentColor"`, overrides text color)  |
 | `fontDirection`     | `string`           | `"auto"`                        | Font direction: `"auto"`, `"ltr"`, `"rtl"`                                     |
 | `fontPadding`       | `string`           | `undefined`                     | Custom padding for message container (e.g. `"4px 8px"`)                         |
 | `className`         | `string`           | `undefined`                     | Custom CSS class name(s) for animations / styling                              |
