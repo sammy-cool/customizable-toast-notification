@@ -8,7 +8,7 @@ body:
     attributes:
       label: Package version
       description: Run `npm ls customizable-toast-notification` to check
-      placeholder: "4.0.1"
+      placeholder: "4.0.2"
     validations:
       required: true
 

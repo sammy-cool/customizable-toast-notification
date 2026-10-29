@@ -1,3 +1,15 @@
+## [4.0.2](https://github.com/sammy-cool/customizable-toast-notification/compare/v4.0.1...v4.0.2) (2026-10-29)
+
+
+### Bug Fixes
+
+* add iconColor support, in-place icon updates, and multi-directional stack polish ([7652e9a](https://github.com/sammy-cool/customizable-toast-notification/commit/7652e9ae39b7c61e77b89871ddd2564311ce674c))
+* fortify mobile-laptop viewport parity, touch-action, and progress bar ([50a27d8](https://github.com/sammy-cool/customizable-toast-notification/commit/50a27d8331c170de1f87ed812dbaa0dbc7f07749))
+* harden pausable timer monotonic clock and index state teardown ([1e879bc](https://github.com/sammy-cool/customizable-toast-notification/commit/1e879bc44f226a66670012e9eb6cc7235a267cd0))
+* remediate subsystem audit findings, framework adapters, and A11y ([441e13b](https://github.com/sammy-cool/customizable-toast-notification/commit/441e13b00dfa20ac87172f93ad40576ccddafcd3))
+* resolve progress bar visibility on desktop and enforce mobile-laptop parity ([3c7b4ba](https://github.com/sammy-cool/customizable-toast-notification/commit/3c7b4ba78e7a6572985fa4992d00a12423eaaadc))
+* resolve SonarCloud S2178 strict equality on ToastHandle update ([e80a6fa](https://github.com/sammy-cool/customizable-toast-notification/commit/e80a6fae47853c5c515b75240ee6c8db42f7ef91))
+
 ## [4.0.1](https://github.com/sammy-cool/customizable-toast-notification/compare/v4.0.0...v4.0.1) (2026-10-27)
 
 

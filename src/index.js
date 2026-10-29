@@ -752,7 +752,7 @@ function resetToastManager() {
 }
 
 /** @type {string} */
-const version = typeof __VERSION__ !== "undefined" ? __VERSION__ : "4.0.1";
+const version = typeof __VERSION__ !== "undefined" ? __VERSION__ : "4.0.2";
 
 export {
   version,
