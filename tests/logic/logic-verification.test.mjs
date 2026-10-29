@@ -4947,5 +4947,159 @@ describe("v4.0.1 Subsystem Fortification — Exhaustive New Code Coverage Suite"
   });
 });
 
+describe("v4.0.2 Mobile & Desktop Viewport Parity — Progress Bar Visibility & Accessible Color Suite", () => {
+  test("createProgressBar and runToastAnimation keep progress bar visible under reducedMotion: 'always'", async () => {
+    freshDom();
+    const { setConfig, resetConfig } = await import("../../src/utils/config.js");
+    const { createProgressBar, runToastAnimation } = await import("../../src/components/toast-utils-core.js");
+    setConfig({ reducedMotion: "always" });
+
+    const toast = document.createElement("div");
+    toast.className = "toast";
+    createProgressBar(toast, { duration: 3000, showProgressBar: true });
+
+    const bar = toast.querySelector(".toast-progress-bar");
+    assert.ok(bar, "progress bar element must exist");
+    assert.notStrictEqual(bar.style.display, "none", "progress bar must NOT be hidden with display: none");
+    assert.ok(bar.style.width, "progress bar width must be populated");
+    assert.strictEqual(bar.style.animation, "none");
+    assert.strictEqual(bar.style.transition, "none");
+
+    document.body.appendChild(toast);
+    runToastAnimation(toast);
+    assert.ok(toast.classList.contains("active"));
+    assert.ok(bar.style.width);
+
+    toast.remove();
+    resetConfig();
+  });
+
+  test("runToastAnimation resumes idle or paused progress WAAPI animation upon mount", async () => {
+    freshDom();
+    const { resetConfig } = await import("../../src/utils/config.js");
+    const { runToastAnimation } = await import("../../src/components/toast-utils-core.js");
+    resetConfig();
+
+    const toast = document.createElement("div");
+    let playCalled = false;
+    toast._progressAnimation = {
+      playState: "paused",
+      play: () => {
+        playCalled = true;
+      },
+    };
+
+    document.body.appendChild(toast);
+    runToastAnimation(toast);
+    await new Promise((r) => setTimeout(r, 50));
+    assert.strictEqual(playCalled, true, "play() should be called on paused progress animation");
+
+    toast.remove();
+  });
+
+  test("applyRichStyling sets toast.style.color for currentColor inheritance on progress bar", async () => {
+    freshDom();
+    const { applyRichStyling } = await import("../../src/components/toast-utils.js");
+    const { resetConfig } = await import("../../src/utils/config.js");
+    resetConfig();
+
+    const toast = document.createElement("div");
+    await applyRichStyling(toast, {
+      message: "Accessible text color check",
+      backgroundColor: "#28a745",
+      showProgressBar: true,
+    });
+
+    assert.ok(toast.style.color, "toast.style.color must be set inline");
+    const bar = toast.querySelector(".toast-progress-bar");
+    assert.ok(bar);
+    assert.strictEqual(bar.style.background.toLowerCase(), "currentcolor");
+
+    // With explicit textColor
+    const toast2 = document.createElement("div");
+    await applyRichStyling(toast2, {
+      message: "Explicit text color",
+      textColor: "#ff0077",
+      showProgressBar: true,
+    });
+    assert.ok(
+      toast2.style.color.includes("255") || toast2.style.color.includes("#ff0077"),
+      "toast2.style.color must match explicit textColor"
+    );
+  });
+
+  test("setupPauseOnHover onFocusIn ignores non-interactive div/span and only pauses on interactive elements", async () => {
+    freshDom();
+    const { createToast, resetToastManager } = await import("../../src/index.js");
+    resetToastManager();
+
+    const handle = await createToast({
+      message: "Interactive focus target check",
+      duration: 5000,
+      showProgressBar: true,
+      pauseOnHover: true,
+      cta: { label: "Test CTA", onClick: () => {} },
+    });
+    await new Promise((r) => setTimeout(r, 50));
+
+    const outer = document.querySelector(".toast-outer-wrapper");
+    const toast = document.querySelector(".toast");
+    const span = document.querySelector(".toast-message");
+    const btn = document.querySelector(".toast-cta");
+    assert.ok(outer && toast && span && btn);
+
+    // Focus on non-interactive span
+    const spanFocusEvent = new window.FocusEvent("focusin", { bubbles: true });
+    Object.defineProperty(spanFocusEvent, "target", { value: span });
+    outer.dispatchEvent(spanFocusEvent);
+    assert.strictEqual(toast.classList.contains("toast-paused"), false, "non-interactive span must not pause");
+
+    // Focus on interactive button
+    const btnFocusEvent = new window.FocusEvent("focusin", { bubbles: true });
+    Object.defineProperty(btnFocusEvent, "target", { value: btn });
+    outer.dispatchEvent(btnFocusEvent);
+    assert.strictEqual(toast.classList.contains("toast-paused"), true, "interactive button focus must pause");
+
+    // Focusout of outer resumes
+    const focusOutEvent = new window.FocusEvent("focusout", { bubbles: true });
+    Object.defineProperty(focusOutEvent, "relatedTarget", { value: document.body });
+    outer.dispatchEvent(focusOutEvent);
+    assert.strictEqual(toast.classList.contains("toast-paused"), false, "focusout must resume");
+
+    await handle.dismiss();
+    resetToastManager();
+  });
+
+  test("handle.update preserves progress bar visibility when duration changes under reduced motion", async () => {
+    freshDom();
+    const { setConfig, resetConfig } = await import("../../src/utils/config.js");
+    const { createToast, resetToastManager } = await import("../../src/index.js");
+    resetToastManager();
+    setConfig({ reducedMotion: "always" });
+
+    const handle = await createToast({
+      message: "Initial message",
+      duration: 3000,
+      showProgressBar: true,
+    });
+    await new Promise((r) => setTimeout(r, 50));
+
+    const toast = document.querySelector(".toast");
+    const bar = document.querySelector(".toast-progress-bar");
+    assert.ok(toast && bar);
+    assert.notStrictEqual(bar.style.display, "none");
+
+    // Update duration under reduced motion
+    await handle.update({ duration: 5000, message: "Updated message" });
+    assert.notStrictEqual(bar.style.display, "none");
+    assert.ok(bar.style.width);
+    assert.strictEqual(bar.style.animation, "none");
+
+    await handle.dismiss();
+    resetToastManager();
+    resetConfig();
+  });
+});
+
 
 

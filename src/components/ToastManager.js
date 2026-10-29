@@ -624,7 +624,13 @@ async function setupPauseOnHover(data) {
   };
 
   const onFocusIn = (e) => {
-    if (e?.target && typeof e.target.matches === "function" && e.target.matches("[tabindex], div, span, button, a")) {
+    if (
+      e?.target &&
+      typeof e.target.matches === "function" &&
+      e.target.matches(
+        "button, a[href], input, select, textarea, [role='button'], [role='link'], [data-toast-interactive]"
+      )
+    ) {
       timer.pause();
       pauseProgressBar();
       toast?._pauseUndo?.();
@@ -1356,12 +1362,16 @@ export async function updateToastByKey(key, newOptions = {}) {
         }
         if (!progressBar._isManualProgress && !progressBar._isIndeterminate) {
           const newDuration = raw + 5;
-          if (toast._progressAnimation) {
+          const finalWidth = progressBar._finalWidth || "100%";
+          if (shouldReduceMotion()) {
+            progressBar.style.width = finalWidth;
+            progressBar.style.transition = "none";
+            progressBar.style.animation = "none";
+          } else if (toast._progressAnimation) {
             try {
               toast._progressAnimation.cancel();
             } catch {}
             const isReverse = progressBar._isReverse;
-            const finalWidth = progressBar._finalWidth || "100%";
             const keyframes = isReverse
               ? [{ width: "0%" }, { width: finalWidth }]
               : [{ width: finalWidth }, { width: "0%" }];
@@ -1374,7 +1384,6 @@ export async function updateToastByKey(key, newOptions = {}) {
           } else {
             progressBar.style.transition = `width ${newDuration}ms linear`;
             const isReverse = progressBar._isReverse;
-            const finalWidth = progressBar._finalWidth || "100%";
             progressBar.style.width = isReverse ? finalWidth : "0%";
           }
         }

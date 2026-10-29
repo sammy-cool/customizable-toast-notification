@@ -520,7 +520,9 @@ export function createProgressBar(toast, options = {}) {
   }
 
   if (shouldReduceMotion()) {
-    progressBar.style.display = "none";
+    progressBar.style.width = finalWidth;
+    progressBar.style.transition = "none";
+    progressBar.style.animation = "none";
   } else if (typeof progressBar.animate === "function") {
     const keyframes = isReverse
       ? [{ width: "0%" }, { width: finalWidth }]
@@ -552,6 +554,11 @@ export function runToastAnimation(toast) {
     toast.style.opacity = "1";
     toast.style.transform = "translateY(0)";
     toast.classList.add("active");
+    if (toast._progressBar && !toast._progressBar._isIndeterminate && !toast._progressBar._isManualProgress) {
+      toast._progressBar.style.width = toast._progressBar._finalWidth || "100%";
+      toast._progressBar.style.transition = "none";
+      toast._progressBar.style.animation = "none";
+    }
     return;
   }
 
@@ -567,6 +574,11 @@ export function runToastAnimation(toast) {
       toast.style.opacity = "1";
       toast.style.transform = "none";
       toast.classList.add("active");
+      if (toast._progressAnimation && (toast._progressAnimation.playState === "idle" || toast._progressAnimation.playState === "paused")) {
+        try {
+          toast._progressAnimation.play();
+        } catch {}
+      }
     });
   };
 
