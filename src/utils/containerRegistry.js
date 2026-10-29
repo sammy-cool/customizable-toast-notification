@@ -26,6 +26,7 @@ export function normalizePositionKey(position) {
     "center-bottom": "bottom-center",
     "center-left": "left-center",
     "center-right": "right-center",
+    "center-center": "center",
     "top": "top-center",
     "bottom": "bottom-center",
   };
@@ -53,6 +54,12 @@ export function resetContainerRegistry() {
         host.remove();
       } catch {}
     }
+    const containers = document.querySelectorAll('[id^="toast-container-"]');
+    containers.forEach((c) => {
+      try {
+        c.remove();
+      } catch {}
+    });
   }
 }
 

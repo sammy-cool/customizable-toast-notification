@@ -27,6 +27,15 @@ const ALLOWED_TAGS = new Set([
   "PRE",
   "CODE",
   "MARK",
+  "KBD",
+  "SAMP",
+  "SUB",
+  "SUP",
+  "TIME",
+  "ABBR",
+  "DEL",
+  "S",
+  "INS",
 ]);
 // AUDIT FIX (C1 — security): 'style' was previously allowed through with
 // zero validation, letting an attacker-controlled message (allowHtml:true)

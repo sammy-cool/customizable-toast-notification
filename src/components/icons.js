@@ -18,6 +18,10 @@ const ALLOWED_SVG_TAGS = new Set([
   "defs",
   "clippath",
   "use",
+  "lineargradient",
+  "radialgradient",
+  "stop",
+  "mask",
 ]);
 
 const ALLOWED_SVG_ATTRS = new Set([
@@ -58,6 +62,13 @@ const ALLOWED_SVG_ATTRS = new Set([
   "id",
   "href",
   "xlink:href",
+  "clip-path",
+  "mask",
+  "offset",
+  "stop-color",
+  "stop-opacity",
+  "gradienttransform",
+  "gradientunits",
 ]);
 
 function isUnsafeUrl(value = "") {
@@ -199,6 +210,9 @@ export function createToastIcon(options = {}) {
   }
 
   const isRtl = safeOptions.fontDirection === "rtl";
+  const rawSize = Number(safeOptions.iconSize);
+  const iconSize = Number.isFinite(rawSize) && rawSize > 0 ? rawSize : 18;
+
   if (!config.disableInlineStyles) {
     Object.assign(iconTag.style, {
       display: "inline-flex",
@@ -209,6 +223,7 @@ export function createToastIcon(options = {}) {
       marginRight: isRtl ? "0px" : "8px",
       lineHeight: "1",
       fontStyle: "normal",
+      fontSize: `${iconSize}px`,
     });
   }
 
@@ -224,8 +239,14 @@ export function createToastIcon(options = {}) {
       const cloned = iconOpt.cloneNode(true);
       if (cloned.nodeType === 1) {
         cloned.setAttribute("aria-hidden", "true");
-        if (cloned.style && iconColorOpt && typeof iconColorOpt === "string" && iconColorOpt.trim()) {
-          cloned.style.color = iconColorOpt.trim();
+        if (cloned.style) {
+          if (iconColorOpt && typeof iconColorOpt === "string" && iconColorOpt.trim()) {
+            cloned.style.color = iconColorOpt.trim();
+          }
+          if (safeOptions.iconSize !== undefined) {
+            cloned.style.width = `${iconSize}px`;
+            cloned.style.height = `${iconSize}px`;
+          }
         }
       }
       iconTag.appendChild(cloned);
@@ -240,10 +261,14 @@ export function createToastIcon(options = {}) {
       check: ICON_SVGS.success,
       checkmark: ICON_SVGS.success,
       success: ICON_SVGS.success,
+      ok: ICON_SVGS.success,
       cross: ICON_SVGS.error,
       error: ICON_SVGS.error,
+      danger: ICON_SVGS.error,
+      failure: ICON_SVGS.error,
       alert: ICON_SVGS.warning,
       warning: ICON_SVGS.warning,
+      warn: ICON_SVGS.warning,
       circle: ICON_SVGS.info,
       info: ICON_SVGS.info,
     };
@@ -251,6 +276,8 @@ export function createToastIcon(options = {}) {
     if (matchedAlias) {
       const safeSvg = sanitizeInlineSvg(matchedAlias.trim());
       if (safeSvg) {
+        safeSvg.setAttribute("width", String(iconSize));
+        safeSvg.setAttribute("height", String(iconSize));
         if (iconColorOpt && typeof iconColorOpt === "string" && iconColorOpt.trim()) {
           safeSvg.style.color = iconColorOpt.trim();
         }
@@ -258,20 +285,21 @@ export function createToastIcon(options = {}) {
       }
       return iconTag;
     }
-    if (trimmed.startsWith("<svg") && trimmed.endsWith("</svg>")) {
+    const isSvg = /<svg\b[^>]*>[\s\S]*<\/svg>/i.test(trimmed);
+    if (isSvg) {
       const safeSvg = sanitizeInlineSvg(trimmed);
       if (safeSvg) {
         safeSvg.setAttribute("aria-hidden", "true");
         safeSvg.setAttribute("focusable", "false");
-        const rawW = safeSvg.getAttribute("width") || "18";
-        const rawH = safeSvg.getAttribute("height") || "18";
+        const rawW = safeSvg.getAttribute("width") || String(iconSize);
+        const rawH = safeSvg.getAttribute("height") || String(iconSize);
         if (!safeSvg.getAttribute("viewBox") && !safeSvg.getAttribute("viewbox")) {
-          const wNum = Number.parseFloat(rawW) || 18;
-          const hNum = Number.parseFloat(rawH) || 18;
+          const wNum = Number.parseFloat(rawW) || iconSize;
+          const hNum = Number.parseFloat(rawH) || iconSize;
           safeSvg.setAttribute("viewBox", `0 0 ${wNum} ${hNum}`);
         }
-        safeSvg.setAttribute("width", "18");
-        safeSvg.setAttribute("height", "18");
+        safeSvg.setAttribute("width", String(iconSize));
+        safeSvg.setAttribute("height", String(iconSize));
         if (iconColorOpt && typeof iconColorOpt === "string" && iconColorOpt.trim()) {
           safeSvg.style.color = iconColorOpt.trim();
         }
@@ -287,9 +315,15 @@ export function createToastIcon(options = {}) {
 
   // 3. Built-in type icon (when icon is explicitly true, or type is specified and icon is not false)
   const normalizedType = typeof type === "string" ? type.toLowerCase().trim() : "";
-  if ((iconOpt === true || iconOpt === undefined) && normalizedType && ICON_SVGS[normalizedType]) {
-    const safeSvg = sanitizeInlineSvg(ICON_SVGS[normalizedType].trim());
+  const builtInSvg =
+    ICON_SVGS[normalizedType] ||
+    (normalizedType === "danger" ? ICON_SVGS.error : null) ||
+    (normalizedType === "warn" ? ICON_SVGS.warning : null);
+  if ((iconOpt === true || iconOpt === undefined) && builtInSvg) {
+    const safeSvg = sanitizeInlineSvg(builtInSvg.trim());
     if (safeSvg) {
+      safeSvg.setAttribute("width", String(iconSize));
+      safeSvg.setAttribute("height", String(iconSize));
       if (iconColorOpt && typeof iconColorOpt === "string" && iconColorOpt.trim()) {
         safeSvg.style.color = iconColorOpt.trim();
       }

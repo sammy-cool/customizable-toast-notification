@@ -1849,12 +1849,14 @@ createToast({
         var lastFrameTime = performance.now();
         var frameCount = 0;
         function updateFps() {
-          var now = performance.now();
-          frameCount++;
-          if (now - lastFrameTime >= 1000) {
-            meterFps.textContent = frameCount;
-            frameCount = 0;
-            lastFrameTime = now;
+          if (!document.hidden && meterFps) {
+            var now = performance.now();
+            frameCount++;
+            if (now - lastFrameTime >= 1000) {
+              meterFps.textContent = frameCount;
+              frameCount = 0;
+              lastFrameTime = now;
+            }
           }
           requestAnimationFrame(updateFps);
         }
@@ -2094,7 +2096,7 @@ createToast({
           try {
             var opts = buildOptions();
             var json = JSON.stringify(opts);
-            var encoded = encodeURIComponent(btoa(json));
+            var encoded = encodeURIComponent(btoa(unescape(encodeURIComponent(json))));
             var newUrl = window.location.origin + window.location.pathname + "#cfg=" + encoded;
             window.history.replaceState(null, "", newUrl);
             navigator.clipboard.writeText(newUrl).then(function () {
@@ -2116,7 +2118,7 @@ createToast({
           try {
             if (!window.location.hash || !window.location.hash.startsWith("#cfg=")) return;
             var encoded = window.location.hash.slice(5);
-            var json = atob(decodeURIComponent(encoded));
+            var json = decodeURIComponent(escape(atob(decodeURIComponent(encoded))));
             var opts = JSON.parse(json);
             if (!opts || typeof opts !== "object") return;
 

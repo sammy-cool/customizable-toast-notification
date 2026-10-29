@@ -8,6 +8,9 @@ import {
   getConfig,
   resetConfig,
   getToastMetrics,
+  setDefaultColors,
+  setDefaultMessages,
+  version,
 } from "../index.js";
 
 const subscribers = new Set();
@@ -88,6 +91,10 @@ export function createToastStore() {
     setConfig,
     getConfig,
     resetConfig,
+    getToastMetrics,
+    setDefaultColors,
+    setDefaultMessages,
+    version,
   };
 }
 
@@ -104,4 +111,7 @@ export {
   getConfig,
   resetConfig,
   getToastMetrics,
+  setDefaultColors,
+  setDefaultMessages,
+  version,
 };

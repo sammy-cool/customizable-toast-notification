@@ -90,6 +90,12 @@
   --toast-info-text: #000000;
 }
 
+[data-toast-theme="high-contrast"] .toast-count-badge {
+  background: #ffff00 !important;
+  color: #000000 !important;
+  border: 2px solid #000000 !important;
+}
+
 /* ========== THEME: COMPACT ========== */
 [data-toast-theme="compact"] {
   --toast-padding: 8px 12px;
@@ -805,5 +811,24 @@
   transition: none !important;
   animation: none !important;
 }
+
+/* ========== TABLET RESPONSIVENESS ========== */
+@media (min-width: 481px) and (max-width: 768px) {
+  .toast-container-base {
+    max-width: calc(100vw - 32px);
+  }
+  .toast {
+    max-width: 420px;
+  }
+}
+
+/* ========== PRINT ACCESSIBILITY ========== */
+@media print {
+  .toast-container-base,
+  #toast-shadow-host {
+    display: none !important;
+  }
+}
+
 
 

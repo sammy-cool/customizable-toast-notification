@@ -5476,5 +5476,431 @@ describe("Custom Icons, Color Customization & Multi-Directional Stack Fortificat
   });
 });
 
+describe("Comprehensive Subsystem Remediation & Contract Verification Suite", () => {
+  test("initKeyboardShortcuts and destroyKeyboardShortcuts lifecycle teardown", async () => {
+    freshDom();
+    const { initKeyboardShortcuts, destroyKeyboardShortcuts, resetToastManager } = await import("../../src/index.js");
+    resetToastManager();
+
+    try {
+      const teardown = initKeyboardShortcuts(window);
+      assert.strictEqual(typeof teardown, "function", "initKeyboardShortcuts returns a teardown function");
+      assert.strictEqual(window.__customizableToastEscapeAttached, true);
+
+      // Verify teardown removes listener
+      destroyKeyboardShortcuts(window);
+      assert.strictEqual(window.__customizableToastEscapeAttached, undefined);
+
+      // Re-attaching and invoking return function
+      const cleanup = initKeyboardShortcuts(window);
+      assert.strictEqual(window.__customizableToastEscapeAttached, true);
+      cleanup();
+      assert.strictEqual(window.__customizableToastEscapeAttached, undefined);
+    } finally {
+      resetToastManager();
+    }
+  });
+
+  test("updateToastByKey boolean return, indeterminate reset, resolved transition, and position migration", async () => {
+    freshDom();
+    const { createToast, updateToastByKey, resetToastManager } = await import("../../src/index.js");
+    resetToastManager();
+
+    try {
+      // 1. Invalid or missing key returns false
+      const invalidRes = await updateToastByKey(null, {});
+      assert.strictEqual(invalidRes, false);
+
+      const nonExistentRes = await updateToastByKey("non-existent-key-9999", { message: "Hello" });
+      assert.strictEqual(nonExistentRes, false);
+
+      // 2. Loading toast created with duration: 0 and progress: true
+      const handle = await createToast({
+        type: "loading",
+        message: "Loading data...",
+        duration: 0,
+        progress: true,
+        position: "bottom-right",
+      });
+      await new Promise((r) => setTimeout(r, 60));
+
+      const toastEl = document.querySelector(".toast");
+      assert.ok(toastEl, "Toast element should exist");
+      const progressBar = toastEl.querySelector(".toast-progress-bar");
+      assert.ok(progressBar, "Progress bar should exist");
+
+      // 3. Update loading toast to success with auto-dismiss duration
+      const updateRes = await handle.update({
+        type: "success",
+        message: "Loaded successfully!",
+        duration: 3000,
+      });
+      assert.strictEqual(updateRes, true);
+      assert.strictEqual(progressBar.classList.contains("toast-progress-bar-indeterminate"), false);
+
+      // 4. Update position: migrate outer container to bottom-left
+      const posUpdateRes = await handle.update({ position: "bottom-left" });
+      assert.strictEqual(posUpdateRes, true);
+      const newContainer = document.querySelector("#toast-container-bottom-left");
+      assert.ok(newContainer, "Target container bottom-left created");
+      assert.ok(newContainer.contains(toastEl), "Toast element migrated to new container");
+    } finally {
+      resetToastManager();
+    }
+  });
+
+  test("updateStackedLayout calculates centered deck symmetric transforms and offsets", async () => {
+    freshDom();
+    const { updateStackedLayout } = await import("../../src/components/ToastManager.js");
+
+    const centerCont = document.createElement("div");
+    centerCont.id = "toast-container-center";
+    centerCont.setAttribute("data-stacked", "true");
+    const item0 = document.createElement("div");
+    const item1 = document.createElement("div");
+    const item2 = document.createElement("div");
+    centerCont.appendChild(item0);
+    centerCont.appendChild(item1);
+    centerCont.appendChild(item2);
+    document.body.appendChild(centerCont);
+
+    updateStackedLayout(centerCont);
+
+    assert.strictEqual(item0.getAttribute("data-stacked-depth"), "2");
+    assert.strictEqual(item1.getAttribute("data-stacked-depth"), "1");
+    assert.strictEqual(item2.getAttribute("data-stacked-depth"), "0");
+
+    assert.ok(item1.style.transform.includes("translateY(6px)"));
+    assert.strictEqual(item1.style.marginTop, "-48px");
+    assert.ok(item0.style.transform.includes("translateY(12px)"));
+    assert.strictEqual(item0.style.marginTop, "-48px");
+
+    centerCont._stackedCleanup?.();
+  });
+
+  test("createCTA handles 4-digit and 8-digit hex colors, async loading state, and button href navigation", async () => {
+    freshDom();
+    const { createCTA } = await import("../../src/components/toast-utils-core.js");
+
+    const toast = document.createElement("div");
+    let openedUrl = null;
+    let openedTarget = null;
+    window.open = (url, target) => {
+      openedUrl = url;
+      openedTarget = target;
+      return null;
+    };
+
+    let asyncDone = false;
+    createCTA(
+      toast,
+      {
+        cta: [
+          {
+            label: "Action 1",
+            textColor: "#1234",
+            backgroundColor: "#ffffff",
+          },
+          {
+            label: "Async Action",
+            textColor: "#12345678",
+            onClick: async () => {
+              await new Promise((r) => setTimeout(r, 20));
+              asyncDone = true;
+            },
+          },
+          {
+            variant: "button",
+            label: "Button Link",
+            href: "https://example.com/docs",
+            target: "_blank",
+          },
+        ],
+      },
+      async () => {}
+    );
+
+    const ctaButtons = toast.querySelectorAll(".toast-cta");
+    assert.strictEqual(ctaButtons.length, 3);
+
+    // 4-digit hex border color: #1234 -> #11223344 (or rgba equivalent in JSDOM)
+    assert.ok(
+      ctaButtons[0].style.border.includes("#11223344") ||
+      ctaButtons[0].style.border.includes("17, 34, 51"),
+      "4-digit hex correctly expands to border color"
+    );
+    // 8-digit hex border color: #12345678 (or rgba equivalent in JSDOM)
+    assert.ok(
+      ctaButtons[1].style.border.includes("#12345678") ||
+      ctaButtons[1].style.border.includes("18, 52, 86"),
+      "8-digit hex correctly assigns border color"
+    );
+
+    // Click async button: check aria-busy
+    ctaButtons[1].click();
+    assert.strictEqual(ctaButtons[1].getAttribute("aria-busy"), "true");
+    await new Promise((r) => setTimeout(r, 40));
+    assert.strictEqual(asyncDone, true);
+    assert.strictEqual(ctaButtons[1].hasAttribute("aria-busy"), false);
+
+    // Click button with href: navigates via window.open
+    ctaButtons[2].click();
+    assert.strictEqual(openedUrl, "https://example.com/docs");
+    assert.strictEqual(openedTarget, "_blank");
+  });
+
+  test("createUndoAction immediately sets pointer-events: none on click", async () => {
+    freshDom();
+    const { createUndoAction } = await import("../../src/components/toast-utils-core.js");
+
+    const toast = document.createElement("div");
+    let undoCount = 0;
+    createUndoAction(
+      toast,
+      {
+        undo: {
+          label: "Revert",
+          onUndo: async () => {
+            undoCount++;
+          },
+        },
+      },
+      async () => {}
+    );
+
+    const undoBtn = toast.querySelector(".toast-undo-btn");
+    assert.ok(undoBtn, "Undo button should be created");
+
+    undoBtn.click();
+    assert.strictEqual(undoBtn.style.pointerEvents, "none");
+    assert.strictEqual(undoCount, 1);
+  });
+
+  test("createCloseButton wraps multiplication sign in aria-hidden span", async () => {
+    freshDom();
+    const { createCloseButton } = await import("../../src/components/toast-utils-core.js");
+
+    const toast = document.createElement("div");
+    createCloseButton(toast, { closeAriaLabel: "Dismiss alert" }, () => {});
+
+    const closeBtn = toast.querySelector(".toast-close-btn");
+    assert.ok(closeBtn, "Close button rendered");
+    assert.strictEqual(closeBtn.getAttribute("aria-label"), "Dismiss alert");
+    const ariaHiddenSpan = closeBtn.querySelector("span[aria-hidden='true']");
+    assert.ok(ariaHiddenSpan, "Multiplication sign is wrapped in aria-hidden span");
+    assert.strictEqual(ariaHiddenSpan.textContent, "×");
+  });
+
+  test("attachSwipeToDismiss snaps back safely on window blur and touchcancel", async () => {
+    freshDom();
+    const { attachSwipeToDismiss } = await import("../../src/components/toast-utils-core.js");
+
+    const toast = document.createElement("div");
+    toast.style.width = "300px";
+    document.body.appendChild(toast);
+
+    let dismissed = false;
+    attachSwipeToDismiss(toast, () => {
+      dismissed = true;
+    });
+
+    // Simulate drag start via touchstart
+    toast.dispatchEvent(
+      new window.CustomEvent("touchstart", {
+        bubbles: true,
+        touches: [{ clientX: 100, clientY: 50, identifier: 1 }],
+      })
+    );
+
+    // Simulate touchmove horizontally
+    toast.dispatchEvent(
+      new window.CustomEvent("touchmove", {
+        bubbles: true,
+        touches: [{ clientX: 140, clientY: 50, identifier: 1 }],
+      })
+    );
+
+    // Simulate touchcancel
+    toast.dispatchEvent(new window.CustomEvent("touchcancel", { bubbles: true }));
+    assert.strictEqual(dismissed, false, "touchcancel should not dismiss");
+
+    // Simulate mouse drag start and window blur
+    toast.dispatchEvent(
+      new window.MouseEvent("mousedown", {
+        bubbles: true,
+        clientX: 100,
+        clientY: 50,
+        button: 0,
+      })
+    );
+    window.dispatchEvent(
+      new window.MouseEvent("mousemove", {
+        bubbles: true,
+        clientX: 140,
+        clientY: 50,
+        buttons: 1,
+      })
+    );
+    window.dispatchEvent(new window.Event("blur"));
+    assert.strictEqual(dismissed, false, "window blur should not dismiss");
+
+    toast._cleanupSwipe?.();
+  });
+
+  test("attachFocusTrap scopes Tab trapping strictly to toast and supports autoFocus: false", async () => {
+    freshDom();
+    const { attachFocusTrap } = await import("../../src/components/toast-utils-core.js");
+
+    const outsideBtn = document.createElement("button");
+    outsideBtn.id = "outside-button";
+    document.body.appendChild(outsideBtn);
+    outsideBtn.focus();
+
+    const toast = document.createElement("div");
+    const innerBtn1 = document.createElement("button");
+    const innerBtn2 = document.createElement("button");
+    toast.appendChild(innerBtn1);
+    toast.appendChild(innerBtn2);
+    document.body.appendChild(toast);
+
+    // autoFocus: false should NOT steal focus from outsideBtn
+    const cleanup = attachFocusTrap(toast, { autoFocus: false });
+    await new Promise((r) => setTimeout(r, 50));
+    assert.strictEqual(document.activeElement, outsideBtn, "Focus should remain on outside button");
+
+    // Tab key pressed when outside: should NOT be intercepted by the toast
+    const tabEvent = new window.KeyboardEvent("keydown", { key: "Tab", cancelable: true });
+    document.dispatchEvent(tabEvent);
+    assert.strictEqual(tabEvent.defaultPrevented, false, "Tab outside toast should not be defaultPrevented");
+
+    // Focus inside toast: now Tab key traps within toast
+    innerBtn2.focus();
+    const tabInsideEvent = new window.KeyboardEvent("keydown", { key: "Tab", cancelable: true });
+    document.dispatchEvent(tabInsideEvent);
+    assert.strictEqual(tabInsideEvent.defaultPrevented, true, "Tab from last element traps to first element");
+    assert.strictEqual(document.activeElement, innerBtn1);
+
+    cleanup();
+  });
+
+  test("createToastIcon supports SVG comments, iconSize, aliases, and iconColor", async () => {
+    freshDom();
+    const { createToastIcon } = await import("../../src/components/icons.js");
+
+    // 1. SVG with XML comment
+    const svgWithComment = `<!-- SVG Icon --><svg width="24" height="24" viewBox="0 0 24 24"><path d="M5 12h14"/></svg>`;
+    const iconEl = createToastIcon({
+      icon: svgWithComment,
+      iconColor: "#00ff00",
+      iconSize: 22,
+    });
+    assert.ok(iconEl, "Icon element created from SVG with comment");
+    const svgNode = iconEl.querySelector("svg");
+    assert.ok(svgNode, "SVG node extracted");
+    assert.strictEqual(svgNode.getAttribute("width"), "22");
+    assert.strictEqual(svgNode.getAttribute("height"), "22");
+    assert.strictEqual(svgNode.style.color, "rgb(0, 255, 0)");
+
+    // 2. Preset aliases: 'ok' -> success, 'warn' -> warning, 'danger' -> error, 'failure' -> error
+    const okIcon = createToastIcon({ icon: "ok" });
+    assert.ok(okIcon.querySelector("svg"), "Alias 'ok' resolves to success SVG");
+
+    const dangerIcon = createToastIcon({ icon: "danger" });
+    assert.ok(dangerIcon.querySelector("svg"), "Alias 'danger' resolves to error SVG");
+  });
+
+  test("createLoader sets transform-box: fill-box to prevent Safari rotation wobble", async () => {
+    freshDom();
+    const { createLoader } = await import("../../src/components/loader.js");
+
+    const loader = createLoader({ size: 16, color: "#ff00ff" });
+    assert.ok(loader, "Loader element created");
+    const circle = loader.querySelector("circle");
+    assert.ok(circle, "Loader circle element found");
+    assert.strictEqual(circle.style.transformBox, "fill-box");
+    assert.strictEqual(circle.style.transformOrigin, "center");
+  });
+
+  test("containerRegistry handles center-center normalization, aria-atomic: true, and clean reset", async () => {
+    freshDom();
+    const { normalizePositionKey, getOrCreateToastContainer, resetContainerRegistry } = await import("../../src/utils/containerRegistry.js");
+
+    assert.strictEqual(normalizePositionKey("center-center"), "center");
+
+    const container = await getOrCreateToastContainer({ position: "center" });
+    assert.ok(container, "Container created");
+    assert.strictEqual(container.getAttribute("aria-atomic"), "true");
+    assert.strictEqual(container.id, "toast-container-center");
+
+    // resetContainerRegistry clears DOM containers
+    resetContainerRegistry();
+    assert.strictEqual(document.querySelectorAll('[id^="toast-container-"]').length, 0);
+  });
+
+  test("dom.js namedColors includes CSS extended palette and resetColorCache clears cache", async () => {
+    freshDom();
+    const { getDynamicAccessibleTextColorHex, resetColorCache } = await import("../../src/utils/dom.js");
+
+    const navyText = getDynamicAccessibleTextColorHex("navy");
+    assert.strictEqual(navyText, "#ffffff", "Navy background yields white text");
+
+    const goldText = getDynamicAccessibleTextColorHex("gold");
+    assert.strictEqual(goldText, "#000000", "Gold background yields black text");
+
+    // resetColorCache executes without errors
+    resetColorCache();
+    const cachedAgain = getDynamicAccessibleTextColorHex("gold");
+    assert.strictEqual(cachedAgain, "#000000");
+  });
+
+  test("html-sanitizer.js permits safe semantic inline tags", async () => {
+    freshDom();
+    const { sanitizeHtml } = await import("../../src/utils/html-sanitizer.js");
+
+    const input = `<p>Press <kbd>Ctrl</kbd>+<kbd>C</kbd> or run <samp>kill</samp>. H<sub>2</sub>O and 10<sup>3</sup>. <time datetime="2026-10-29">Today</time> <abbr title="HyperText">HTML</abbr> <del>old</del> <ins>new</ins></p>`;
+    const output = sanitizeHtml(input);
+
+    assert.ok(output.includes("<kbd>Ctrl</kbd>"), "kbd tag preserved");
+    assert.ok(output.includes("<samp>kill</samp>"), "samp tag preserved");
+    assert.ok(output.includes("<sub>2</sub>"), "sub tag preserved");
+    assert.ok(output.includes("<sup>3</sup>"), "sup tag preserved");
+    assert.ok(output.includes("<time"), "time tag preserved");
+    assert.ok(output.includes("<abbr"), "abbr tag preserved");
+    assert.ok(output.includes("<del>old</del>"), "del tag preserved");
+    assert.ok(output.includes("<ins>new</ins>"), "ins tag preserved");
+  });
+
+  test("Framework subpath adapters export telemetry metrics, version, and accept ToastOptions", async () => {
+    freshDom();
+
+    // 1. React adapter
+    const reactAdapter = await import("../../src/react/index.js");
+    assert.strictEqual(typeof reactAdapter.getToastMetrics, "function");
+    assert.strictEqual(typeof reactAdapter.version, "string");
+    assert.strictEqual(typeof reactAdapter.toast.setDefaultColors, "function");
+    assert.strictEqual(typeof reactAdapter.toast.setDefaultMessages, "function");
+
+    // 2. Vue adapter
+    const vueAdapter = await import("../../src/vue/index.js");
+    assert.strictEqual(typeof vueAdapter.getToastMetrics, "function");
+    assert.strictEqual(typeof vueAdapter.version, "string");
+
+    // 3. Solid adapter
+    const solidAdapter = await import("../../src/solid/index.js");
+    assert.strictEqual(typeof solidAdapter.getToastMetrics, "function");
+    assert.strictEqual(typeof solidAdapter.version, "string");
+
+    // 4. Angular adapter
+    const angularAdapter = await import("../../src/angular/index.js");
+    assert.strictEqual(typeof angularAdapter.getToastMetrics, "function");
+    assert.strictEqual(typeof angularAdapter.version, "string");
+
+    // 5. Svelte adapter
+    const svelteAdapter = await import("../../src/svelte/index.js");
+    assert.strictEqual(typeof svelteAdapter.getToastMetrics, "function");
+    assert.strictEqual(typeof svelteAdapter.version, "string");
+  });
+});
+
 
 

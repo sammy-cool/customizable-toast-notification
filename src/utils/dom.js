@@ -116,8 +116,23 @@ const namedColors = {
   yellow: [255, 255, 0],
   orange: [255, 165, 0],
   purple: [128, 0, 128],
+  navy: [0, 0, 128],
+  teal: [0, 128, 128],
+  coral: [255, 127, 80],
+  gold: [255, 215, 0],
+  pink: [255, 192, 203],
+  lime: [0, 255, 0],
+  indigo: [75, 0, 130],
+  crimson: [220, 20, 60],
+  violet: [238, 130, 238],
+  cyan: [0, 255, 255],
+  magenta: [255, 0, 255],
   transparent: [255, 255, 255],
 };
+
+export function resetColorCache() {
+  colorCache.map.clear();
+}
 
 const precomputedNamedTextColors = {};
 Object.entries(namedColors).forEach(([name, [r, g, b]]) => {
