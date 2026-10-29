@@ -1,3 +1,10 @@
+## [4.0.3](https://github.com/sammy-cool/customizable-toast-notification/compare/v4.0.2...v4.0.3) (2026-10-29)
+
+
+### Bug Fixes
+
+* ensure progress bar countdown animates smoothly across all motion settings ([aba0561](https://github.com/sammy-cool/customizable-toast-notification/commit/aba0561e141295bc51f77a38ae89240e37bec137))
+
 ## [4.0.2](https://github.com/sammy-cool/customizable-toast-notification/compare/v4.0.1...v4.0.2) (2026-10-29)
 
 
