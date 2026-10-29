@@ -6,7 +6,7 @@ import {
   showToast,
   closeToastByKey,
   updateToastByKey,
-  resetToastManager,
+  resetToastManager as coreResetToastManager,
   dismiss,
   noop as managerNoop,
   getToastMetrics,
@@ -258,7 +258,8 @@ async function createFirstToastContainer(options) {
     return await getOrCreateToastContainer(options, setPosition);
   } catch (error) {
     console.error("Failed to create toast container:", error);
-    return getConfig().targetNode || document.body;
+    const targetNode = getConfig().targetNode;
+    return (targetNode && targetNode.isConnected) ? targetNode : (document.body || document.documentElement);
   }
 }
 
@@ -591,7 +592,10 @@ const dismissToast = async (target) => {
   if (target && typeof target.then === "function") {
     try {
       resolvedTarget = await target;
-    } catch {
+    } catch (err) {
+      if (getConfig().debug) {
+        console.warn("dismissToast: target promise rejected before resolution", err);
+      }
       return;
     }
   }
@@ -738,6 +742,15 @@ createToastWithPriority.dismiss = dismissToast;
 createToastWithPriority.dismissAll = noopAll;
 createToastWithPriority.clear = noopAll;
 
+/**
+ * Resets all internal ToastManager state, active toasts, queues, timers, and index-level locks.
+ */
+function resetToastManager() {
+  closeInProgress = false;
+  closePromise = null;
+  coreResetToastManager();
+}
+
 /** @type {string} */
 const version = typeof __VERSION__ !== "undefined" ? __VERSION__ : "4.0.1";
 
@@ -861,6 +874,8 @@ try {
       generateToastId,
       resetToastIdCounter,
       getToastMetrics,
+      resetToastManager,
+      resetContainerRegistry,
       initKeyboardShortcuts,
       destroyKeyboardShortcuts,
     };
