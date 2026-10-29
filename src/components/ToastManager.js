@@ -1022,6 +1022,7 @@ async function updateBadge({ outer, count }) {
  * Updates an active, pending, or queued toast in-place with new options.
  * @param {string} key
  * @param {Partial<import('../index.js').ToastOptions>} [newOptions]
+ * @returns {Promise<boolean>}
  */
 export async function updateToastByKey(key, newOptions = {}) {
   if (!key || typeof newOptions !== "object" || newOptions === null) return false;

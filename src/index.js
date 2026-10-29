@@ -163,7 +163,7 @@ import { generateToastId, resetToastIdCounter } from "./utils/id.js";
  * @typedef {Object} ToastHandle
  * @property {string} [id] - The unique identifier/key of the toast notification.
  * @property {() => Promise<void>} dismiss
- * @property {(newOptions: Partial<ToastOptions>) => Promise<void>} update
+ * @property {(newOptions: Partial<ToastOptions>) => Promise<boolean>} update
  */
 
 /**
@@ -483,7 +483,7 @@ async function createToastWithPriority(messageOrOptions = {}, maybeOptions) {
     id: key,
     dismiss: () => (key ? closeToastByKey(key) : Promise.resolve()),
     update: (newOptions) =>
-      key ? updateToastByKey(key, newOptions) : Promise.resolve(),
+      key ? updateToastByKey(key, newOptions) : Promise.resolve(false),
   };
 }
 
@@ -705,7 +705,7 @@ async function toastPromise(promiseOrFn, messages = {}, options = {}) {
 
     if (loadingHandle && typeof loadingHandle.update === "function") {
       const updated = await loadingHandle.update(successOptions);
-      if (updated === false) {
+      if (!updated) {
         await createToastWithPriority(successOptions);
       }
     } else {
@@ -726,7 +726,7 @@ async function toastPromise(promiseOrFn, messages = {}, options = {}) {
 
     if (loadingHandle && typeof loadingHandle.update === "function") {
       const updated = await loadingHandle.update(errorOptions);
-      if (updated === false) {
+      if (!updated) {
         await createToastWithPriority(errorOptions);
       }
     } else {
