@@ -485,6 +485,10 @@ export function createProgressBar(toast, options = {}) {
 
   toast.appendChild(progressBar);
 
+  if (options.progressPosition === "top") {
+    progressBar.classList.add("toast-progress-top");
+  }
+
   // 1. Indeterminate mode or loading state (duration: 0 or Infinity with showProgressBar)
   const isIndeterminate = options.progress === "indeterminate" ||
     (Boolean(options.showProgressBar) && (options.duration === 0 || options.duration === Infinity) && options.progress === undefined);

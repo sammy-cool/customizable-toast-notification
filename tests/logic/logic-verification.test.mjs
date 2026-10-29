@@ -5099,6 +5099,117 @@ describe("v4.0.2 Mobile & Desktop Viewport Parity — Progress Bar Visibility & 
     resetToastManager();
     resetConfig();
   });
+
+  test("applyRichStyling sets touchAction 'pan-y' for swipeToDismiss: true and 'auto' for false", async () => {
+    freshDom();
+    const { applyRichStyling } = await import("../../src/components/toast-utils.js");
+    const { resetConfig } = await import("../../src/utils/config.js");
+    resetConfig();
+
+    const toast1 = document.createElement("div");
+    await applyRichStyling(toast1, { message: "Swipe enabled", swipeToDismiss: true });
+    assert.strictEqual(toast1.style.touchAction, "pan-y");
+
+    const toast2 = document.createElement("div");
+    await applyRichStyling(toast2, { message: "Swipe disabled", swipeToDismiss: false });
+    assert.strictEqual(toast2.style.touchAction, "auto");
+  });
+
+  test("updateStackedLayout supports click/tap to toggle expansion on mobile devices", async () => {
+    freshDom();
+    const { updateStackedLayout } = await import("../../src/components/ToastManager.js");
+
+    const container = document.createElement("div");
+    container.id = "toast-container-bottom-right";
+    container.setAttribute("data-stacked", "true");
+
+    const item1 = document.createElement("div");
+    const item2 = document.createElement("div");
+    container.appendChild(item1);
+    container.appendChild(item2);
+    document.body.appendChild(container);
+
+    updateStackedLayout(container);
+    assert.strictEqual(container._isExpanded, undefined);
+
+    // Click/tap container (simulating mobile touch tap)
+    const clickEvent = new window.MouseEvent("click", { bubbles: true });
+    Object.defineProperty(clickEvent, "target", { value: item1 });
+    container.dispatchEvent(clickEvent);
+    assert.strictEqual(container._isExpanded, true, "clicking stacked container expands deck");
+
+    // Click again collapses
+    container.dispatchEvent(clickEvent);
+    assert.strictEqual(container._isExpanded, false, "clicking stacked container again collapses deck");
+
+    // Click on interactive CTA button does not toggle
+    const btn = document.createElement("button");
+    item1.appendChild(btn);
+    const btnClickEvent = new window.MouseEvent("click", { bubbles: true });
+    Object.defineProperty(btnClickEvent, "target", { value: btn });
+    container.dispatchEvent(btnClickEvent);
+    assert.strictEqual(container._isExpanded, false, "clicking interactive button does not toggle expansion");
+
+    container._stackedCleanup?.();
+    container.remove();
+  });
+
+  test("setPosition resets container.style.inset to 'auto'", async () => {
+    freshDom();
+    const { setPosition } = await import("../../src/utils/position.js");
+
+    const container = document.createElement("div");
+    container.style.inset = "0px 10px 10px 0px";
+    await setPosition(container, { position: "top-center" });
+
+    assert.strictEqual(container.style.inset, "auto");
+    assert.strictEqual(container.style.top, "10px");
+    assert.strictEqual(container.style.left, "50%");
+  });
+
+  test("createProgressBar adds 'toast-progress-top' class when progressPosition: 'top'", async () => {
+    freshDom();
+    const { createProgressBar } = await import("../../src/components/toast-utils-core.js");
+
+    const toast = document.createElement("div");
+    createProgressBar(toast, { progressPosition: "top", duration: 3000 });
+
+    const bar = toast.querySelector(".toast-progress-bar");
+    assert.ok(bar, "progress bar must exist");
+    assert.ok(bar.classList.contains("toast-progress-top"), "must contain 'toast-progress-top' class");
+    assert.strictEqual(bar.style.top, "0px");
+  });
+
+  test("applyRichStyling sets position 'relative' inline for containing block purity", async () => {
+    freshDom();
+    const { applyRichStyling } = await import("../../src/components/toast-utils.js");
+    const { resetConfig } = await import("../../src/utils/config.js");
+    resetConfig();
+
+    const toast = document.createElement("div");
+    await applyRichStyling(toast, { message: "Containing block test" });
+
+    assert.strictEqual(toast.style.position, "relative");
+  });
+
+  test("styles.css includes transform: none !important for container and translateY(-50%) for center on mobile", async () => {
+    freshDom();
+    const fs = await import("fs");
+    const css = fs.readFileSync(new URL("../../src/styles.css", import.meta.url), "utf8");
+
+    assert.ok(css.includes(".toast.active {\n  opacity: 1;\n  transform: none;"));
+    assert.ok(css.includes("transform: none !important;"));
+    assert.ok(css.includes("transform: translateY(-50%) !important;"));
+  });
+
+  test("docs/index.html loads local dist with CDN fallback for pristine local testing", async () => {
+    freshDom();
+    const fs = await import("fs");
+    const html = fs.readFileSync(new URL("../../docs/index.html", import.meta.url), "utf8");
+
+    assert.ok(html.includes('<link rel="stylesheet" href="../dist/index.css"'));
+    assert.ok(html.includes('<script src="../dist/index.umd.js"'));
+  });
 });
 
 

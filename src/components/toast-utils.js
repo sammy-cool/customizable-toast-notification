@@ -118,6 +118,7 @@ export async function applyRichStyling(toast, options, onClose) {
       boxSizing: "border-box",
       userSelect: "text",
       pointerEvents: "auto",
+      touchAction: options?.swipeToDismiss === false ? "auto" : "pan-y",
       transition: `opacity ${opacityDuration} ${opacityEasing}, transform ${validAnimationDuration} ${easing}`,
       transform: getInitialTransform(options?.position, options?.animationType, isSpring),
       zIndex: String(config.zIndex),

@@ -14,7 +14,7 @@
       href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500;600&display=swap"
       rel="stylesheet"
     />
-    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/customizable-toast-notification@latest/dist/index.css" onerror="this.onerror=null;this.href='../dist/index.css';" />
+    <link rel="stylesheet" href="../dist/index.css" onerror="this.onerror=null;this.href='https://cdn.jsdelivr.net/npm/customizable-toast-notification@latest/dist/index.css';" />
 
     <style>
       :root {
@@ -1477,18 +1477,13 @@ createToast({
       </div>
     </footer>
 
-    <!-- Load Customizable Toast UMD (Live @latest) -->
-    <script src="https://cdn.jsdelivr.net/npm/customizable-toast-notification@latest/dist/index.umd.js"></script>
+    <!-- Load Customizable Toast UMD (Local Dist with CDN Fallback) -->
+    <script src="../dist/index.umd.js" onerror="this.onerror=null;this.src='https://cdn.jsdelivr.net/npm/customizable-toast-notification@latest/dist/index.umd.js';"></script>
     <script>
-      // Fallback loader if primary CDN unreachable
+      // Fallback loader if primary local & jsDelivr unreachable
       if (typeof window.customizableToast === "undefined") {
         var s = document.createElement("script");
         s.src = "https://unpkg.com/customizable-toast-notification@latest/dist/index.umd.js";
-        s.onerror = function () {
-          var loc = document.createElement("script");
-          loc.src = "../dist/index.umd.js";
-          document.head.appendChild(loc);
-        };
         document.head.appendChild(s);
       }
     </script>

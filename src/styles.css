@@ -574,7 +574,7 @@
 /* ========== ACTIVE STATE ========== */
 .toast.active {
   opacity: 1;
-  transform: translateY(0);
+  transform: none;
 }
 
 /* ========== GLASSMORPHISM SUPPORT ========== */
@@ -676,6 +676,22 @@
   margin-left: 8px;
 }
 
+[dir="rtl"] .toast-cta,
+.toast[style*="direction: rtl"] .toast-cta,
+[dir="rtl"] .toast-undo-btn,
+.toast[style*="direction: rtl"] .toast-undo-btn,
+[dir="rtl"] .toast-close-btn,
+.toast[style*="direction: rtl"] .toast-close-btn {
+  margin-left: 0;
+  margin-right: 10px;
+}
+
+[dir="rtl"] .toast-cta + .toast-cta,
+.toast[style*="direction: rtl"] .toast-cta + .toast-cta {
+  margin-left: 0;
+  margin-right: 6px;
+}
+
 .toast-icon svg {
   display: block;
 }
@@ -696,15 +712,62 @@
     max-width: 100vw !important;
     left: 0 !important;
     right: 0 !important;
+    transform: none !important;
     padding: 0 10px !important;
     box-sizing: border-box !important;
     align-items: center !important;
+  }
+
+  .toast-position-top-left,
+  .toast-position-top-right,
+  .toast-position-top-center,
+  .toast-position-center-top,
+  .toast-position-top,
+  .toast-position-top-full-width {
+    top: max(10px, env(safe-area-inset-top, 10px)) !important;
+  }
+
+  .toast-position-bottom-left,
+  .toast-position-bottom-right,
+  .toast-position-bottom-center,
+  .toast-position-center-bottom,
+  .toast-position-bottom,
+  .toast-position-bottom-full-width {
+    bottom: max(10px, env(safe-area-inset-bottom, 10px)) !important;
+  }
+
+  .toast-position-center,
+  .toast-position-left-center,
+  .toast-position-center-left,
+  .toast-position-right-center,
+  .toast-position-center-right {
+    top: 50% !important;
+    bottom: auto !important;
+    transform: translateY(-50%) !important;
   }
 
   .toast {
     max-width: calc(100vw - 20px) !important;
     min-width: 0 !important;
     width: 100% !important;
+    touch-action: pan-y;
+  }
+
+  .toast-close-btn {
+    min-width: 28px;
+    min-height: 28px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    padding: 4px;
+  }
+
+  .toast-cta,
+  .toast-undo-btn {
+    min-height: 32px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
   }
 }
 

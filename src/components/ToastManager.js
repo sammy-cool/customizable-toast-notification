@@ -108,17 +108,30 @@ export function updateStackedLayout(container) {
         updateStackedLayout(container);
       }
     };
+    const onClick = (e) => {
+      if (
+        e?.target &&
+        typeof e.target.closest === "function" &&
+        e.target.closest("button, a, input, select, textarea, [role='button'], [role='link']")
+      ) {
+        return;
+      }
+      container._isExpanded = !container._isExpanded;
+      updateStackedLayout(container);
+    };
 
     container.addEventListener("mouseenter", onMouseEnter);
     container.addEventListener("mouseleave", onMouseLeave);
     container.addEventListener("focusin", onFocusIn);
     container.addEventListener("focusout", onFocusOut);
+    container.addEventListener("click", onClick);
 
     container._stackedCleanup = () => {
       container.removeEventListener("mouseenter", onMouseEnter);
       container.removeEventListener("mouseleave", onMouseLeave);
       container.removeEventListener("focusin", onFocusIn);
       container.removeEventListener("focusout", onFocusOut);
+      container.removeEventListener("click", onClick);
       container._stackedInitialized = false;
     };
   }
