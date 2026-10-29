@@ -1427,20 +1427,10 @@ export async function updateToastByKey(key, newOptions = {}) {
           const newDuration = raw + 5;
           const finalWidth = progressBar._finalWidth || "100%";
           const isReverse = progressBar._isReverse;
-          if (toast._progressAnimation) {
+          if (typeof progressBar.animate === "function") {
             try {
-              toast._progressAnimation.cancel();
+              toast._progressAnimation?.cancel();
             } catch {}
-            const keyframes = isReverse
-              ? [{ width: "0%" }, { width: finalWidth }]
-              : [{ width: finalWidth }, { width: "0%" }];
-            toast._progressAnimation = progressBar.animate(keyframes, {
-              duration: newDuration,
-              easing: "linear",
-              fill: "forwards",
-              delay: 0,
-            });
-          } else if (typeof progressBar.animate === "function") {
             const keyframes = isReverse
               ? [{ width: "0%" }, { width: finalWidth }]
               : [{ width: finalWidth }, { width: "0%" }];

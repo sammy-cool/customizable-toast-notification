@@ -5911,5 +5911,223 @@ describe("Comprehensive Subsystem Remediation & Contract Verification Suite", ()
   });
 });
 
+describe("v4.0.3 WAAPI Animation & Reduced Motion Exhaustive Coverage Suite", () => {
+  test("createProgressBar with Element.animate covers keyframes and animation attachment for both normal and reverse", async () => {
+    freshDom();
+    const { createProgressBar } = await import("../../src/components/toast-utils-core.js");
+
+    const originalAnimate = window.Element.prototype.animate;
+    const animations = [];
+    window.Element.prototype.animate = function (keyframes, options) {
+      const anim = {
+        keyframes,
+        options,
+        playState: "idle",
+        cancel: () => { anim.playState = "cancelled"; },
+        play: () => { anim.playState = "running"; },
+      };
+      animations.push(anim);
+      return anim;
+    };
+
+    try {
+      // Normal direction
+      const toastNormal = document.createElement("div");
+      createProgressBar(toastNormal, { duration: 3000, showProgressBar: true });
+      assert.ok(toastNormal._progressAnimation, "WAAPI animation should be attached to toast");
+      assert.strictEqual(animations.length, 1);
+      assert.deepStrictEqual(animations[0].keyframes, [{ width: "100%" }, { width: "0%" }]);
+
+      // Reverse direction (isReverse: true)
+      const toastReverse = document.createElement("div");
+      createProgressBar(toastReverse, { duration: 2000, showProgressBar: true, progressDirection: "reverse" });
+      assert.ok(toastReverse._progressAnimation, "WAAPI animation should be attached to reverse toast");
+      assert.strictEqual(animations.length, 2);
+      assert.deepStrictEqual(animations[1].keyframes, [{ width: "0%" }, { width: "100%" }]);
+    } finally {
+      window.Element.prototype.animate = originalAnimate;
+    }
+  });
+
+  test("runToastAnimation under reduced motion executes play() and gracefully handles play() throw in catch", async () => {
+    freshDom();
+    const { setConfig, resetConfig } = await import("../../src/utils/config.js");
+    const { runToastAnimation } = await import("../../src/components/toast-utils-core.js");
+    setConfig({ reducedMotion: "always" });
+
+    try {
+      // 1. Play successfully on paused animation
+      const toast1 = document.createElement("div");
+      let play1Called = false;
+      toast1._progressAnimation = {
+        playState: "paused",
+        play: () => { play1Called = true; },
+      };
+      runToastAnimation(toast1);
+      assert.strictEqual(play1Called, true, "play() should be called on paused progress animation");
+
+      // 2. Play throws exception -> hits catch block cleanly
+      const toast2 = document.createElement("div");
+      toast2._progressAnimation = {
+        playState: "idle",
+        play: () => { throw new Error("WAAPI play error"); },
+      };
+      runToastAnimation(toast2);
+      assert.strictEqual(toast2._hasAnimated, true, "toast should be marked animated despite catch");
+    } finally {
+      resetConfig();
+    }
+  });
+
+  test("updateToastByKey rebinds WAAPI animation on duration update for both normal and reverse directions", async () => {
+    freshDom();
+    const { createToast, resetToastManager } = await import("../../src/index.js");
+    resetToastManager();
+
+    const originalAnimate = window.Element.prototype.animate;
+    const animations = [];
+    window.Element.prototype.animate = function (keyframes, options) {
+      const anim = {
+        keyframes,
+        options,
+        playState: "running",
+        cancel: () => { anim.playState = "cancelled"; },
+        play: () => { anim.playState = "running"; },
+      };
+      animations.push(anim);
+      return anim;
+    };
+
+    try {
+      // 1. Normal direction duration update with prior animation
+      const handle = await createToast({
+        message: "WAAPI duration test",
+        duration: 3000,
+        showProgressBar: true,
+      });
+      await new Promise((r) => setTimeout(r, 50));
+
+      const toast = document.querySelector(".toast");
+      assert.ok(toast);
+      assert.ok(toast._progressAnimation);
+
+      // Trigger update with active prior animation
+      await handle.update({ duration: 5000 });
+      assert.ok(toast._progressAnimation);
+      assert.strictEqual(toast._progressAnimation.options.duration, 5005);
+      assert.deepStrictEqual(toast._progressAnimation.keyframes, [{ width: "calc(100% - 16px)" }, { width: "0%" }]);
+
+      // 2. Reverse direction duration update
+      const bar = toast.querySelector(".toast-progress-bar");
+      bar._isReverse = true;
+      await handle.update({ duration: 4000 });
+      assert.strictEqual(toast._progressAnimation.options.duration, 4005);
+      assert.deepStrictEqual(toast._progressAnimation.keyframes, [{ width: "0%" }, { width: "calc(100% - 16px)" }]);
+
+      await handle.dismiss();
+    } finally {
+      window.Element.prototype.animate = originalAnimate;
+      resetToastManager();
+    }
+  });
+
+  test("updateToastByKey transitions persistent loading toast to resolved state with WAAPI animation (normal and reverse)", async () => {
+    freshDom();
+    const { createToast, resetToastManager } = await import("../../src/index.js");
+    resetToastManager();
+
+    const originalAnimate = window.Element.prototype.animate;
+    const animations = [];
+    window.Element.prototype.animate = function (keyframes, options) {
+      const anim = {
+        keyframes,
+        options,
+        playState: "running",
+        cancel: () => { anim.playState = "cancelled"; },
+        play: () => { anim.playState = "running"; },
+      };
+      animations.push(anim);
+      return anim;
+    };
+
+    try {
+      // 1. Persistent loader (duration: 0) transitioning to success (normal)
+      const handle1 = await createToast({
+        type: "loading",
+        message: "Loading data...",
+        duration: 0,
+        showProgressBar: true,
+      });
+      await new Promise((r) => setTimeout(r, 50));
+
+      await handle1.update({
+        type: "success",
+        message: "Data loaded successfully!",
+      });
+
+      const toast1 = document.querySelector(".toast");
+      assert.ok(toast1);
+      assert.ok(toast1._progressAnimation);
+      assert.strictEqual(toast1._progressAnimation.options.duration, 2505);
+      assert.deepStrictEqual(toast1._progressAnimation.keyframes, [{ width: "calc(100% - 16px)" }, { width: "0%" }]);
+
+      await handle1.dismiss();
+      resetToastManager();
+
+      // 2. Persistent loader transitioning to success (reverse)
+      const handle2 = await createToast({
+        type: "loading",
+        message: "Loading reverse...",
+        duration: 0,
+        showProgressBar: true,
+      });
+      await new Promise((r) => setTimeout(r, 50));
+
+      const toast2 = document.querySelector(".toast");
+      const bar2 = toast2.querySelector(".toast-progress-bar");
+      bar2._isReverse = true;
+
+      await handle2.update({
+        type: "success",
+        message: "Reverse loaded!",
+      });
+
+      assert.ok(toast2._progressAnimation);
+      assert.strictEqual(toast2._progressAnimation.options.duration, 2505);
+      assert.deepStrictEqual(toast2._progressAnimation.keyframes, [{ width: "0%" }, { width: "calc(100% - 16px)" }]);
+
+      await handle2.dismiss();
+      resetToastManager();
+    } finally {
+      window.Element.prototype.animate = originalAnimate;
+      resetToastManager();
+    }
+
+    // 3. Persistent loader transitioning to success in fallback mode (Element.animate is undefined in standard JSDOM)
+    const handle3 = await createToast({
+      type: "loading",
+      message: "Loading fallback...",
+      duration: 0,
+      showProgressBar: true,
+    });
+    await new Promise((r) => setTimeout(r, 50));
+
+    await handle3.update({
+      type: "success",
+      message: "Fallback loaded!",
+    });
+
+    const toast3 = document.querySelector(".toast");
+    const bar3 = toast3?.querySelector(".toast-progress-bar");
+    assert.ok(bar3);
+    assert.ok(bar3.style.transition.includes("2505ms linear"));
+    assert.strictEqual(bar3.style.width, "0%");
+
+    await handle3.dismiss();
+    resetToastManager();
+  });
+});
+
+
 
 
