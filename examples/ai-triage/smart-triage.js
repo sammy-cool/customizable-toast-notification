@@ -21,6 +21,16 @@
  */
 export function classifyEventDeterministic(event) {
   const text = typeof event === "string" ? event : String(event?.message || event?.text || event?.title || "");
+  if (!text.trim()) {
+    return {
+      message: "No event payload provided",
+      type: "info",
+      duration: 3000,
+      animationType: "slide",
+      priority: 20,
+      sound: false,
+    };
+  }
   const lower = text.toLowerCase();
 
   // 1. Destructive actions requiring Undo

@@ -26,19 +26,6 @@ import {
   version,
 } from "../index.js";
 
-const subscribers = new Set();
-
-function notifySubscribers() {
-  const state = {
-    metrics: getToastMetrics(),
-  };
-  for (const fn of subscribers) {
-    try {
-      fn(state);
-    } catch {}
-  }
-}
-
 /**
  * Creates the Svelte store and toast API.
  * When called with defaultOptions, returns an isolated, scoped toast store.
@@ -46,6 +33,19 @@ function notifySubscribers() {
  * @returns {import('./index.d.ts').SvelteToastStore}
  */
 export function createToastStore(defaultOptions) {
+  const subscribers = new Set();
+
+  function notifySubscribers() {
+    const state = {
+      metrics: getToastMetrics(),
+    };
+    for (const fn of subscribers) {
+      try {
+        fn(state);
+      } catch {}
+    }
+  }
+
   const hasDefaults =
     defaultOptions &&
     typeof defaultOptions === "object" &&

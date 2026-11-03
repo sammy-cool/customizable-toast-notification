@@ -35,11 +35,20 @@ export interface SolidToastAPI {
   version: string;
 }
 
+export interface SolidToastOptions extends Partial<ToastOptions> {
+  autoDismissOnCleanup?: boolean;
+  onCleanup?: (fn: () => void) => void;
+}
+
 /**
  * SolidJS primitive for customizable-toast-notification.
  * When called with defaultOptions, returns an isolated, scoped toast instance.
+ * Supports auto-cleanup with `autoDismissOnCleanup: true`.
  */
-export function useToast(defaultOptions?: Partial<ToastOptions>): SolidToastAPI;
+export function useToast(
+  defaultOptions?: SolidToastOptions,
+  onCleanup?: (fn: () => void) => void
+): SolidToastAPI;
 
 export const toast: SolidToastAPI;
 

@@ -29,6 +29,16 @@ import {
 } from "../index.js";
 
 let cachedAPI = null;
+const scopedCache = new Map();
+const MAX_SCOPED_CACHE = 50;
+
+function getScopedKey(opts) {
+  try {
+    return JSON.stringify(opts);
+  } catch {
+    return null;
+  }
+}
 
 /**
  * React Hook for customizable-toast-notification.
@@ -56,6 +66,19 @@ export function useToast(defaultOptions) {
   } catch {}
 
   if (hasDefaults) {
+    const key = getScopedKey(defaultOptions);
+    if (key) {
+      if (scopedCache.has(key)) {
+        return scopedCache.get(key);
+      }
+      const instance = createToastInstance(defaultOptions);
+      if (scopedCache.size >= MAX_SCOPED_CACHE) {
+        const firstKey = scopedCache.keys().next().value;
+        if (firstKey) scopedCache.delete(firstKey);
+      }
+      scopedCache.set(key, instance);
+      return instance;
+    }
     return createToastInstance(defaultOptions);
   }
 
@@ -66,6 +89,11 @@ export function useToast(defaultOptions) {
 }
 
 export const toast = createToastAPI();
+
+function resetReactCache() {
+  cachedAPI = null;
+  scopedCache.clear();
+}
 
 export {
   createToast,
@@ -92,5 +120,6 @@ export {
   setDefaultMessages,
   initKeyboardShortcuts,
   destroyKeyboardShortcuts,
+  resetReactCache,
   version,
 };

@@ -7330,6 +7330,146 @@ describe("Architectural Fortification: Updating Dismissed Toasts & Fallback Spaw
 
     resetToastManager();
   });
+
+  test("Fortification 4: Comprehensive Remediation of Approved Codebase Shortcomings", async () => {
+    resetToastManager();
+
+    // 1. PausableTimer integer quantization and drift prevention
+    const { PausableTimer } = await import("../../src/utils/PausableTimer.js");
+    const timer = new PausableTimer(() => {}, 5000);
+    timer.start();
+    await new Promise((r) => setTimeout(r, 25));
+    timer.pause();
+    assert.strictEqual(Number.isInteger(timer.remaining), true, "timer.remaining is rounded integer");
+    assert.strictEqual(Number.isInteger(timer.getRemainingTime()), true, "timer.getRemainingTime() is rounded integer");
+    timer.clear();
+
+    // 2. ToastManager queue drop payload enrichment (key, type, message, priority, reason)
+    const { createToast, setConfig, resetConfig, on } = await import("../../src/index.js");
+    setConfig({ maxVisible: 1, maxQueueSize: 1 });
+
+    const droppedPayloads = [];
+    const unsubDrop = on("drop", (payload) => {
+      droppedPayloads.push(payload);
+    });
+
+    const h1 = await createToast({ message: "First toast", type: "info", duration: 10000 });
+    const h2 = await createToast({ message: "Second queued toast", type: "warning", priority: 10, duration: 10000 });
+    const h3 = await createToast({ message: "Third dropped toast", type: "error", priority: 5, duration: 10000 });
+
+    await new Promise((r) => setTimeout(r, 60));
+    assert.ok(droppedPayloads.length >= 1, "Drop event was emitted");
+    const drop = droppedPayloads[0];
+    assert.strictEqual(drop.reason, "queue_overflow", "drop reason is queue_overflow");
+    assert.ok(drop.type === "error" || drop.type === "warning", "drop payload has top-level type");
+    assert.ok(typeof drop.message === "string", "drop payload has top-level message");
+    assert.strictEqual(typeof drop.priority, "number", "drop payload has top-level numeric priority");
+
+    unsubDrop();
+    await h1.dismiss();
+    await h2.dismiss();
+    resetConfig();
+    resetToastManager();
+
+    // 3. React subpath closure memoization cache and resetReactCache
+    const reactAdapter = await import("../../src/react/index.js");
+    const scoped1 = reactAdapter.useToast({ position: "top-left" });
+    const scoped2 = reactAdapter.useToast({ position: "top-left" });
+    assert.strictEqual(scoped1, scoped2, "useToast returns memoized instance for identical options in bundlers");
+    reactAdapter.resetReactCache();
+    const scoped3 = reactAdapter.useToast({ position: "top-left" });
+    assert.notStrictEqual(scoped1, scoped3, "resetReactCache clears memoized instance");
+
+    // 4. Svelte store subscriber isolation across scoped stores
+    const svelteAdapter = await import("../../src/svelte/index.js");
+    const storeA = svelteAdapter.createToastStore({ position: "top-left" });
+    const storeB = svelteAdapter.createToastStore({ position: "bottom-right" });
+
+    let storeANotifications = 0;
+    let storeBNotifications = 0;
+    const unsubA = storeA.subscribe(() => { storeANotifications++; });
+    const unsubB = storeB.subscribe(() => { storeBNotifications++; });
+
+    // Initial run on subscribe adds 1
+    assert.strictEqual(storeANotifications, 1);
+    assert.strictEqual(storeBNotifications, 1);
+
+    // Firing on storeA must notify ONLY storeA subscribers, NOT storeB!
+    const hStoreA = await storeA.success("Store A Notification");
+    await new Promise((r) => setTimeout(r, 60));
+    assert.strictEqual(storeANotifications, 2, "storeA subscriber received notification");
+    assert.strictEqual(storeBNotifications, 1, "storeB subscriber was NOT cross-notified by storeA");
+
+    unsubA();
+    unsubB();
+    await hStoreA.dismiss();
+    resetToastManager();
+
+    // 5. SolidJS useToast with autoDismissOnCleanup hook
+    const solidAdapter = await import("../../src/solid/index.js");
+    let registeredCleanup = null;
+    const mockOnCleanup = (fn) => { registeredCleanup = fn; };
+    const solidScoped = solidAdapter.useToast({ position: "top-center", autoDismissOnCleanup: true }, mockOnCleanup);
+    const hSolid = await solidScoped.success("Solid Notification");
+    await new Promise((r) => setTimeout(r, 60));
+    assert.strictEqual(solidScoped.getActiveCount(), 1, "Solid scoped active count is 1");
+
+    assert.strictEqual(typeof registeredCleanup, "function", "Solid onCleanup hook was registered");
+    registeredCleanup();
+    await new Promise((r) => setTimeout(r, 60));
+    assert.strictEqual(solidScoped.getActiveCount(), 0, "Solid scoped toasts auto-dismissed on cleanup");
+    resetToastManager();
+
+    // 6. Angular resetToastService isolation
+    const angularAdapter = await import("../../src/angular/index.js");
+    const s1 = angularAdapter.injectToast();
+    const s2 = angularAdapter.injectToast();
+    assert.strictEqual(s1, s2, "injectToast returns cached singleton");
+    angularAdapter.resetToastService();
+    const s3 = angularAdapter.injectToast();
+    assert.notStrictEqual(s1, s3, "resetToastService clears cached instance for test isolation");
+
+    // 7. Accessibility: Landmark navigation focus visible outline
+    const { initKeyboardShortcuts, destroyKeyboardShortcuts } = await import("../../src/utils/keyboard.js");
+    const hFocus = await createToast("Landmark focus test", { duration: 10000 });
+    await new Promise((r) => setTimeout(r, 60));
+
+    const cleanupKbd = initKeyboardShortcuts(window, async () => {});
+    const f6Event = new window.KeyboardEvent("keydown", { key: "F6", bubbles: true });
+    window.dispatchEvent(f6Event);
+    await new Promise((r) => setTimeout(r, 50));
+
+    const toastElement = document.querySelector('[id^="toast-container-"] [id^="toast-"]');
+    if (toastElement) {
+      assert.strictEqual(toastElement.hasAttribute("tabindex"), true, "Toast element received tabindex for landmark focus");
+    }
+    cleanupKbd();
+    destroyKeyboardShortcuts();
+    await hFocus.dismiss();
+    resetToastManager();
+
+    // 8. Package.json exports validation
+    const pkg = JSON.parse(fs.readFileSync(path.resolve("package.json"), "utf8"));
+    assert.ok(pkg.exports["./types"], "package.json contains './types' subpath export");
+    assert.strictEqual(pkg.exports["./types"].types, "./dist/index.d.ts", "./types points to dist/index.d.ts");
+
+    // 9. CSS Landscape low-height responsive rule
+    const css = fs.readFileSync(path.resolve("src/styles.css"), "utf8");
+    assert.ok(css.includes("@media (max-height: 480px)"), "styles.css includes @media (max-height: 480px)");
+
+    // 10. Standalone examples verification
+    const angService = fs.readFileSync(path.resolve("examples/angular/toast.service.ts"), "utf8");
+    assert.ok(angService.includes("return dismissAll();"), "examples/angular/toast.service.ts dismissAll() returns dismissAll()");
+    assert.ok(angService.includes("clearAll(): Promise<void>"), "examples/angular/toast.service.ts exports clearAll()");
+
+    const netStatus = fs.readFileSync(path.resolve("examples/network-status/index.html"), "utf8");
+    assert.ok(netStatus.includes('tag: "network-connectivity"'), "examples/network-status/index.html uses tag: 'network-connectivity'");
+
+    const aiTriage = fs.readFileSync(path.resolve("examples/ai-triage/smart-triage.js"), "utf8");
+    assert.ok(aiTriage.includes("No event payload provided"), "smart-triage.js handles empty payload safely");
+
+    resetToastManager();
+  });
 });
 
 

@@ -40,6 +40,8 @@ export declare class ToastService {
 
 export function injectToast(defaultOptions?: Partial<ToastOptions>): ToastService;
 
+export function resetToastService(): void;
+
 export const toast: ToastService;
 
 export {

@@ -209,6 +209,14 @@ export async function showToast(options = {}) {
           if (maxQ <= 0) {
             droppedCount++;
             emitMetrics();
+            emitLifecycle("drop", {
+              key,
+              type: current.options?.type,
+              message: current.options?.message,
+              priority: typeof current.options?.priority === "number" ? current.options.priority : 0,
+              options: current.options,
+              reason: "queue_disabled",
+            });
             return;
           }
 
@@ -248,17 +256,38 @@ export async function showToast(options = {}) {
               if (incomingPriority <= lowestPriority) {
                 droppedCount++;
                 emitMetrics();
-                emitLifecycle("drop", { key: item.key, options: item.options, reason: "queue_overflow" });
+                emitLifecycle("drop", {
+                  key: item.key,
+                  type: item.options?.type,
+                  message: item.options?.message,
+                  priority: incomingPriority,
+                  options: item.options,
+                  reason: "queue_overflow",
+                });
                 return;
               }
 
               const droppedItem = queue.splice(lowestIndex, 1)[0];
               droppedCount++;
-              emitLifecycle("drop", { key: droppedItem?.key, options: droppedItem?.options, reason: "queue_overflow" });
+              emitLifecycle("drop", {
+                key: droppedItem?.key,
+                type: droppedItem?.options?.type,
+                message: droppedItem?.options?.message,
+                priority: getItemPriority(droppedItem),
+                options: droppedItem?.options,
+                reason: "queue_overflow",
+              });
             } else {
               const droppedItem = queue.shift();
               droppedCount++;
-              emitLifecycle("drop", { key: droppedItem?.key, options: droppedItem?.options, reason: "queue_overflow" });
+              emitLifecycle("drop", {
+                key: droppedItem?.key,
+                type: droppedItem?.options?.type,
+                message: droppedItem?.options?.message,
+                priority: getItemPriority(droppedItem),
+                options: droppedItem?.options,
+                reason: "queue_overflow",
+              });
             }
           }
 

@@ -138,12 +138,20 @@
     const planOutput = document.getElementById("planOutput");
 
     async function runTriage(text) {
-      const plan = await triageNotification(text);
-      planOutput.textContent = JSON.stringify(plan, null, 2);
+      try {
+        const plan = await triageNotification(text);
+        planOutput.textContent = JSON.stringify(plan, null, 2);
 
-      // Invoke toast notification with plan
-      if (window.customizableToast) {
-        window.customizableToast.createToast(plan);
+        // Invoke toast notification with plan
+        if (window.customizableToast) {
+          window.customizableToast.createToast(plan);
+        }
+      } catch (err) {
+        console.error("Triage failed:", err);
+        planOutput.textContent = "// Error: Failed to parse event telemetry";
+        if (window.customizableToast && window.customizableToast.createToast?.error) {
+          window.customizableToast.createToast.error("Failed to parse event telemetry", { sound: true });
+        }
       }
     }
 

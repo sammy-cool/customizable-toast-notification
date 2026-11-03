@@ -793,6 +793,7 @@
         .telemetry-row { grid-template-columns: 1fr; }
         .pos-grid { grid-template-columns: repeat(3, 1fr); gap: 4px; }
         .quick-btn { min-height: 38px; }
+        [id^="toast-container-"][id*="bottom"] { bottom: 84px !important; }
       }
     </style>
   </head>
@@ -2228,6 +2229,9 @@ createToast({
             updateCodeSnippet();
           } catch (err) {
             console.warn("Could not deserialize URL preset:", err);
+            if (window.customizableToast && window.customizableToast.createToast?.error) {
+              window.customizableToast.createToast.error("Failed to parse preset configuration from URL hash.", { sound: true });
+            }
           }
         }
 

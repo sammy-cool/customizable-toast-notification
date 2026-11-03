@@ -800,6 +800,31 @@
   }
 }
 
+/* ========== RESPONSIVE VIEWPORT ADAPTATION (Landscape / Low Height < 480px) ========== */
+@media (max-height: 480px) {
+  .toast {
+    padding: 8px 12px !important;
+    min-height: 38px !important;
+  }
+  .toast-outer-wrapper {
+    margin-bottom: 4px !important;
+  }
+  [data-stacked="true"] .toast-outer-wrapper[data-stacked-depth="1"] {
+    transform: scale(0.96) translateY(-6px) !important;
+    margin-top: -38px !important;
+  }
+  [data-stacked="true"][id*="top"] .toast-outer-wrapper[data-stacked-depth="1"],
+  [data-stacked="true"][class*="toast-position-top"] .toast-outer-wrapper[data-stacked-depth="1"] {
+    transform: scale(0.96) translateY(6px) !important;
+    margin-bottom: -38px !important;
+  }
+  [data-stacked="true"] .toast-outer-wrapper[data-stacked-depth="2"],
+  [data-stacked="true"] .toast-outer-wrapper[data-stacked-depth="overflow"] {
+    opacity: 0 !important;
+    pointer-events: none !important;
+  }
+}
+
 /* ========== ACCESSIBILITY: REDUCED MOTION ========== */
 @media (prefers-reduced-motion: reduce) {
   .toast,

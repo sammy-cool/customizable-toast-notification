@@ -43,8 +43,8 @@ export class PausableTimer {
     if (this.isPaused || !this.timeoutId || this.isCompleted) return this;
     clearTimeout(this.timeoutId);
     this.timeoutId = null;
-    const elapsed = Math.max(0, getNow() - this.startTime);
-    this.remaining = Math.min(this.delay, Math.max(0, this.remaining - elapsed));
+    const elapsed = Math.max(0, Math.round(getNow() - this.startTime));
+    this.remaining = Math.min(this.delay, Math.max(0, Math.round(this.remaining - elapsed)));
     this.isPaused = true;
     if (this.remaining <= 0) {
       this.isCompleted = true;
@@ -77,6 +77,6 @@ export class PausableTimer {
     if (this.isCompleted) return 0;
     if (this.isPaused) return this.remaining;
     if (!this.timeoutId) return this.delay;
-    return Math.max(0, this.remaining - (getNow() - this.startTime));
+    return Math.max(0, Math.round(this.remaining - (getNow() - this.startTime)));
   }
 }

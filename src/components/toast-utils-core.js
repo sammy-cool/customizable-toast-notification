@@ -497,7 +497,7 @@ export function createProgressBar(toast, options = {}) {
   const duration = Number(options.duration ?? 2500);
   const progressDuration = Math.max(0, duration + 5);
 
-  const leftOffset = Math.min(borderRadiusNum, progressHeightPx * 2);
+  const leftOffset = Math.min(borderRadiusNum, Math.min(progressHeightPx * 2, 16));
   const finalWidth = borderRadiusNum > 0
     ? `calc(100% - ${leftOffset * 2}px)`
     : "100%";
@@ -905,6 +905,15 @@ export function attachFocusTrap(toast, options = {}) {
   let initialFocusTimer = null;
   if (options?.autoFocus !== false) {
     initialFocusTimer = setTimeout(() => {
+      if (typeof document !== "undefined" && document.activeElement) {
+        const modalHost =
+          typeof document.activeElement.closest === "function"
+            ? document.activeElement.closest('[aria-modal="true"], dialog[open], [role="dialog"]')
+            : null;
+        if (modalHost && typeof toast.contains === "function" && !toast.contains(modalHost)) {
+          return;
+        }
+      }
       const focusable = getFocusable();
       if (focusable.length > 0 && typeof focusable[0].focus === "function") {
         focusable[0].focus();

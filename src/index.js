@@ -206,8 +206,8 @@ import {
 /**
  * @typedef {Object} ToastHandle
  * @property {string} [id] - The unique identifier/key of the toast notification.
- * @property {() => Promise<void>} dismiss
- * @property {(newOptions: Partial<ToastOptions>, updateOpts?: { fallback?: boolean }) => Promise<boolean>} update
+ * @property {() => Promise<void>} dismiss - Dismisses this specific toast notification.
+ * @property {(newOptions: Partial<ToastOptions>, updateOpts?: { fallback?: boolean }) => Promise<boolean>} update - Updates this toast notification in-place. Properties omitted from newOptions retain their current values via shallow merge.
  */
 
 /**
@@ -566,7 +566,8 @@ const dismissToast = async (target) => {
     }
   }
 
-  const posKey = getToastPosition(resolvedTarget);
+  const rawPosKey = getToastPosition(resolvedTarget);
+  const posKey = rawPosKey ? normalizePositionKey(rawPosKey) : null;
   const runClose = async () => {
     try {
       if (typeof resolvedTarget === "string" && resolvedTarget.length > 0) {

@@ -162,6 +162,10 @@ export function injectToast(defaultOptions) {
   return cachedInstance;
 }
 
+function resetToastService() {
+  cachedInstance = null;
+}
+
 export const toast = injectToast();
 
 export {
@@ -181,6 +185,7 @@ export {
   dismissAll,
   clear,
   getActiveCount,
+  resetToastService,
   setConfig,
   getConfig,
   resetConfig,

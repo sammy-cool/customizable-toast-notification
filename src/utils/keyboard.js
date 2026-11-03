@@ -55,7 +55,22 @@ export function initKeyboardShortcuts(
         if (interactive && typeof interactive.focus === "function") {
           interactive.focus();
         } else if (typeof targetToast.focus === "function") {
+          if (!targetToast.hasAttribute("tabindex")) {
+            targetToast.setAttribute("tabindex", "-1");
+          }
           targetToast.focus();
+          if (targetToast.style) {
+            targetToast.style.outline = "2px solid currentColor";
+            targetToast.style.outlineOffset = "2px";
+            const removeOutline = () => {
+              if (targetToast.style) {
+                targetToast.style.outline = "";
+                targetToast.style.outlineOffset = "";
+              }
+              targetToast.removeEventListener("blur", removeOutline);
+            };
+            targetToast.addEventListener("blur", removeOutline, { once: true });
+          }
         }
       }
     }

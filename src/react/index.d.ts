@@ -43,6 +43,7 @@ export interface UseToastAPI {
 export function useToast(defaultOptions?: Partial<ToastOptions>): UseToastAPI;
 
 export const toast: UseToastAPI;
+export function resetReactCache(): void;
 
 export {
   createToast,
