@@ -7858,6 +7858,76 @@ describe("Architectural Fortification: Updating Dismissed Toasts & Fallback Spaw
     resetConfig();
     resetToastManager();
   });
+
+  test("Fortification 10: Custom SVG Hardcoded Color Override, Container Locks Rejection Recovery, and Package.json AI Script", async () => {
+    freshDom();
+    const {
+      resetToastManager,
+      resetConfig,
+      resetContainerRegistry,
+    } = await import("../../src/index.js");
+    resetToastManager();
+    resetContainerRegistry();
+    resetConfig();
+
+    // 1. package.json includes example:ai script
+    const fs = await import("fs");
+    const path = await import("path");
+    const pkg = JSON.parse(fs.readFileSync(path.resolve("./package.json"), "utf-8"));
+    assert.strictEqual(
+      pkg.scripts["example:ai"],
+      "node examples/typesafe-ai-smart-toast.mjs",
+      "package.json defines example:ai script",
+    );
+
+    // 2. README.md documents progressNormalized
+    const readme = fs.readFileSync(path.resolve("./README.md"), "utf-8");
+    assert.ok(
+      readme.includes("progressNormalized"),
+      "README.md options table documents progressNormalized",
+    );
+
+    // 3. createToastIcon overrides hardcoded SVG path colors while preserving 'none'
+    const { createToastIcon } = await import("../../src/components/icons.js");
+    const customSvg = '<svg viewBox="0 0 24 24"><path d="M1 1h10v10H1z" fill="#ff0000" stroke="#0000ff" /><circle cx="5" cy="5" r="3" fill="none" /></svg>';
+    const iconEl = createToastIcon({ icon: customSvg, iconColor: "#10b981" });
+    assert.ok(iconEl, "Custom icon rendered");
+    const pathEl = iconEl.querySelector("path");
+    assert.ok(pathEl, "Path element found");
+    assert.strictEqual(pathEl.getAttribute("fill"), "#10b981", "Explicit fill overridden with iconColor");
+    assert.strictEqual(pathEl.getAttribute("stroke"), "#10b981", "Explicit stroke overridden with iconColor");
+
+    const circleEl = iconEl.querySelector("circle");
+    assert.ok(circleEl, "Circle element found");
+    assert.strictEqual(circleEl.getAttribute("fill"), "none", "fill='none' is preserved");
+
+    // 4. getOrCreateToastContainer handles async setPosition rejection and cleanly clears lock
+    const { getOrCreateToastContainer } = await import("../../src/utils/containerRegistry.js");
+    let failureCount = 0;
+    const failingSetPosition = async () => {
+      failureCount++;
+      throw new Error("Simulated setPosition failure");
+    };
+
+    // First concurrent attempts with failing setPosition
+    const attempt1 = getOrCreateToastContainer({ position: "top-center" }, failingSetPosition);
+    const attempt2 = getOrCreateToastContainer({ position: "top-center" }, failingSetPosition);
+
+    await assert.rejects(attempt1, /Simulated setPosition failure/);
+    await assert.rejects(attempt2, /Simulated setPosition failure/);
+
+    // Once lock cleared in finally block, next call succeeds
+    const recoveringSetPosition = async (el) => {
+      el.style.top = "10px";
+    };
+    const recoveredContainer = await getOrCreateToastContainer({ position: "top-center" }, recoveringSetPosition);
+    assert.ok(recoveredContainer, "Container recovered and created successfully after prior rejection");
+    assert.strictEqual(recoveredContainer.style.top, "10px", "Recovering setPosition executed cleanly");
+
+    resetConfig();
+    resetToastManager();
+    resetContainerRegistry();
+  });
 });
 
 

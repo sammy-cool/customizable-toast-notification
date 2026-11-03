@@ -114,6 +114,7 @@
     "test:e2e": "playwright test",
     "test:e2e:ui": "playwright test --ui",
     "test:e2e:headed": "playwright test --headed",
+    "example:ai": "node examples/typesafe-ai-smart-toast.mjs",
     "version": "node scripts/sync-version.cjs",
     "prepublishOnly": "npm run zone-build",
     "prepare": "husky"

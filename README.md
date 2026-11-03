@@ -231,6 +231,7 @@ auto-dismissed on its own — they no-op gracefully rather than throwing. You ca
 | `progressDirection` | `string`           | `"decreasing"`                  | Progress bar fill direction: `"decreasing"`, `"increasing"`, `"reverse"`, `"ltr"` |
 | `progressBarColor`  | `string`           | Falls back to `textColor`       | Alias for `progressColor` (accepts hex, rgb, hsl, CSS var)                     |
 | `progress`          | `number \| 'indeterminate'`| `undefined`            | Explicit percentage (0 to 100) or `"indeterminate"` moving gradient            |
+| `progressNormalized`| `boolean`          | `false`                         | When true, forces 0.0 - 1.0 progress numbers to scale to 0% - 100%               |
 | `tag` / `groupId`   | `string`           | `undefined`                     | Thread grouping identifier to replace notification in-place instead of stacking |
 | `trapFocus`         | `boolean`          | `false`                         | Modal keyboard focus trap (`Tab`/`Shift+Tab`) cycling for high-priority toasts  |
 | `shadowDom`         | `boolean`          | `false`                         | Render toast container inside isolated Shadow Root to prevent CSS bleed         |

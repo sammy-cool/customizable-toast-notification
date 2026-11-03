@@ -168,7 +168,20 @@ function applySvgDimensionsAndColor(svg, size, color) {
   svg.setAttribute("width", String(size));
   svg.setAttribute("height", String(size));
   if (color && typeof color === "string" && color.trim()) {
-    svg.style.color = color.trim();
+    const trimmedColor = color.trim();
+    svg.style.color = trimmedColor;
+    if (typeof svg.querySelectorAll === "function") {
+      svg.querySelectorAll("path, circle, rect, polygon, polyline, line").forEach((child) => {
+        const fill = child.getAttribute("fill");
+        if (fill && fill !== "none") {
+          child.setAttribute("fill", trimmedColor);
+        }
+        const stroke = child.getAttribute("stroke");
+        if (stroke && stroke !== "none") {
+          child.setAttribute("stroke", trimmedColor);
+        }
+      });
+    }
   }
 }
 
