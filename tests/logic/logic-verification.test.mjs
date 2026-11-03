@@ -6573,6 +6573,78 @@ describe("Architectural Fortification: Updating Dismissed Toasts & Fallback Spaw
 
     assert.strictEqual(ctaButton.getAttribute("aria-busy"), null, "aria-busy must be removed after async handler resolves");
   });
+
+  test("createToastInstance creates isolated instances with preset options and scoped lifecycle events", async () => {
+    freshDom();
+    const { createToastInstance, createToast, on: globalOn, resetToastManager } = await import("../../src/index.js");
+    resetToastManager();
+
+    const customInstance = createToastInstance({
+      position: "top-left",
+      duration: 5000,
+    });
+
+    assert.ok(customInstance.instanceId.startsWith("inst-"), "Instance has unique instanceId");
+    assert.strictEqual(customInstance.getDefaults().position, "top-left");
+
+    const instanceEvents = [];
+    const globalEvents = [];
+
+    const unsubInstanceOpen = customInstance.on("open", (payload) => {
+      instanceEvents.push({ event: "open", ...payload });
+    });
+    const unsubGlobalOpen = globalOn("open", (payload) => {
+      globalEvents.push({ event: "open", ...payload });
+    });
+
+    // 1. Toast via customInstance
+    const handle1 = await customInstance.success("Instance toast");
+    await new Promise((r) => setTimeout(r, 60));
+
+    assert.strictEqual(instanceEvents.length, 1, "Instance listener received open event");
+    assert.strictEqual(globalEvents.length, 1, "Global listener received open event");
+    assert.strictEqual(instanceEvents[0].options._instanceId, customInstance.instanceId);
+
+    // 2. Toast via default global createToast
+    await createToast.info("Global toast");
+    await new Promise((r) => setTimeout(r, 60));
+
+    assert.strictEqual(instanceEvents.length, 1, "Instance listener did NOT receive global toast event");
+    assert.strictEqual(globalEvents.length, 2, "Global listener received both events");
+
+    // 3. Unsubscribe stops events
+    unsubInstanceOpen();
+    await customInstance.warning("Another instance toast");
+    await new Promise((r) => setTimeout(r, 60));
+    assert.strictEqual(instanceEvents.length, 1, "Unsubscribed listener did not receive new events");
+
+    unsubGlobalOpen();
+    resetToastManager();
+  });
+
+  test("lifecycle pub-sub emits close and queue events", async () => {
+    freshDom();
+    const { createToast, on, resetToastManager, setConfig, resetConfig } = await import("../../src/index.js");
+    resetToastManager();
+    resetConfig();
+
+    const closeEvents = [];
+    const unsubClose = on("close", (payload) => {
+      closeEvents.push(payload);
+    });
+
+    const handle = await createToast.success("Toast to dismiss", { duration: 10000 });
+    await new Promise((r) => setTimeout(r, 50));
+
+    await handle.dismiss();
+    await new Promise((r) => setTimeout(r, 500));
+
+    assert.strictEqual(closeEvents.length, 1, "Close event received on toast dismissal");
+    assert.strictEqual(closeEvents[0].options.message, "Toast to dismiss");
+
+    unsubClose();
+    resetToastManager();
+  });
 });
 
 

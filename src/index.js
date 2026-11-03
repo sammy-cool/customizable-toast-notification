@@ -11,6 +11,8 @@ import {
   noop as managerNoop,
   getToastMetrics,
   getToastPosition,
+  on as managerOn,
+  off as managerOff,
 } from "./components/ToastManager.js";
 import { getOrCreateToastContainer, resetContainerRegistry, normalizePositionKey } from "./utils/containerRegistry.js";
 import { getDynamicAccessibleTextColorHex } from "./utils/dom.js";
@@ -134,6 +136,37 @@ import { generateToastId, resetToastIdCounter } from "./utils/id.js";
  * @property {number} visibleCount - Count of currently visible toasts
  * @property {number} droppedCount - Number of toasts dropped due to queue overflow
  * @property {number} timestamp - Epoch timestamp (ms) when metrics were recorded
+ */
+
+/**
+ * @typedef {'open' | 'close' | 'queue' | 'drop'} ToastLifecycleEvent
+ */
+
+/**
+ * @typedef {Object} ToastLifecyclePayload
+ * @property {string} [key]
+ * @property {ToastOptions} [options]
+ * @property {HTMLElement} [toast]
+ * @property {string} [reason]
+ */
+
+/**
+ * @typedef {Object} ToastInstance
+ * @property {string} instanceId
+ * @property {(messageOrOpts?: string | ToastOptions, opts?: ToastOptions) => Promise<ToastHandle>} show
+ * @property {(message: string, opts?: ToastOptions) => Promise<ToastHandle>} success
+ * @property {(message: string, opts?: ToastOptions) => Promise<ToastHandle>} error
+ * @property {(message: string, opts?: ToastOptions) => Promise<ToastHandle>} warning
+ * @property {(message: string, opts?: ToastOptions) => Promise<ToastHandle>} info
+ * @property {(message: string, opts?: ToastOptions) => Promise<ToastHandle>} loading
+ * @property {(message: string, opts?: ToastOptions) => Promise<ToastHandle>} custom
+ * @property {<T>(promiseOrFn: Promise<T> | (() => Promise<T>), messages?: ToastPromiseMessages, opts?: ToastOptions) => Promise<T>} promise
+ * @property {(target?: any) => Promise<void>} dismiss
+ * @property {() => Promise<void>} dismissAll
+ * @property {() => Promise<void>} clear
+ * @property {(event: ToastLifecycleEvent, callback: (payload: ToastLifecyclePayload) => void) => () => void} on
+ * @property {(event: ToastLifecycleEvent, callback: (payload: ToastLifecyclePayload) => void) => void} off
+ * @property {() => Partial<ToastOptions>} getDefaults
  */
 
 /**
@@ -801,6 +834,9 @@ createToastWithPriority.promise = toastPromise;
 createToastWithPriority.dismiss = dismissToast;
 createToastWithPriority.dismissAll = noopAll;
 createToastWithPriority.clear = noopAll;
+createToastWithPriority.on = managerOn;
+createToastWithPriority.off = managerOff;
+createToastWithPriority.createToastInstance = createToastInstance;
 
 /**
  * Resets all internal ToastManager state, active toasts, queues, timers, and index-level locks.
@@ -809,6 +845,88 @@ function resetToastManager() {
   globalClosePromise = null;
   closePromisesByPosition.clear();
   coreResetToastManager();
+}
+
+/**
+ * Creates an isolated toast notification instance with preset configuration and scoped lifecycle events.
+ * @param {Partial<ToastOptions>} [defaultOptions]
+ * @returns {ToastInstance}
+ */
+function createToastInstance(defaultOptions = {}) {
+  const safeDefaults = typeof defaultOptions === "object" && defaultOptions !== null ? defaultOptions : {};
+  const instanceId = generateToastId("inst");
+  const instanceListeners = new Map();
+
+  const instanceOn = (event, fn) => {
+    if (typeof event !== "string" || typeof fn !== "function") return () => {};
+    if (!instanceListeners.has(event)) instanceListeners.set(event, new Set());
+    instanceListeners.get(event).add(fn);
+    return () => instanceOff(event, fn);
+  };
+
+  const instanceOff = (event, fn) => {
+    if (!instanceListeners.has(event)) return;
+    instanceListeners.get(event).delete(fn);
+  };
+
+  const instanceEmit = (event, payload) => {
+    if (!instanceListeners.has(event)) return;
+    for (const fn of instanceListeners.get(event)) {
+      try {
+        fn(payload);
+      } catch (err) {
+        console.error(`[ToastInstance] Error in '${event}' listener:`, err);
+      }
+    }
+  };
+
+  managerOn("open", (payload) => {
+    if (payload?.options?._instanceId === instanceId) instanceEmit("open", payload);
+  });
+  managerOn("close", (payload) => {
+    if (payload?.options?._instanceId === instanceId) instanceEmit("close", payload);
+  });
+  managerOn("queue", (payload) => {
+    if (payload?.options?._instanceId === instanceId) instanceEmit("queue", payload);
+  });
+  managerOn("drop", (payload) => {
+    if (payload?.options?._instanceId === instanceId) instanceEmit("drop", payload);
+  });
+
+  const normalizeOptions = (messageOrOpts, callerOpts) => {
+    let opts = {};
+    if (typeof messageOrOpts === "string") {
+      opts = { ...(callerOpts && typeof callerOpts === "object" ? callerOpts : {}), message: messageOrOpts };
+    } else if (messageOrOpts && typeof messageOrOpts === "object") {
+      opts = { ...messageOrOpts };
+    }
+    return { ...safeDefaults, ...opts, _instanceId: instanceId };
+  };
+
+  /** @type {any} */
+  const instance = (messageOrOpts, callerOpts) => {
+    return createToastWithPriority(normalizeOptions(messageOrOpts, callerOpts));
+  };
+
+  instance.show = (opts) => createToastWithPriority(normalizeOptions(opts));
+  instance.success = (msg, opts) => createToastWithPriority.success(msg, normalizeOptions(msg, { ...opts, type: "success" }));
+  instance.error = (msg, opts) => createToastWithPriority.error(msg, normalizeOptions(msg, { ...opts, type: "error" }));
+  instance.warning = (msg, opts) => createToastWithPriority.warning(msg, normalizeOptions(msg, { ...opts, type: "warning" }));
+  instance.info = (msg, opts) => createToastWithPriority.info(msg, normalizeOptions(msg, { ...opts, type: "info" }));
+  instance.loading = (msg, opts) => createToastWithPriority.loading(msg, normalizeOptions(msg, { ...opts, type: "loading" }));
+  instance.custom = (msg, opts) => createToastWithPriority.custom(msg, normalizeOptions(msg, { ...opts, type: "custom" }));
+  instance.promise = (promiseOrFn, messages, opts) => {
+    return toastPromise(promiseOrFn, messages, normalizeOptions(opts));
+  };
+  instance.dismiss = dismissToast;
+  instance.dismissAll = noopAll;
+  instance.clear = noopAll;
+  instance.on = instanceOn;
+  instance.off = instanceOff;
+  instance.instanceId = instanceId;
+  instance.getDefaults = () => ({ ...safeDefaults });
+
+  return instance;
 }
 
 /**
@@ -828,6 +946,9 @@ function createToastAPI() {
     dismiss: dismissToast,
     dismissAll: noopAll,
     clear: noopAll,
+    on: managerOn,
+    off: managerOff,
+    createToastInstance,
     setConfig,
     getConfig,
     resetConfig,
@@ -846,6 +967,9 @@ const version = typeof __VERSION__ !== "undefined" ? __VERSION__ : "4.0.3";
 export {
   version,
   createToastAPI,
+  createToastInstance,
+  managerOn as on,
+  managerOff as off,
   toastPromise,
   setConfig,
   getConfig,
@@ -955,6 +1079,9 @@ try {
       getToastMetrics,
       resetToastManager,
       resetContainerRegistry,
+      on: managerOn,
+      off: managerOff,
+      createToastInstance,
       initKeyboardShortcuts,
       destroyKeyboardShortcuts,
     };

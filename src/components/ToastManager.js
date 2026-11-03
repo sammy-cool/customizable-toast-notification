@@ -49,6 +49,51 @@ function emitMetrics() {
   }
 }
 
+const lifecycleListeners = new Map();
+
+/**
+ * Registers a subscriber for toast lifecycle events ('open', 'close', 'queue', 'drop').
+ * @param {'open' | 'close' | 'queue' | 'drop'} event
+ * @param {(payload: object) => void} callback
+ * @returns {() => void} Unsubscribe function
+ */
+export function on(event, callback) {
+  if (typeof event !== "string" || typeof callback !== "function") return () => {};
+  if (!lifecycleListeners.has(event)) {
+    lifecycleListeners.set(event, new Set());
+  }
+  lifecycleListeners.get(event).add(callback);
+  return () => off(event, callback);
+}
+
+/**
+ * Removes a subscriber for toast lifecycle events.
+ * @param {'open' | 'close' | 'queue' | 'drop'} event
+ * @param {(payload: object) => void} callback
+ * @returns {void}
+ */
+export function off(event, callback) {
+  if (!lifecycleListeners.has(event)) return;
+  lifecycleListeners.get(event).delete(callback);
+}
+
+/**
+ * Emits a lifecycle event to registered subscribers.
+ * @param {'open' | 'close' | 'queue' | 'drop'} event
+ * @param {object} payload
+ * @returns {void}
+ */
+export function emitLifecycle(event, payload) {
+  if (!lifecycleListeners.has(event)) return;
+  for (const fn of lifecycleListeners.get(event)) {
+    try {
+      fn(payload);
+    } catch (err) {
+      console.error(`[Toast] Error in lifecycle listener for '${event}':`, err);
+    }
+  }
+}
+
 
 // Priority Queue Manager - Standard numeric priority scoring
 
@@ -196,14 +241,18 @@ export async function showToast(options = {}) {
             if (incomingPriority <= lowestPriority) {
               droppedCount++;
               emitMetrics();
+              emitLifecycle("drop", { key: item.key, options: item.options, reason: "queue_overflow" });
               return;
             }
 
-            queue.splice(lowestIndex, 1);
+            const droppedItem = queue.splice(lowestIndex, 1)[0];
+            droppedCount++;
+            emitLifecycle("drop", { key: droppedItem?.key, options: droppedItem?.options, reason: "queue_overflow" });
           } else {
-            queue.shift();
+            const droppedItem = queue.shift();
+            droppedCount++;
+            emitLifecycle("drop", { key: droppedItem?.key, options: droppedItem?.options, reason: "queue_overflow" });
           }
-          droppedCount++;
         }
 
         item.seq = ++queueSequence;
@@ -212,6 +261,7 @@ export async function showToast(options = {}) {
           queue.sort((a, b) => (getItemPriority(b) - getItemPriority(a)) || (a.seq - b.seq));
         }
         emitMetrics();
+        emitLifecycle("queue", { key: item.key, options: item.options });
         await drainQueue();
         return;
       }
@@ -301,6 +351,7 @@ async function createOne(options, key, initialCount) {
     toast._key = key;
 
     emitMetrics();
+    emitLifecycle("open", { key, options: data.options, toast });
 
     if (data.count > 1) await updateBadge(data);
 
@@ -482,6 +533,7 @@ export function resetToastManager() {
   droppedCount = 0;
   queueSequence = 0;
   isDraining = false;
+  lifecycleListeners.clear();
   emitMetrics();
 }
 
@@ -642,6 +694,7 @@ export async function closeToastByKey(key) {
       cancelAnimationFrame(pendingEntry.rafId);
       pending.delete(key);
       emitMetrics();
+      emitLifecycle("close", { key, options: pendingEntry.options });
       return;
     }
 
@@ -651,8 +704,9 @@ export async function closeToastByKey(key) {
     // yet showing, waiting for a slot to free up via drainQueue().
     const queueIndex = queue.findIndex((item) => item.key === key);
     if (queueIndex !== -1) {
-      queue.splice(queueIndex, 1);
+      const removed = queue.splice(queueIndex, 1)[0];
       emitMetrics();
+      emitLifecycle("close", { key, options: removed?.options });
       return;
     }
 
@@ -732,6 +786,7 @@ export async function closeToastByKey(key) {
 
     const parentContainer = data.outer?.parentElement;
     await removeWithTransition(data.outer, data.toast, exitDuration);
+    emitLifecycle("close", { key, options: data.options, toast: data.toast });
 
     if (
       parentContainer &&
