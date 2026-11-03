@@ -8160,6 +8160,92 @@ describe("Architectural Fortification: Updating Dismissed Toasts & Fallback Spaw
     resetToastManager();
     resetContainerRegistry();
   });
+
+  test("Fortification 14: Comprehensive Framework Adapter Edge-Cases, Queued In-Place Updates, and Cache Eviction", async () => {
+    freshDom();
+    const {
+      createToast,
+      resetToastManager,
+      resetConfig,
+      resetContainerRegistry,
+      setConfig,
+      updateToastByKey,
+    } = await import("../../src/index.js");
+    resetToastManager();
+    resetContainerRegistry();
+    resetConfig();
+
+    // 1. React adapter: circular options fallback & LRU cache eviction
+    const { useToast: useReactToast, resetReactCache } = await import("../../src/react/index.js");
+    resetReactCache();
+
+    // Circular options fallback
+    const circularOpts = { message: "Circular" };
+    circularOpts.self = circularOpts;
+    const reactInstance = useReactToast(circularOpts);
+    assert.ok(reactInstance && typeof reactInstance.success === "function", "React useToast handles circular options safely");
+
+    // Scoped cache eviction (> 50 items)
+    for (let i = 0; i < 55; i++) {
+      useReactToast({ position: "top-right", duration: 1000 + i });
+    }
+    resetReactCache();
+
+    // 2. Svelte adapter: useToast with defaultOptions
+    const { useToast: useSvelteToast } = await import("../../src/svelte/index.js");
+    const svelteStore = useSvelteToast({ duration: 4000 });
+    assert.ok(svelteStore && typeof svelteStore.subscribe === "function", "Svelte useToast returns scoped store");
+    assert.ok(typeof svelteStore.success === "function", "Svelte scoped store provides success method");
+
+    // 3. Solid adapter: autoDismissOnCleanup & custom onCleanup hook
+    const { useToast: useSolidToast } = await import("../../src/solid/index.js");
+    let cleanupHookCalled = false;
+    let registeredCleanup = null;
+    const solidInstance = useSolidToast(
+      { autoDismissOnCleanup: true },
+      (fn) => {
+        cleanupHookCalled = true;
+        registeredCleanup = fn;
+      }
+    );
+    assert.ok(solidInstance && typeof solidInstance.success === "function", "Solid useToast returns API");
+    assert.strictEqual(cleanupHookCalled, true, "Solid onCleanup hook was registered");
+    if (typeof registeredCleanup === "function") {
+      registeredCleanup();
+    }
+
+    // 4. Angular adapter: off, getActiveCount, and size
+    const { ToastService } = await import("../../src/angular/index.js");
+    const toastService = new ToastService({ duration: 3500 });
+    assert.strictEqual(typeof toastService.getActiveCount(), "number");
+    assert.strictEqual(typeof toastService.size, "number");
+    const dummyListener = () => {};
+    toastService.on("open", dummyListener);
+    toastService.off("open", dummyListener);
+
+    // Global Angular service without preset options
+    const globalAngularService = new ToastService();
+    assert.strictEqual(typeof globalAngularService.getActiveCount(), "number");
+    globalAngularService.on("close", dummyListener);
+    globalAngularService.off("close", dummyListener);
+
+    // 5. ToastManager: updateToastByKey updating a queued toast
+    setConfig({ maxVisible: 1 });
+    const h1 = await createToast({ message: "Visible 1", duration: 10000 });
+    const h2 = await createToast({ message: "Queued 2", duration: 10000 });
+    await new Promise((r) => setTimeout(r, 60));
+
+    // h2 is in queue because maxVisible is 1
+    const updatedQueued = await updateToastByKey(h2.id, { message: "Queued 2 Updated", type: "warning" });
+    assert.strictEqual(updatedQueued, true, "updateToastByKey successfully updates queued toast options");
+
+    await h1.dismiss();
+    await h2.dismiss();
+
+    resetConfig();
+    resetToastManager();
+    resetContainerRegistry();
+  });
 });
 
 
