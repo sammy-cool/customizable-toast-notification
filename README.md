@@ -36,13 +36,13 @@
            └──────────────────────────────────────────────────┘
 ```
 
-Toast notifications that work the same everywhere — plain JavaScript, Vue, Svelte, Angular, SolidJS, or a multi-page app. Built with sanitized-by-default HTML rendering, zero runtime dependencies, and 238 automated unit & logic tests plus 80 Playwright cross-browser specifications.
+Toast notifications that work the same everywhere — plain JavaScript, Vue, Svelte, Angular, SolidJS, or a multi-page app. Built with sanitized-by-default HTML rendering, zero runtime dependencies, and 270 automated unit & logic tests plus 77 Playwright cross-browser specifications.
 
 ## ✨ Key Features
 
 - 🌐 **Actually Framework Agnostic** - Not a React library with "vanilla JS support" bolted on — the same API works identically in React, Vue, Angular, Svelte, htmx, or plain HTML with no build step at all
 - 🛡️ **Sanitized by Default** - `allowHtml` content is sanitized before render (DOMPurify if it's on the page, a verified-equivalent fallback if not) — safe to use with content you don't fully control
-- ✅ **Rigorously Tested** - 238 real logic & unit tests across 88 suites plus 80 Playwright end-to-end specifications across Chromium, Firefox, and WebKit — not just "it worked on my machine"
+- ✅ **Rigorously Tested** - 270 real logic & unit tests across 82 suites plus 77 Playwright end-to-end specifications across Chromium, Firefox, and WebKit — not just "it worked on my machine"
 - 🚫 **Zero Runtime Dependencies** - Nothing pulled in when your users load your app
 - 🔧 **Real TypeScript Types** - Full type definitions with real autocomplete and type-checking, not a placeholder `any`
 - 🎨 **Highly Customizable** - Colors, positions, animations, progress bars, and styling
@@ -616,6 +616,42 @@ setConfig({
 });
 ```
 
+### 🏢 Isolated Instances & Lifecycle Pub-Sub
+
+For multi-tenant applications, micro-frontends, or modular dashboards, create independent toast instances with preset defaults and scoped event pub-sub:
+
+```js
+import { createToastInstance, createToast } from "customizable-toast-notification";
+
+// 1. Create an isolated instance with preset default options
+const adminToasts = createToastInstance({
+  position: "top-left",
+  theme: "dark",
+  sound: true,
+});
+
+adminToasts.success("Admin configuration updated!");
+
+// 2. Global or instance-scoped lifecycle pub-sub for monitoring and analytics
+const unsubscribe = createToast.on("show", ({ key, options }) => {
+  console.log(`Toast shown: ${key}`, options);
+});
+
+createToast.on("close", ({ key, reason }) => {
+  console.log(`Toast dismissed: ${key}, reason: ${reason}`); // "manual" | "timer" | "swipe"
+});
+
+createToast.on("queue", ({ key, options }) => {
+  console.log(`Toast queued: ${key}`);
+});
+
+createToast.on("drop", ({ key, reason }) => {
+  console.warn(`Toast dropped: ${key}, reason: ${reason}`); // "queue_overflow"
+});
+
+// Clean up listener when no longer needed
+unsubscribe();
+```
 
 ### Use Cases
 
