@@ -33,6 +33,9 @@
  * @property {boolean} swipeToDismiss
  * @property {boolean} sound
  * @property {boolean} [icon]
+ * @property {string} [iconColor]
+ * @property {string|null} [cspNonce]
+ * @property {string} [soundPreset]
  * @property {boolean} [pauseOnHover]
  * @property {boolean} priorityQueue
  * @property {boolean} [shadowDom]
@@ -56,6 +59,8 @@ const DEFAULT_GLOBAL_CONFIG = Object.freeze({
   sound: false,
   icon: true,
   iconColor: undefined,
+  cspNonce: null,
+  soundPreset: "default",
   pauseOnHover: false,
   priorityQueue: false,
   shadowDom: false,
@@ -95,6 +100,8 @@ export function setConfig(options = {}) {
     sound,
     icon,
     iconColor,
+    cspNonce,
+    soundPreset,
     pauseOnHover,
     priorityQueue,
     shadowDom,
@@ -118,8 +125,8 @@ export function setConfig(options = {}) {
 
   if (maxVisible !== undefined) {
     const v = Number(maxVisible);
-    if (Number.isFinite(v) && v >= 0) {
-      globalConfig.maxVisible = Math.max(0, Math.floor(v));
+    if (Number.isFinite(v) && v >= 1) {
+      globalConfig.maxVisible = Math.max(1, Math.floor(v));
     }
   }
 
@@ -197,6 +204,14 @@ export function setConfig(options = {}) {
 
   if (iconColor !== undefined) {
     globalConfig.iconColor = typeof iconColor === "string" ? iconColor.trim() : (iconColor === null ? null : undefined);
+  }
+
+  if (cspNonce !== undefined) {
+    globalConfig.cspNonce = typeof cspNonce === "string" ? cspNonce.trim() : null;
+  }
+
+  if (soundPreset !== undefined) {
+    globalConfig.soundPreset = typeof soundPreset === "string" ? soundPreset.trim() : "default";
   }
 
   if (pauseOnHover !== undefined) {

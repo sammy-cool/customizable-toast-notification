@@ -64,6 +64,9 @@ export function createLoader(opts = {}) {
     try {
       const st = document.createElement("style");
       st.id = "toast-spinner-styles";
+      if (config.cspNonce && typeof config.cspNonce === "string") {
+        st.setAttribute("nonce", config.cspNonce);
+      }
       st.textContent = `@keyframes toast-spinner { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }`;
       const target = document.head || document.documentElement;
       if (target) target.appendChild(st);

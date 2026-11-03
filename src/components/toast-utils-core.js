@@ -135,19 +135,18 @@ export function createCTA(toast, options, onClose) {
       if (isLink && !cfg.href && (e.key === "Enter" || e.key === " ")) {
         e.preventDefault();
         void onClick(e);
+      } else if (!isLink && e.key === " ") {
+        e.preventDefault();
+        void onClick(e);
       }
     };
 
     el.addEventListener("click", onClick);
-    if (isLink && !cfg.href) {
-      el.addEventListener("keydown", onKeyDown);
-    }
+    el.addEventListener("keydown", onKeyDown);
 
     const cleanupItem = () => {
       el.removeEventListener("click", onClick);
-      if (isLink && !cfg.href) {
-        el.removeEventListener("keydown", onKeyDown);
-      }
+      el.removeEventListener("keydown", onKeyDown);
     };
     el._cleanup = cleanupItem;
     cleanups.push(cleanupItem);
@@ -830,6 +829,17 @@ export function attachSwipeToDismiss(toast, onClose) {
       toast._snapbackTimer = null;
     }
     cleanupWindowListeners();
+    isDragging = false;
+    touchId = null;
+    if (toast.style) {
+      toast.style.userSelect = "";
+      if (toast.style.transform && toast.style.transform !== "none") {
+        toast.style.transform = "none";
+      }
+      if (toast.style.opacity === "0" || (toast.style.opacity && Number(toast.style.opacity) < 1)) {
+        toast.style.opacity = "1";
+      }
+    }
 
     toast.removeEventListener("touchstart", onPointerDown);
     toast.removeEventListener("touchmove", onPointerMove);

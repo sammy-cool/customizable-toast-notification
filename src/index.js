@@ -194,6 +194,8 @@ import {
  * @property {boolean} [sound]
  * @property {boolean} [icon]
  * @property {string} [iconColor]
+ * @property {string | null} [cspNonce]
+ * @property {string} [soundPreset]
  * @property {boolean} [pauseOnHover]
  * @property {boolean} [priorityQueue]
  * @property {boolean} [shadowDom]
@@ -645,7 +647,7 @@ async function toastPromise(promiseOrFn, messages = {}, options = {}, creator = 
           pauseOnHover: false,
           showLoader: safeOptions.showLoader ?? true,
           ...loadingInput,
-          duration: loadingInput.duration !== undefined ? Number(loadingInput.duration) : TOAST_PROMISE_LOADING_DURATION_MS,
+          duration: TOAST_PROMISE_LOADING_DURATION_MS,
         }
       : {
           ...safeOptions,
@@ -737,6 +739,9 @@ function resetToastManager() {
   globalClosePromise = null;
   closePromisesByPosition.clear();
   coreResetToastManager();
+  if (typeof window !== "undefined") {
+    destroyKeyboardShortcuts(window);
+  }
 }
 
 /**

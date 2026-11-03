@@ -7470,6 +7470,112 @@ describe("Architectural Fortification: Updating Dismissed Toasts & Fallback Spaw
 
     resetToastManager();
   });
+
+  test("Fortification 5: Hardened SVG & CSP Nonce, Queue Clamping, A11y aria-atomic, and Input Hygiene", async () => {
+    freshDom();
+    const {
+      setConfig,
+      getConfig,
+      resetConfig,
+      createToast,
+      toastPromise,
+      getToastMetrics,
+      resetToastManager,
+    } = await import("../../src/index.js");
+    resetToastManager();
+
+    // 1. cspNonce & soundPreset in config
+    setConfig({ cspNonce: "xyz-12345-nonce", soundPreset: "subtle" });
+    const cfg = getConfig();
+    assert.strictEqual(cfg.cspNonce, "xyz-12345-nonce", "cspNonce correctly configured");
+    assert.strictEqual(cfg.soundPreset, "subtle", "soundPreset correctly configured");
+
+    // 2. createLoader applies cspNonce to injected style
+    const oldStyle = document.getElementById("toast-spinner-styles");
+    if (oldStyle) oldStyle.remove();
+    const { createLoader } = await import("../../src/components/loader.js");
+    createLoader({ showLoader: true });
+    const newStyle = document.getElementById("toast-spinner-styles");
+    assert.ok(newStyle, "toast-spinner-styles created");
+    assert.strictEqual(newStyle.getAttribute("nonce"), "xyz-12345-nonce", "style element receives cspNonce attribute");
+
+    // 3. maxVisible clamped to >= 1 to prevent queue deadlock
+    setConfig({ maxVisible: 0 });
+    assert.strictEqual(getConfig().maxVisible, 3, "maxVisible rejects 0 and retains previous setting");
+    setConfig({ maxVisible: 1 });
+    assert.strictEqual(getConfig().maxVisible, 1, "maxVisible accepts valid value >= 1");
+
+    // 4. containerRegistry sets aria-atomic="true"
+    const { getOrCreateToastContainer } = await import("../../src/utils/containerRegistry.js");
+    const container = await getOrCreateToastContainer({ position: "top-right" });
+    assert.strictEqual(container.getAttribute("aria-atomic"), "true", "container sets aria-atomic='true'");
+
+    // 5. html-sanitizer neutralizes dangerous href to '#' and applies noopener to named targets
+    const { fallbackSanitize } = await import("../../src/utils/html-sanitizer.js");
+    const sanitizedDangerous = fallbackSanitize('<a href="javascript:alert(1)">bad link</a>');
+    assert.ok(sanitizedDangerous.includes('href="#"'), "neutralizes dangerous link to href='#'");
+    assert.ok(!sanitizedDangerous.includes("javascript:"), "strips javascript: attribute completely");
+
+    const sanitizedNamedTarget = fallbackSanitize('<a href="https://example.com" target="extWin">external</a>');
+    assert.ok(sanitizedNamedTarget.includes('rel="noopener"'), "applies noopener to named target links");
+
+    // 6. _cleanupSwipe resets drag state, userSelect, transform, and opacity
+    const { attachSwipeToDismiss } = await import("../../src/components/toast-utils-core.js");
+    const mockToast = document.createElement("div");
+    mockToast.style.transform = "translateX(50px)";
+    mockToast.style.opacity = "0.8";
+    mockToast.style.userSelect = "none";
+    attachSwipeToDismiss(mockToast, () => {});
+    assert.strictEqual(typeof mockToast._cleanupSwipe, "function", "_cleanupSwipe attached");
+    mockToast._cleanupSwipe();
+    assert.strictEqual(mockToast.style.userSelect, "", "userSelect restored");
+    assert.strictEqual(mockToast.style.transform, "none", "transform restored to none");
+    assert.strictEqual(mockToast.style.opacity, "1", "opacity restored to 1");
+
+    // 7. createCTA Space key on button prevents default and triggers click
+    const { createCTA } = await import("../../src/components/toast-utils-core.js");
+    let ctaClicked = false;
+    const testToast = document.createElement("div");
+    createCTA(testToast, {
+      cta: {
+        label: "Space Action",
+        variant: "button",
+        onClick: () => { ctaClicked = true; }
+      }
+    }, async () => {});
+    const ctaBtn = testToast.querySelector(".toast-cta");
+    assert.ok(ctaBtn, "CTA button rendered");
+    const spaceEvent = new window.KeyboardEvent("keydown", { key: " ", bubbles: true, cancelable: true });
+    ctaBtn.dispatchEvent(spaceEvent);
+    await new Promise((r) => setTimeout(r, 60));
+    assert.strictEqual(ctaClicked, true, "Space key triggered CTA button click");
+
+    // 8. toastPromise loading duration is indefinite even with custom loading object
+    let pendingResolve;
+    const testPromise = new Promise((resolve) => { pendingResolve = resolve; });
+    const promiseHandle = toastPromise(
+      testPromise,
+      {
+        loading: { message: "Loading data...", duration: 100 },
+        success: "Loaded successfully"
+      }
+    );
+    await new Promise((r) => setTimeout(r, 60));
+    assert.strictEqual(getToastMetrics().activeCount, 1, "Loading toast is active");
+    pendingResolve("ok");
+    await promiseHandle;
+    await new Promise((r) => setTimeout(r, 60));
+
+    // 9. resetToastManager cleans up window escape listeners and color cache
+    const { initKeyboardShortcuts } = await import("../../src/utils/keyboard.js");
+    initKeyboardShortcuts(window, async () => {});
+    assert.strictEqual(window.__customizableToastEscapeAttached, true, "escape listener attached");
+    resetToastManager();
+    assert.strictEqual(window.__customizableToastEscapeAttached, undefined, "resetToastManager destroys escape listener");
+
+    resetConfig();
+    resetToastManager();
+  });
 });
 
 

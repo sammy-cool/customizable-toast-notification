@@ -1,7 +1,7 @@
 "use strict";
 
 import { createToastElement } from "./Toast.js";
-import { removeElement } from "../utils/dom.js";
+import { removeElement, resetColorCache } from "../utils/dom.js";
 import { createEmergencyToast } from "./toast-utils.js";
 import { getOrCreateToastContainer, normalizePositionKey, unregisterContainer } from "../utils/containerRegistry.js";
 import { setPosition } from "../utils/position.js";
@@ -203,7 +203,8 @@ export async function showToast(options = {}) {
         if (!current) return;
         pending.delete(key);
 
-        if (visibleCount >= getConfig().maxVisible) {
+        const maxVis = Math.max(1, Number(getConfig().maxVisible) || 1);
+        if (visibleCount >= maxVis) {
           const item = { options: current.options, key, count: current.count };
           const maxQ = getConfig().maxQueueSize ?? 100;
           if (maxQ <= 0) {
@@ -554,6 +555,7 @@ export function resetToastManager() {
   queueSequence = 0;
   isDraining = false;
   lifecycleListeners.clear();
+  resetColorCache();
   emitMetrics();
 }
 
@@ -712,7 +714,8 @@ async function drainQueue() {
       queue.sort((a, b) => (getItemPriority(b) - getItemPriority(a)) || (a.seq - b.seq)); // Higher priority first, FIFO tie-breaker
     }
 
-    while (visibleCount < config.maxVisible && queue.length) {
+    const maxVis = Math.max(1, Number(config.maxVisible) || 1);
+    while (visibleCount < maxVis && queue.length) {
       const item = queue.shift();
       if (active.has(item.key)) {
         const data = active.get(item.key);

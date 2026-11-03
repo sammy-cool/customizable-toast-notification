@@ -172,6 +172,16 @@ export async function sanitizeToastOptions(
 
   try {
     const rawProgressColor = options?.progressBarColor || options?.progressColor;
+    if (
+      getConfig().debug &&
+      options?.progressBarColor &&
+      options?.progressColor &&
+      options.progressBarColor !== options.progressColor
+    ) {
+      console.warn(
+        `Both progressBarColor ("${options.progressBarColor}") and progressColor ("${options.progressColor}") were provided. progressBarColor takes precedence.`,
+      );
+    }
     if (rawProgressColor) {
       final.progressColor = rawProgressColor;
       final.progressBarColor = rawProgressColor;

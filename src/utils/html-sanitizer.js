@@ -129,10 +129,12 @@ function sanitizeAttributes(el, allowedAttrs) {
   attrsToRemove.forEach((name) => el.removeAttribute(name));
 
   const finalTarget = el.getAttribute("target");
-  if (el.tagName === "A" && typeof finalTarget === "string" && finalTarget.trim().toLowerCase() === "_blank") {
+  if (el.tagName === "A" && typeof finalTarget === "string" && finalTarget.trim().length > 0) {
     const rel = (el.getAttribute("rel") || "").split(/\s+/).filter(Boolean);
     if (!rel.includes("noopener")) rel.push("noopener");
-    if (!rel.includes("noreferrer")) rel.push("noreferrer");
+    if (finalTarget.trim().toLowerCase() === "_blank" && !rel.includes("noreferrer")) {
+      rel.push("noreferrer");
+    }
     el.setAttribute("rel", rel.join(" "));
   }
 }
