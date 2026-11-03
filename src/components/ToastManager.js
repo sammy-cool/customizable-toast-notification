@@ -620,6 +620,7 @@ export function resetToastManager() {
   active.clear();
   visibleCount = 0;
   droppedCount = 0;
+  queueSequence = 0;
   isDraining = false;
   emitMetrics();
 }

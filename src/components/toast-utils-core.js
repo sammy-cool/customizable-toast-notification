@@ -673,6 +673,9 @@ export function attachSwipeToDismiss(toast, onClose) {
       isWindowListening = false;
       window.removeEventListener("mousemove", onPointerMove);
       window.removeEventListener("mouseup", onPointerEnd);
+      window.removeEventListener("touchmove", onPointerMove);
+      window.removeEventListener("touchend", onPointerEnd);
+      window.removeEventListener("touchcancel", onPointerCancel);
       window.removeEventListener("blur", onPointerCancel);
     }
   };
@@ -709,6 +712,9 @@ export function attachSwipeToDismiss(toast, onClose) {
       isWindowListening = true;
       window.addEventListener("mousemove", onPointerMove, { passive: false });
       window.addEventListener("mouseup", onPointerEnd, { passive: true });
+      window.addEventListener("touchmove", onPointerMove, { passive: false });
+      window.addEventListener("touchend", onPointerEnd, { passive: true });
+      window.addEventListener("touchcancel", onPointerCancel, { passive: true });
       window.addEventListener("blur", onPointerCancel, { passive: true });
     }
   };

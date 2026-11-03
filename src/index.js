@@ -748,6 +748,9 @@ async function toastPromise(promiseOrFn, messages = {}, options = {}) {
   try {
     const settledPromise =
       typeof promiseOrFn === "function" ? promiseOrFn() : promiseOrFn;
+    if (!settledPromise || typeof settledPromise.then !== "function") {
+      throw new TypeError("toastPromise requires a Promise or Promise-returning function");
+    }
     const result = await settledPromise;
 
     const successResult =

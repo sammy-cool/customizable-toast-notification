@@ -6416,6 +6416,163 @@ describe("Architectural Fortification: Updating Dismissed Toasts & Fallback Spaw
       );
     }
   });
+
+  test("Candidate 1: toastPromise rejects non-promise arguments and functions returning non-thenables", async () => {
+    freshDom();
+    const { toastPromise } = await import("../../src/index.js");
+
+    await assert.rejects(
+      async () => toastPromise(null),
+      { name: "TypeError", message: /toastPromise requires a Promise/ }
+    );
+    await assert.rejects(
+      async () => toastPromise(undefined),
+      { name: "TypeError", message: /toastPromise requires a Promise/ }
+    );
+    await assert.rejects(
+      async () => toastPromise(123),
+      { name: "TypeError", message: /toastPromise requires a Promise/ }
+    );
+    await assert.rejects(
+      async () => toastPromise(() => null),
+      { name: "TypeError", message: /toastPromise requires a Promise/ }
+    );
+  });
+
+  test("Candidate 2: attachSwipeToDismiss binds touchmove, touchend, and touchcancel to window on touchstart", async () => {
+    freshDom();
+    const { attachSwipeToDismiss } = await import("../../src/components/toast-utils-core.js");
+
+    const toast = document.createElement("div");
+    document.body.appendChild(toast);
+
+    let windowTouchMoveAttached = false;
+    let windowTouchEndAttached = false;
+    let windowTouchCancelAttached = false;
+
+    const origAdd = window.addEventListener;
+    const origRemove = window.removeEventListener;
+
+    window.addEventListener = (type, handler, opts) => {
+      if (type === "touchmove") windowTouchMoveAttached = true;
+      if (type === "touchend") windowTouchEndAttached = true;
+      if (type === "touchcancel") windowTouchCancelAttached = true;
+      return origAdd.call(window, type, handler, opts);
+    };
+
+    window.removeEventListener = (type, handler, opts) => {
+      if (type === "touchmove") windowTouchMoveAttached = false;
+      if (type === "touchend") windowTouchEndAttached = false;
+      if (type === "touchcancel") windowTouchCancelAttached = false;
+      return origRemove.call(window, type, handler, opts);
+    };
+
+    try {
+      attachSwipeToDismiss(toast, () => {});
+
+      // Simulate touchstart on toast
+      const touchEvent = new window.Event("touchstart", { bubbles: true });
+      touchEvent.touches = [{ clientX: 100, clientY: 100, identifier: 1 }];
+      toast.dispatchEvent(touchEvent);
+
+      assert.strictEqual(windowTouchMoveAttached, true, "window must receive touchmove listener during touch drag");
+      assert.strictEqual(windowTouchEndAttached, true, "window must receive touchend listener during touch drag");
+      assert.strictEqual(windowTouchCancelAttached, true, "window must receive touchcancel listener during touch drag");
+
+      // Simulate touchend on window
+      const endEvent = new window.Event("touchend", { bubbles: true });
+      window.dispatchEvent(endEvent);
+
+      assert.strictEqual(windowTouchMoveAttached, false, "window touchmove listener must be cleaned up after touchend");
+      assert.strictEqual(windowTouchEndAttached, false, "window touchend listener must be cleaned up after touchend");
+    } finally {
+      window.addEventListener = origAdd;
+      window.removeEventListener = origRemove;
+      toast.remove();
+    }
+  });
+
+  test("Candidate 3: Equal-priority queued toasts preserve strict FIFO insertion order", async () => {
+    freshDom();
+    const { createToast, setConfig, resetConfig, resetToastManager } = await import("../../src/index.js");
+
+    resetToastManager();
+    setConfig({ maxVisible: 1, priorityQueue: true });
+
+    // 1. Fill the 1 visible slot
+    const blocker = await createToast({ message: "Blocker", duration: 10000 });
+    await new Promise((r) => setTimeout(r, 60));
+
+    // 2. Queue 3 toasts with same priority
+    await createToast({ message: "Queued 1", priority: 10, duration: 10000 });
+    await new Promise((r) => setTimeout(r, 60));
+    await createToast({ message: "Queued 2", priority: 10, duration: 10000 });
+    await new Promise((r) => setTimeout(r, 60));
+    await createToast({ message: "Queued 3", priority: 10, duration: 10000 });
+    await new Promise((r) => setTimeout(r, 60));
+
+    // 3. Dismiss blocker, so the first queued toast (Queued 1) mounts
+    await blocker.dismiss();
+    await new Promise((r) => setTimeout(r, 100));
+
+    const activeToast1 = document.querySelector('[id^="toast-container-"] .toast');
+    assert.ok(activeToast1, "First queued toast must mount");
+    assert.ok(activeToast1.textContent.includes("Queued 1"), "First queued toast must be 'Queued 1' (FIFO)");
+
+    resetConfig();
+    resetToastManager();
+  });
+
+  test("Candidate 4: createElementWithId returns HTMLElement synchronously without Promise wrapper", async () => {
+    const { createElementWithId } = await import("../../src/utils/dom.js");
+    const el = createElementWithId("div", "sync-test");
+
+    assert.ok(el instanceof HTMLElement || (el && el.nodeType === 1), "createElementWithId must return a DOM element");
+    assert.strictEqual(typeof el.then, "undefined", "createElementWithId must NOT return a Promise");
+    assert.ok(el.id.startsWith("sync-test-"), "Element ID must contain prefix");
+  });
+
+  test("Candidate 5 & 6: CTA async aria-busy attribute and package.json Node engines", async () => {
+    freshDom();
+    const fs = await import("fs");
+    const path = await import("path");
+
+    // Candidate 6 check
+    const pkg = JSON.parse(fs.readFileSync(path.resolve("package.json"), "utf8"));
+    assert.strictEqual(pkg.engines.node, ">=18.0.0", "package.json must declare node >=18.0.0");
+
+    // Candidate 5 check
+    const { createCTA } = await import("../../src/components/toast-utils-core.js");
+    const toast = document.createElement("div");
+
+    let resolveAction;
+    const actionPromise = new Promise((resolve) => {
+      resolveAction = resolve;
+    });
+
+    createCTA(
+      toast,
+      {
+        cta: {
+          label: "Async Button",
+          onClick: () => actionPromise,
+        },
+      },
+      () => {}
+    );
+
+    const ctaButton = toast.querySelector(".toast-cta");
+    assert.ok(ctaButton, "CTA button must be rendered on toast element");
+
+    ctaButton.click();
+    assert.strictEqual(ctaButton.getAttribute("aria-busy"), "true", "CTA must have aria-busy='true' while async handler is running");
+    assert.strictEqual(ctaButton.style.opacity, "0.7", "CTA must have reduced opacity while running");
+
+    resolveAction();
+    await new Promise((r) => setTimeout(r, 20));
+
+    assert.strictEqual(ctaButton.getAttribute("aria-busy"), null, "aria-busy must be removed after async handler resolves");
+  });
 });
 
 

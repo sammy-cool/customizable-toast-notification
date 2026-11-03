@@ -2,7 +2,7 @@
 
 import { generateToastId } from "./id.js";
 
-export async function createElementWithId(tagName, prefix) {
+export function createElementWithId(tagName, prefix) {
   if (!tagName || !prefix) throw new Error("tagName and prefix are required");
   const el = document.createElement(tagName);
   el.id = generateToastId(prefix);
