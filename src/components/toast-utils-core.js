@@ -240,7 +240,8 @@ export function createUndoAction(toast, options, onClose) {
     });
   }
 
-  let remainingSec = Math.max(1, Math.ceil((totalDuration || 2500) / 1000));
+  let remainingMs = Math.max(1000, Number(totalDuration) || 2500);
+  let remainingSec = Math.max(1, Math.ceil(remainingMs / 1000));
   const updateLabel = () => {
     btn.textContent = showCountdown
       ? `${baseLabel} (${remainingSec}s)`
@@ -250,16 +251,22 @@ export function createUndoAction(toast, options, onClose) {
 
   let intervalId = null;
   let isPaused = false;
+  let lastTick = Date.now();
   if (showCountdown) {
     intervalId = setInterval(() => {
-      if (isPaused) return;
-      remainingSec = Math.max(0, remainingSec - 1);
-      updateLabel();
-      if (remainingSec <= 0 && intervalId) {
-        clearInterval(intervalId);
-        intervalId = null;
+      const now = Date.now();
+      if (!isPaused) {
+        const elapsed = now - lastTick;
+        remainingMs = Math.max(0, remainingMs - elapsed);
+        remainingSec = Math.max(0, Math.ceil(remainingMs / 1000));
+        updateLabel();
+        if (remainingMs <= 0 && intervalId) {
+          clearInterval(intervalId);
+          intervalId = null;
+        }
       }
-    }, 1000);
+      lastTick = now;
+    }, 250);
     if (typeof intervalId?.unref === "function") {
       intervalId.unref();
     }
@@ -267,9 +274,11 @@ export function createUndoAction(toast, options, onClose) {
 
   toast._pauseUndo = () => {
     isPaused = true;
+    lastTick = Date.now();
   };
   toast._resumeUndo = () => {
     isPaused = false;
+    lastTick = Date.now();
   };
 
   const cleanupTimer = () => {
@@ -376,6 +385,19 @@ function getContrastBackground(bgColor) {
     return "rgba(0,0,0,0.15)";
   }
   return "rgba(255,255,255,0.15)";
+}
+
+export function applyIndeterminateProgressStyles(progressBar, isRtl, finalWidth = "100%") {
+  progressBar.classList.add("toast-progress-bar-indeterminate");
+  if (isRtl) {
+    progressBar.classList.add("toast-progress-bar-indeterminate-rtl");
+  }
+  if (!getConfig().disableInlineStyles) {
+    ensureProgressIndeterminateStyles();
+    const animName = isRtl ? "toast-progress-indeterminate-rtl" : "toast-progress-indeterminate";
+    progressBar.style.animation = `${animName} 1.6s cubic-bezier(0.4, 0, 0.2, 1) infinite`;
+  }
+  progressBar.style.width = finalWidth;
 }
 
 export function ensureProgressIndeterminateStyles() {
@@ -522,16 +544,7 @@ export function createProgressBar(toast, options = {}) {
   progressBar._isManualProgress = options.progress !== undefined && options.progress !== "indeterminate";
 
   if (isIndeterminate) {
-    progressBar.classList.add("toast-progress-bar-indeterminate");
-    if (isRtl) {
-      progressBar.classList.add("toast-progress-bar-indeterminate-rtl");
-    }
-    if (!getConfig().disableInlineStyles) {
-      ensureProgressIndeterminateStyles();
-      const animName = isRtl ? "toast-progress-indeterminate-rtl" : "toast-progress-indeterminate";
-      progressBar.style.animation = `${animName} 1.6s cubic-bezier(0.4, 0, 0.2, 1) infinite`;
-    }
-    progressBar.style.width = finalWidth;
+    applyIndeterminateProgressStyles(progressBar, isRtl, finalWidth);
     return;
   }
 
@@ -569,6 +582,21 @@ export function createProgressBar(toast, options = {}) {
   }
 }
 
+function markToastActive(toast) {
+  toast.style.opacity = "1";
+  toast.style.transform = "none";
+  toast.classList.add("active");
+  if (
+    toast._progressAnimation &&
+    (toast._progressAnimation.playState === "idle" ||
+      toast._progressAnimation.playState === "paused")
+  ) {
+    try {
+      toast._progressAnimation.play();
+    } catch {}
+  }
+}
+
 export function runToastAnimation(toast) {
   if (!toast) return;
   if (toast._hasAnimated) return;
@@ -576,14 +604,7 @@ export function runToastAnimation(toast) {
   if (shouldReduceMotion()) {
     toast._hasAnimated = true;
     toast.style.transition = "none";
-    toast.style.opacity = "1";
-    toast.style.transform = "none";
-    toast.classList.add("active");
-    if (toast._progressAnimation && (toast._progressAnimation.playState === "idle" || toast._progressAnimation.playState === "paused")) {
-      try {
-        toast._progressAnimation.play();
-      } catch {}
-    }
+    markToastActive(toast);
     return;
   }
 
@@ -596,14 +617,7 @@ export function runToastAnimation(toast) {
     } catch {}
 
     requestAnimationFrame(() => {
-      toast.style.opacity = "1";
-      toast.style.transform = "none";
-      toast.classList.add("active");
-      if (toast._progressAnimation && (toast._progressAnimation.playState === "idle" || toast._progressAnimation.playState === "paused")) {
-        try {
-          toast._progressAnimation.play();
-        } catch {}
-      }
+      markToastActive(toast);
     });
   };
 

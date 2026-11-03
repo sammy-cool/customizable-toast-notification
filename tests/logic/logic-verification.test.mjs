@@ -6654,7 +6654,7 @@ describe("Architectural Fortification: Updating Dismissed Toasts & Fallback Spaw
     const emergencyResult = await createToastElement({
       message: "Test fallback",
       // Symbol or throwing property during styling
-      get style() {
+      get animationDuration() {
         throw new Error("Simulated styling crash");
       },
     });
@@ -6732,6 +6732,105 @@ describe("Architectural Fortification: Updating Dismissed Toasts & Fallback Spaw
     assert.ok(cspLoader, "Loader created gracefully even when CSP blocks stylesheet insertion");
 
     document.head.appendChild = origAppend;
+  });
+
+  test("SonarQube Architecture & 100% Coverage Fortification: Timer errors, cyclic CSS vars, Angular & React error paths", async () => {
+    freshDom();
+
+    // 1. Angular adapter full methods
+    const { ToastService } = await import("../../src/angular/index.js");
+    const service = new ToastService();
+    const metrics = service.getToastMetrics();
+    assert.ok(metrics && typeof metrics.activeCount === "number", "service.getToastMetrics returns metrics object");
+    service.setDefaultColors({ info: "#0000ff" });
+    service.setDefaultMessages({ info: "Info msg" });
+
+    const promiseResult = await service.promise(
+      Promise.resolve("ang-success"),
+      { success: "Done!" }
+    );
+    assert.strictEqual(promiseResult, "ang-success", "service.promise resolves correctly");
+
+    // 2. PausableTimer error handling and zero-remaining pause
+    const { PausableTimer } = await import("../../src/utils/PausableTimer.js");
+    let timerErrorCaught = false;
+    const throwingTimer = new PausableTimer(() => {
+      timerErrorCaught = true;
+      throw new Error("Simulated callback crash");
+    }, 10);
+    throwingTimer.start();
+    await new Promise((r) => setTimeout(r, 40));
+    assert.strictEqual(timerErrorCaught, true, "PausableTimer executes callback and catches error");
+
+    let zeroPauseThrowCaught = false;
+    const zeroTimer = new PausableTimer(() => {
+      zeroPauseThrowCaught = true;
+      throw new Error("Zero timer crash");
+    }, 10);
+    zeroTimer.start();
+    await new Promise((r) => setTimeout(r, 30));
+    zeroTimer.pause();
+    assert.strictEqual(zeroPauseThrowCaught, true, "PausableTimer pause when remaining <= 0 executes callback safely");
+
+    // 3. React hook useToast when React.useMemo throws
+    const reactModule = await import("../../src/react/index.js");
+    window.React = {
+      useMemo: () => {
+        throw new Error("React.useMemo simulated failure");
+      },
+    };
+    const fallbackAPI = reactModule.useToast();
+    assert.ok(fallbackAPI && typeof fallbackAPI.show === "function", "useToast falls back gracefully when React.useMemo throws");
+    delete window.React;
+
+    // 4. containerRegistry concurrent lock hit and duplicate removal
+    const { getOrCreateToastContainer } = await import("../../src/utils/containerRegistry.js");
+    const p1 = getOrCreateToastContainer({ position: "top-left" });
+    const p2 = getOrCreateToastContainer({ position: "top-left" });
+    const [c1, c2] = await Promise.all([p1, p2]);
+    assert.strictEqual(c1, c2, "Concurrent getOrCreateToastContainer returns the locked promise");
+
+    const dup1 = document.createElement("div");
+    dup1.id = "toast-container-dup-pos";
+    const dup2 = document.createElement("div");
+    dup2.id = "toast-container-dup-pos";
+    document.body.appendChild(dup1);
+    document.body.appendChild(dup2);
+    assert.strictEqual(document.querySelectorAll("#toast-container-dup-pos").length, 2);
+    const deduped = await getOrCreateToastContainer({ position: "dup-pos" });
+    assert.ok(deduped);
+    assert.strictEqual(document.querySelectorAll("#toast-container-dup-pos").length, 1, "Duplicate containers in DOM are pruned to 1");
+
+    // 5. CSS custom property cyclic reference handling
+    const { getDynamicAccessibleTextColorHex } = await import("../../src/utils/dom.js");
+    const cyclicColor = getDynamicAccessibleTextColorHex("var(--loop-a, var(--loop-a))");
+    assert.ok(cyclicColor, "Cyclic CSS custom property resolves gracefully without recursion");
+
+    // 6. Keyboard shortcuts init, destroy, and landmark without buttons
+    const { initKeyboardShortcuts, destroyKeyboardShortcuts } = await import("../../src/utils/keyboard.js");
+    const cleanupKb = initKeyboardShortcuts(window, () => {});
+    assert.strictEqual(typeof cleanupKb, "function");
+
+    // Landmark F6 navigation when toast element has no buttons
+    const plainContainer = document.createElement("div");
+    plainContainer.id = "toast-container-bottom-right";
+    const plainToast = document.createElement("div");
+    plainToast.id = "toast-plain-test";
+    plainToast.tabIndex = 0;
+    plainContainer.appendChild(plainToast);
+    document.body.appendChild(plainContainer);
+
+    const f6Evt = new window.Event("keydown");
+    f6Evt.key = "F6";
+    window.dispatchEvent(f6Evt);
+    assert.strictEqual(document.activeElement, plainToast, "F6 key focuses toast container directly when no interactive children exist");
+
+    destroyKeyboardShortcuts(window);
+
+    // 7. toast-timer null safety
+    const { cleanupToastEntry } = await import("../../src/components/toast-timer.js");
+    cleanupToastEntry(null);
+    cleanupToastEntry({});
   });
 });
 

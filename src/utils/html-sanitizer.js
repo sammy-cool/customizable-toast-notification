@@ -125,12 +125,6 @@ function sanitizeAttributes(el, allowedAttrs) {
         return;
       }
     }
-    if (name === "target" && typeof val === "string" && val.trim().toLowerCase() === "_blank") {
-      const rel = (el.getAttribute("rel") || "").split(/\s+/).filter(Boolean);
-      if (!rel.includes("noopener")) rel.push("noopener");
-      if (!rel.includes("noreferrer")) rel.push("noreferrer");
-      el.setAttribute("rel", rel.join(" "));
-    }
   });
   attrsToRemove.forEach((name) => el.removeAttribute(name));
 
@@ -203,6 +197,16 @@ function parseHtmlInert(html) {
   return null;
 }
 
+export function secureBlankLinks(container) {
+  if (!container || typeof container.querySelectorAll !== "function") return;
+  container.querySelectorAll('a[target="_blank"]').forEach((a) => {
+    const rel = (a.getAttribute("rel") || "").split(/\s+/).filter(Boolean);
+    if (!rel.includes("noopener")) rel.push("noopener");
+    if (!rel.includes("noreferrer")) rel.push("noreferrer");
+    a.setAttribute("rel", rel.join(" "));
+  });
+}
+
 export function fallbackSanitize(dirty) {
   if (!dirty || typeof dirty !== "string") return "";
 
@@ -217,14 +221,7 @@ export function fallbackSanitize(dirty) {
 
   const wrapper = document.createElement("div");
   wrapper.appendChild(outFrag);
-
-  wrapper.querySelectorAll('a[target="_blank"]').forEach((a) => {
-    const rel = (a.getAttribute("rel") || "").split(/\s+/).filter(Boolean);
-    if (!rel.includes("noopener")) rel.push("noopener");
-    if (!rel.includes("noreferrer")) rel.push("noreferrer");
-    a.setAttribute("rel", rel.join(" "));
-  });
-
+  secureBlankLinks(wrapper);
   return wrapper.innerHTML;
 }
 
@@ -247,12 +244,7 @@ export function sanitizeHtml(dirty, opts = {}) {
           a.setAttribute("href", "#");
         }
       });
-      wrapper.querySelectorAll('a[target="_blank"]').forEach((a) => {
-        const rel = (a.getAttribute("rel") || "").split(/\s+/).filter(Boolean);
-        if (!rel.includes("noopener")) rel.push("noopener");
-        if (!rel.includes("noreferrer")) rel.push("noreferrer");
-        a.setAttribute("rel", rel.join(" "));
-      });
+      secureBlankLinks(wrapper);
       return wrapper.innerHTML;
     }
   } catch (err) {

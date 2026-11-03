@@ -54,6 +54,29 @@ function getInitialTransform(position, animationType, isSpring) {
   return isTop ? "translateY(-20px)" : "translateY(20px)";
 }
 
+/**
+ * Appends sanitized HTML or text content to a toast message container.
+ * @param {HTMLElement} messageSpan
+ * @param {string|number|any} rawMessage
+ * @param {boolean} [allowHtml=false]
+ */
+export function appendMessageContent(messageSpan, rawMessage, allowHtml = false) {
+  if (allowHtml && typeof rawMessage === "string" && rawMessage.trim().length > 0) {
+    try {
+      const sanitized = sanitizeHtml(rawMessage);
+      const tmp = document.createElement("div");
+      tmp.innerHTML = sanitized;
+      while (tmp.firstChild) {
+        messageSpan.appendChild(tmp.firstChild);
+      }
+      return;
+    } catch (err) {
+      console.warn("HTML message sanitization failed, falling back to text:", err);
+    }
+  }
+  messageSpan.appendChild(document.createTextNode(String(rawMessage ?? "")));
+}
+
 export async function applyRichStyling(toast, options, onClose) {
   const config = getConfig();
   const animType = String(options?.animationType || "").toLowerCase().trim();
@@ -218,28 +241,7 @@ export async function applyRichStyling(toast, options, onClose) {
     messageSpan.appendChild(spacer);
   }
 
-  if (
-    allowHtml &&
-    typeof rawMessage === "string" &&
-    rawMessage.trim().length > 0
-  ) {
-    try {
-      const sanitized = sanitizeHtml(rawMessage);
-      const tmp = document.createElement("div");
-      tmp.innerHTML = sanitized;
-      while (tmp.firstChild) {
-        messageSpan.appendChild(tmp.firstChild);
-      }
-    } catch (err) {
-      console.warn(
-        "HTML message sanitization failed, falling back to text:",
-        err
-      );
-      messageSpan.appendChild(document.createTextNode(String(rawMessage)));
-    }
-  } else {
-    messageSpan.appendChild(document.createTextNode(String(rawMessage)));
-  }
+  appendMessageContent(messageSpan, rawMessage, allowHtml);
 
   messageSpan.setAttribute("title", messageSpan.textContent || "");
   toast.appendChild(messageSpan);

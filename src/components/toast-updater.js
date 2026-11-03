@@ -1,7 +1,7 @@
-import { sanitizeHtml } from "../utils/html-sanitizer.js";
 import { getDynamicAccessibleTextColorHex } from "../utils/dom.js";
 import { createToastIcon } from "./icons.js";
 import { createLoader } from "./loader.js";
+import { appendMessageContent } from "./toast-utils.js";
 import {
   createCTA,
   createUndoAction,
@@ -9,10 +9,32 @@ import {
   createProgressBar,
   attachSwipeToDismiss,
   parseProgressValue,
-  ensureProgressIndeterminateStyles,
+  applyIndeterminateProgressStyles,
 } from "./toast-utils-core.js";
 import { getConfig } from "../utils/config.js";
 import { getOrCreateToastContainer, normalizePositionKey, unregisterContainer } from "../utils/containerRegistry.js";
+
+function bindProgressBarAnimation(toast, progressBar, durationMs) {
+  const finalWidth = progressBar._finalWidth || "100%";
+  const isReverse = progressBar._isReverse;
+  if (typeof progressBar.animate === "function") {
+    try {
+      toast._progressAnimation?.cancel();
+    } catch {}
+    const keyframes = isReverse
+      ? [{ width: "0%" }, { width: finalWidth }]
+      : [{ width: finalWidth }, { width: "0%" }];
+    toast._progressAnimation = progressBar.animate(keyframes, {
+      duration: durationMs,
+      easing: "linear",
+      fill: "forwards",
+      delay: 0,
+    });
+  } else {
+    progressBar.style.transition = `width ${durationMs}ms linear`;
+    progressBar.style.width = isReverse ? finalWidth : "0%";
+  }
+}
 
 /**
  * Applies in-place DOM updates to an active toast element.
@@ -73,20 +95,7 @@ export async function applyToastDOMUpdates(data, newOptions, context) {
         messageSpan.appendChild(spacer);
       }
 
-      if (allowHtml && rawMessage.trim().length > 0) {
-        try {
-          const sanitized = sanitizeHtml(rawMessage);
-          const tmp = document.createElement("div");
-          tmp.innerHTML = sanitized;
-          while (tmp.firstChild) {
-            messageSpan.appendChild(tmp.firstChild);
-          }
-        } catch {
-          messageSpan.appendChild(document.createTextNode(rawMessage));
-        }
-      } else {
-        messageSpan.appendChild(document.createTextNode(rawMessage));
-      }
+      appendMessageContent(messageSpan, rawMessage, allowHtml);
 
       messageSpan.setAttribute("title", messageSpan.textContent || "");
     }
@@ -337,17 +346,8 @@ export async function applyToastDOMUpdates(data, newOptions, context) {
           } catch {}
           toast._progressAnimation = null;
         }
-        progressBar.classList.add("toast-progress-bar-indeterminate");
         const isRtl = progressBar._isRtl || newOptions.fontDirection === "rtl" || newOptions.progressDirection === "rtl";
-        if (isRtl) {
-          progressBar.classList.add("toast-progress-bar-indeterminate-rtl");
-        }
-        if (!getConfig().disableInlineStyles) {
-          ensureProgressIndeterminateStyles();
-          const animName = isRtl ? "toast-progress-indeterminate-rtl" : "toast-progress-indeterminate";
-          progressBar.style.animation = `${animName} 1.6s cubic-bezier(0.4, 0, 0.2, 1) infinite`;
-        }
-        progressBar.style.width = progressBar._finalWidth || "100%";
+        applyIndeterminateProgressStyles(progressBar, isRtl, progressBar._finalWidth || "100%");
       } else {
         const pct = parseProgressValue(newOptions.progress, toast, { ...data.options, ...newOptions });
         progressBar._isIndeterminate = false;
@@ -424,26 +424,7 @@ export async function applyToastDOMUpdates(data, newOptions, context) {
           progressBar.style.animation = "none";
         }
         if (!progressBar._isManualProgress && !progressBar._isIndeterminate) {
-          const newDuration = raw + 5;
-          const finalWidth = progressBar._finalWidth || "100%";
-          const isReverse = progressBar._isReverse;
-          if (typeof progressBar.animate === "function") {
-            try {
-              toast._progressAnimation?.cancel();
-            } catch {}
-            const keyframes = isReverse
-              ? [{ width: "0%" }, { width: finalWidth }]
-              : [{ width: finalWidth }, { width: "0%" }];
-            toast._progressAnimation = progressBar.animate(keyframes, {
-              duration: newDuration,
-              easing: "linear",
-              fill: "forwards",
-              delay: 0,
-            });
-          } else {
-            progressBar.style.transition = `width ${newDuration}ms linear`;
-            progressBar.style.width = isReverse ? finalWidth : "0%";
-          }
+          bindProgressBarAnimation(toast, progressBar, raw + 5);
         }
       }
       if (toast.classList.contains("toast-paused")) {
@@ -482,24 +463,7 @@ export async function applyToastDOMUpdates(data, newOptions, context) {
       progressBar.classList.remove("toast-progress-bar-indeterminate");
       progressBar.classList.remove("toast-progress-bar-indeterminate-rtl");
       progressBar.style.animation = "none";
-      const newDuration = 2505;
-      const finalWidth = progressBar._finalWidth || "100%";
-      const isReverse = progressBar._isReverse;
-      if (typeof progressBar.animate === "function") {
-        try { toast._progressAnimation?.cancel(); } catch {}
-        const keyframes = isReverse
-          ? [{ width: "0%" }, { width: finalWidth }]
-          : [{ width: finalWidth }, { width: "0%" }];
-        toast._progressAnimation = progressBar.animate(keyframes, {
-          duration: newDuration,
-          easing: "linear",
-          fill: "forwards",
-          delay: 0,
-        });
-      } else {
-        progressBar.style.transition = `width ${newDuration}ms linear`;
-        progressBar.style.width = isReverse ? finalWidth : "0%";
-      }
+      bindProgressBarAnimation(toast, progressBar, 2505);
     }
   }
 

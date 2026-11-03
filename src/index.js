@@ -15,9 +15,14 @@ import {
   off as managerOff,
 } from "./components/ToastManager.js";
 import { getOrCreateToastContainer, resetContainerRegistry, normalizePositionKey } from "./utils/containerRegistry.js";
-import { getDynamicAccessibleTextColorHex } from "./utils/dom.js";
 import { setPosition } from "./utils/position.js";
 import { generateToastId, resetToastIdCounter } from "./utils/id.js";
+import { initKeyboardShortcuts as initCoreKeyboardShortcuts, destroyKeyboardShortcuts } from "./utils/keyboard.js";
+import {
+  validateStringDictionary,
+  normalizeToastOptions,
+  sanitizeToastOptions as resolveToastOptions,
+} from "./utils/options-sanitizer.js";
 
 /**
  * @typedef {'modern' | 'retro' | 'futuristic' | 'subtle' | 'bell' | string} SoundPreset
@@ -207,19 +212,33 @@ import { generateToastId, resetToastIdCounter } from "./utils/id.js";
  * @property {string | Partial<ToastOptions> | ((error: unknown) => string | Partial<ToastOptions>)} [error]
  */
 
+/**
+ * @typedef {Object} UseToastAPI
+ * @property {(messageOrOptions?: string | ToastOptions, options?: Partial<ToastOptions>) => Promise<ToastHandle>} success
+ * @property {(messageOrOptions?: string | ToastOptions, options?: Partial<ToastOptions>) => Promise<ToastHandle>} error
+ * @property {(messageOrOptions?: string | ToastOptions, options?: Partial<ToastOptions>) => Promise<ToastHandle>} warning
+ * @property {(messageOrOptions?: string | ToastOptions, options?: Partial<ToastOptions>) => Promise<ToastHandle>} info
+ * @property {(messageOrOptions?: string | ToastOptions, options?: Partial<ToastOptions>) => Promise<ToastHandle>} loading
+ * @property {(messageOrOptions?: string | ToastOptions, options?: Partial<ToastOptions>) => Promise<ToastHandle>} custom
+ * @property {(options?: ToastOptions) => Promise<ToastHandle>} show
+ * @property {<T>(promiseOrFn: Promise<T> | (() => Promise<T> | T), messages?: ToastPromiseMessages, options?: ToastOptions) => Promise<T>} promise
+ * @property {(target?: string | ToastHandle | HTMLElement | Promise<ToastHandle>) => Promise<void>} dismiss
+ * @property {() => Promise<void>} dismissAll
+ * @property {() => Promise<void>} clear
+ * @property {(options?: Partial<ToastGlobalConfig>) => ToastGlobalConfig} setConfig
+ * @property {() => ToastGlobalConfig} getConfig
+ * @property {() => ToastGlobalConfig} resetConfig
+ * @property {() => ToastMetrics} getToastMetrics
+ * @property {(colors: Record<string, string>) => void} setDefaultColors
+ * @property {(messages: Record<string, string>) => void} setDefaultMessages
+ * @property {string} version
+ */
+
 let defaultColors = {
   success: "#28a745",
   error: "#dc3545",
   warning: "#ffc107",
   info: "#17a2b8",
-};
-
-const DEFAULT_TYPE_MESSAGES = {
-  success: "Operation completed successfully!",
-  error: "Something went wrong!",
-  warning: "Warning message!",
-  info: "Information message!",
-  loading: "Loading, please wait...",
 };
 
 let customDefaultMessages = {};
@@ -297,146 +316,8 @@ async function createFirstToastContainer(options) {
   }
 }
 
-function normalizeToastOptions(messageOrOptions, maybeOptions) {
-  const extra =
-    typeof maybeOptions === "object" && maybeOptions !== null && !Array.isArray(maybeOptions)
-      ? maybeOptions
-      : {};
-
-  if (
-    typeof messageOrOptions === "string" ||
-    typeof messageOrOptions === "number" ||
-    typeof messageOrOptions === "boolean" ||
-    typeof messageOrOptions === "bigint" ||
-    typeof messageOrOptions === "symbol"
-  ) {
-    return {
-      ...extra,
-      message: typeof messageOrOptions === "symbol"
-        ? (messageOrOptions.description || String(messageOrOptions))
-        : String(messageOrOptions),
-    };
-  }
-
-  if (messageOrOptions instanceof Error) {
-    return {
-      ...extra,
-      message: messageOrOptions.message || String(messageOrOptions),
-    };
-  }
-
-  if (typeof messageOrOptions === "object" && messageOrOptions !== null && !Array.isArray(messageOrOptions)) {
-    return {
-      ...extra,
-      ...messageOrOptions,
-    };
-  }
-
-  return { ...extra };
-}
-
 async function sanitizeToastOptions(rawOptions) {
-  const options = normalizeToastOptions(rawOptions);
-  const config = getConfig();
-  const contPosition = String(options?.position ?? config.defaultPosition).toLowerCase().trim();
-  const contMaxWidth =
-    contPosition?.includes("top-full-width") ||
-    contPosition?.includes("bottom-full-width")
-      ? "100vw"
-      : "400px";
-
-  const defaults = {
-    allowHtml: false,
-    sanitizeHtml: true,
-    pauseOnHover: undefined,
-    duration: 2500,
-    position: config.defaultPosition,
-    type: "info",
-    borderRadius: "50px",
-    backgroundColor: undefined,
-    textColor: undefined,
-    showCloseButton: true,
-    iconColor: undefined,
-    animationDuration: "0.4s",
-    animationEasing: "ease",
-    showProgressBar: true,
-    progressColor: undefined,
-    progressBarColor: undefined,
-    progressHeight: "4px",
-    progressPosition: "bottom",
-    progressDirection: "decreasing",
-    animationType: "default",
-    fontFamily:
-      '-apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif, "Apple Color Emoji", "Segoe UI Emoji", "Segoe UI Symbol"',
-    fontSize: "14px",
-    fontWeight: "400",
-    fontLineHeight: "1.4",
-    fontDirection: "auto",
-    wrapText: "normal",
-    maxWidth: contMaxWidth,
-  };
-
-  const final = {
-    ...defaults,
-    ...options,
-  };
-
-  final.message = options?.message ?? final.message;
-
-  try {
-    if (!final.backgroundColor) {
-      const prefersDark =
-        typeof window !== "undefined" &&
-        typeof window.matchMedia === "function" &&
-        window.matchMedia("(prefers-color-scheme: dark)")?.matches;
-      final.backgroundColor =
-        defaultColors?.[final.type] ?? (prefersDark ? "#111111" : "#f5f5f5");
-    }
-  } catch (error) {
-    console.warn("Background color resolution failed:", error);
-    if (!final.backgroundColor) {
-      final.backgroundColor = "#111111";
-    }
-  }
-
-  try {
-    final.message =
-      final.message ||
-      customDefaultMessages[final.type] ||
-      DEFAULT_TYPE_MESSAGES[final.type] ||
-      "No Message Provided!";
-  } catch (error) {
-    console.warn("Default message resolution failed:", error);
-  }
-
-  try {
-    if (!final.textColor && final.backgroundColor) {
-      final.textColor = getDynamicAccessibleTextColorHex(final.backgroundColor);
-    }
-  } catch (error) {
-    console.warn("Text color resolution failed:", error);
-  }
-
-  try {
-    const rawProgressColor = options?.progressBarColor || options?.progressColor;
-    if (rawProgressColor) {
-      final.progressColor = rawProgressColor;
-      final.progressBarColor = rawProgressColor;
-    } else if (!final.progressColor && final.backgroundColor) {
-      final.progressColor =
-        final.textColor ||
-        getDynamicAccessibleTextColorHex(final.backgroundColor);
-      final.progressBarColor = final.progressColor;
-    }
-  } catch (error) {
-    console.warn("Progress bar color resolution failed:", error);
-  }
-
-  if (typeof final.message !== "string") {
-    final.message = "No Message Provided!";
-  }
-
-  return final;
+  return resolveToastOptions(rawOptions, customDefaultMessages, defaultColors);
 }
 
 /**
@@ -445,16 +326,9 @@ async function sanitizeToastOptions(rawOptions) {
  */
 function setDefaultColors(colors) {
   try {
-    if (colors && typeof colors === "object" && !Array.isArray(colors)) {
-      const validated = {};
-      for (const [key, value] of Object.entries(colors)) {
-        if (typeof key === "string" && key.trim() && typeof value === "string" && value.trim()) {
-          validated[key.trim()] = value.trim();
-        }
-      }
-      if (Object.keys(validated).length > 0) {
-        defaultColors = { ...defaultColors, ...validated };
-      }
+    const validated = validateStringDictionary(colors);
+    if (Object.keys(validated).length > 0) {
+      defaultColors = { ...defaultColors, ...validated };
     }
   } catch (error) {
     console.error("setDefaultColors failed:", error);
@@ -467,16 +341,9 @@ function setDefaultColors(colors) {
  */
 function setDefaultMessages(messages) {
   try {
-    if (messages && typeof messages === "object" && !Array.isArray(messages)) {
-      const validated = {};
-      for (const [key, value] of Object.entries(messages)) {
-        if (typeof key === "string" && key.trim() && typeof value === "string" && value.trim()) {
-          validated[key.trim()] = value.trim();
-        }
-      }
-      if (Object.keys(validated).length > 0) {
-        customDefaultMessages = { ...customDefaultMessages, ...validated };
-      }
+    const validated = validateStringDictionary(messages);
+    if (Object.keys(validated).length > 0) {
+      customDefaultMessages = { ...customDefaultMessages, ...validated };
     }
   } catch (error) {
     console.error("setDefaultMessages failed:", error);
@@ -989,62 +856,10 @@ export {
  * @returns {(() => void) | void} Teardown/unsubscribe function
  */
 export function initKeyboardShortcuts(win = typeof window !== "undefined" ? window : null) {
-  if (!win || !win.document || win.__customizableToastEscapeAttached) return;
-  win.__customizableToastEscapeAttached = true;
-  const onKeyDown = (e) => {
-    if (e.key === "Escape" || e.key === "Esc") {
-      void (async () => {
-        try {
-          await dismissToast();
-        } catch (error) {
-          console.error("Escape key dismiss failed:", error);
-        }
-      })();
-    } else if (e.key === "F6" || ((e.altKey || e.metaKey) && (e.key === "t" || e.key === "T"))) {
-      // Accessible landmark navigation: focus the most recent active toast
-      const targetNode = getConfig().targetNode;
-      const root = (targetNode && typeof targetNode.querySelectorAll === "function") ? targetNode : win.document;
-      let activeToasts = Array.from(root.querySelectorAll('[id^="toast-container-"] [id^="toast-"]'));
-      if (activeToasts.length === 0 && typeof root.querySelector === "function") {
-        const shadowHost = root.querySelector("#toast-shadow-host");
-        if (shadowHost?.shadowRoot?.querySelectorAll) {
-          activeToasts = Array.from(shadowHost.shadowRoot.querySelectorAll('[id^="toast-container-"] [id^="toast-"]'));
-        }
-      }
-      if (activeToasts.length > 0) {
-        const targetToast = activeToasts[activeToasts.length - 1];
-        // Try focusing the interactive CTA, undo, or close button inside the toast first
-        const interactive = targetToast.querySelector("button, a, [tabindex='0']");
-        if (interactive && typeof interactive.focus === "function") {
-          interactive.focus();
-        } else if (typeof targetToast.focus === "function") {
-          targetToast.focus();
-        }
-      }
-    }
-  };
-  win.addEventListener("keydown", onKeyDown, { passive: true });
-  const cleanup = () => {
-    try {
-      win.removeEventListener("keydown", onKeyDown);
-      delete win.__customizableToastEscapeAttached;
-      delete win.__customizableToastEscapeCleanup;
-    } catch {}
-  };
-  win.__customizableToastEscapeCleanup = cleanup;
-  return cleanup;
+  return initCoreKeyboardShortcuts(win, dismissToast);
 }
 
-/**
- * Remove global keyboard event listeners attached by initKeyboardShortcuts.
- * @param {Window} [win]
- * @returns {void}
- */
-export function destroyKeyboardShortcuts(win = typeof window !== "undefined" ? window : null) {
-  if (win && typeof win.__customizableToastEscapeCleanup === "function") {
-    win.__customizableToastEscapeCleanup();
-  }
-}
+export { destroyKeyboardShortcuts };
 
 if (typeof window !== "undefined" && typeof document !== "undefined") {
   initKeyboardShortcuts(window);

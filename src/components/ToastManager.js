@@ -5,7 +5,7 @@ import { removeElement } from "../utils/dom.js";
 import { createEmergencyToast } from "./toast-utils.js";
 import { getOrCreateToastContainer, normalizePositionKey, unregisterContainer } from "../utils/containerRegistry.js";
 import { setPosition } from "../utils/position.js";
-import { PausableTimer } from "../utils/PausableTimer.js";
+import { createDismissTimer as makeDismissTimer, setupPauseOnHover, cleanupToastEntry } from "./toast-timer.js";
 import { runToastAnimation } from "./toast-utils-core.js";
 import { getConfig, shouldReduceMotion } from "../utils/config.js";
 import { updateStackedLayout } from "./stacked-layout.js";
@@ -47,6 +47,10 @@ function emitMetrics() {
       console.error("onMetrics callback error:", err);
     }
   }
+}
+
+function createDismissTimer(toast, options) {
+  return makeDismissTimer(toast, options, closeToast);
 }
 
 const lifecycleListeners = new Map();
@@ -498,24 +502,7 @@ export function resetToastManager() {
   pending.clear();
   queue.length = 0;
   for (const [, data] of active) {
-    data.timer?.clear();
-    data.outer?._pauseCleanup?.();
-    data.toast?._cleanupCloseButton?.();
-    data.toast?._cleanupCTA?.();
-    data.toast?._cleanupUndo?.();
-    data.toast?._cleanupSwipe?.();
-    data.toast?._cleanupFocusTrap?.();
-    data.toast?._cleanup?.();
-    if (data.toast?._progressAnimation) {
-      try {
-        data.toast._progressAnimation.pause();
-      } catch {}
-    }
-    const badge = data.outer?.querySelector(".toast-count-badge");
-    if (badge?._scaleTimer) {
-      clearTimeout(badge._scaleTimer);
-      badge._scaleTimer = null;
-    }
+    cleanupToastEntry(data);
     try {
       data.outer?.remove?.();
     } catch {}
@@ -539,122 +526,6 @@ export function resetToastManager() {
 
 export const dismiss = dismissMostRecent;
 export const noop = closeAllToasts;
-
-function createDismissTimer(toast, options) {
-  const raw = Number(options?.duration);
-  if (options?.duration === Infinity || (typeof options?.duration === "number" && options?.duration <= 0)) {
-    return null;
-  }
-  const duration = Number.isFinite(raw) && raw > 0 ? raw : 2500;
-  const delay = duration + 5;
-  const timer = new PausableTimer(() => {
-    void closeToast(toast).catch(console.error);
-  }, delay);
-  timer.start();
-  return timer;
-}
-
-async function setupPauseOnHover(data) {
-  if (!data.pauseOnHover || !data.outer || !data.timer) return;
-
-  data.outer._pauseCleanup?.();
-
-  const { outer, timer, toast } = data;
-
-  const pauseProgressBar = () => {
-    if (toast?._progressAnimation) {
-      try {
-        toast._progressAnimation.pause();
-      } catch {}
-    } else if (toast?._progressBar) {
-      try {
-        if (toast._progressBar._isIndeterminate) {
-          toast._progressBar.style.animationPlayState = "paused";
-        } else if (toast._progressBar._isManualProgress) {
-          // Manual determinate progress: do NOT pause or overwrite manual width
-        } else {
-          const computedWidth = window.getComputedStyle(toast._progressBar).width;
-          toast._progressBar._pausedWidth = computedWidth;
-          toast._progressBar.style.transition = "none";
-          toast._progressBar.style.width = computedWidth;
-        }
-      } catch {}
-    }
-  };
-
-  const resumeProgressBar = () => {
-    if (toast?._progressAnimation) {
-      try {
-        toast._progressAnimation.play();
-      } catch {}
-    } else if (toast?._progressBar) {
-      try {
-        if (toast._progressBar._isIndeterminate) {
-          toast._progressBar.style.animationPlayState = "running";
-        } else if (toast._progressBar._isManualProgress) {
-          // Manual determinate progress: preserve current manual width
-        } else if (toast._progressBar._pausedWidth) {
-          const remainingMs = timer.getRemainingTime?.() ?? 1000;
-          const isReverse = toast._progressBar._isReverse;
-          const finalWidth = toast._progressBar._finalWidth || "100%";
-          toast._progressBar.style.transition = `width ${Math.max(0, remainingMs)}ms linear`;
-          void toast._progressBar.offsetWidth;
-          toast._progressBar.style.width = isReverse ? finalWidth : "0%";
-          toast._progressBar._pausedWidth = null;
-        }
-      } catch {}
-    }
-  };
-
-  const onMouseEnter = () => {
-    timer.pause();
-    pauseProgressBar();
-    toast?._pauseUndo?.();
-    toast?.classList.add("toast-paused");
-  };
-  const onMouseLeave = () => {
-    timer.resume();
-    resumeProgressBar();
-    toast?._resumeUndo?.();
-    toast?.classList.remove("toast-paused");
-  };
-
-  const onFocusIn = (e) => {
-    if (
-      e?.target &&
-      typeof e.target.matches === "function" &&
-      e.target.matches(
-        "button, a[href], input, select, textarea, [role='button'], [role='link'], [data-toast-interactive]"
-      )
-    ) {
-      timer.pause();
-      pauseProgressBar();
-      toast?._pauseUndo?.();
-      toast?.classList.add("toast-paused");
-    }
-  };
-
-  const onFocusOut = (e) => {
-    if (!outer.contains(e.relatedTarget)) {
-      timer.resume();
-      resumeProgressBar();
-      toast?._resumeUndo?.();
-      toast?.classList.remove("toast-paused");
-    }
-  };
-
-  outer.addEventListener("mouseenter", onMouseEnter);
-  outer.addEventListener("mouseleave", onMouseLeave);
-  outer.addEventListener("focusin", onFocusIn);
-  outer.addEventListener("focusout", onFocusOut);
-
-  outer._pauseCleanup = () => {
-    outer.removeEventListener("mouseenter", onMouseEnter);
-    outer.removeEventListener("mouseleave", onMouseLeave);
-    outer.removeEventListener("focusin", onFocusIn);
-    outer.removeEventListener("focusout", onFocusOut);
-  };
-}
 
 export async function closeToast(toast) {
   if (!toast?._key) return;
@@ -712,24 +583,7 @@ export async function closeToastByKey(key) {
 
     if (!data) return;
 
-    data.timer?.clear();
-    data.outer?._pauseCleanup?.();
-    data.toast?._cleanupCloseButton?.();
-    data.toast?._cleanupCTA?.();
-    data.toast?._cleanupUndo?.();
-    data.toast?._cleanupSwipe?.();
-    data.toast?._cleanupFocusTrap?.();
-    data.toast?._cleanup?.();
-    if (data.toast?._progressAnimation) {
-      try {
-        data.toast._progressAnimation.pause();
-      } catch {}
-    }
-    const badge = data.outer?.querySelector(".toast-count-badge");
-    if (badge?._scaleTimer) {
-      clearTimeout(badge._scaleTimer);
-      badge._scaleTimer = null;
-    }
+    cleanupToastEntry(data);
     // Clean up CTA click listener if present directly on button/link
     const ctaEl = data.toast?.querySelector("button, a");
     ctaEl?._cleanup?.();
@@ -737,8 +591,6 @@ export async function closeToastByKey(key) {
     active.delete(key);
     visibleCount = Math.max(0, visibleCount - 1);
     emitMetrics();
-
-    if (badge) badge.remove();
 
     const animDuration = data.toast?._animationDuration ?? 400;
     const exitDuration = Math.min(animDuration, 300);

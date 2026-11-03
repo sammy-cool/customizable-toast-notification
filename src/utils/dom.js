@@ -179,6 +179,7 @@ export function getDynamicAccessibleTextColorHex(toastBg) {
     if (typeof value !== "string") return value;
     let current = value.trim();
     let depth = 0;
+    const seen = new Set();
     while (current.toLowerCase().startsWith("var(") && current.endsWith(")") && depth < 5) {
       depth++;
       const inner = current.slice(4, -1).trim();
@@ -186,7 +187,8 @@ export function getDynamicAccessibleTextColorHex(toastBg) {
       const propName = (commaIndex === -1 ? inner : inner.slice(0, commaIndex)).trim();
       const fallbackVal = commaIndex === -1 ? "" : inner.slice(commaIndex + 1).trim();
 
-      if (!propName.startsWith("--")) return current;
+      if (!propName.startsWith("--") || seen.has(propName)) break;
+      seen.add(propName);
 
       let resolved = "";
       try {

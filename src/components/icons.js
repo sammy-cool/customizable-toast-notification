@@ -164,6 +164,14 @@ const ICON_SVGS = {
   `,
 };
 
+function applySvgDimensionsAndColor(svg, size, color) {
+  svg.setAttribute("width", String(size));
+  svg.setAttribute("height", String(size));
+  if (color && typeof color === "string" && color.trim()) {
+    svg.style.color = color.trim();
+  }
+}
+
 /**
  * Creates an icon element for the toast based on options.icon or options.type.
  * @param {object} options
@@ -276,11 +284,7 @@ export function createToastIcon(options = {}) {
     if (matchedAlias) {
       const safeSvg = sanitizeInlineSvg(matchedAlias.trim());
       if (safeSvg) {
-        safeSvg.setAttribute("width", String(iconSize));
-        safeSvg.setAttribute("height", String(iconSize));
-        if (iconColorOpt && typeof iconColorOpt === "string" && iconColorOpt.trim()) {
-          safeSvg.style.color = iconColorOpt.trim();
-        }
+        applySvgDimensionsAndColor(safeSvg, iconSize, iconColorOpt);
         iconTag.appendChild(safeSvg);
       }
       return iconTag;
@@ -298,11 +302,7 @@ export function createToastIcon(options = {}) {
           const hNum = Number.parseFloat(rawH) || iconSize;
           safeSvg.setAttribute("viewBox", `0 0 ${wNum} ${hNum}`);
         }
-        safeSvg.setAttribute("width", String(iconSize));
-        safeSvg.setAttribute("height", String(iconSize));
-        if (iconColorOpt && typeof iconColorOpt === "string" && iconColorOpt.trim()) {
-          safeSvg.style.color = iconColorOpt.trim();
-        }
+        applySvgDimensionsAndColor(safeSvg, iconSize, iconColorOpt);
         iconTag.appendChild(safeSvg);
       } else {
         iconTag.textContent = trimmed;
@@ -322,11 +322,7 @@ export function createToastIcon(options = {}) {
   if ((iconOpt === true || iconOpt === undefined) && builtInSvg) {
     const safeSvg = sanitizeInlineSvg(builtInSvg.trim());
     if (safeSvg) {
-      safeSvg.setAttribute("width", String(iconSize));
-      safeSvg.setAttribute("height", String(iconSize));
-      if (iconColorOpt && typeof iconColorOpt === "string" && iconColorOpt.trim()) {
-        safeSvg.style.color = iconColorOpt.trim();
-      }
+      applySvgDimensionsAndColor(safeSvg, iconSize, iconColorOpt);
       iconTag.appendChild(safeSvg);
     }
     return iconTag;
