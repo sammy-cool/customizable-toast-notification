@@ -158,6 +158,15 @@ export function cleanupToastEntry(data) {
       data.toast._progressAnimation.pause();
     } catch {}
   }
+  if (data._audio || data.toast?._audio) {
+    try {
+      const a = data._audio || data.toast._audio;
+      a.pause();
+      a.src = "";
+    } catch {}
+    data._audio = null;
+    if (data.toast) data.toast._audio = null;
+  }
   const badge = data.outer?.querySelector(".toast-count-badge");
   if (badge?._scaleTimer) {
     clearTimeout(badge._scaleTimer);

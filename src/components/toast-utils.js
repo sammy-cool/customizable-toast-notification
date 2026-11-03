@@ -316,7 +316,9 @@ export async function applyRichStyling(toast, options, onClose) {
   if (shouldPlaySound) {
     if (typeof options?.sound === "string" && typeof window !== "undefined" && typeof window.Audio === "function") {
       try {
-        new window.Audio(options.sound).play().catch(() => {});
+        const audio = new window.Audio(options.sound);
+        toast._audio = audio;
+        audio.play().catch(() => {});
       } catch {}
     } else if (typeof options?.onSound === "function") {
       try {

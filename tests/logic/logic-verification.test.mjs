@@ -7646,6 +7646,53 @@ describe("Architectural Fortification: Updating Dismissed Toasts & Fallback Spaw
     resetConfig();
     resetToastManager();
   });
+
+  test("Fortification 7: High-Contrast Focus & Badge Contrast, Audio Instance Teardown, and Print Media Rules", async () => {
+    freshDom();
+    const {
+      resetToastManager,
+      resetConfig,
+    } = await import("../../src/index.js");
+    resetToastManager();
+
+    // 1. Audio instance cleanup in cleanupToastEntry
+    const { cleanupToastEntry } = await import("../../src/components/toast-timer.js");
+    let paused = false;
+    const mockAudio = {
+      src: "chime.mp3",
+      pause: () => { paused = true; },
+    };
+    const mockData = {
+      _audio: mockAudio,
+      toast: { _audio: mockAudio },
+    };
+    cleanupToastEntry(mockData);
+    assert.strictEqual(paused, true, "Audio was paused on cleanup");
+    assert.strictEqual(mockAudio.src, "", "Audio src was cleared on cleanup");
+    assert.strictEqual(mockData._audio, null, "data._audio was nulled");
+    assert.strictEqual(mockData.toast._audio, null, "mockData.toast._audio was nulled");
+
+    // 2. High-contrast theme CSS styles verification
+    const fs = await import("fs");
+    const path = await import("path");
+    const cssPath = path.resolve("./src/styles.css");
+    const cssContent = fs.readFileSync(cssPath, "utf-8");
+    assert.ok(
+      cssContent.includes('[data-toast-theme="high-contrast"] input:focus-visible'),
+      "High-contrast input focus ring defined in styles.css",
+    );
+    assert.ok(
+      cssContent.includes('[data-toast-theme="high-contrast"] .toast-count-badge'),
+      "High-contrast badge style defined in styles.css",
+    );
+    assert.ok(
+      cssContent.includes("@media print"),
+      "Print media query defined in styles.css",
+    );
+
+    resetConfig();
+    resetToastManager();
+  });
 });
 
 

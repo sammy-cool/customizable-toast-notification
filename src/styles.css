@@ -593,9 +593,18 @@
 
 /* ========== HIGH-CONTRAST FOCUS ACCESSIBILITY ========== */
 [data-toast-theme="high-contrast"] button:focus-visible,
-[data-toast-theme="high-contrast"] a:focus-visible {
+[data-toast-theme="high-contrast"] a:focus-visible,
+[data-toast-theme="high-contrast"] input:focus-visible,
+[data-toast-theme="high-contrast"] select:focus-visible,
+[data-toast-theme="high-contrast"] textarea:focus-visible {
   outline: 3px solid #ffff00;
   outline-offset: 2px;
+}
+
+[data-toast-theme="high-contrast"] .toast-count-badge {
+  background: #ffff00 !important;
+  color: #000000 !important;
+  border: 1px solid #000000 !important;
 }
 
 /* ========== STACKED CARD DECK (CSP MODE & DEFAULT) ========== */
