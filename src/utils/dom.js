@@ -53,14 +53,18 @@ export async function removeElement(el) {
       el.remove();
       return true;
     }
-  } catch {}
+  } catch {
+    /* safe fallback if el.remove throws */
+  }
 
   try {
     if (el.parentNode) {
       el.parentNode.removeChild(el);
       return true;
     }
-  } catch {}
+  } catch {
+    /* safe fallback if removeChild throws */
+  }
 
   return false;
 }

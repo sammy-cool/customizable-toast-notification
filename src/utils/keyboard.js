@@ -82,7 +82,9 @@ export function initKeyboardShortcuts(
       win.removeEventListener("keydown", onKeyDown);
       delete win.__customizableToastEscapeAttached;
       delete win.__customizableToastEscapeCleanup;
-    } catch {}
+    } catch {
+      /* safe fallback if window is detached or property deletion throws */
+    }
   };
   win.__customizableToastEscapeCleanup = cleanup;
   return cleanup;

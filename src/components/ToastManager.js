@@ -62,7 +62,7 @@ const lifecycleListeners = new Map();
  * @returns {() => void} Unsubscribe function
  */
 export function on(event, callback) {
-  if (typeof event !== "string" || typeof callback !== "function") return () => {};
+  if (typeof event !== "string" || typeof callback !== "function") return () => { /* no-op unsubscribe */ };
   const canonicalEvent = event === "show" ? "open" : event;
   if (!lifecycleListeners.has(canonicalEvent)) {
     lifecycleListeners.set(canonicalEvent, new Set());
@@ -539,7 +539,9 @@ export function resetToastManager() {
     cleanupToastEntry(data);
     try {
       data.outer?.remove?.();
-    } catch {}
+    } catch {
+      /* safe fallback if DOM node already detached */
+    }
   }
   if (typeof document !== "undefined") {
     const containerSet = new Set(document.querySelectorAll('[id^="toast-container-"]'));
@@ -548,11 +550,15 @@ export function resetToastManager() {
       if (customTarget && typeof customTarget.querySelectorAll === "function") {
         customTarget.querySelectorAll('[id^="toast-container-"]').forEach((c) => containerSet.add(c));
       }
-    } catch {}
+    } catch {
+      /* safe fallback if custom targetNode query fails */
+    }
     containerSet.forEach((c) => {
       try {
         c._stackedCleanup?.();
-      } catch {}
+      } catch {
+        /* safe fallback on stacked cleanup */
+      }
     });
   }
   active.clear();
@@ -695,7 +701,9 @@ export async function closeToastByKey(key) {
           parentContainer._stackedCleanup?.();
           unregisterContainer(parentContainer.id);
           parentContainer.remove();
-        } catch {}
+        } catch {
+          /* safe fallback if container already removed */
+        }
       }
     } else if (parentContainer && parentContainer.getAttribute("data-stacked") === "true") {
       updateStackedLayout(parentContainer);
@@ -761,7 +769,9 @@ async function removeWithTransition(el, targetEl, animationDurationMs = 400) {
       }
       try {
         animEl?.removeEventListener?.("transitionend", onEnd, true);
-      } catch {}
+      } catch {
+        /* safe fallback if listener removal fails */
+      }
       void removeElement(el).catch(console.error);
       resolve();
     };

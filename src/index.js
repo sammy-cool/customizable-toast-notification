@@ -23,6 +23,8 @@ import {
   normalizeToastOptions,
   sanitizeToastOptions as resolveToastOptions,
 } from "./utils/options-sanitizer.js";
+import { toastPromise as coreToastPromise } from "./components/toast-promise.js";
+import { createInstance, buildToastAPI } from "./utils/instance-factory.js";
 
 /**
  * @typedef {'modern' | 'retro' | 'futuristic' | 'subtle' | 'bell' | string} SoundPreset
@@ -625,7 +627,8 @@ const clear = noopAll;
 const dismissAll = noopAll;
 export { dismissToast as dismiss, noopAll as noop, dismissAll, clear };
 
-const TOAST_PROMISE_LOADING_DURATION_MS = 24 * 60 * 60 * 1000;
+/** @type {string} */
+const version = typeof __VERSION__ !== "undefined" ? __VERSION__ : "4.0.3";
 
 /**
  * Wraps a promise or function with automatic loading, success, and error toasts.
@@ -633,96 +636,13 @@ const TOAST_PROMISE_LOADING_DURATION_MS = 24 * 60 * 60 * 1000;
  * @param {Promise<T> | (() => Promise<T> | T)} promiseOrFn
  * @param {ToastPromiseMessages} [messages]
  * @param {ToastOptions} [options]
+ * @param {Function} [creator]
  * @returns {Promise<T>}
  */
 async function toastPromise(promiseOrFn, messages = {}, options = {}, creator = createToastWithPriority) {
-  if (!promiseOrFn || (typeof promiseOrFn !== "function" && typeof promiseOrFn.then !== "function")) {
-    throw new TypeError("toastPromise requires a Promise or Promise-returning function");
-  }
-
-  const safeMessages = messages && typeof messages === "object" ? messages : {};
-  const safeOptions = options && typeof options === "object" ? options : {};
-
-  const loadingInput = safeMessages.loading ?? "Loading...";
-  const loadingOptions =
-    typeof loadingInput === "object" && loadingInput !== null && !Array.isArray(loadingInput)
-      ? {
-          ...safeOptions,
-          type: "info",
-          showProgressBar: false,
-          pauseOnHover: false,
-          showLoader: safeOptions.showLoader ?? true,
-          ...loadingInput,
-          duration: TOAST_PROMISE_LOADING_DURATION_MS,
-        }
-      : {
-          ...safeOptions,
-          type: "info",
-          message: String(loadingInput),
-          duration: TOAST_PROMISE_LOADING_DURATION_MS,
-          showProgressBar: false,
-          pauseOnHover: false,
-          showLoader: safeOptions.showLoader ?? true,
-        };
-
-  const loadingHandle = await creator(loadingOptions);
-
-  const baseOptions = {
-    ...safeOptions,
-    pauseOnHover: safeOptions.pauseOnHover,
-  };
-
-  try {
-    const settledPromise =
-      typeof promiseOrFn === "function" ? promiseOrFn() : promiseOrFn;
-    if (!settledPromise || typeof settledPromise.then !== "function") {
-      throw new TypeError("toastPromise requires a Promise or Promise-returning function");
-    }
-    const result = await settledPromise;
-
-    const successResult =
-      typeof safeMessages.success === "function"
-        ? safeMessages.success(result)
-        : (safeMessages.success ?? "Done!");
-
-    const successOptions =
-      typeof successResult === "object" && successResult !== null && !Array.isArray(successResult)
-        ? { ...baseOptions, type: "success", showLoader: false, ...successResult }
-        : { ...baseOptions, type: "success", showLoader: false, message: String(successResult) };
-
-    if (loadingHandle && typeof loadingHandle.update === "function") {
-      const updated = await loadingHandle.update(successOptions);
-      if (!updated) {
-        await creator(successOptions);
-      }
-    } else {
-      await creator(successOptions);
-    }
-
-    return result;
-  } catch (err) {
-    const errorResult =
-      typeof safeMessages.error === "function"
-        ? safeMessages.error(err)
-        : (safeMessages.error ?? "Something went wrong.");
-
-    const errorOptions =
-      typeof errorResult === "object" && errorResult !== null && !Array.isArray(errorResult)
-        ? { ...baseOptions, type: "error", showLoader: false, ...errorResult }
-        : { ...baseOptions, type: "error", showLoader: false, message: String(errorResult) };
-
-    if (loadingHandle && typeof loadingHandle.update === "function") {
-      const updated = await loadingHandle.update(errorOptions);
-      if (!updated) {
-        await creator(errorOptions);
-      }
-    } else {
-      await creator(errorOptions);
-    }
-
-    throw err;
-  }
+  return coreToastPromise(promiseOrFn, messages, options, creator);
 }
+
 
 createToastWithPriority.promise = toastPromise;
 createToastWithPriority.dismiss = dismissToast;
@@ -756,157 +676,14 @@ function resetToastManager() {
  * @returns {ToastInstance}
  */
 function createToastInstance(defaultOptions = {}) {
-  const safeDefaults = typeof defaultOptions === "object" && defaultOptions !== null ? defaultOptions : {};
-  const instanceId = generateToastId("inst");
-  const instanceListeners = new Map();
-
-  const instanceOn = (event, fn) => {
-    if (typeof event !== "string" || typeof fn !== "function") return () => {};
-    const canonicalEvent = event === "show" ? "open" : event;
-    if (!instanceListeners.has(canonicalEvent)) instanceListeners.set(canonicalEvent, new Set());
-    instanceListeners.get(canonicalEvent).add(fn);
-    return () => instanceOff(canonicalEvent, fn);
-  };
-
-  const instanceOff = (event, fn) => {
-    const canonicalEvent = event === "show" ? "open" : event;
-    if (!instanceListeners.has(canonicalEvent)) return;
-    instanceListeners.get(canonicalEvent).delete(fn);
-  };
-
-  const instanceEmit = (event, payload) => {
-    if (!instanceListeners.has(event)) return;
-    for (const fn of instanceListeners.get(event)) {
-      try {
-        fn(payload);
-      } catch (err) {
-        console.error(`[ToastInstance] Error in '${event}' listener:`, err);
-      }
-    }
-  };
-
-  const instanceKeys = new Set();
-
-  managerOn("open", (payload) => {
-    if (payload?.options?._instanceId === instanceId) {
-      if (payload?.key) instanceKeys.add(payload.key);
-      instanceEmit("open", payload);
-    }
+  return createInstance(defaultOptions, {
+    createToast: createToastWithPriority,
+    closeToastByKey,
+    managerOn,
+    getToastMetrics,
+    toastPromise: (p, m, o, inst) => coreToastPromise(p, m, o, inst || createToastWithPriority),
+    version,
   });
-  managerOn("close", (payload) => {
-    if (payload?.key) instanceKeys.delete(payload.key);
-    if (payload?.options?._instanceId === instanceId) instanceEmit("close", payload);
-  });
-  managerOn("queue", (payload) => {
-    if (payload?.options?._instanceId === instanceId) instanceEmit("queue", payload);
-  });
-  managerOn("drop", (payload) => {
-    if (payload?.options?._instanceId === instanceId) instanceEmit("drop", payload);
-  });
-
-  const normalizeOptions = (messageOrOpts, callerOpts) => {
-    let opts = {};
-    if (typeof messageOrOpts === "string") {
-      opts = { ...(callerOpts && typeof callerOpts === "object" ? callerOpts : {}), message: messageOrOpts };
-    } else if (messageOrOpts && typeof messageOrOpts === "object") {
-      opts = { ...messageOrOpts };
-    }
-    return { ...safeDefaults, ...opts, _instanceId: instanceId };
-  };
-
-  const trackHandle = async (handlePromise) => {
-    const handle = await handlePromise;
-    if (handle?.id) {
-      instanceKeys.add(handle.id);
-      return {
-        get id() {
-          return handle.id;
-        },
-        update: handle.update,
-        dismiss: async () => {
-          instanceKeys.delete(handle.id);
-          return handle.dismiss();
-        },
-      };
-    }
-    return handle;
-  };
-
-  /** @type {any} */
-  const instance = (messageOrOpts, callerOpts) => {
-    return trackHandle(createToastWithPriority(normalizeOptions(messageOrOpts, callerOpts)));
-  };
-
-  instance.show = (opts) => trackHandle(createToastWithPriority(normalizeOptions(opts)));
-  instance.success = (msg, opts) => trackHandle(createToastWithPriority.success(msg, normalizeOptions(msg, { ...opts, type: "success" })));
-  instance.error = (msg, opts) => trackHandle(createToastWithPriority.error(msg, normalizeOptions(msg, { ...opts, type: "error" })));
-  instance.warning = (msg, opts) => trackHandle(createToastWithPriority.warning(msg, normalizeOptions(msg, { ...opts, type: "warning" })));
-  instance.info = (msg, opts) => trackHandle(createToastWithPriority.info(msg, normalizeOptions(msg, { ...opts, type: "info" })));
-  instance.loading = (msg, opts) => trackHandle(createToastWithPriority.loading(msg, normalizeOptions(msg, { ...opts, type: "loading" })));
-  instance.custom = (msg, opts) => trackHandle(createToastWithPriority.custom(msg, normalizeOptions(msg, { ...opts, type: "custom" })));
-  instance.promise = (promiseOrFn, messages, opts) => {
-    return toastPromise(promiseOrFn, messages, normalizeOptions(opts), instance);
-  };
-  instance.dismiss = async (target) => {
-    let resolvedTarget = target;
-    if (target && typeof target.then === "function") {
-      try {
-        resolvedTarget = await target;
-      } catch {
-        return;
-      }
-    }
-
-    if (resolvedTarget) {
-      let targetKey = null;
-      if (typeof resolvedTarget === "string" && resolvedTarget.length > 0) {
-        targetKey = resolvedTarget;
-      } else if (resolvedTarget && typeof resolvedTarget === "object") {
-        targetKey = resolvedTarget.id || resolvedTarget._key || null;
-      }
-
-      if (targetKey && instanceKeys.has(targetKey)) {
-        instanceKeys.delete(targetKey);
-        await closeToastByKey(targetKey);
-        return;
-      }
-
-      if (typeof resolvedTarget?.dismiss === "function") {
-        await resolvedTarget.dismiss();
-        return;
-      }
-    }
-
-    const keys = Array.from(instanceKeys);
-    const lastKey = keys.pop();
-    if (lastKey) {
-      instanceKeys.delete(lastKey);
-      await closeToastByKey(lastKey);
-    }
-  };
-  instance.dismissAll = async () => {
-    const keys = Array.from(instanceKeys);
-    instanceKeys.clear();
-    for (const key of keys) {
-      await closeToastByKey(key);
-    }
-  };
-  instance.clear = instance.dismissAll;
-  instance.getActiveCount = () => instanceKeys.size;
-  Object.defineProperty(instance, "size", {
-    get: () => instanceKeys.size,
-    configurable: true,
-    enumerable: true,
-  });
-  instance.on = instanceOn;
-  instance.off = instanceOff;
-  instance.instanceId = instanceId;
-  instance.getDefaults = () => ({ ...safeDefaults });
-  instance.version = version;
-  instance.getToastMetrics = getToastMetrics;
-  instance.createToast = instance;
-
-  return instance;
 }
 
 /**
@@ -914,42 +691,25 @@ function createToastInstance(defaultOptions = {}) {
  * @returns {Record<string, any>}
  */
 function createToastAPI() {
-  const api = {
-    success: (message, options) => createToastWithPriority.success(message, options),
-    error: (message, options) => createToastWithPriority.error(message, options),
-    warning: (message, options) => createToastWithPriority.warning(message, options),
-    info: (message, options) => createToastWithPriority.info(message, options),
-    loading: (message, options) => createToastWithPriority.loading(message, options),
-    custom: (message, options) => createToastWithPriority.custom(message, options),
-    show: (options) => createToastWithPriority(options),
-    promise: toastPromise,
-    dismiss: dismissToast,
-    dismissAll: noopAll,
-    clear: noopAll,
-    on: managerOn,
-    off: managerOff,
+  return buildToastAPI({
+    createToast: createToastWithPriority,
+    toastPromise,
+    dismissToast,
+    noopAll,
+    managerOn,
+    managerOff,
     createToastInstance,
-    getActiveCount: () => getToastMetrics().activeCount,
+    getToastMetrics,
     setConfig,
     getConfig,
     resetConfig,
-    getToastMetrics,
     setDefaultColors,
     setDefaultMessages,
     initKeyboardShortcuts,
     destroyKeyboardShortcuts,
     version,
-  };
-  Object.defineProperty(api, "size", {
-    get: () => getToastMetrics().activeCount,
-    configurable: true,
-    enumerable: true,
   });
-  return api;
 }
-
-/** @type {string} */
-const version = typeof __VERSION__ !== "undefined" ? __VERSION__ : "4.0.3";
 
 const getActiveCount = () => getToastMetrics().activeCount;
 

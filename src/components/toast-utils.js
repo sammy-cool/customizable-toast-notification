@@ -31,7 +31,9 @@ export function playNativeTone(type = "info") {
       sharedAudioCtx = new AudioCtx();
     }
     if (sharedAudioCtx.state === "suspended") {
-      sharedAudioCtx.resume().catch(() => {});
+      sharedAudioCtx.resume().catch(() => {
+        /* ignore audio unlock rejection */
+      });
     }
 
     const now = sharedAudioCtx.currentTime;
@@ -53,7 +55,9 @@ export function playNativeTone(type = "info") {
 
     osc.start(now);
     osc.stop(now + 0.2);
-  } catch {}
+  } catch {
+    /* safe fallback if AudioContext graph nodes fail */
+  }
 }
 
 /**
@@ -318,12 +322,18 @@ export async function applyRichStyling(toast, options, onClose) {
       try {
         const audio = new window.Audio(options.sound);
         toast._audio = audio;
-        audio.play().catch(() => {});
-      } catch {}
+        audio.play().catch(() => {
+          /* ignore browser autoplay restrictions */
+        });
+      } catch {
+        /* safe fallback if Audio element construction fails */
+      }
     } else if (typeof options?.onSound === "function") {
       try {
         options.onSound(options);
-      } catch {}
+      } catch {
+        /* safe fallback if onSound callback throws */
+      }
     } else if (typeof window !== "undefined") {
       playNativeTone(options?.type);
     }

@@ -52,7 +52,9 @@ export function resetContainerRegistry() {
     if (host) {
       try {
         host.remove();
-      } catch {}
+      } catch {
+        /* safe fallback if shadow host removal fails */
+      }
     }
     const containerSet = new Set(document.querySelectorAll('[id^="toast-container-"]'));
     try {
@@ -60,11 +62,15 @@ export function resetContainerRegistry() {
       if (customTarget && typeof customTarget.querySelectorAll === "function") {
         customTarget.querySelectorAll('[id^="toast-container-"]').forEach((c) => containerSet.add(c));
       }
-    } catch {}
+    } catch {
+      /* safe fallback if targetNode query fails */
+    }
     containerSet.forEach((c) => {
       try {
         c.remove();
-      } catch {}
+      } catch {
+        /* safe fallback if container removal fails */
+      }
     });
   }
 }
@@ -135,7 +141,9 @@ export async function getOrCreateToastContainer(options = {}, setPosition) {
     let host = null;
     try {
       host = root.querySelector ? root.querySelector("#toast-shadow-host") : null;
-    } catch {}
+    } catch {
+      /* safe fallback if querySelector on non-standard root fails */
+    }
     if (!host) {
       host = document.createElement("div");
       host.id = "toast-shadow-host";
@@ -149,7 +157,9 @@ export async function getOrCreateToastContainer(options = {}, setPosition) {
     if (!host.shadowRoot && typeof host.attachShadow === "function") {
       try {
         host.attachShadow({ mode: "open" });
-      } catch {}
+      } catch {
+        /* safe fallback if shadow root already attached or unsupported */
+      }
     }
     if (host.shadowRoot) {
       root = host.shadowRoot;
@@ -271,7 +281,9 @@ export async function getOrCreateToastContainer(options = {}, setPosition) {
               el.appendChild(all[i].firstChild);
             }
             all[i].remove();
-          } catch {}
+          } catch {
+            /* safe fallback if duplicate node already detached */
+          }
         }
       }
     }

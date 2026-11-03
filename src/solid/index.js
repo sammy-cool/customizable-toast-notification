@@ -56,7 +56,9 @@ export function useToast(defaultOptions, onCleanupHook) {
         cleanup(() => {
           void instance.dismissAll();
         });
-      } catch {}
+      } catch {
+        /* safe fallback if cleanup registration fails outside reactive root */
+      }
     }
     return instance;
   }

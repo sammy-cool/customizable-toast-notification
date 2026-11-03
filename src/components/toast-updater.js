@@ -20,7 +20,9 @@ function bindProgressBarAnimation(toast, progressBar, durationMs) {
   if (typeof progressBar.animate === "function") {
     try {
       toast._progressAnimation?.cancel();
-    } catch {}
+    } catch {
+      /* safe fallback if WAAPI animation already cancelled */
+    }
     const keyframes = isReverse
       ? [{ width: "0%" }, { width: finalWidth }]
       : [{ width: finalWidth }, { width: "0%" }];
@@ -320,7 +322,9 @@ export async function applyToastDOMUpdates(data, newOptions, context) {
     if (toast._progressAnimation) {
       try {
         toast._progressAnimation.cancel();
-      } catch {}
+      } catch {
+        /* safe fallback if animation cancel fails */
+      }
       toast._progressAnimation = null;
     }
     if (progressBar) {
@@ -351,7 +355,9 @@ export async function applyToastDOMUpdates(data, newOptions, context) {
         if (toast._progressAnimation) {
           try {
             toast._progressAnimation.cancel();
-          } catch {}
+          } catch {
+            /* safe fallback if indeterminate transition cancel fails */
+          }
           toast._progressAnimation = null;
         }
         const isRtl = progressBar._isRtl || newOptions.fontDirection === "rtl" || newOptions.progressDirection === "rtl";
@@ -369,7 +375,9 @@ export async function applyToastDOMUpdates(data, newOptions, context) {
         if (toast._progressAnimation) {
           try {
             toast._progressAnimation.cancel();
-          } catch {}
+          } catch {
+            /* safe fallback if manual progress cancel fails */
+          }
           toast._progressAnimation = null;
         }
         if (currentWidth) {
@@ -440,14 +448,20 @@ export async function applyToastDOMUpdates(data, newOptions, context) {
         if (toast._progressAnimation) {
           try {
             toast._progressAnimation.pause();
-          } catch {}
+          } catch {
+            /* safe fallback if progress pause fails */
+          }
         }
       }
     } else {
       data.timer = null;
       if (progressBar && !progressBar._isManualProgress && !progressBar._isIndeterminate) {
         if (toast._progressAnimation) {
-          try { toast._progressAnimation.cancel(); } catch {}
+          try {
+            toast._progressAnimation.cancel();
+          } catch {
+            /* safe fallback if animation cancel fails */
+          }
           toast._progressAnimation = null;
         }
         progressBar.style.width = "0%";
@@ -495,7 +509,9 @@ export async function applyToastDOMUpdates(data, newOptions, context) {
           try {
             unregisterContainer(currentContainer.id);
             currentContainer.remove();
-          } catch {}
+          } catch {
+            /* safe fallback if container already removed */
+          }
         } else if (currentContainer && currentContainer.getAttribute("data-stacked") === "true") {
           updateStackedLayout(currentContainer);
         }
@@ -560,19 +576,27 @@ export async function applyToastDOMUpdates(data, newOptions, context) {
       try {
         data._audio.pause();
         data._audio.src = "";
-      } catch {}
+      } catch {
+        /* safe fallback if audio element cleanup fails */
+      }
       data._audio = null;
     }
     if (typeof newOptions.sound === "string" && typeof window !== "undefined" && typeof window.Audio === "function") {
       try {
         const audio = new window.Audio(newOptions.sound);
         data._audio = audio;
-        audio.play().catch(() => {});
-      } catch {}
+        audio.play().catch(() => {
+          /* ignore browser autoplay restrictions */
+        });
+      } catch {
+        /* safe fallback if Audio initialization fails */
+      }
     } else if (typeof newOptions.onSound === "function") {
       try {
         newOptions.onSound(newOptions);
-      } catch {}
+      } catch {
+        /* safe fallback if onSound callback throws */
+      }
     } else if (typeof window !== "undefined") {
       playNativeTone(newOptions.type || data.options.type);
     }

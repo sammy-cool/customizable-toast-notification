@@ -48,7 +48,9 @@ export async function setupPauseOnHover(data) {
     if (toast?._progressAnimation) {
       try {
         toast._progressAnimation.pause();
-      } catch {}
+      } catch {
+        /* safe fallback if WAAPI animation already finished */
+      }
     } else if (toast?._progressBar) {
       try {
         if (toast._progressBar._isIndeterminate) {
@@ -61,7 +63,9 @@ export async function setupPauseOnHover(data) {
           toast._progressBar.style.transition = "none";
           toast._progressBar.style.width = computedWidth;
         }
-      } catch {}
+      } catch {
+        /* safe fallback if getComputedStyle fails in non-DOM test env */
+      }
     }
   };
 
@@ -69,7 +73,9 @@ export async function setupPauseOnHover(data) {
     if (toast?._progressAnimation) {
       try {
         toast._progressAnimation.play();
-      } catch {}
+      } catch {
+        /* safe fallback if WAAPI animation play fails */
+      }
     } else if (toast?._progressBar) {
       try {
         if (toast._progressBar._isIndeterminate) {
@@ -85,7 +91,9 @@ export async function setupPauseOnHover(data) {
           toast._progressBar.style.width = isReverse ? finalWidth : "0%";
           toast._progressBar._pausedWidth = null;
         }
-      } catch {}
+      } catch {
+        /* safe fallback if style mutation fails */
+      }
     }
   };
 
@@ -156,14 +164,18 @@ export function cleanupToastEntry(data) {
   if (data.toast?._progressAnimation) {
     try {
       data.toast._progressAnimation.pause();
-    } catch {}
+    } catch {
+      /* safe fallback if WAAPI animation already cancelled */
+    }
   }
   if (data._audio || data.toast?._audio) {
     try {
       const a = data._audio || data.toast._audio;
       a.pause();
       a.src = "";
-    } catch {}
+    } catch {
+      /* safe fallback if audio already disposed */
+    }
     data._audio = null;
     if (data.toast) data.toast._audio = null;
   }
@@ -175,6 +187,8 @@ export function cleanupToastEntry(data) {
   if (badge) {
     try {
       badge.remove();
-    } catch {}
+    } catch {
+      /* safe fallback if badge node already detached */
+    }
   }
 }

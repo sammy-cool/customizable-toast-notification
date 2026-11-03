@@ -8,7 +8,7 @@ const getNow = () =>
 
 export class PausableTimer {
   constructor(callback, delay) {
-    this.callback = typeof callback === "function" ? callback : () => {};
+    this.callback = typeof callback === "function" ? callback : () => { /* no-op timer callback */ };
     const isInfinite = delay === Infinity;
     const safeDelay = Number.isFinite(delay) && delay >= 0 ? delay : (isInfinite ? Infinity : 0);
     this.delay = safeDelay;

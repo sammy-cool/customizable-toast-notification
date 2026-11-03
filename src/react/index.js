@@ -63,7 +63,9 @@ export function useToast(defaultOptions) {
         hasDefaults ? [JSON.stringify(defaultOptions)] : []
       );
     }
-  } catch {}
+  } catch {
+    /* safe fallback if React hooks throw outside component tree or JSON.stringify fails on circular structures */
+  }
 
   if (hasDefaults) {
     const key = getScopedKey(defaultOptions);

@@ -42,7 +42,9 @@ export function createToastStore(defaultOptions) {
     for (const fn of subscribers) {
       try {
         fn(state);
-      } catch {}
+      } catch {
+        /* safe fallback if subscriber callback throws */
+      }
     }
   }
 
@@ -70,7 +72,9 @@ export function createToastStore(defaultOptions) {
         run({ metrics: getToastMetrics() });
         return () => subscribers.delete(run);
       }
-      return () => {};
+      return () => {
+        /* no-op unsubscribe */
+      };
     },
     success: wrap(base.success),
     error: wrap(base.error),

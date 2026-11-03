@@ -187,7 +187,9 @@ function parseHtmlInert(html) {
       const parser = new DOMParser();
       const doc = parser.parseFromString(html, "text/html");
       if (doc && doc.body) return doc.body;
-    } catch {}
+    } catch {
+      /* safe fallback to template/div parsing if DOMParser fails */
+    }
   }
   if (typeof document !== "undefined") {
     const template = document.createElement("template");
