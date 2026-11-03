@@ -568,6 +568,8 @@ const dismissToast = async (target) => {
     } finally {
       if (posKey) {
         closePromisesByPosition.delete(posKey);
+      } else {
+        globalClosePromise = null;
       }
     }
   };
@@ -577,9 +579,6 @@ const dismissToast = async (target) => {
     closePromisesByPosition.set(posKey, closeTask);
   } else {
     globalClosePromise = closeTask;
-    closeTask.finally(() => {
-      globalClosePromise = null;
-    });
   }
   await closeTask;
 };

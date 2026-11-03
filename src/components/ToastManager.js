@@ -195,86 +195,88 @@ export async function showToast(options = {}) {
     const entry = { options, count: 1, rafId: 0 };
     pending.set(key, entry);
 
-    entry.rafId = requestAnimationFrame(async () => {
-      const current = pending.get(key);
-      if (!current) return;
-      pending.delete(key);
+    entry.rafId = requestAnimationFrame(() => {
+      void (async () => {
+        const current = pending.get(key);
+        if (!current) return;
+        pending.delete(key);
 
-      if (visibleCount >= getConfig().maxVisible) {
-        const item = { options: current.options, key, count: current.count };
-        const maxQ = getConfig().maxQueueSize ?? 100;
-        if (maxQ <= 0) {
-          droppedCount++;
-          emitMetrics();
-          return;
-        }
-
-        const existingQueued = queue.find((queuedItem) => queuedItem.key === key);
-        if (existingQueued) {
-          existingQueued.count += current.count;
-          if (typeof current.options?.priority === "number") {
-            existingQueued.options = { ...existingQueued.options, ...current.options };
-            existingQueued.priority = { score: getItemPriority(existingQueued) };
+        if (visibleCount >= getConfig().maxVisible) {
+          const item = { options: current.options, key, count: current.count };
+          const maxQ = getConfig().maxQueueSize ?? 100;
+          if (maxQ <= 0) {
+            droppedCount++;
+            emitMetrics();
+            return;
           }
-          emitMetrics();
-          return;
-        }
-        const usesPriority =
-          typeof current.options?.priority === "number" ||
-          typeof getConfig().priorityScorer === "function" ||
-          queue.some((queuedItem) => typeof queuedItem?.options?.priority === "number");
 
-        if (usesPriority) {
-          item.priority = { score: getItemPriority(item) };
-        }
+          const existingQueued = queue.find((queuedItem) => queuedItem.key === key);
+          if (existingQueued) {
+            existingQueued.count += current.count;
+            if (typeof current.options?.priority === "number") {
+              existingQueued.options = { ...existingQueued.options, ...current.options };
+              existingQueued.priority = { score: getItemPriority(existingQueued) };
+            }
+            emitMetrics();
+            return;
+          }
+          const usesPriority =
+            typeof current.options?.priority === "number" ||
+            typeof getConfig().priorityScorer === "function" ||
+            queue.some((queuedItem) => typeof queuedItem?.options?.priority === "number");
 
-        if (queue.length >= maxQ) {
           if (usesPriority) {
-            const incomingPriority = getItemPriority(item);
-            let lowestIndex = 0;
-            let lowestPriority = getItemPriority(queue[0]);
-
-            for (let index = 1; index < queue.length; index++) {
-              const candidatePriority = getItemPriority(queue[index]);
-              if (candidatePriority < lowestPriority) {
-                lowestIndex = index;
-                lowestPriority = candidatePriority;
-              }
-            }
-
-            if (incomingPriority <= lowestPriority) {
-              droppedCount++;
-              emitMetrics();
-              emitLifecycle("drop", { key: item.key, options: item.options, reason: "queue_overflow" });
-              return;
-            }
-
-            const droppedItem = queue.splice(lowestIndex, 1)[0];
-            droppedCount++;
-            emitLifecycle("drop", { key: droppedItem?.key, options: droppedItem?.options, reason: "queue_overflow" });
-          } else {
-            const droppedItem = queue.shift();
-            droppedCount++;
-            emitLifecycle("drop", { key: droppedItem?.key, options: droppedItem?.options, reason: "queue_overflow" });
+            item.priority = { score: getItemPriority(item) };
           }
+
+          if (queue.length >= maxQ) {
+            if (usesPriority) {
+              const incomingPriority = getItemPriority(item);
+              let lowestIndex = 0;
+              let lowestPriority = getItemPriority(queue[0]);
+
+              for (let index = 1; index < queue.length; index++) {
+                const candidatePriority = getItemPriority(queue[index]);
+                if (candidatePriority < lowestPriority) {
+                  lowestIndex = index;
+                  lowestPriority = candidatePriority;
+                }
+              }
+
+              if (incomingPriority <= lowestPriority) {
+                droppedCount++;
+                emitMetrics();
+                emitLifecycle("drop", { key: item.key, options: item.options, reason: "queue_overflow" });
+                return;
+              }
+
+              const droppedItem = queue.splice(lowestIndex, 1)[0];
+              droppedCount++;
+              emitLifecycle("drop", { key: droppedItem?.key, options: droppedItem?.options, reason: "queue_overflow" });
+            } else {
+              const droppedItem = queue.shift();
+              droppedCount++;
+              emitLifecycle("drop", { key: droppedItem?.key, options: droppedItem?.options, reason: "queue_overflow" });
+            }
+          }
+
+          item.seq = ++queueSequence;
+          queue.push(item);
+          if (usesPriority) {
+            queue.sort((a, b) => (getItemPriority(b) - getItemPriority(a)) || (a.seq - b.seq));
+          }
+          emitMetrics();
+          emitLifecycle("queue", { key: item.key, options: item.options });
+          await drainQueue();
+          return;
         }
 
-        item.seq = ++queueSequence;
-        queue.push(item);
-        if (usesPriority) {
-          queue.sort((a, b) => (getItemPriority(b) - getItemPriority(a)) || (a.seq - b.seq));
+        try {
+          await createOne(current.options, key, current.count);
+        } catch (error) {
+          console.error("showToast failed:", error);
         }
-        emitMetrics();
-        emitLifecycle("queue", { key: item.key, options: item.options });
-        await drainQueue();
-        return;
-      }
-
-      try {
-        await createOne(current.options, key, current.count);
-      } catch (error) {
-        console.error("showToast failed:", error);
-      }
+      })();
     });
 
     return key;
