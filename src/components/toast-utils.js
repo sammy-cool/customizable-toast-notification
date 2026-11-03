@@ -15,6 +15,47 @@ import {
 import { getConfig } from "../utils/config.js";
 import { createToastIcon } from "./icons.js";
 
+let sharedAudioCtx = null;
+
+/**
+ * Synthesizes a subtle, dependency-free Web Audio chime.
+ * @param {string} [type]
+ */
+export function playNativeTone(type = "info") {
+  try {
+    if (typeof window === "undefined") return;
+    const AudioCtx = window.AudioContext || window.webkitAudioContext;
+    if (!AudioCtx) return;
+
+    if (!sharedAudioCtx || sharedAudioCtx.state === "closed") {
+      sharedAudioCtx = new AudioCtx();
+    }
+    if (sharedAudioCtx.state === "suspended") {
+      sharedAudioCtx.resume().catch(() => {});
+    }
+
+    const now = sharedAudioCtx.currentTime;
+    const osc = sharedAudioCtx.createOscillator();
+    const gain = sharedAudioCtx.createGain();
+
+    osc.type = "sine";
+    const baseFreq = type === "error" ? 220 : type === "warning" ? 440 : 587.33;
+    const endFreq = type === "error" ? 180 : type === "warning" ? 520 : 880;
+
+    osc.frequency.setValueAtTime(baseFreq, now);
+    osc.frequency.exponentialRampToValueAtTime(endFreq, now + 0.12);
+
+    gain.gain.setValueAtTime(0.06, now);
+    gain.gain.exponentialRampToValueAtTime(0.001, now + 0.18);
+
+    osc.connect(gain);
+    gain.connect(sharedAudioCtx.destination);
+
+    osc.start(now);
+    osc.stop(now + 0.2);
+  } catch {}
+}
+
 /**
  * Applies rich styling and content to a toast element.
  * @param {HTMLElement} toast - The toast container element.
@@ -141,6 +182,8 @@ export async function applyRichStyling(toast, options, onClose) {
       boxSizing: "border-box",
       userSelect: "text",
       pointerEvents: "auto",
+      contain: "layout style",
+      willChange: "transform, opacity",
       touchAction: options?.swipeToDismiss === false ? "auto" : "pan-y",
       transition: `opacity ${opacityDuration} ${opacityEasing}, transform ${validAnimationDuration} ${easing}`,
       transform: getInitialTransform(options?.position, options?.animationType, isSpring),
@@ -279,6 +322,8 @@ export async function applyRichStyling(toast, options, onClose) {
       try {
         options.onSound(options);
       } catch {}
+    } else if (typeof window !== "undefined") {
+      playNativeTone(options?.type);
     }
   }
 

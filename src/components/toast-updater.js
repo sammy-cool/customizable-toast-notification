@@ -1,7 +1,7 @@
 import { getDynamicAccessibleTextColorHex } from "../utils/dom.js";
 import { createToastIcon } from "./icons.js";
 import { createLoader } from "./loader.js";
-import { appendMessageContent } from "./toast-utils.js";
+import { appendMessageContent, playNativeTone } from "./toast-utils.js";
 import {
   createCTA,
   createUndoAction,
@@ -565,6 +565,8 @@ export async function applyToastDOMUpdates(data, newOptions, context) {
       try {
         newOptions.onSound(newOptions);
       } catch {}
+    } else if (typeof window !== "undefined") {
+      playNativeTone(newOptions.type || data.options.type);
     }
   }
 

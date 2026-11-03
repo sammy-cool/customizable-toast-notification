@@ -6996,6 +6996,123 @@ describe("Architectural Fortification: Updating Dismissed Toasts & Fallback Spaw
     pt.pause();
     assert.strictEqual(pauseAfterDoneFired, true, "pause when remaining <= 0 fires callback");
   });
+
+  test("Category A Architectural Fortification: Scoped Instance State, SSR Safe Handle, Web Audio Chime, and CSS Containment", async () => {
+    freshDom();
+    const { createToastInstance, createToast, resetToastManager } = await import("../../src/index.js");
+    const { playNativeTone } = await import("../../src/components/toast-utils.js");
+    resetToastManager();
+
+    // 1. Scoped Instance State Isolation: instance.dismissAll does not purge other instances or global toasts
+    const instA = createToastInstance({ position: "top-left", maxVisibleToasts: 5 });
+    const instB = createToastInstance({ position: "top-right", maxVisibleToasts: 5 });
+
+    const handleA1 = await instA.success("Instance A Toast 1", { duration: 10000 });
+    const handleA2 = await instA.info("Instance A Toast 2", { duration: 10000 });
+    const handleB = await instB.warning("Instance B Toast 1", { duration: 10000 });
+    const globalHandle = await createToast.error("Global Toast", { duration: 10000 });
+    await new Promise((r) => setTimeout(r, 80));
+
+    assert.ok(handleA1.id, "handleA1 has valid id");
+    assert.ok(handleA2.id, "handleA2 has valid id");
+    assert.ok(handleB.id, "handleB has valid id");
+    assert.ok(globalHandle.id, "globalHandle has valid id");
+
+    // Dismiss all toasts belonging to Instance A
+    await instA.dismissAll();
+    await new Promise((r) => setTimeout(r, 80));
+
+    // Verify Instance A toasts are removed, while handleB and globalHandle remain active in DOM
+    const hasA1 = Array.from(document.querySelectorAll(".toast")).some((el) => el.textContent.includes("Instance A Toast 1"));
+    const hasA2 = Array.from(document.querySelectorAll(".toast")).some((el) => el.textContent.includes("Instance A Toast 2"));
+    const hasB = Array.from(document.querySelectorAll(".toast")).some((el) => el.textContent.includes("Instance B Toast 1"));
+    const hasGlobal = Array.from(document.querySelectorAll(".toast")).some((el) => el.textContent.includes("Global Toast"));
+
+    assert.strictEqual(hasA1, false, "Instance A toast 1 dismissed by instA.dismissAll");
+    assert.strictEqual(hasA2, false, "Instance A toast 2 dismissed by instA.dismissAll");
+    assert.strictEqual(hasB, true, "Instance B toast is not affected by Instance A dismissAll");
+    assert.strictEqual(hasGlobal, true, "Global toast is not affected by Instance A dismissAll");
+
+    // Clean up
+    await instB.dismissAll();
+    await globalHandle.dismiss();
+    resetToastManager();
+
+    // 2. SSR Contract Consistency: No-op handle returns clean promises without throwing
+    const origWindow = global.window;
+    const origDoc = global.document;
+
+    // Simulate SSR
+    delete global.window;
+    delete global.document;
+
+    const { createToast: ssrCreateToast } = await import("../../src/index.js");
+    const ssrHandle = await ssrCreateToast("SSR Test Message");
+
+    assert.strictEqual(ssrHandle.id, "ssr-noop");
+    const updateResult = await ssrHandle.update({ message: "New" });
+    assert.strictEqual(updateResult, false, "SSR update returns false safely");
+    await ssrHandle.dismiss(); // should resolve without throwing
+
+    // Restore browser environment
+    global.window = origWindow;
+    global.document = origDoc;
+
+    // 3. Web Audio Chime: Native tone synthesis with mocked AudioContext
+    let oscStarted = false;
+    let gainRamped = false;
+    class MockAudioContext {
+      constructor() {
+        this.currentTime = 0;
+        this.state = "running";
+        this.destination = {};
+      }
+      createOscillator() {
+        return {
+          type: "sine",
+          frequency: {
+            setValueAtTime: () => {},
+            exponentialRampToValueAtTime: () => {},
+          },
+          connect: () => {},
+          start: () => { oscStarted = true; },
+          stop: () => {},
+        };
+      }
+      createGain() {
+        return {
+          gain: {
+            setValueAtTime: () => {},
+            exponentialRampToValueAtTime: () => { gainRamped = true; },
+          },
+          connect: () => {},
+        };
+      }
+    }
+    window.AudioContext = MockAudioContext;
+
+    playNativeTone("success");
+    assert.strictEqual(oscStarted, true, "playNativeTone creates and starts oscillator");
+    assert.strictEqual(gainRamped, true, "playNativeTone configures gain envelope");
+
+    playNativeTone("error");
+    playNativeTone("warning");
+
+    // 4. CSS Containment: inline style mode sets layout and paint containment
+    const { getOrCreateToastContainer } = await import("../../src/utils/containerRegistry.js");
+    const container = await getOrCreateToastContainer({ position: "bottom-right" });
+    assert.strictEqual(container.style.contain, "layout style", "Container sets layout style containment");
+
+    const toastHandle = await createToast("Containment Test", { duration: 5000 });
+    await new Promise((r) => setTimeout(r, 60));
+    const toastEl = Array.from(document.querySelectorAll(".toast")).find((el) => el.textContent.includes("Containment Test"));
+    assert.ok(toastEl, "Toast element is mounted in DOM");
+    assert.strictEqual(toastEl.style.contain, "layout style", "Toast element sets layout style containment");
+    assert.strictEqual(toastEl.style.willChange, "transform, opacity", "Toast element sets GPU will-change");
+
+    await toastHandle.dismiss();
+    resetToastManager();
+  });
 });
 
 

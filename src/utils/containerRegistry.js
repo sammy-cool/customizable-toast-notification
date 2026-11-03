@@ -103,6 +103,7 @@ function applyContainerBaseStyles(el) {
   el.style.position = "fixed";
   el.style.zIndex = String(config.zIndex);
   el.style.pointerEvents = "none";
+  el.style.contain = "layout style";
   el.style.inset = "auto 10px 10px auto";
   el.style.display = "flex";
   el.style.justifyContent = "space-between";

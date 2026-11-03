@@ -290,6 +290,12 @@ async function createToastNow(options = {}) {
   }
 }
 
+const SSR_NOOP_HANDLE = Object.freeze({
+  id: "ssr-noop",
+  dismiss: () => Promise.resolve(),
+  update: () => Promise.resolve(false),
+});
+
 async function createToast(options = {}) {
   const isBrowser =
     typeof window !== "undefined" && typeof document !== "undefined";
@@ -298,7 +304,7 @@ async function createToast(options = {}) {
     console.warn(
       "ToastNotification: running in non-browser environment, no DOM available.",
     );
-    return null;
+    return SSR_NOOP_HANDLE;
   }
 
   await checkDOMReady();
@@ -393,6 +399,14 @@ const originalCreateToast = createToast;
  * @returns {Promise<ToastHandle>}
  */
 async function createToastWithPriority(messageOrOptions = {}, maybeOptions) {
+  const isBrowser =
+    typeof window !== "undefined" && typeof document !== "undefined";
+  if (!isBrowser) {
+    console.warn(
+      "ToastNotification: running in non-browser environment, no DOM available.",
+    );
+    return SSR_NOOP_HANDLE;
+  }
   const normalized = normalizeToastOptions(messageOrOptions, maybeOptions);
   const posKey = normalizePositionKey(normalized.position);
   let key = await runWithClosePriority(() => originalCreateToast(normalized), posKey);
@@ -746,10 +760,16 @@ function createToastInstance(defaultOptions = {}) {
     }
   };
 
+  const instanceKeys = new Set();
+
   managerOn("open", (payload) => {
-    if (payload?.options?._instanceId === instanceId) instanceEmit("open", payload);
+    if (payload?.options?._instanceId === instanceId) {
+      if (payload?.key) instanceKeys.add(payload.key);
+      instanceEmit("open", payload);
+    }
   });
   managerOn("close", (payload) => {
+    if (payload?.key) instanceKeys.delete(payload.key);
     if (payload?.options?._instanceId === instanceId) instanceEmit("close", payload);
   });
   managerOn("queue", (payload) => {
@@ -769,24 +789,57 @@ function createToastInstance(defaultOptions = {}) {
     return { ...safeDefaults, ...opts, _instanceId: instanceId };
   };
 
-  /** @type {any} */
-  const instance = (messageOrOpts, callerOpts) => {
-    return createToastWithPriority(normalizeOptions(messageOrOpts, callerOpts));
+  const trackHandle = async (handlePromise) => {
+    const handle = await handlePromise;
+    if (handle?.id) {
+      instanceKeys.add(handle.id);
+      return {
+        get id() {
+          return handle.id;
+        },
+        update: handle.update,
+        dismiss: async () => {
+          instanceKeys.delete(handle.id);
+          return handle.dismiss();
+        },
+      };
+    }
+    return handle;
   };
 
-  instance.show = (opts) => createToastWithPriority(normalizeOptions(opts));
-  instance.success = (msg, opts) => createToastWithPriority.success(msg, normalizeOptions(msg, { ...opts, type: "success" }));
-  instance.error = (msg, opts) => createToastWithPriority.error(msg, normalizeOptions(msg, { ...opts, type: "error" }));
-  instance.warning = (msg, opts) => createToastWithPriority.warning(msg, normalizeOptions(msg, { ...opts, type: "warning" }));
-  instance.info = (msg, opts) => createToastWithPriority.info(msg, normalizeOptions(msg, { ...opts, type: "info" }));
-  instance.loading = (msg, opts) => createToastWithPriority.loading(msg, normalizeOptions(msg, { ...opts, type: "loading" }));
-  instance.custom = (msg, opts) => createToastWithPriority.custom(msg, normalizeOptions(msg, { ...opts, type: "custom" }));
+  /** @type {any} */
+  const instance = (messageOrOpts, callerOpts) => {
+    return trackHandle(createToastWithPriority(normalizeOptions(messageOrOpts, callerOpts)));
+  };
+
+  instance.show = (opts) => trackHandle(createToastWithPriority(normalizeOptions(opts)));
+  instance.success = (msg, opts) => trackHandle(createToastWithPriority.success(msg, normalizeOptions(msg, { ...opts, type: "success" })));
+  instance.error = (msg, opts) => trackHandle(createToastWithPriority.error(msg, normalizeOptions(msg, { ...opts, type: "error" })));
+  instance.warning = (msg, opts) => trackHandle(createToastWithPriority.warning(msg, normalizeOptions(msg, { ...opts, type: "warning" })));
+  instance.info = (msg, opts) => trackHandle(createToastWithPriority.info(msg, normalizeOptions(msg, { ...opts, type: "info" })));
+  instance.loading = (msg, opts) => trackHandle(createToastWithPriority.loading(msg, normalizeOptions(msg, { ...opts, type: "loading" })));
+  instance.custom = (msg, opts) => trackHandle(createToastWithPriority.custom(msg, normalizeOptions(msg, { ...opts, type: "custom" })));
   instance.promise = (promiseOrFn, messages, opts) => {
     return toastPromise(promiseOrFn, messages, normalizeOptions(opts));
   };
-  instance.dismiss = dismissToast;
-  instance.dismissAll = noopAll;
-  instance.clear = noopAll;
+  instance.dismiss = async () => {
+    const keys = Array.from(instanceKeys);
+    const lastKey = keys.pop();
+    if (lastKey) {
+      instanceKeys.delete(lastKey);
+      await closeToastByKey(lastKey);
+      return;
+    }
+    return dismissToast();
+  };
+  instance.dismissAll = async () => {
+    const keys = Array.from(instanceKeys);
+    instanceKeys.clear();
+    for (const key of keys) {
+      await closeToastByKey(key);
+    }
+  };
+  instance.clear = instance.dismissAll;
   instance.on = instanceOn;
   instance.off = instanceOff;
   instance.instanceId = instanceId;
