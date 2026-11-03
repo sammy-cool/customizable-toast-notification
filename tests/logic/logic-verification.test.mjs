@@ -6645,6 +6645,94 @@ describe("Architectural Fortification: Updating Dismissed Toasts & Fallback Spaw
     unsubClose();
     resetToastManager();
   });
+
+  test("High-Coverage Fortification: Toast fallback, framework edge cases, and CSP guards", async () => {
+    freshDom();
+
+    // 1. Toast.js catch block fallback
+    const { createToastElement } = await import("../../src/components/Toast.js");
+    const emergencyResult = await createToastElement({
+      message: "Test fallback",
+      // Symbol or throwing property during styling
+      get style() {
+        throw new Error("Simulated styling crash");
+      },
+    });
+    assert.ok(emergencyResult, "createToastElement catches and returns emergency toast");
+
+    // 2. Angular adapter coverage: ɵfac, ɵprov, setDefaultMessages, version
+    const { ToastService } = await import("../../src/angular/index.js");
+    const serviceInstance = ToastService.ɵfac();
+    assert.ok(serviceInstance instanceof ToastService, "ɵfac creates ToastService instance");
+    assert.strictEqual(ToastService.ɵprov.providedIn, "root");
+    serviceInstance.setDefaultMessages({ success: "Ang Success" });
+    assert.ok(serviceInstance.version, "service.version returns version string");
+
+    // 3. React adapter: useToast with window.React.useMemo
+    const reactModule = await import("../../src/react/index.js");
+    window.React = {
+      useMemo: (factory) => factory(),
+    };
+    const memoizedAPI = reactModule.useToast();
+    assert.ok(memoizedAPI && typeof memoizedAPI.success === "function", "useToast with React.useMemo works");
+    delete window.React;
+
+    // 4. Svelte adapter: non-function subscribe and error handling
+    const { createToastStore } = await import("../../src/svelte/index.js");
+    const svelteStore = createToastStore();
+    const noopUnsub = svelteStore.subscribe(null);
+    assert.strictEqual(typeof noopUnsub, "function");
+
+    // Test throwing subscriber in notifySubscribers
+    let callCount = 0;
+    const throwingUnsub = svelteStore.subscribe(() => {
+      callCount++;
+      if (callCount > 1) {
+        throw new Error("Subscriber error");
+      }
+    });
+    svelteStore.success("Trigger notify");
+    throwingUnsub();
+
+    // 5. stacked-layout.js: focusin and focusout listeners
+    const { updateStackedLayout } = await import("../../src/components/stacked-layout.js");
+    const container = document.createElement("div");
+    container.setAttribute("data-stacked", "true");
+    const child1 = document.createElement("div");
+    const child2 = document.createElement("div");
+    container.appendChild(child1);
+    container.appendChild(child2);
+    document.body.appendChild(container);
+
+    updateStackedLayout(container);
+
+    // Trigger focusin
+    container.dispatchEvent(new window.Event("focusin"));
+    assert.strictEqual(container._isExpanded, true, "focusin expands stacked container");
+
+    // Trigger focusout
+    const outsideEl = document.createElement("button");
+    document.body.appendChild(outsideEl);
+    const focusOutEvt = new window.Event("focusout");
+    focusOutEvt.relatedTarget = outsideEl;
+    container.dispatchEvent(focusOutEvt);
+    assert.strictEqual(container._isExpanded, false, "focusout collapses stacked container");
+
+    // 6. loader.js: CSP style tag insertion throw
+    const { createLoader } = await import("../../src/components/loader.js");
+    const origAppend = document.head.appendChild;
+    const existingStyle = document.getElementById("toast-spinner-styles");
+    if (existingStyle) existingStyle.remove();
+
+    document.head.appendChild = () => {
+      throw new Error("CSP blocked style tag");
+    };
+
+    const cspLoader = createLoader({ size: 18 });
+    assert.ok(cspLoader, "Loader created gracefully even when CSP blocks stylesheet insertion");
+
+    document.head.appendChild = origAppend;
+  });
 });
 
 
