@@ -216,7 +216,7 @@ export function fallbackSanitize(dirty) {
   if (!dirty || typeof dirty !== "string") return "";
 
   const container = parseHtmlInert(dirty);
-  if (!container) return "";
+  if (!container) return dirty.replace(/<[^>]*>/g, "");
 
   const outFrag = document.createDocumentFragment();
   Array.from(container.childNodes).forEach((child) => {

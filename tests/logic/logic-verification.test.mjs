@@ -7693,6 +7693,73 @@ describe("Architectural Fortification: Updating Dismissed Toasts & Fallback Spaw
     resetConfig();
     resetToastManager();
   });
+
+  test("Fortification 8: Responsive Min-Width, Window Blur Drag Cancel, AutoClose False Focus Release, and SSR Text Preservation", async () => {
+    freshDom();
+    const {
+      resetToastManager,
+      resetConfig,
+    } = await import("../../src/index.js");
+    resetToastManager();
+
+    // 1. styles.css responsive min-width
+    const fs = await import("fs");
+    const path = await import("path");
+    const cssContent = fs.readFileSync(path.resolve("./src/styles.css"), "utf-8");
+    assert.ok(
+      cssContent.includes("min-width: var(--toast-min-width, min(250px, calc(100vw - 20px)))"),
+      "Responsive min-width is declared in styles.css",
+    );
+
+    // 2. Window blur triggers pointer cancel and restores user-select in attachSwipeToDismiss
+    const { attachSwipeToDismiss } = await import("../../src/components/toast-utils-core.js");
+    const toast = document.createElement("div");
+    let closed = false;
+    attachSwipeToDismiss(toast, () => { closed = true; });
+
+    // Simulate pointerdown
+    const downEv = new window.MouseEvent("mousedown", { clientX: 100, clientY: 100, button: 0 });
+    toast.dispatchEvent(downEv);
+    assert.strictEqual(toast.style.userSelect, "none", "User-select is none during drag");
+
+    // Simulate window blur (e.g. switching tabs or windows mid-drag)
+    window.dispatchEvent(new window.Event("blur"));
+    assert.strictEqual(toast.style.userSelect, "", "User-select restored when blur cancels drag");
+
+    // 3. CTA with autoClose: false blurs active element
+    const { createCTA } = await import("../../src/components/toast-utils-core.js");
+    const ctaToast = document.createElement("div");
+    document.body.appendChild(ctaToast);
+    createCTA(ctaToast, {
+      cta: {
+        label: "Keep Open",
+        autoClose: false,
+        onClick: () => {},
+      },
+    }, () => {});
+    const btn = ctaToast.querySelector(".toast-cta");
+    assert.ok(btn, "CTA button rendered");
+    btn.focus();
+    assert.strictEqual(document.activeElement, btn, "Button is active element");
+    btn.click();
+    await new Promise((r) => setTimeout(r, 20));
+    assert.notStrictEqual(document.activeElement, btn, "Button was blurred after click when autoClose is false");
+    ctaToast.remove();
+
+    // 4. fallbackSanitize preserves text in headless SSR without DOM
+    const { fallbackSanitize } = await import("../../src/utils/html-sanitizer.js");
+    const origDoc = globalThis.document;
+    try {
+      delete globalThis.document;
+      const ssrOutput = fallbackSanitize("<b>Server rendered</b> message");
+      assert.strictEqual(ssrOutput, "Server rendered message", "Raw HTML tags stripped and text preserved in SSR");
+    } finally {
+      globalThis.document = origDoc;
+    }
+
+    resetConfig();
+    resetToastManager();
+  });
 });
 
 

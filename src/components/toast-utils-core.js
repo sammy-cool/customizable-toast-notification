@@ -127,6 +127,10 @@ export function createCTA(toast, options, onClose) {
         el.style.opacity = prevOpacity;
         if (cfg.autoClose !== false && typeof onClose === "function") {
           await onClose(toast);
+        } else if (cfg.autoClose === false) {
+          if (typeof el.blur === "function" && typeof document !== "undefined" && document.activeElement === el) {
+            el.blur();
+          }
         }
       }
     };
