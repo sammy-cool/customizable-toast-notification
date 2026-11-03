@@ -38,10 +38,16 @@ function notifySubscribers() {
 
 /**
  * Creates the Svelte store and toast API.
+ * When called with defaultOptions, returns an isolated, scoped toast store.
+ * @param {import('../index.js').ToastOptions} [defaultOptions] - Optional component-level preset options.
  * @returns {import('./index.d.ts').SvelteToastStore}
  */
-export function createToastStore() {
-  const base = createToastAPI();
+export function createToastStore(defaultOptions) {
+  const hasDefaults =
+    defaultOptions &&
+    typeof defaultOptions === "object" &&
+    Object.keys(defaultOptions).length > 0;
+  const base = hasDefaults ? createToastInstance(defaultOptions) : createToastAPI();
   const wrap = (fn) => (...args) => {
     const res = fn(...args);
     notifySubscribers();
@@ -77,7 +83,23 @@ export function createToastStore() {
 }
 
 export const toast = createToastStore();
-export const useToast = () => toast;
+
+/**
+ * Svelte helper for customizable-toast-notification.
+ * When called with defaultOptions, returns an isolated, scoped store.
+ * @param {import('../index.js').ToastOptions} [defaultOptions] - Optional component-level preset options.
+ * @returns {import('./index.d.ts').SvelteToastStore}
+ */
+export const useToast = (defaultOptions) => {
+  if (
+    defaultOptions &&
+    typeof defaultOptions === "object" &&
+    Object.keys(defaultOptions).length > 0
+  ) {
+    return createToastStore(defaultOptions);
+  }
+  return toast;
+};
 
 export {
   createToast,

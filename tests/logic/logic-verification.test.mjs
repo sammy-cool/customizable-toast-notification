@@ -7202,6 +7202,35 @@ describe("Architectural Fortification: Updating Dismissed Toasts & Fallback Spaw
     assert.strictEqual(typeof scopedSolidToast.getActiveCount, "function", "Solid useToast with options returns scoped instance");
     assert.strictEqual(scopedSolidToast.getDefaults().position, "right-center", "Solid scoped instance preserves default options");
 
+    // 6. Svelte and Angular scoped instance support
+    const scopedSvelteStore = svelteAdapter.createToastStore({ position: "bottom-center" });
+    assert.strictEqual(typeof scopedSvelteStore.getActiveCount, "function", "Svelte createToastStore with options returns scoped instance");
+    assert.strictEqual(scopedSvelteStore.getDefaults().position, "bottom-center", "Svelte scoped instance preserves defaults");
+
+    const defaultSvelteStore = svelteAdapter.useToast();
+    assert.strictEqual(typeof defaultSvelteStore.success, "function", "Svelte useToast without options returns global store");
+
+    const scopedAngularService = new angularAdapter.ToastService({ position: "center" });
+    assert.strictEqual(scopedAngularService._instance.getDefaults().position, "center", "Angular ToastService with options has scoped instance");
+
+    const scopedInjectedAngular = angularAdapter.injectToast({ position: "top-full-width" });
+    assert.strictEqual(scopedInjectedAngular._instance.getDefaults().position, "top-full-width", "Angular injectToast with options returns scoped service");
+
+    // 7. ToastInstance contract parity and 'show' event alias
+    assert.strictEqual(inst.createToast, inst, "instance.createToast is self-reference alias");
+    assert.ok(typeof inst.version === "string", "instance.version is string");
+    assert.ok(typeof inst.getToastMetrics() === "object", "instance.getToastMetrics() returns metrics object");
+
+    let showEventFired = false;
+    const unsubShow = createToast.on("show", (payload) => {
+      showEventFired = true;
+    });
+    const tempToast = await createToast("Testing show event alias");
+    await new Promise((r) => setTimeout(r, 60));
+    assert.strictEqual(showEventFired, true, "createToast.on('show') alias receives 'open' event");
+    unsubShow();
+    await tempToast.dismiss();
+
     resetToastManager();
   });
 });

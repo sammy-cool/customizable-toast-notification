@@ -2483,20 +2483,23 @@ createToast({
               maxVisibleToasts: 3
             });
           }
-          window._demoScopedInstance.createToast.success("Scoped Instance: Isolated container at top-left with dark theme!", {
+          window._demoScopedInstance.success("Scoped Instance: Isolated container at top-left with dark theme!", {
             duration: 4000
           });
         });
 
         var _lifecycleSubscribed = false;
         document.getElementById("quickLifecycleBtn").addEventListener("click", function () {
-          if (!window.customizableToast || !window.customizableToast.subscribeToToastLifecycle) return;
+          if (!window.customizableToast || !window.customizableToast.on) return;
           if (!_lifecycleSubscribed) {
             _lifecycleSubscribed = true;
-            window.customizableToast.subscribeToToastLifecycle(function (event, payload) {
-              console.log("[ToastLifecycle Event]", event, payload);
+            window.customizableToast.on("open", function (payload) {
+              console.log("[ToastLifecycle open]", payload);
             });
-            window.customizableToast.createToast.info("Lifecycle listener active! Check browser DevTools console for onShow, onClose, onUpdate stream.", {
+            window.customizableToast.on("close", function (payload) {
+              console.log("[ToastLifecycle close]", payload);
+            });
+            window.customizableToast.createToast.info("Lifecycle listener active! Check browser DevTools console for open/close event stream.", {
               duration: 4500,
               position: currentPosition
             });

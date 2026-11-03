@@ -7,6 +7,7 @@ import type {
 } from '../index.js';
 
 export declare class ToastService {
+  constructor(defaultOptions?: Partial<ToastOptions>);
   success(messageOrOptions?: string | ToastOptions, options?: Partial<ToastOptions>): Promise<ToastHandle>;
   error(messageOrOptions?: string | ToastOptions, options?: Partial<ToastOptions>): Promise<ToastHandle>;
   warning(messageOrOptions?: string | ToastOptions, options?: Partial<ToastOptions>): Promise<ToastHandle>;
@@ -33,7 +34,7 @@ export declare class ToastService {
   static ɵprov: unknown;
 }
 
-export function injectToast(): ToastService;
+export function injectToast(defaultOptions?: Partial<ToastOptions>): ToastService;
 
 export const toast: ToastService;
 

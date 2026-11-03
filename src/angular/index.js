@@ -26,50 +26,60 @@ import {
 /**
  * Angular-compatible Toast Service.
  * Can be injected in Angular components or instantiated directly.
+ * When instantiated with defaultOptions, creates an isolated scoped toast instance.
  */
 export class ToastService {
+  constructor(defaultOptions) {
+    this._instance =
+      defaultOptions &&
+      typeof defaultOptions === "object" &&
+      Object.keys(defaultOptions).length > 0
+        ? createToastInstance(defaultOptions)
+        : null;
+  }
+
   success(message, options) {
-    return createToast.success(message, options);
+    return this._instance ? this._instance.success(message, options) : createToast.success(message, options);
   }
 
   error(message, options) {
-    return createToast.error(message, options);
+    return this._instance ? this._instance.error(message, options) : createToast.error(message, options);
   }
 
   warning(message, options) {
-    return createToast.warning(message, options);
+    return this._instance ? this._instance.warning(message, options) : createToast.warning(message, options);
   }
 
   info(message, options) {
-    return createToast.info(message, options);
+    return this._instance ? this._instance.info(message, options) : createToast.info(message, options);
   }
 
   loading(message, options) {
-    return createToast.loading(message, options);
+    return this._instance ? this._instance.loading(message, options) : createToast.loading(message, options);
   }
 
   custom(message, options) {
-    return createToast.custom(message, options);
+    return this._instance ? this._instance.custom(message, options) : createToast.custom(message, options);
   }
 
   show(options) {
-    return createToast(options);
+    return this._instance ? this._instance.show(options) : createToast(options);
   }
 
   promise(promiseOrFn, messages, options) {
-    return toastPromise(promiseOrFn, messages, options);
+    return this._instance ? this._instance.promise(promiseOrFn, messages, options) : toastPromise(promiseOrFn, messages, options);
   }
 
   dismiss(target) {
-    return dismiss(target);
+    return this._instance ? this._instance.dismiss(target) : dismiss(target);
   }
 
   dismissAll() {
-    return dismissAll();
+    return this._instance ? this._instance.dismissAll() : dismissAll();
   }
 
   clear() {
-    return clear();
+    return this._instance ? this._instance.clear() : clear();
   }
 
   setConfig(options) {
@@ -85,7 +95,7 @@ export class ToastService {
   }
 
   getToastMetrics() {
-    return getToastMetrics();
+    return this._instance ? this._instance.getToastMetrics() : getToastMetrics();
   }
 
   setDefaultColors(colors) {
@@ -115,9 +125,18 @@ let cachedInstance = null;
 
 /**
  * Returns a singleton instance of ToastService.
+ * When called with defaultOptions, returns an isolated, scoped ToastService.
+ * @param {import('../index.js').ToastOptions} [defaultOptions] - Optional component-level preset options.
  * @returns {ToastService}
  */
-export function injectToast() {
+export function injectToast(defaultOptions) {
+  if (
+    defaultOptions &&
+    typeof defaultOptions === "object" &&
+    Object.keys(defaultOptions).length > 0
+  ) {
+    return new ToastService(defaultOptions);
+  }
   if (!cachedInstance) {
     cachedInstance = new ToastService();
   }

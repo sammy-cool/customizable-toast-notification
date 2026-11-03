@@ -144,7 +144,7 @@ import {
  */
 
 /**
- * @typedef {'open' | 'close' | 'queue' | 'drop'} ToastLifecycleEvent
+ * @typedef {'open' | 'close' | 'queue' | 'drop' | 'show'} ToastLifecycleEvent
  */
 
 /**
@@ -158,6 +158,9 @@ import {
 /**
  * @typedef {Object} ToastInstance
  * @property {string} instanceId
+ * @property {string} version
+ * @property {() => ToastMetrics} getToastMetrics
+ * @property {ToastInstance} createToast
  * @property {(messageOrOpts?: string | ToastOptions, opts?: ToastOptions) => Promise<ToastHandle>} show
  * @property {(message: string, opts?: ToastOptions) => Promise<ToastHandle>} success
  * @property {(message: string, opts?: ToastOptions) => Promise<ToastHandle>} error
@@ -741,14 +744,16 @@ function createToastInstance(defaultOptions = {}) {
 
   const instanceOn = (event, fn) => {
     if (typeof event !== "string" || typeof fn !== "function") return () => {};
-    if (!instanceListeners.has(event)) instanceListeners.set(event, new Set());
-    instanceListeners.get(event).add(fn);
-    return () => instanceOff(event, fn);
+    const canonicalEvent = event === "show" ? "open" : event;
+    if (!instanceListeners.has(canonicalEvent)) instanceListeners.set(canonicalEvent, new Set());
+    instanceListeners.get(canonicalEvent).add(fn);
+    return () => instanceOff(canonicalEvent, fn);
   };
 
   const instanceOff = (event, fn) => {
-    if (!instanceListeners.has(event)) return;
-    instanceListeners.get(event).delete(fn);
+    const canonicalEvent = event === "show" ? "open" : event;
+    if (!instanceListeners.has(canonicalEvent)) return;
+    instanceListeners.get(canonicalEvent).delete(fn);
   };
 
   const instanceEmit = (event, payload) => {
@@ -879,6 +884,9 @@ function createToastInstance(defaultOptions = {}) {
   instance.off = instanceOff;
   instance.instanceId = instanceId;
   instance.getDefaults = () => ({ ...safeDefaults });
+  instance.version = version;
+  instance.getToastMetrics = getToastMetrics;
+  instance.createToast = instance;
 
   return instance;
 }

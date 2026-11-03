@@ -36,10 +36,10 @@ export interface SvelteToastStore {
   version: string;
 }
 
-export function createToastStore(): SvelteToastStore;
+export function createToastStore(defaultOptions?: Partial<ToastOptions>): SvelteToastStore;
 
 export const toast: SvelteToastStore;
-export const useToast: () => SvelteToastStore;
+export const useToast: (defaultOptions?: Partial<ToastOptions>) => SvelteToastStore;
 
 export {
   createToast,

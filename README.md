@@ -632,8 +632,8 @@ const adminToasts = createToastInstance({
 
 adminToasts.success("Admin configuration updated!");
 
-// 2. Global or instance-scoped lifecycle pub-sub for monitoring and analytics
-const unsubscribe = createToast.on("show", ({ key, options }) => {
+// 2. Global or instance-scoped lifecycle pub-sub for monitoring and analytics ("open" / alias: "show")
+const unsubscribe = createToast.on("open", ({ key, options }) => {
   console.log(`Toast shown: ${key}`, options);
 });
 

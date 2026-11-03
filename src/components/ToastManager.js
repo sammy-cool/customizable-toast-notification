@@ -63,22 +63,24 @@ const lifecycleListeners = new Map();
  */
 export function on(event, callback) {
   if (typeof event !== "string" || typeof callback !== "function") return () => {};
-  if (!lifecycleListeners.has(event)) {
-    lifecycleListeners.set(event, new Set());
+  const canonicalEvent = event === "show" ? "open" : event;
+  if (!lifecycleListeners.has(canonicalEvent)) {
+    lifecycleListeners.set(canonicalEvent, new Set());
   }
-  lifecycleListeners.get(event).add(callback);
-  return () => off(event, callback);
+  lifecycleListeners.get(canonicalEvent).add(callback);
+  return () => off(canonicalEvent, callback);
 }
 
 /**
  * Removes a subscriber for toast lifecycle events.
- * @param {'open' | 'close' | 'queue' | 'drop'} event
+ * @param {'open' | 'close' | 'queue' | 'drop' | 'show'} event
  * @param {(payload: object) => void} callback
  * @returns {void}
  */
 export function off(event, callback) {
-  if (!lifecycleListeners.has(event)) return;
-  lifecycleListeners.get(event).delete(callback);
+  const canonicalEvent = event === "show" ? "open" : event;
+  if (!lifecycleListeners.has(canonicalEvent)) return;
+  lifecycleListeners.get(canonicalEvent).delete(callback);
 }
 
 /**
