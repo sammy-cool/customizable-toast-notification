@@ -169,6 +169,8 @@ import {
  * @property {(target?: any) => Promise<void>} dismiss
  * @property {() => Promise<void>} dismissAll
  * @property {() => Promise<void>} clear
+ * @property {() => number} getActiveCount
+ * @property {number} size
  * @property {(event: ToastLifecycleEvent, callback: (payload: ToastLifecyclePayload) => void) => () => void} on
  * @property {(event: ToastLifecycleEvent, callback: (payload: ToastLifecyclePayload) => void) => void} off
  * @property {() => Partial<ToastOptions>} getDefaults
@@ -822,15 +824,42 @@ function createToastInstance(defaultOptions = {}) {
   instance.promise = (promiseOrFn, messages, opts) => {
     return toastPromise(promiseOrFn, messages, normalizeOptions(opts));
   };
-  instance.dismiss = async () => {
+  instance.dismiss = async (target) => {
+    let resolvedTarget = target;
+    if (target && typeof target.then === "function") {
+      try {
+        resolvedTarget = await target;
+      } catch {
+        return;
+      }
+    }
+
+    if (resolvedTarget) {
+      let targetKey = null;
+      if (typeof resolvedTarget === "string" && resolvedTarget.length > 0) {
+        targetKey = resolvedTarget;
+      } else if (resolvedTarget && typeof resolvedTarget === "object") {
+        targetKey = resolvedTarget.id || resolvedTarget._key || null;
+      }
+
+      if (targetKey && instanceKeys.has(targetKey)) {
+        instanceKeys.delete(targetKey);
+        await closeToastByKey(targetKey);
+        return;
+      }
+
+      if (typeof resolvedTarget?.dismiss === "function") {
+        await resolvedTarget.dismiss();
+        return;
+      }
+    }
+
     const keys = Array.from(instanceKeys);
     const lastKey = keys.pop();
     if (lastKey) {
       instanceKeys.delete(lastKey);
       await closeToastByKey(lastKey);
-      return;
     }
-    return dismissToast();
   };
   instance.dismissAll = async () => {
     const keys = Array.from(instanceKeys);
@@ -840,6 +869,12 @@ function createToastInstance(defaultOptions = {}) {
     }
   };
   instance.clear = instance.dismissAll;
+  instance.getActiveCount = () => instanceKeys.size;
+  Object.defineProperty(instance, "size", {
+    get: () => instanceKeys.size,
+    configurable: true,
+    enumerable: true,
+  });
   instance.on = instanceOn;
   instance.off = instanceOff;
   instance.instanceId = instanceId;

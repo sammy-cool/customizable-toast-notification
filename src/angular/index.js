@@ -1,6 +1,7 @@
 import {
   createToast,
   createToastAPI,
+  createToastInstance,
   success,
   error,
   warning,
@@ -128,6 +129,7 @@ export const toast = injectToast();
 export {
   createToast,
   createToastAPI,
+  createToastInstance,
   success,
   error,
   warning,

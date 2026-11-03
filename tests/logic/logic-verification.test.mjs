@@ -7113,6 +7113,97 @@ describe("Architectural Fortification: Updating Dismissed Toasts & Fallback Spaw
     await toastHandle.dismiss();
     resetToastManager();
   });
+
+  test("Fortification 2: Scoped Instance Target Dismiss, Empty No-Op, Size Getter, Landmark Selector, and Framework Exports", async () => {
+    resetToastManager();
+    const { createToastInstance, createToast } = await import("../../src/index.js");
+
+    // 1. Target dismiss in createToastInstance
+    const inst = createToastInstance({ position: "top-right" });
+    const h1 = await inst.success("Instance Toast 1", { duration: 10000 });
+    const h2 = await inst.success("Instance Toast 2", { duration: 10000 });
+    await new Promise((r) => setTimeout(r, 80));
+
+    assert.strictEqual(inst.getActiveCount(), 2, "instance.getActiveCount() returns 2");
+    assert.strictEqual(inst.size, 2, "instance.size getter returns 2");
+
+    // Dismiss specific target (h1)
+    await inst.dismiss(h1);
+    await new Promise((r) => setTimeout(r, 80));
+
+    assert.strictEqual(inst.getActiveCount(), 1, "instance.getActiveCount() is 1 after target dismiss");
+    assert.strictEqual(inst.size, 1, "instance.size is 1 after target dismiss");
+
+    // Dismiss most recent (h2)
+    await inst.dismiss();
+    await new Promise((r) => setTimeout(r, 80));
+
+    assert.strictEqual(inst.getActiveCount(), 0, "instance count is 0 after dismissing all");
+    assert.strictEqual(inst.size, 0, "instance size is 0 after dismissing all");
+
+    // 2. Empty instance dismiss does NOT leak to global toasts
+    const globalHandle = await createToast("Global Toast Must Remain", { duration: 10000 });
+    await new Promise((r) => setTimeout(r, 80));
+
+    // Calling inst.dismiss() while inst has 0 toasts
+    await inst.dismiss();
+    await new Promise((r) => setTimeout(r, 80));
+
+    const globalEl = Array.from(document.querySelectorAll(".toast")).find((el) =>
+      el.textContent.includes("Global Toast Must Remain")
+    );
+    assert.ok(globalEl, "Global toast is NOT dismissed when an empty instance calls dismiss()");
+    await globalHandle.dismiss();
+    resetToastManager();
+
+    // 3. Landmark navigation selector covers .toast-emergency
+    const { initKeyboardShortcuts, destroyKeyboardShortcuts } = await import("../../src/index.js");
+    let focusedElement = null;
+    const emergencyDiv = document.createElement("div");
+    emergencyDiv.className = "toast-emergency";
+    emergencyDiv.tabIndex = 0;
+    emergencyDiv.focus = () => { focusedElement = emergencyDiv; };
+    document.body.appendChild(emergencyDiv);
+
+    initKeyboardShortcuts(window);
+    const landmarkEvent = new window.KeyboardEvent("keydown", { key: "F6", bubbles: true });
+    window.dispatchEvent(landmarkEvent);
+
+    assert.strictEqual(focusedElement, emergencyDiv, "F6 landmark navigation focuses .toast-emergency");
+    destroyKeyboardShortcuts();
+    emergencyDiv.remove();
+
+    // 4. Framework subpath exports: createToastInstance
+    const reactAdapter = await import("../../src/react/index.js");
+    const vueAdapter = await import("../../src/vue/index.js");
+    const svelteAdapter = await import("../../src/svelte/index.js");
+    const solidAdapter = await import("../../src/solid/index.js");
+    const angularAdapter = await import("../../src/angular/index.js");
+
+    assert.strictEqual(typeof reactAdapter.createToastInstance, "function", "React subpath exports createToastInstance");
+    assert.strictEqual(typeof vueAdapter.createToastInstance, "function", "Vue subpath exports createToastInstance");
+    assert.strictEqual(typeof svelteAdapter.createToastInstance, "function", "Svelte subpath exports createToastInstance");
+    assert.strictEqual(typeof solidAdapter.createToastInstance, "function", "Solid subpath exports createToastInstance");
+    assert.strictEqual(typeof angularAdapter.createToastInstance, "function", "Angular subpath exports createToastInstance");
+
+    // 5. useToast with default options returns scoped instance; without options returns global API
+    const scopedReactToast = reactAdapter.useToast({ position: "top-center" });
+    assert.strictEqual(typeof scopedReactToast.getActiveCount, "function", "useToast with options returns scoped instance");
+    assert.strictEqual(scopedReactToast.getDefaults().position, "top-center", "Scoped instance preserves default options");
+
+    const defaultReactToast = reactAdapter.useToast();
+    assert.strictEqual(typeof defaultReactToast.success, "function", "useToast without options returns global API");
+
+    const scopedVueToast = vueAdapter.useToast({ position: "left-center" });
+    assert.strictEqual(typeof scopedVueToast.getActiveCount, "function", "Vue useToast with options returns scoped instance");
+    assert.strictEqual(scopedVueToast.getDefaults().position, "left-center", "Vue scoped instance preserves default options");
+
+    const scopedSolidToast = solidAdapter.useToast({ position: "right-center" });
+    assert.strictEqual(typeof scopedSolidToast.getActiveCount, "function", "Solid useToast with options returns scoped instance");
+    assert.strictEqual(scopedSolidToast.getDefaults().position, "right-center", "Solid scoped instance preserves default options");
+
+    resetToastManager();
+  });
 });
 
 

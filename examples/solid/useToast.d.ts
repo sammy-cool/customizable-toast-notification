@@ -29,4 +29,4 @@ export interface UseSolidToastAPI {
 /**
  * A SolidJS hook/primitive wrapper for customizable-toast-notification.
  */
-export function useToast(): UseSolidToastAPI;
+export function useToast(defaultOptions?: Partial<ToastOptions>): UseSolidToastAPI;

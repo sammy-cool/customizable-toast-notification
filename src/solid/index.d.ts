@@ -33,14 +33,16 @@ export interface SolidToastAPI {
 
 /**
  * SolidJS primitive for customizable-toast-notification.
+ * When called with defaultOptions, returns an isolated, scoped toast instance.
  */
-export function useToast(): SolidToastAPI;
+export function useToast(defaultOptions?: Partial<ToastOptions>): SolidToastAPI;
 
 export const toast: SolidToastAPI;
 
 export {
   createToast,
   createToastAPI,
+  createToastInstance,
   success,
   error,
   warning,

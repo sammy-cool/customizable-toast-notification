@@ -34,14 +34,16 @@ export interface UseToastAPI {
 /**
  * A React hook wrapper for customizable-toast-notification.
  * Provides a stable object of toast methods that can be used directly in components.
+ * When called with defaultOptions, returns an isolated, scoped toast instance.
  */
-export function useToast(): UseToastAPI;
+export function useToast(defaultOptions?: Partial<ToastOptions>): UseToastAPI;
 
 export const toast: UseToastAPI;
 
 export {
   createToast,
   createToastAPI,
+  createToastInstance,
   success,
   error,
   warning,

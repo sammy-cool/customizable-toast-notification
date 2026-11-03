@@ -1,6 +1,7 @@
 import {
   createToast,
   createToastAPI,
+  createToastInstance,
   success,
   error,
   warning,
@@ -81,6 +82,7 @@ export const useToast = () => toast;
 export {
   createToast,
   createToastAPI,
+  createToastInstance,
   success,
   error,
   warning,

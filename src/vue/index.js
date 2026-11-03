@@ -1,6 +1,7 @@
 import {
   createToast,
   createToastAPI,
+  createToastInstance,
   success,
   error,
   warning,
@@ -26,9 +27,18 @@ let cachedVueAPI = null;
 
 /**
  * Vue 3 / Composition API Composable for customizable-toast-notification.
+ * When called with defaultOptions, returns an isolated, scoped toast instance.
+ * @param {import('../index.js').ToastOptions} [defaultOptions] - Optional component-level preset options.
  * @returns {import('./index.d.ts').UseToastAPI}
  */
-export function useToast() {
+export function useToast(defaultOptions) {
+  if (
+    defaultOptions &&
+    typeof defaultOptions === "object" &&
+    Object.keys(defaultOptions).length > 0
+  ) {
+    return createToastInstance(defaultOptions);
+  }
   if (!cachedVueAPI) {
     cachedVueAPI = createToastAPI();
   }
@@ -40,6 +50,7 @@ export const toast = useToast();
 export {
   createToast,
   createToastAPI,
+  createToastInstance,
   success,
   error,
   warning,

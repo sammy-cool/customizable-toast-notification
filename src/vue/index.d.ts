@@ -33,14 +33,16 @@ export interface UseToastAPI {
 
 /**
  * Vue 3 / Composition API Composable for customizable-toast-notification.
+ * When called with defaultOptions, returns an isolated, scoped toast instance.
  */
-export function useToast(): UseToastAPI;
+export function useToast(defaultOptions?: Partial<ToastOptions>): UseToastAPI;
 
 export const toast: UseToastAPI;
 
 export {
   createToast,
   createToastAPI,
+  createToastInstance,
   success,
   error,
   warning,

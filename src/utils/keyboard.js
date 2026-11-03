@@ -37,14 +37,14 @@ export function initKeyboardShortcuts(
         targetNode && typeof targetNode.querySelectorAll === "function"
           ? targetNode
           : win.document;
-      let activeToasts = Array.from(
-        root.querySelectorAll('[id^="toast-container-"] [id^="toast-"]')
-      );
+      const toastSelector =
+        '[id^="toast-container-"] [id^="toast-"], [id^="toast-container-"] .toast, .toast-emergency';
+      let activeToasts = Array.from(root.querySelectorAll(toastSelector));
       if (activeToasts.length === 0 && typeof root.querySelector === "function") {
         const shadowHost = root.querySelector("#toast-shadow-host");
         if (shadowHost?.shadowRoot?.querySelectorAll) {
           activeToasts = Array.from(
-            shadowHost.shadowRoot.querySelectorAll('[id^="toast-container-"] [id^="toast-"]')
+            shadowHost.shadowRoot.querySelectorAll(toastSelector)
           );
         }
       }

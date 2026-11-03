@@ -44,6 +44,7 @@ export const useToast: () => SvelteToastStore;
 export {
   createToast,
   createToastAPI,
+  createToastInstance,
   success,
   error,
   warning,

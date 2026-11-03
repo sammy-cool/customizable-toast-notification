@@ -40,6 +40,7 @@ export const toast: ToastService;
 export {
   createToast,
   createToastAPI,
+  createToastInstance,
   success,
   error,
   warning,
