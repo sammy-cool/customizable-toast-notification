@@ -308,9 +308,11 @@ async function createToast(options = {}) {
     typeof window !== "undefined" && typeof document !== "undefined";
 
   if (!isBrowser) {
-    console.warn(
-      "ToastNotification: running in non-browser environment, no DOM available.",
-    );
+    if (getConfig().debug) {
+      console.warn(
+        "ToastNotification: running in non-browser environment, no DOM available.",
+      );
+    }
     return SSR_NOOP_HANDLE;
   }
 
@@ -409,9 +411,11 @@ async function createToastWithPriority(messageOrOptions = {}, maybeOptions) {
   const isBrowser =
     typeof window !== "undefined" && typeof document !== "undefined";
   if (!isBrowser) {
-    console.warn(
-      "ToastNotification: running in non-browser environment, no DOM available.",
-    );
+    if (getConfig().debug) {
+      console.warn(
+        "ToastNotification: running in non-browser environment, no DOM available.",
+      );
+    }
     return SSR_NOOP_HANDLE;
   }
   const normalized = normalizeToastOptions(messageOrOptions, maybeOptions);

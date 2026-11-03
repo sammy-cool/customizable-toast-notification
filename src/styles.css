@@ -148,6 +148,7 @@
   overflow: visible;
   inset: auto 10px 10px auto;
   contain: layout style;
+  isolation: isolate;
 }
 
 /* ========== POSITIONING CLASSES ========== */

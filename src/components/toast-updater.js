@@ -206,6 +206,10 @@ export async function applyToastDOMUpdates(data, newOptions, context) {
   if (newOptions.borderRadius !== undefined) {
     const br = typeof newOptions.borderRadius === "number" ? `${newOptions.borderRadius}px` : newOptions.borderRadius;
     toast.style.borderRadius = br;
+    const progressBar = toast._progressBar || (typeof toast.querySelector === "function" ? toast.querySelector(".toast-progress-bar") : null);
+    if (progressBar && typeof progressBar._recalcRadius === "function") {
+      progressBar._recalcRadius(newOptions.borderRadius);
+    }
   }
 
   if (newOptions.maxWidth !== undefined) {

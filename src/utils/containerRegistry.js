@@ -54,8 +54,14 @@ export function resetContainerRegistry() {
         host.remove();
       } catch {}
     }
-    const containers = document.querySelectorAll('[id^="toast-container-"]');
-    containers.forEach((c) => {
+    const containerSet = new Set(document.querySelectorAll('[id^="toast-container-"]'));
+    try {
+      const customTarget = getConfig?.()?.targetNode;
+      if (customTarget && typeof customTarget.querySelectorAll === "function") {
+        customTarget.querySelectorAll('[id^="toast-container-"]').forEach((c) => containerSet.add(c));
+      }
+    } catch {}
+    containerSet.forEach((c) => {
       try {
         c.remove();
       } catch {}

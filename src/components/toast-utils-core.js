@@ -522,6 +522,25 @@ export function createProgressBar(toast, options = {}) {
   progressBar._isReverse = isReverse;
   progressBar._isRtl = isRtl;
 
+  progressBar._recalcRadius = (newRadius) => {
+    const rStr = newRadius || "0";
+    const pRadius = Number.parseInt(rStr, 10);
+    const rNum = Number.isFinite(pRadius) && pRadius > 0 ? pRadius : 0;
+    const newLeftOffset = Math.min(rNum, Math.min(progressHeightPx * 2, 16));
+    const newFinalWidth = rNum > 0 ? `calc(100% - ${newLeftOffset * 2}px)` : "100%";
+    progressBar._leftOffset = newLeftOffset;
+    progressBar._finalWidth = newFinalWidth;
+    if (!getConfig().disableInlineStyles) {
+      if (progressBar._isRtl) {
+        progressBar.style.right = `${newLeftOffset}px`;
+        progressBar.style.left = "auto";
+      } else {
+        progressBar.style.left = `${newLeftOffset}px`;
+        progressBar.style.right = "auto";
+      }
+    }
+  };
+
   const progressBg = options.progressBarColor || options.progressColor || "currentColor";
   const hasWaapi = typeof progressBar.animate === "function";
 

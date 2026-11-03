@@ -7760,6 +7760,104 @@ describe("Architectural Fortification: Updating Dismissed Toasts & Fallback Spaw
     resetConfig();
     resetToastManager();
   });
+
+  test("Fortification 9: CSS Isolation Stacking Context, SSR Debug Log Gating, Custom TargetNode Cleanup, and Progress Radius Dynamic Recalc", async () => {
+    freshDom();
+    const {
+      createToast,
+      setConfig,
+      getConfig,
+      resetConfig,
+      resetToastManager,
+      resetContainerRegistry,
+    } = await import("../../src/index.js");
+    resetToastManager();
+    resetConfig();
+
+    // 1. styles.css isolation: isolate
+    const fs = await import("fs");
+    const path = await import("path");
+    const cssContent = fs.readFileSync(path.resolve("./src/styles.css"), "utf-8");
+    assert.ok(
+      cssContent.includes("isolation: isolate;"),
+      "styles.css declares isolation: isolate on .toast-container-base",
+    );
+
+    // 2. SSR non-browser warning suppression without debug: true
+    const origWindow = globalThis.window;
+    const origDocument = globalThis.document;
+    const origConsoleWarn = console.warn;
+    let warnCount = 0;
+    console.warn = () => { warnCount++; };
+    try {
+      delete globalThis.window;
+      delete globalThis.document;
+
+      // Debug: false (default) -> no warning
+      resetConfig();
+      await createToast("SSR message 1");
+      assert.strictEqual(warnCount, 0, "No SSR console.warn when debug is false");
+
+      // Debug: true -> logs warning
+      setConfig({ debug: true });
+      await createToast("SSR message 2");
+      assert.strictEqual(warnCount, 1, "Logs SSR console.warn when debug is true");
+    } finally {
+      globalThis.window = origWindow;
+      globalThis.document = origDocument;
+      console.warn = origConsoleWarn;
+    }
+
+    // 3. Custom targetNode cleanup in resetContainerRegistry and resetToastManager
+    const customHost = document.createElement("div");
+    customHost.id = "custom-portal-target";
+    document.body.appendChild(customHost);
+    setConfig({ targetNode: customHost });
+
+    const handle = await createToast("Custom target toast", { duration: 5000 });
+    assert.ok(handle, "Toast handle created");
+    const targetContainers = customHost.querySelectorAll('[id^="toast-container-"]');
+    assert.ok(targetContainers.length > 0, "Container rendered inside custom targetNode");
+
+    resetToastManager();
+    resetContainerRegistry();
+    assert.strictEqual(
+      customHost.querySelectorAll('[id^="toast-container-"]').length,
+      0,
+      "Containers inside custom targetNode are pruned cleanly by resetContainerRegistry",
+    );
+    customHost.remove();
+    resetConfig();
+
+    // 4. Progress bar radius dynamic recalculation via handle.update({ borderRadius }) and createProgressBar
+    const { createProgressBar } = await import("../../src/components/toast-utils-core.js");
+    const testToast = document.createElement("div");
+    createProgressBar(testToast, { borderRadius: "0px", showProgressBar: true });
+    assert.strictEqual(testToast._progressBar._leftOffset, 0, "Initial leftOffset is 0");
+    testToast._progressBar._recalcRadius(20);
+    assert.strictEqual(testToast._progressBar._leftOffset, 8, "Recalculated leftOffset is 8 for 20px radius");
+    assert.strictEqual(testToast._progressBar._finalWidth, "calc(100% - 16px)", "Recalculated finalWidth");
+
+    const pbHandle = await createToast("Radius test", {
+      showProgressBar: true,
+      borderRadius: "0px",
+      duration: 5000,
+    });
+    await new Promise((r) => setTimeout(r, 60));
+    const toastEl = document.querySelector(".toast");
+    assert.ok(toastEl, "Toast element exists");
+    const pb = toastEl.querySelector(".toast-progress-bar");
+    assert.ok(pb, "Progress bar exists");
+    assert.strictEqual(pb._leftOffset, 0, "Initial leftOffset is 0 for 0px borderRadius");
+
+    await pbHandle.update({ borderRadius: 20 });
+    assert.strictEqual(pb._leftOffset, 8, "Recalculated leftOffset is 8 for 20px borderRadius (clamped to height * 2)");
+    assert.strictEqual(pb._finalWidth, "calc(100% - 16px)", "Recalculated finalWidth accommodates new offset");
+
+    await pbHandle.dismiss();
+    resetConfig();
+    resetToastManager();
+  });
 });
 
 
