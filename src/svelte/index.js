@@ -2,6 +2,9 @@ import {
   createToast,
   createToastAPI,
   createToastInstance,
+  on,
+  off,
+  getActiveCount,
   success,
   error,
   warning,
@@ -59,7 +62,7 @@ export function createToastStore(defaultOptions) {
     return res;
   };
 
-  return {
+  const store = {
     ...base,
     subscribe(run) {
       if (typeof run === "function") {
@@ -80,9 +83,16 @@ export function createToastStore(defaultOptions) {
     dismissAll: wrapAsync(base.dismissAll),
     clear: wrapAsync(base.clear),
   };
+  Object.defineProperty(store, "size", {
+    get: () => base.size,
+    configurable: true,
+    enumerable: true,
+  });
+  return store;
 }
 
 export const toast = createToastStore();
+const toastStore = toast;
 
 /**
  * Svelte helper for customizable-toast-notification.
@@ -105,6 +115,9 @@ export {
   createToast,
   createToastAPI,
   createToastInstance,
+  on,
+  off,
+  toastStore,
   success,
   error,
   warning,
@@ -115,6 +128,7 @@ export {
   dismiss,
   dismissAll,
   clear,
+  getActiveCount,
   setConfig,
   getConfig,
   resetConfig,

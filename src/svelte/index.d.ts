@@ -27,6 +27,10 @@ export interface SvelteToastStore {
   dismiss: (target?: string | ToastHandle | HTMLElement | Promise<ToastHandle>) => Promise<void>;
   dismissAll: () => Promise<void>;
   clear: () => Promise<void>;
+  on: (event: 'open' | 'show' | 'close' | 'queue' | 'drop', listener: (data: any) => void) => () => void;
+  off: (event: 'open' | 'show' | 'close' | 'queue' | 'drop', listener: (data: any) => void) => void;
+  getActiveCount: () => number;
+  readonly size: number;
   setConfig: (options?: Partial<ToastGlobalConfig>) => ToastGlobalConfig;
   getConfig: () => ToastGlobalConfig;
   resetConfig: () => ToastGlobalConfig;
@@ -39,12 +43,16 @@ export interface SvelteToastStore {
 export function createToastStore(defaultOptions?: Partial<ToastOptions>): SvelteToastStore;
 
 export const toast: SvelteToastStore;
+export const toastStore: SvelteToastStore;
 export const useToast: (defaultOptions?: Partial<ToastOptions>) => SvelteToastStore;
 
 export {
   createToast,
   createToastAPI,
   createToastInstance,
+  on,
+  off,
+  toastStore,
   success,
   error,
   warning,
@@ -55,6 +63,7 @@ export {
   dismiss,
   dismissAll,
   clear,
+  getActiveCount,
   setConfig,
   getConfig,
   resetConfig,

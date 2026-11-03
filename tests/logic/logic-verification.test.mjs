@@ -7233,6 +7233,103 @@ describe("Architectural Fortification: Updating Dismissed Toasts & Fallback Spaw
 
     resetToastManager();
   });
+
+  test("Fortification 3: Scoped Instance Promise Tracking, Framework Pub-Sub & Parity, and Svelte toastStore Export", async () => {
+    resetToastManager();
+    const { createToast, getActiveCount, createToastAPI, createToastInstance } = await import("../../src/index.js");
+
+    // 1. Scoped instance promise tracking & lifecycle
+    const inst = createToastInstance({ position: "top-left" });
+    let resolvePromise;
+    const p = new Promise((resolve) => { resolvePromise = resolve; });
+    let instOpened = false;
+    const unsub = inst.on("open", () => { instOpened = true; });
+
+    const promiseAction = inst.promise(p, { loading: "Scoped Loading...", success: "Scoped Done!" });
+    await new Promise((r) => setTimeout(r, 80));
+
+    assert.strictEqual(inst.getActiveCount(), 1, "instance.getActiveCount() reflects pending promise");
+    assert.strictEqual(inst.size, 1, "instance.size reflects pending promise");
+    assert.strictEqual(instOpened, true, "instance.on('open') received event for promise");
+
+    resolvePromise("All good");
+    await promiseAction;
+    await new Promise((r) => setTimeout(r, 80));
+
+    unsub();
+    await inst.dismissAll();
+    resetToastManager();
+
+    // 2. Pending promise dismissal via instance.dismissAll()
+    const inst2 = createToastInstance({ position: "bottom-left" });
+    const neverResolve = new Promise(() => {});
+    inst2.promise(neverResolve, { loading: "Pending..." }).catch(() => {});
+    await new Promise((r) => setTimeout(r, 80));
+    assert.strictEqual(inst2.size, 1, "Pending promise is tracked in inst2");
+    await inst2.dismissAll();
+    await new Promise((r) => setTimeout(r, 80));
+    assert.strictEqual(inst2.size, 0, "inst2.dismissAll() cleanly dismisses pending promise loading toast");
+    resetToastManager();
+
+    // 3. Global API parity (getActiveCount and size)
+    assert.strictEqual(typeof createToast.getActiveCount, "function", "createToast.getActiveCount is function");
+    assert.strictEqual(typeof createToast.size, "number", "createToast.size is number");
+    assert.strictEqual(typeof getActiveCount, "function", "getActiveCount is exported function");
+
+    const api = createToastAPI();
+    assert.strictEqual(typeof api.getActiveCount, "function", "createToastAPI.getActiveCount is function");
+    assert.strictEqual(typeof api.size, "number", "createToastAPI.size is number");
+    if (typeof window !== "undefined" && window.customizableToast) {
+      assert.strictEqual(typeof window.customizableToast.getActiveCount, "function", "window.customizableToast.getActiveCount is function");
+      assert.strictEqual(typeof window.customizableToast.size, "number", "window.customizableToast.size is number");
+    }
+
+    // 4. Framework subpath exports: on, off, getActiveCount, toastStore
+    const reactAdapter = await import("../../src/react/index.js");
+    const vueAdapter = await import("../../src/vue/index.js");
+    const svelteAdapter = await import("../../src/svelte/index.js");
+    const solidAdapter = await import("../../src/solid/index.js");
+    const angularAdapter = await import("../../src/angular/index.js");
+
+    assert.strictEqual(typeof reactAdapter.on, "function", "React exports on");
+    assert.strictEqual(typeof reactAdapter.off, "function", "React exports off");
+    assert.strictEqual(typeof reactAdapter.getActiveCount, "function", "React exports getActiveCount");
+
+    assert.strictEqual(typeof vueAdapter.on, "function", "Vue exports on");
+    assert.strictEqual(typeof vueAdapter.off, "function", "Vue exports off");
+    assert.strictEqual(typeof vueAdapter.getActiveCount, "function", "Vue exports getActiveCount");
+
+    assert.strictEqual(typeof svelteAdapter.on, "function", "Svelte exports on");
+    assert.strictEqual(typeof svelteAdapter.off, "function", "Svelte exports off");
+    assert.strictEqual(typeof svelteAdapter.getActiveCount, "function", "Svelte exports getActiveCount");
+    assert.strictEqual(typeof svelteAdapter.toastStore, "object", "Svelte exports toastStore");
+    assert.strictEqual(typeof svelteAdapter.toastStore.subscribe, "function", "toastStore.subscribe is function");
+
+    assert.strictEqual(typeof solidAdapter.on, "function", "Solid exports on");
+    assert.strictEqual(typeof solidAdapter.off, "function", "Solid exports off");
+    assert.strictEqual(typeof solidAdapter.getActiveCount, "function", "Solid exports getActiveCount");
+
+    assert.strictEqual(typeof angularAdapter.on, "function", "Angular exports on");
+    assert.strictEqual(typeof angularAdapter.off, "function", "Angular exports off");
+    assert.strictEqual(typeof angularAdapter.getActiveCount, "function", "Angular exports getActiveCount");
+
+    // 5. Angular ToastService class methods
+    const ang = new angularAdapter.ToastService();
+    assert.strictEqual(typeof ang.on, "function", "ToastService has on()");
+    assert.strictEqual(typeof ang.off, "function", "ToastService has off()");
+    assert.strictEqual(typeof ang.getActiveCount, "function", "ToastService has getActiveCount()");
+    assert.strictEqual(typeof ang.size, "number", "ToastService has size getter");
+
+    let angEvtReceived = false;
+    const unsubAng = ang.on("open", () => { angEvtReceived = true; });
+    const hAng = await ang.success("Angular Service Test");
+    await new Promise((r) => setTimeout(r, 60));
+    assert.strictEqual(angEvtReceived, true, "ToastService.on('open') received event");
+    unsubAng();
+    await hAng.dismiss();
+
+    resetToastManager();
+  });
 });
 
 

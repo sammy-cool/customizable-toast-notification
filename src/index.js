@@ -626,7 +626,7 @@ const TOAST_PROMISE_LOADING_DURATION_MS = 24 * 60 * 60 * 1000;
  * @param {ToastOptions} [options]
  * @returns {Promise<T>}
  */
-async function toastPromise(promiseOrFn, messages = {}, options = {}) {
+async function toastPromise(promiseOrFn, messages = {}, options = {}, creator = createToastWithPriority) {
   if (!promiseOrFn || (typeof promiseOrFn !== "function" && typeof promiseOrFn.then !== "function")) {
     throw new TypeError("toastPromise requires a Promise or Promise-returning function");
   }
@@ -656,7 +656,7 @@ async function toastPromise(promiseOrFn, messages = {}, options = {}) {
           showLoader: safeOptions.showLoader ?? true,
         };
 
-  const loadingHandle = await createToastWithPriority(loadingOptions);
+  const loadingHandle = await creator(loadingOptions);
 
   const baseOptions = {
     ...safeOptions,
@@ -684,10 +684,10 @@ async function toastPromise(promiseOrFn, messages = {}, options = {}) {
     if (loadingHandle && typeof loadingHandle.update === "function") {
       const updated = await loadingHandle.update(successOptions);
       if (!updated) {
-        await createToastWithPriority(successOptions);
+        await creator(successOptions);
       }
     } else {
-      await createToastWithPriority(successOptions);
+      await creator(successOptions);
     }
 
     return result;
@@ -705,10 +705,10 @@ async function toastPromise(promiseOrFn, messages = {}, options = {}) {
     if (loadingHandle && typeof loadingHandle.update === "function") {
       const updated = await loadingHandle.update(errorOptions);
       if (!updated) {
-        await createToastWithPriority(errorOptions);
+        await creator(errorOptions);
       }
     } else {
-      await createToastWithPriority(errorOptions);
+      await creator(errorOptions);
     }
 
     throw err;
@@ -722,6 +722,12 @@ createToastWithPriority.clear = noopAll;
 createToastWithPriority.on = managerOn;
 createToastWithPriority.off = managerOff;
 createToastWithPriority.createToastInstance = createToastInstance;
+createToastWithPriority.getActiveCount = () => getToastMetrics().activeCount;
+Object.defineProperty(createToastWithPriority, "size", {
+  get: () => getToastMetrics().activeCount,
+  configurable: true,
+  enumerable: true,
+});
 
 /**
  * Resets all internal ToastManager state, active toasts, queues, timers, and index-level locks.
@@ -827,7 +833,7 @@ function createToastInstance(defaultOptions = {}) {
   instance.loading = (msg, opts) => trackHandle(createToastWithPriority.loading(msg, normalizeOptions(msg, { ...opts, type: "loading" })));
   instance.custom = (msg, opts) => trackHandle(createToastWithPriority.custom(msg, normalizeOptions(msg, { ...opts, type: "custom" })));
   instance.promise = (promiseOrFn, messages, opts) => {
-    return toastPromise(promiseOrFn, messages, normalizeOptions(opts));
+    return toastPromise(promiseOrFn, messages, normalizeOptions(opts), instance);
   };
   instance.dismiss = async (target) => {
     let resolvedTarget = target;
@@ -896,7 +902,7 @@ function createToastInstance(defaultOptions = {}) {
  * @returns {Record<string, any>}
  */
 function createToastAPI() {
-  return {
+  const api = {
     success: (message, options) => createToastWithPriority.success(message, options),
     error: (message, options) => createToastWithPriority.error(message, options),
     warning: (message, options) => createToastWithPriority.warning(message, options),
@@ -911,6 +917,7 @@ function createToastAPI() {
     on: managerOn,
     off: managerOff,
     createToastInstance,
+    getActiveCount: () => getToastMetrics().activeCount,
     setConfig,
     getConfig,
     resetConfig,
@@ -921,10 +928,18 @@ function createToastAPI() {
     destroyKeyboardShortcuts,
     version,
   };
+  Object.defineProperty(api, "size", {
+    get: () => getToastMetrics().activeCount,
+    configurable: true,
+    enumerable: true,
+  });
+  return api;
 }
 
 /** @type {string} */
 const version = typeof __VERSION__ !== "undefined" ? __VERSION__ : "4.0.3";
+
+const getActiveCount = () => getToastMetrics().activeCount;
 
 export {
   version,
@@ -943,6 +958,7 @@ export {
   generateToastId,
   resetToastIdCounter,
   getToastMetrics,
+  getActiveCount,
 };
 
 /**
@@ -960,41 +976,57 @@ if (typeof window !== "undefined" && typeof document !== "undefined") {
   initKeyboardShortcuts(window);
 }
 
+const targetGlobal =
+  typeof window !== "undefined"
+    ? window
+    : typeof globalThis !== "undefined"
+      ? globalThis
+      : null;
+
 try {
-  if (typeof window !== "undefined") {
-    window.customizableToast = {
-      setConfig,
-      getConfig,
-      resetConfig,
-      shouldReduceMotion,
-      version,
-      createToast: createToastWithPriority,
-      success,
-      error,
-      warning,
-      info,
-      loading,
-      custom,
-      setDefaultColors,
-      setDefaultMessages,
-      noop: noopAll,
-      dismiss: dismissToast,
-      dismissAll: noopAll,
-      clear: noopAll,
-      toastPromise,
-      promise: toastPromise,
-      updateToastByKey,
-      generateToastId,
-      resetToastIdCounter,
-      getToastMetrics,
-      resetToastManager,
-      resetContainerRegistry,
-      on: managerOn,
-      off: managerOff,
-      createToastInstance,
-      initKeyboardShortcuts,
-      destroyKeyboardShortcuts,
-    };
+  if (targetGlobal) {
+    targetGlobal.customizableToast = Object.assign(
+      targetGlobal.customizableToast || {},
+      {
+        setConfig,
+        getConfig,
+        resetConfig,
+        shouldReduceMotion,
+        version,
+        createToast: createToastWithPriority,
+        success,
+        error,
+        warning,
+        info,
+        loading,
+        custom,
+        setDefaultColors,
+        setDefaultMessages,
+        noop: noopAll,
+        dismiss: dismissToast,
+        dismissAll: noopAll,
+        clear: noopAll,
+        toastPromise,
+        promise: toastPromise,
+        updateToastByKey,
+        generateToastId,
+        resetToastIdCounter,
+        getToastMetrics,
+        resetToastManager,
+        resetContainerRegistry,
+        on: managerOn,
+        off: managerOff,
+        createToastInstance,
+        getActiveCount,
+        initKeyboardShortcuts,
+        destroyKeyboardShortcuts,
+      }
+    );
+    Object.defineProperty(targetGlobal.customizableToast, "size", {
+      get: () => getToastMetrics().activeCount,
+      configurable: true,
+      enumerable: true,
+    });
   }
 } catch (error) {
   console.error("Global assignment failed:", error);

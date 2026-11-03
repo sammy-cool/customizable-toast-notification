@@ -155,6 +155,13 @@ try {
     console.log("✅ UMD build works");
     console.log("   Exports:", Object.keys(customizableToast).join(", "));
 
+    if (typeof customizableToast.getActiveCount !== "function") {
+      throw new Error("UMD export getActiveCount missing or not a function");
+    }
+    if (typeof customizableToast.size !== "number") {
+      throw new Error("UMD export size missing or not a number");
+    }
+
     // Verify UMD gzipped bundle size does not exceed 50KB mandate
     const gzippedUmd = zlib.gzipSync(umdCode);
     const umdGzipKb = (gzippedUmd.length / 1024).toFixed(1);

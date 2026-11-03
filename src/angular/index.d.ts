@@ -23,6 +23,10 @@ export declare class ToastService {
   dismiss(target?: string | ToastHandle | HTMLElement | Promise<ToastHandle>): Promise<void>;
   dismissAll(): Promise<void>;
   clear(): Promise<void>;
+  on(event: 'open' | 'show' | 'close' | 'queue' | 'drop', listener: (data: any) => void): () => void;
+  off(event: 'open' | 'show' | 'close' | 'queue' | 'drop', listener: (data: any) => void): void;
+  getActiveCount(): number;
+  readonly size: number;
   setConfig(options?: Partial<ToastGlobalConfig>): ToastGlobalConfig;
   getConfig(): ToastGlobalConfig;
   resetConfig(): ToastGlobalConfig;
@@ -42,6 +46,8 @@ export {
   createToast,
   createToastAPI,
   createToastInstance,
+  on,
+  off,
   success,
   error,
   warning,
@@ -52,6 +58,7 @@ export {
   dismiss,
   dismissAll,
   clear,
+  getActiveCount,
   setConfig,
   getConfig,
   resetConfig,

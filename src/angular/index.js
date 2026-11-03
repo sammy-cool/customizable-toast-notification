@@ -2,6 +2,9 @@ import {
   createToast,
   createToastAPI,
   createToastInstance,
+  on,
+  off,
+  getActiveCount,
   success,
   error,
   warning,
@@ -82,6 +85,22 @@ export class ToastService {
     return this._instance ? this._instance.clear() : clear();
   }
 
+  on(event, listener) {
+    return this._instance ? this._instance.on(event, listener) : on(event, listener);
+  }
+
+  off(event, listener) {
+    return this._instance ? this._instance.off(event, listener) : off(event, listener);
+  }
+
+  getActiveCount() {
+    return this._instance ? this._instance.getActiveCount() : getActiveCount();
+  }
+
+  get size() {
+    return this._instance ? this._instance.size : getActiveCount();
+  }
+
   setConfig(options) {
     return setConfig(options);
   }
@@ -149,6 +168,8 @@ export {
   createToast,
   createToastAPI,
   createToastInstance,
+  on,
+  off,
   success,
   error,
   warning,
@@ -159,6 +180,7 @@ export {
   dismiss,
   dismissAll,
   clear,
+  getActiveCount,
   setConfig,
   getConfig,
   resetConfig,
