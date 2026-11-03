@@ -1,5 +1,11 @@
 import {
   createToast,
+  success,
+  error,
+  warning,
+  info,
+  loading,
+  custom,
   toastPromise,
   dismiss,
   dismissAll,
@@ -10,6 +16,8 @@ import {
   getToastMetrics,
   setDefaultColors,
   setDefaultMessages,
+  initKeyboardShortcuts,
+  destroyKeyboardShortcuts,
   version,
 } from "../index.js";
 
@@ -118,6 +126,12 @@ export const toast = injectToast();
 
 export {
   createToast,
+  success,
+  error,
+  warning,
+  info,
+  loading,
+  custom,
   toastPromise,
   dismiss,
   dismissAll,
@@ -128,5 +142,7 @@ export {
   getToastMetrics,
   setDefaultColors,
   setDefaultMessages,
+  initKeyboardShortcuts,
+  destroyKeyboardShortcuts,
   version,
 };

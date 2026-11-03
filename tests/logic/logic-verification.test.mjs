@@ -6361,6 +6361,61 @@ describe("Architectural Fortification: Updating Dismissed Toasts & Fallback Spaw
     assert.ok(css.includes("max-width: 768px"), "styles.css must include tablet breakpoint <= 768px");
     assert.ok(css.includes(".toast-rtl"), "styles.css must include .toast-rtl selector");
   });
+
+  test("Framework subpaths export shorthand methods and accept options-only or empty calls", async () => {
+    freshDom();
+    const adapters = [
+      { name: "react", mod: await import("../../src/react/index.js") },
+      { name: "vue", mod: await import("../../src/vue/index.js") },
+      { name: "svelte", mod: await import("../../src/svelte/index.js") },
+      { name: "solid", mod: await import("../../src/solid/index.js") },
+      { name: "angular", mod: await import("../../src/angular/index.js") },
+    ];
+
+    for (const { name, mod } of adapters) {
+      assert.strictEqual(typeof mod.success, "function", `${name} should export success function`);
+      assert.strictEqual(typeof mod.error, "function", `${name} should export error function`);
+      assert.strictEqual(typeof mod.warning, "function", `${name} should export warning function`);
+      assert.strictEqual(typeof mod.info, "function", `${name} should export info function`);
+      assert.strictEqual(typeof mod.loading, "function", `${name} should export loading function`);
+      assert.strictEqual(typeof mod.custom, "function", `${name} should export custom function`);
+      assert.strictEqual(typeof mod.initKeyboardShortcuts, "function", `${name} should export initKeyboardShortcuts`);
+      assert.strictEqual(typeof mod.destroyKeyboardShortcuts, "function", `${name} should export destroyKeyboardShortcuts`);
+
+      // Test options-only call on toast object
+      const h1 = await mod.toast.success({ message: `${name} options only`, duration: 100 });
+      assert.ok(h1, `${name} toast.success({ message }) should return handle`);
+      assert.strictEqual(typeof h1.dismiss, "function");
+      await h1.dismiss();
+
+      // Test empty call on toast object
+      const h2 = await mod.toast.info();
+      assert.ok(h2, `${name} toast.info() without args should return handle`);
+      await h2.dismiss();
+
+      await mod.clear();
+    }
+
+    // Verify .d.ts files have optional parameter typing (messageOrOptions?: string | ToastOptions)
+    const fs = await import("fs");
+    const path = await import("path");
+    for (const name of ["react", "vue", "svelte", "solid", "angular"]) {
+      const dtsPath = path.resolve(`dist/${name}.d.ts`);
+      const content = fs.readFileSync(dtsPath, "utf8");
+      assert.ok(
+        content.includes("messageOrOptions?: string | ToastOptions"),
+        `${name}.d.ts must type messageOrOptions as optional`
+      );
+      assert.ok(
+        content.includes("show(options?: ToastOptions)") || content.includes("show: (options?: ToastOptions)"),
+        `${name}.d.ts must type show options as optional`
+      );
+      assert.ok(
+        content.includes("initKeyboardShortcuts"),
+        `${name}.d.ts must export initKeyboardShortcuts`
+      );
+    }
+  });
 });
 
 
