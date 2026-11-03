@@ -10,8 +10,9 @@ import {
   dismiss,
   noop as managerNoop,
   getToastMetrics,
+  getToastPosition,
 } from "./components/ToastManager.js";
-import { getOrCreateToastContainer, resetContainerRegistry } from "./utils/containerRegistry.js";
+import { getOrCreateToastContainer, resetContainerRegistry, normalizePositionKey } from "./utils/containerRegistry.js";
 import { getDynamicAccessibleTextColorHex } from "./utils/dom.js";
 import { setPosition } from "./utils/position.js";
 import { generateToastId, resetToastIdCounter } from "./utils/id.js";
@@ -449,18 +450,33 @@ function setDefaultMessages(messages) {
   }
 }
 
-let closeInProgress = false;
-let closePromise = null;
+const closePromisesByPosition = new Map();
+let globalClosePromise = null;
 
-async function runWithClosePriority(fn) {
-  if (closeInProgress && closePromise) {
+async function runWithClosePriority(fn, positionKey) {
+  if (globalClosePromise) {
     try {
-      await closePromise;
+      await globalClosePromise;
     } catch (closeError) {
       console.warn(
-        "Previous close operation failed (continuing anyway):",
+        "Previous global close operation failed (continuing anyway):",
         closeError,
       );
+    }
+  }
+
+  const normalizedPos = positionKey ? normalizePositionKey(positionKey) : null;
+  if (normalizedPos) {
+    const posPromise = closePromisesByPosition.get(normalizedPos);
+    if (posPromise) {
+      try {
+        await posPromise;
+      } catch (closeError) {
+        console.warn(
+          `Previous close operation for position "${normalizedPos}" failed (continuing anyway):`,
+          closeError,
+        );
+      }
     }
   }
   return fn();
@@ -478,7 +494,8 @@ const originalCreateToast = createToast;
  */
 async function createToastWithPriority(messageOrOptions = {}, maybeOptions) {
   const normalized = normalizeToastOptions(messageOrOptions, maybeOptions);
-  let key = await runWithClosePriority(() => originalCreateToast(normalized));
+  const posKey = normalizePositionKey(normalized.position);
+  let key = await runWithClosePriority(() => originalCreateToast(normalized), posKey);
   let lastOptions = { ...normalized };
 
   return {
@@ -630,8 +647,8 @@ const dismissToast = async (target) => {
     }
   }
 
-  closeInProgress = true;
-  closePromise = (async () => {
+  const posKey = getToastPosition(resolvedTarget);
+  const runClose = async () => {
     try {
       if (typeof resolvedTarget === "string" && resolvedTarget.length > 0) {
         await closeToastByKey(resolvedTarget);
@@ -649,23 +666,33 @@ const dismissToast = async (target) => {
         await dismiss();
       }
     } finally {
-      closeInProgress = false;
-      closePromise = null;
+      if (posKey) {
+        closePromisesByPosition.delete(posKey);
+      }
     }
-  })();
-  await closePromise;
+  };
+
+  const closeTask = runClose();
+  if (posKey) {
+    closePromisesByPosition.set(posKey, closeTask);
+  } else {
+    globalClosePromise = closeTask;
+    closeTask.finally(() => {
+      globalClosePromise = null;
+    });
+  }
+  await closeTask;
 };
 const noopAll = async () => {
-  closeInProgress = true;
-  closePromise = (async () => {
+  globalClosePromise = (async () => {
     try {
       await managerNoop();
     } finally {
-      closeInProgress = false;
-      closePromise = null;
+      globalClosePromise = null;
+      closePromisesByPosition.clear();
     }
   })();
-  await closePromise;
+  await globalClosePromise;
 };
 const clear = noopAll;
 const dismissAll = noopAll;
@@ -776,8 +803,8 @@ createToastWithPriority.clear = noopAll;
  * Resets all internal ToastManager state, active toasts, queues, timers, and index-level locks.
  */
 function resetToastManager() {
-  closeInProgress = false;
-  closePromise = null;
+  globalClosePromise = null;
+  closePromisesByPosition.clear();
   coreResetToastManager();
 }
 
@@ -811,20 +838,9 @@ export function initKeyboardShortcuts(win = typeof window !== "undefined" ? wind
     if (e.key === "Escape" || e.key === "Esc") {
       void (async () => {
         try {
-          closeInProgress = true;
-          closePromise = (async () => {
-            try {
-              await dismiss();
-            } finally {
-              closeInProgress = false;
-              closePromise = null;
-            }
-          })();
-          await closePromise;
+          await dismissToast();
         } catch (error) {
           console.error("Escape key dismiss failed:", error);
-          closeInProgress = false;
-          closePromise = null;
         }
       })();
     } else if (e.key === "F6" || ((e.altKey || e.metaKey) && (e.key === "t" || e.key === "T"))) {

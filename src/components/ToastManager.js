@@ -461,6 +461,43 @@ async function createOne(options, key, initialCount) {
   }
 }
 
+/**
+ * Resolves the normalized position of a toast given its key, element, or handle.
+ * If target is omitted, resolves the position of the most recent active toast.
+ * @param {unknown} [target]
+ * @returns {string | null}
+ */
+export function getToastPosition(target) {
+  if (!target) {
+    if (active.size > 0) {
+      const last = Array.from(active.values()).at(-1);
+      return last?.options?.position ? normalizePositionKey(last.options.position) : "bottom-right";
+    }
+    if (pending.size > 0) {
+      const lastPending = Array.from(pending.values()).at(-1);
+      return lastPending?.options?.position ? normalizePositionKey(lastPending.options.position) : "bottom-right";
+    }
+    return null;
+  }
+  let key = null;
+  if (typeof target === "string") {
+    key = target;
+  } else if (target && typeof target === "object") {
+    key = target.id || target._key || null;
+  }
+  if (key) {
+    const data = active.get(key) || pending.get(key);
+    if (data?.options?.position) {
+      return normalizePositionKey(data.options.position);
+    }
+    const q = queue.find((item) => item.key === key);
+    if (q?.options?.position) {
+      return normalizePositionKey(q.options.position);
+    }
+  }
+  return null;
+}
+
 export async function dismissMostRecent() {
   try {
     if (pending.size > 0) {

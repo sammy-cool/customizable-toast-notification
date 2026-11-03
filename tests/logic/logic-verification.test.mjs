@@ -6271,6 +6271,50 @@ describe("Architectural Fortification: Updating Dismissed Toasts & Fallback Spaw
       resetToastManager();
     }
   });
+
+  test("dismissing toast in top-left does not block concurrent creation in bottom-right", async () => {
+    freshDom();
+    const { createToast, dismiss, resetToastManager } = await import("../../src/index.js");
+    resetToastManager();
+
+    try {
+      // 1. Create a toast in top-left
+      const tlHandle = await createToast({
+        message: "Top-left notification",
+        position: "top-left",
+        duration: 0,
+      });
+      await new Promise((r) => setTimeout(r, 50));
+      assert.ok(document.querySelector("#toast-container-top-left .toast"));
+
+      // 2. Begin dismissal of top-left toast
+      const dismissPromise = dismiss(tlHandle);
+
+      // 3. Concurrently create a toast in bottom-right
+      let brCreated = false;
+      const brPromise = createToast({
+        message: "Bottom-right notification",
+        position: "bottom-right",
+        duration: 3000,
+      }).then((h) => {
+        brCreated = true;
+        return h;
+      });
+
+      // Bottom-right creation should proceed and resolve promptly without being serialized by top-left exit animation
+      await new Promise((r) => setTimeout(r, 60));
+      assert.strictEqual(brCreated, true, "bottom-right toast should not be blocked by top-left dismissal");
+
+      const brContainer = document.querySelector("#toast-container-bottom-right");
+      assert.ok(brContainer);
+      assert.ok(brContainer.querySelector(".toast"));
+
+      await dismissPromise;
+      await brPromise;
+    } finally {
+      resetToastManager();
+    }
+  });
 });
 
 
