@@ -39,6 +39,7 @@ export const toast: ToastService;
 
 export {
   createToast,
+  createToastAPI,
   success,
   error,
   warning,

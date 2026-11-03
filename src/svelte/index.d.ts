@@ -43,6 +43,7 @@ export const useToast: () => SvelteToastStore;
 
 export {
   createToast,
+  createToastAPI,
   success,
   error,
   warning,

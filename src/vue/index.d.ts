@@ -40,6 +40,7 @@ export const toast: UseToastAPI;
 
 export {
   createToast,
+  createToastAPI,
   success,
   error,
   warning,

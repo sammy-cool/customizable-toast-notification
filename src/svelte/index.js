@@ -1,5 +1,6 @@
 import {
   createToast,
+  createToastAPI,
   success,
   error,
   warning,
@@ -39,7 +40,20 @@ function notifySubscribers() {
  * @returns {import('./index.d.ts').SvelteToastStore}
  */
 export function createToastStore() {
+  const base = createToastAPI();
+  const wrap = (fn) => (...args) => {
+    const res = fn(...args);
+    notifySubscribers();
+    return res;
+  };
+  const wrapAsync = (fn) => async (...args) => {
+    const res = await fn(...args);
+    notifySubscribers();
+    return res;
+  };
+
   return {
+    ...base,
     subscribe(run) {
       if (typeof run === "function") {
         subscribers.add(run);
@@ -48,61 +62,16 @@ export function createToastStore() {
       }
       return () => {};
     },
-    success: (message, options) => {
-      const res = createToast.success(message, options);
-      notifySubscribers();
-      return res;
-    },
-    error: (message, options) => {
-      const res = createToast.error(message, options);
-      notifySubscribers();
-      return res;
-    },
-    warning: (message, options) => {
-      const res = createToast.warning(message, options);
-      notifySubscribers();
-      return res;
-    },
-    info: (message, options) => {
-      const res = createToast.info(message, options);
-      notifySubscribers();
-      return res;
-    },
-    loading: (message, options) => {
-      const res = createToast.loading(message, options);
-      notifySubscribers();
-      return res;
-    },
-    custom: (message, options) => {
-      const res = createToast.custom(message, options);
-      notifySubscribers();
-      return res;
-    },
-    show: (options) => {
-      const res = createToast(options);
-      notifySubscribers();
-      return res;
-    },
-    promise: toastPromise,
-    dismiss: async (target) => {
-      await dismiss(target);
-      notifySubscribers();
-    },
-    dismissAll: async () => {
-      await dismissAll();
-      notifySubscribers();
-    },
-    clear: async () => {
-      await clear();
-      notifySubscribers();
-    },
-    setConfig,
-    getConfig,
-    resetConfig,
-    getToastMetrics,
-    setDefaultColors,
-    setDefaultMessages,
-    version,
+    success: wrap(base.success),
+    error: wrap(base.error),
+    warning: wrap(base.warning),
+    info: wrap(base.info),
+    loading: wrap(base.loading),
+    custom: wrap(base.custom),
+    show: wrap(base.show),
+    dismiss: wrapAsync(base.dismiss),
+    dismissAll: wrapAsync(base.dismissAll),
+    clear: wrapAsync(base.clear),
   };
 }
 
@@ -111,6 +80,7 @@ export const useToast = () => toast;
 
 export {
   createToast,
+  createToastAPI,
   success,
   error,
   warning,

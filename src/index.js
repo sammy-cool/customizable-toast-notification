@@ -811,11 +811,41 @@ function resetToastManager() {
   coreResetToastManager();
 }
 
+/**
+ * Creates the standard dictionary of toast methods and utilities for framework adapters and consumers.
+ * @returns {Record<string, any>}
+ */
+function createToastAPI() {
+  return {
+    success: (message, options) => createToastWithPriority.success(message, options),
+    error: (message, options) => createToastWithPriority.error(message, options),
+    warning: (message, options) => createToastWithPriority.warning(message, options),
+    info: (message, options) => createToastWithPriority.info(message, options),
+    loading: (message, options) => createToastWithPriority.loading(message, options),
+    custom: (message, options) => createToastWithPriority.custom(message, options),
+    show: (options) => createToastWithPriority(options),
+    promise: toastPromise,
+    dismiss: dismissToast,
+    dismissAll: noopAll,
+    clear: noopAll,
+    setConfig,
+    getConfig,
+    resetConfig,
+    getToastMetrics,
+    setDefaultColors,
+    setDefaultMessages,
+    initKeyboardShortcuts,
+    destroyKeyboardShortcuts,
+    version,
+  };
+}
+
 /** @type {string} */
 const version = typeof __VERSION__ !== "undefined" ? __VERSION__ : "4.0.3";
 
 export {
   version,
+  createToastAPI,
   toastPromise,
   setConfig,
   getConfig,
