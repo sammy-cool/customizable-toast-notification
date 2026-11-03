@@ -239,7 +239,12 @@ export function createUndoAction(toast, options, onClose) {
     });
   }
 
-  let remainingMs = Math.max(1000, Number(totalDuration) || 2500);
+  let remainingMs =
+    typeof options?.remainingTime === "number" && options.remainingTime > 0
+      ? options.remainingTime
+      : (typeof options?.timer?.getRemainingTime === "function"
+          ? options.timer.getRemainingTime()
+          : Math.max(1000, Number(totalDuration) || 2500));
   let remainingSec = Math.max(1, Math.ceil(remainingMs / 1000));
   const updateLabel = () => {
     btn.textContent = showCountdown
@@ -451,8 +456,12 @@ export function parseProgressValue(rawProgress, toast, options = {}) {
   // Normalized mode (0.0 to 1.0):
   // If explicitly requested via options.progressNormalized, or if value was a fraction (0 < pct < 1),
   // remember ratio mode on toast so that completion (1 or 1.0) scales to 100%.
-  if (toast && pct > 0 && pct < 1) {
+  if (options.progressNormalized === false && toast) {
+    toast._progressRatioMode = false;
+  } else if (toast && pct > 0 && pct < 1) {
     toast._progressRatioMode = true;
+  } else if (toast && pct > 1) {
+    toast._progressRatioMode = false;
   }
 
   const isNormalized = Boolean(options.progressNormalized) || Boolean(toast?._progressRatioMode);

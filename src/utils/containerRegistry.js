@@ -261,6 +261,9 @@ export async function getOrCreateToastContainer(options = {}, setPosition) {
       if (all.length > 1) {
         for (let i = 1; i < all.length; i++) {
           try {
+            while (all[i].firstChild) {
+              el.appendChild(all[i].firstChild);
+            }
             all[i].remove();
           } catch {}
         }

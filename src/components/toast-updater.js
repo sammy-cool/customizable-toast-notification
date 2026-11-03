@@ -90,6 +90,7 @@ export async function applyToastDOMUpdates(data, newOptions, context) {
       ) {
         messageSpan.appendChild(existingLoader);
         const spacer = document.createElement("span");
+        spacer.className = "toast-loader-spacer";
         spacer.style.display = "inline-block";
         spacer.style.width = "8px";
         messageSpan.appendChild(spacer);
@@ -116,6 +117,7 @@ export async function applyToastDOMUpdates(data, newOptions, context) {
   ) {
     const loaderEl = messageSpan?.querySelector(".toast-loader");
     if (loaderEl) {
+      messageSpan?.querySelectorAll(".toast-loader-spacer").forEach((s) => s.remove());
       if (loaderEl.nextSibling && loaderEl.nextSibling.nodeName === "SPAN") {
         loaderEl.nextSibling.remove();
       }
@@ -130,6 +132,7 @@ export async function applyToastDOMUpdates(data, newOptions, context) {
     const loaderEl = createLoader(newOptions.loader || {});
     messageSpan.insertBefore(loaderEl, messageSpan.firstChild);
     const spacer = document.createElement("span");
+    spacer.className = "toast-loader-spacer";
     spacer.style.display = "inline-block";
     spacer.style.width = "8px";
     messageSpan.insertBefore(spacer, loaderEl.nextSibling);
@@ -521,7 +524,7 @@ export async function applyToastDOMUpdates(data, newOptions, context) {
     toast.querySelectorAll(".toast-undo-btn").forEach((el) => el.remove());
 
     if (newOptions.undo) {
-      const mergedOpts = { ...data.options, ...newOptions };
+      const mergedOpts = { ...data.options, ...newOptions, timer: data.timer };
       createUndoAction(toast, mergedOpts, closeToast);
     }
   }

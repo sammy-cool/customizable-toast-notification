@@ -7576,6 +7576,76 @@ describe("Architectural Fortification: Updating Dismissed Toasts & Fallback Spaw
     resetConfig();
     resetToastManager();
   });
+
+  test("Fortification 6: Duplicate Container Migration, Progress Scale Physics, In-Place Undo Timer Sync, and CSS None Components", async () => {
+    freshDom();
+    const {
+      resetToastManager,
+      resetConfig,
+    } = await import("../../src/index.js");
+    resetToastManager();
+
+    // 1. Duplicate container migration before removal
+    const { getOrCreateToastContainer, resetContainerRegistry } = await import("../../src/utils/containerRegistry.js");
+    resetContainerRegistry();
+    const c1 = document.createElement("div");
+    c1.id = "toast-container-bottom-right";
+    const child1 = document.createElement("div");
+    child1.id = "child-1";
+    c1.appendChild(child1);
+    document.body.appendChild(c1);
+
+    const c2 = document.createElement("div");
+    c2.id = "toast-container-bottom-right";
+    const child2 = document.createElement("div");
+    child2.id = "child-2";
+    c2.appendChild(child2);
+    document.body.appendChild(c2);
+
+    const canonical = await getOrCreateToastContainer({ position: "bottom-right" });
+    assert.strictEqual(document.querySelectorAll("#toast-container-bottom-right").length, 1, "Duplicate container pruned");
+    assert.ok(canonical.querySelector("#child-1"), "child-1 preserved in canonical container");
+    assert.ok(canonical.querySelector("#child-2"), "child-2 migrated into canonical container");
+    resetContainerRegistry();
+
+    // 2. parseProgressValue resets _progressRatioMode when pct > 1
+    const { parseProgressValue } = await import("../../src/components/toast-utils-core.js");
+    const dummyToast = document.createElement("div");
+    parseProgressValue(0.5, dummyToast);
+    assert.strictEqual(dummyToast._progressRatioMode, true, "fraction sets _progressRatioMode");
+    const val50 = parseProgressValue(50, dummyToast);
+    assert.strictEqual(val50, 50, "integer percentage 50 is parsed as 50%");
+    assert.strictEqual(dummyToast._progressRatioMode, false, "integer percentage resets _progressRatioMode to false");
+
+    // 3. createProgressBar sets manual percentage progress
+    const { createProgressBar } = await import("../../src/components/toast-utils-core.js");
+    const pillToast = document.createElement("div");
+    createProgressBar(pillToast, { borderRadius: "50px", progress: 100, duration: 3000 });
+    const pillPb = pillToast.querySelector(".toast-progress-bar");
+    assert.ok(pillPb, "Progress bar created");
+    assert.strictEqual(pillPb.style.width, "100%", "Manual percentage progress bar width is set to 100%");
+
+    // 4. In-place undo update seeds remainingSec using timer.getRemainingTime()
+    const { createUndoAction } = await import("../../src/components/toast-utils-core.js");
+    const undoToast = document.createElement("div");
+    const mockTimer = { getRemainingTime: () => 1800 };
+    createUndoAction(undoToast, {
+      duration: 5000,
+      undo: { label: "Revert" },
+      timer: mockTimer,
+    }, () => {});
+    const undoBtn = undoToast.querySelector(".toast-undo-btn");
+    assert.ok(undoBtn, "Undo button created");
+    assert.ok(undoBtn.textContent.includes("2s"), "Undo countdown initialized to remaining 2s rather than 5s");
+
+    // 5. parseToRgb handles CSS Color 4 'none' components
+    const { parseToRgb } = await import("../../src/utils/dom.js");
+    const rgbNone = parseToRgb("rgb(255 none 0)");
+    assert.deepStrictEqual(rgbNone, { r: 255, g: 0, b: 0 }, "rgb(255 none 0) parses 'none' as 0");
+
+    resetConfig();
+    resetToastManager();
+  });
 });
 
 

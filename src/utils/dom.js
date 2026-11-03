@@ -147,6 +147,151 @@ Object.entries(namedColors).forEach(([name, [r, g, b]]) => {
     contrastBlack >= contrastWhite ? "#000000" : "#ffffff";
 });
 
+export function resolveCssCustomProperty(value) {
+  if (typeof value !== "string") return value;
+  let current = value.trim();
+  let depth = 0;
+  const seen = new Set();
+  while (current.toLowerCase().startsWith("var(") && current.endsWith(")") && depth < 5) {
+    depth++;
+    const inner = current.slice(4, -1).trim();
+    const commaIndex = inner.indexOf(",");
+    const propName = (commaIndex === -1 ? inner : inner.slice(0, commaIndex)).trim();
+    const fallbackVal = commaIndex === -1 ? "" : inner.slice(commaIndex + 1).trim();
+
+    if (!propName.startsWith("--") || seen.has(propName)) break;
+    seen.add(propName);
+
+    let resolved = "";
+    try {
+      if (
+        typeof document !== "undefined" &&
+        typeof getComputedStyle === "function"
+      ) {
+        resolved = getComputedStyle(document.documentElement)
+          .getPropertyValue(propName)
+          .trim();
+      }
+    } catch { /* ignore */ }
+
+    if (resolved) {
+      current = resolved;
+    } else if (fallbackVal) {
+      current = fallbackVal;
+    } else {
+      break;
+    }
+  }
+  return current;
+}
+
+export function parseToRgb(value) {
+  const hexMatch = value?.match(/^#(?:([0-9a-f]{3,4})|([0-9a-f]{6})|([0-9a-f]{8}))$/i);
+  if (hexMatch) {
+    let hex = hexMatch[1] || hexMatch[2] || hexMatch[3];
+    if (hex.length === 3 || hex.length === 4) {
+      hex = hex
+        .slice(0, 3)
+        .split("")
+        .map((c) => c + c)
+        .join("");
+    }
+    if (hex.length >= 6) {
+      const r = Number.parseInt(hex.slice(0, 2), 16);
+      const g = Number.parseInt(hex.slice(2, 4), 16);
+      const b = Number.parseInt(hex.slice(4, 6), 16);
+      if (Number.isFinite(r) && Number.isFinite(g) && Number.isFinite(b)) {
+        return { r, g, b };
+      }
+    }
+    return null;
+  }
+
+  const parseComponent = (c) => {
+    if (typeof c !== "string") return Number(c);
+    const trimmed = c.trim();
+    if (trimmed.toLowerCase() === "none") return 0;
+    if (trimmed.endsWith("%")) {
+      return Math.round((Number.parseFloat(trimmed) / 100) * 255);
+    }
+    return Number(trimmed);
+  };
+
+  const rgbMatch = value?.match(
+    /rgba?\(\s*([\d.]+%?)\s*,\s*([\d.]+%?)\s*,\s*([\d.]+%?)(?:\s*,\s*[\d.%]+)?\s*\)/i,
+  );
+  if (rgbMatch) {
+    const r = Math.min(255, Math.max(0, parseComponent(rgbMatch[1])));
+    const g = Math.min(255, Math.max(0, parseComponent(rgbMatch[2])));
+    const b = Math.min(255, Math.max(0, parseComponent(rgbMatch[3])));
+    if (Number.isFinite(r) && Number.isFinite(g) && Number.isFinite(b)) {
+      return { r, g, b };
+    }
+  }
+
+  const rgbSpaceMatch = value?.match(
+    /rgba?\(\s*([\d.]+%?|none)\s+([\d.]+%?|none)\s+([\d.]+%?|none)(?:\s*\/\s*[\d.%]+)?\s*\)/i,
+  );
+  if (rgbSpaceMatch) {
+    const r = Math.min(255, Math.max(0, parseComponent(rgbSpaceMatch[1])));
+    const g = Math.min(255, Math.max(0, parseComponent(rgbSpaceMatch[2])));
+    const b = Math.min(255, Math.max(0, parseComponent(rgbSpaceMatch[3])));
+    if (Number.isFinite(r) && Number.isFinite(g) && Number.isFinite(b)) {
+      return { r, g, b };
+    }
+  }
+
+  const parseHue = (hStr) => {
+    const trimmed = hStr.trim().toLowerCase();
+    let raw = Number.parseFloat(trimmed);
+    if (!Number.isFinite(raw)) return 0;
+    if (trimmed.endsWith("turn")) {
+      raw = raw * 360;
+    } else if (trimmed.endsWith("grad")) {
+      raw = (raw * 360) / 400;
+    } else if (trimmed.endsWith("rad")) {
+      raw = (raw * 180) / Math.PI;
+    }
+    return (((raw % 360) + 360) % 360) / 360;
+  };
+
+  const hslMatch = value?.match(
+    /hsla?\(\s*(-?[\d.]+(?:deg|grad|rad|turn)?)\s*,\s*([\d.]+)%\s*,\s*([\d.]+)%(?:\s*,\s*[\d.%]+)?\s*\)/i,
+  );
+  const hslSpaceMatch = !hslMatch && value?.match(
+    /hsla?\(\s*(-?[\d.]+(?:deg|grad|rad|turn)?)\s+([\d.]+)%\s+([\d.]+)%(?:\s*\/\s*[\d.%]+)?\s*\)/i,
+  );
+
+  const activeHslMatch = hslMatch || hslSpaceMatch;
+  if (activeHslMatch) {
+    const h = parseHue(activeHslMatch[1]);
+    const s = Math.min(1, Math.max(0, Number(activeHslMatch[2]) / 100));
+    const l = Math.min(1, Math.max(0, Number(activeHslMatch[3]) / 100));
+    if (s === 0) {
+      const gray = Math.round(l * 255);
+      return { r: gray, g: gray, b: gray };
+    }
+    const hue2rgb = (p, q, t) => {
+      let val = t;
+      if (val < 0) val += 1;
+      if (val > 1) val -= 1;
+      if (val < 1 / 6) return p + (q - p) * 6 * val;
+      if (val < 1 / 2) return q;
+      if (val < 2 / 3) return p + (q - p) * (2 / 3 - val) * 6;
+      return p;
+    };
+    const q = l < 0.5 ? l * (1 + s) : l + s - l * s;
+    const p = 2 * l - q;
+    return {
+      r: Math.round(hue2rgb(p, q, h + 1 / 3) * 255),
+      g: Math.round(hue2rgb(p, q, h) * 255),
+      b: Math.round(hue2rgb(p, q, h - 1 / 3) * 255),
+    };
+  }
+
+  return null;
+}
+
 export function getDynamicAccessibleTextColorHex(toastBg) {
   if (!toastBg) return "#ffffff";
 
@@ -161,163 +306,6 @@ export function getDynamicAccessibleTextColorHex(toastBg) {
   }
 
   let r, g, b;
-
-  // AUDIT FIX (H2): this function previously only understood hex and
-  // rgb()/rgba() strings. Anything else — hsl(), a CSS custom property
-  // like var(--brand), any modern color syntax — fell straight into the
-  // catch block below, which used to assign a RANDOM RGB triplet as the
-  // "background" driving the black-vs-white text decision. For a function
-  // whose entire purpose is accessibility, that meant it could pick white
-  // text on a light background (or the reverse) for any color format it
-  // didn't recognize, and the choice wasn't even stable between calls for
-  // the same input. Two changes: (1) genuinely parse hsl()/hsla() and CSS
-  // custom properties instead of giving up on them, (2) for the cases
-  // that are still truly unparseable, fall back to a fixed neutral
-  // midpoint gray instead of Math.random() — deterministic and
-  // reasonable, never actively wrong in a random direction.
-  function resolveCssCustomProperty(value) {
-    if (typeof value !== "string") return value;
-    let current = value.trim();
-    let depth = 0;
-    const seen = new Set();
-    while (current.toLowerCase().startsWith("var(") && current.endsWith(")") && depth < 5) {
-      depth++;
-      const inner = current.slice(4, -1).trim();
-      const commaIndex = inner.indexOf(",");
-      const propName = (commaIndex === -1 ? inner : inner.slice(0, commaIndex)).trim();
-      const fallbackVal = commaIndex === -1 ? "" : inner.slice(commaIndex + 1).trim();
-
-      if (!propName.startsWith("--") || seen.has(propName)) break;
-      seen.add(propName);
-
-      let resolved = "";
-      try {
-        if (
-          typeof document !== "undefined" &&
-          typeof getComputedStyle === "function"
-        ) {
-          resolved = getComputedStyle(document.documentElement)
-            .getPropertyValue(propName)
-            .trim();
-        }
-      } catch { /* ignore */ }
-
-      if (resolved) {
-        current = resolved;
-      } else if (fallbackVal) {
-        current = fallbackVal;
-      } else {
-        break;
-      }
-    }
-    return current;
-  }
-
-  function parseToRgb(value) {
-    const hexMatch = value?.match(/^#(?:([0-9a-f]{3,4})|([0-9a-f]{6})|([0-9a-f]{8}))$/i);
-    if (hexMatch) {
-      let hex = hexMatch[1] || hexMatch[2] || hexMatch[3];
-      if (hex.length === 3 || hex.length === 4) {
-        hex = hex
-          .slice(0, 3)
-          .split("")
-          .map((c) => c + c)
-          .join("");
-      }
-      if (hex.length >= 6) {
-        const r = Number.parseInt(hex.slice(0, 2), 16);
-        const g = Number.parseInt(hex.slice(2, 4), 16);
-        const b = Number.parseInt(hex.slice(4, 6), 16);
-        if (Number.isFinite(r) && Number.isFinite(g) && Number.isFinite(b)) {
-          return { r, g, b };
-        }
-      }
-      return null;
-    }
-
-    const parseComponent = (c) => {
-      if (typeof c !== "string") return Number(c);
-      const trimmed = c.trim();
-      if (trimmed.endsWith("%")) {
-        return Math.round((Number.parseFloat(trimmed) / 100) * 255);
-      }
-      return Number(trimmed);
-    };
-
-    const rgbMatch = value?.match(
-      /rgba?\(\s*([\d.]+%?)\s*,\s*([\d.]+%?)\s*,\s*([\d.]+%?)(?:\s*,\s*[\d.%]+)?\s*\)/i,
-    );
-    if (rgbMatch) {
-      const r = Math.min(255, Math.max(0, parseComponent(rgbMatch[1])));
-      const g = Math.min(255, Math.max(0, parseComponent(rgbMatch[2])));
-      const b = Math.min(255, Math.max(0, parseComponent(rgbMatch[3])));
-      if (Number.isFinite(r) && Number.isFinite(g) && Number.isFinite(b)) {
-        return { r, g, b };
-      }
-    }
-
-    const rgbSpaceMatch = value?.match(
-      /rgba?\(\s*([\d.]+%?)\s+([\d.]+%?)\s+([\d.]+%?)(?:\s*\/\s*[\d.%]+)?\s*\)/i,
-    );
-    if (rgbSpaceMatch) {
-      const r = Math.min(255, Math.max(0, parseComponent(rgbSpaceMatch[1])));
-      const g = Math.min(255, Math.max(0, parseComponent(rgbSpaceMatch[2])));
-      const b = Math.min(255, Math.max(0, parseComponent(rgbSpaceMatch[3])));
-      if (Number.isFinite(r) && Number.isFinite(g) && Number.isFinite(b)) {
-        return { r, g, b };
-      }
-    }
-
-    const parseHue = (hStr) => {
-      const trimmed = hStr.trim().toLowerCase();
-      let raw = Number.parseFloat(trimmed);
-      if (!Number.isFinite(raw)) return 0;
-      if (trimmed.endsWith("turn")) {
-        raw = raw * 360;
-      } else if (trimmed.endsWith("grad")) {
-        raw = (raw * 360) / 400;
-      } else if (trimmed.endsWith("rad")) {
-        raw = (raw * 180) / Math.PI;
-      }
-      return (((raw % 360) + 360) % 360) / 360;
-    };
-
-    const hslMatch = value?.match(
-      /hsla?\(\s*(-?[\d.]+(?:deg|grad|rad|turn)?)\s*,\s*([\d.]+)%\s*,\s*([\d.]+)%(?:\s*,\s*[\d.%]+)?\s*\)/i,
-    );
-    const hslSpaceMatch = !hslMatch && value?.match(
-      /hsla?\(\s*(-?[\d.]+(?:deg|grad|rad|turn)?)\s+([\d.]+)%\s+([\d.]+)%(?:\s*\/\s*[\d.%]+)?\s*\)/i,
-    );
-
-    const activeHslMatch = hslMatch || hslSpaceMatch;
-    if (activeHslMatch) {
-      const h = parseHue(activeHslMatch[1]);
-      const s = Math.min(1, Math.max(0, Number(activeHslMatch[2]) / 100));
-      const l = Math.min(1, Math.max(0, Number(activeHslMatch[3]) / 100));
-      if (s === 0) {
-        const gray = Math.round(l * 255);
-        return { r: gray, g: gray, b: gray };
-      }
-      const hue2rgb = (p, q, t) => {
-        let val = t;
-        if (val < 0) val += 1;
-        if (val > 1) val -= 1;
-        if (val < 1 / 6) return p + (q - p) * 6 * val;
-        if (val < 1 / 2) return q;
-        if (val < 2 / 3) return p + (q - p) * (2 / 3 - val) * 6;
-        return p;
-      };
-      const q = l < 0.5 ? l * (1 + s) : l + s - l * s;
-      const p = 2 * l - q;
-      return {
-        r: Math.round(hue2rgb(p, q, h + 1 / 3) * 255),
-        g: Math.round(hue2rgb(p, q, h) * 255),
-        b: Math.round(hue2rgb(p, q, h - 1 / 3) * 255),
-      };
-    }
-
-    return null;
-  }
 
   try {
     const cleanBg = typeof toastBg === "string" ? toastBg.trim() : String(toastBg || "");

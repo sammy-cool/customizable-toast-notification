@@ -57,6 +57,9 @@ const ALLOWED_ATTRS = new Set([
   "loading",
 ]);
 
+const PRECOMPUTED_ALLOWED_TAGS = Object.freeze(Array.from(ALLOWED_TAGS));
+const PRECOMPUTED_ALLOWED_ATTRS = Object.freeze(Array.from(ALLOWED_ATTRS));
+
 const DISCARDED_TAGS = new Set([
   "SCRIPT",
   "STYLE",
@@ -233,8 +236,8 @@ export function sanitizeHtml(dirty, opts = {}) {
     if (!opts.forceFallback && hasDOMPurify()) {
       const DOMPurify = window.DOMPurify;
       const cleaned = DOMPurify.sanitize(dirty, {
-        ALLOWED_TAGS: Array.from(ALLOWED_TAGS),
-        ALLOWED_ATTR: Array.from(ALLOWED_ATTRS),
+        ALLOWED_TAGS: PRECOMPUTED_ALLOWED_TAGS,
+        ALLOWED_ATTR: PRECOMPUTED_ALLOWED_ATTRS,
         ALLOWED_URI_REGEXP: ALLOWED_URI_REGEX,
       });
 
