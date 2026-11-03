@@ -295,14 +295,18 @@ export function parseToRgb(value) {
   return null;
 }
 
-export function getDynamicAccessibleTextColorHex(toastBg) {
+export function getDynamicAccessibleTextColorHex(toastBg, targetContrast = 4.5) {
   if (!toastBg) return "#ffffff";
 
-  const key = String(toastBg);
+  const minContrast =
+    typeof targetContrast === "number" && Number.isFinite(targetContrast) && targetContrast > 0
+      ? targetContrast
+      : 4.5;
+  const key = minContrast === 4.5 ? String(toastBg) : `${toastBg}:${minContrast}`;
   const cached = colorCache.get(key);
   if (cached) return cached;
 
-  if (precomputedNamedTextColors[toastBg?.toLowerCase()]) {
+  if (minContrast === 4.5 && precomputedNamedTextColors[toastBg?.toLowerCase()]) {
     const textColor = precomputedNamedTextColors[toastBg.toLowerCase()];
     colorCache.set(key, textColor);
     return textColor;
@@ -389,7 +393,6 @@ export function getDynamicAccessibleTextColorHex(toastBg) {
       .padStart(2, "0")}`;
 
   let [h, s, l] = rgbToHsl(r, g, b);
-  const minContrast = 4.5;
   let textL = l < 0.5 ? Math.min(l + 0.5, 1) : Math.max(l - 0.5, 0);
   let [tr, tg, tb] = hslToRgb(h, s, textL);
 

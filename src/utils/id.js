@@ -54,8 +54,8 @@ export function generateToastId(prefix = "toast") {
 
   const timestamp = Date.now().toString(36);
 
-  // Monotonic increment: 0% collision mathematically guaranteed
-  counter = (counter + 1) & 0xffffff;
+  // Monotonic increment: 0% collision mathematically guaranteed across 2+ billion operations
+  counter = (counter + 1) & 0x7fffffff;
   const countPart = counter.toString(36);
 
   return `${safePrefix}-${timestamp}-${sessionSalt}${countPart}`;

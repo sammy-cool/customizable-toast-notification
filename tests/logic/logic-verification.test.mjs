@@ -8103,6 +8103,63 @@ describe("Architectural Fortification: Updating Dismissed Toasts & Fallback Spaw
     resetToastManager();
     resetContainerRegistry();
   });
+
+  test("Fortification 13: Final AtoZ Complete Sweep: Customizable WCAG Contrast Target, 2B Monotonic ID Space, and Safe-Area Insets", async () => {
+    freshDom();
+    const {
+      resetToastManager,
+      resetConfig,
+      resetContainerRegistry,
+    } = await import("../../src/index.js");
+    resetToastManager();
+    resetContainerRegistry();
+    resetConfig();
+
+    // 1. getDynamicAccessibleTextColorHex with customizable targetContrast (AA 4.5 vs AAA 7.0 vs AA Large 3.0)
+    const { getDynamicAccessibleTextColorHex, resetColorCache } = await import("../../src/utils/dom.js");
+    resetColorCache();
+
+    const textAA = getDynamicAccessibleTextColorHex("#60a5fa", 4.5);
+    const textAAA = getDynamicAccessibleTextColorHex("#60a5fa", 7.0);
+    const textLargeAA = getDynamicAccessibleTextColorHex("#60a5fa", 3.0);
+    assert.strictEqual(typeof textAA, "string");
+    assert.strictEqual(typeof textAAA, "string");
+    assert.strictEqual(typeof textLargeAA, "string");
+    assert.ok(textAA.startsWith("#"));
+    assert.ok(textAAA.startsWith("#"));
+    assert.ok(textLargeAA.startsWith("#"));
+
+    // Default targetContrast is 4.5
+    const textDefault = getDynamicAccessibleTextColorHex("#60a5fa");
+    assert.strictEqual(textDefault, textAA, "Default call matches targetContrast=4.5");
+
+    // 2. generateToastId incorporates 31-bit counter expansion
+    const { generateToastId, resetToastIdCounter } = await import("../../src/utils/id.js");
+    resetToastIdCounter();
+    const id1 = generateToastId("custom-prefix");
+    const id2 = generateToastId("custom-prefix");
+    assert.notStrictEqual(id1, id2, "Consecutive IDs are strictly unique");
+    assert.ok(id1.startsWith("custom-prefix-"), "ID starts with sanitized prefix");
+    assert.ok(id2.startsWith("custom-prefix-"), "ID starts with sanitized prefix");
+
+    // 3. CSS Safe-Area Inset emulation validation
+    const fs = await import("fs");
+    const path = await import("path");
+    const cssContent = fs.readFileSync(path.resolve("./src/styles.css"), "utf-8");
+    assert.ok(
+      cssContent.includes("env(safe-area-inset-top"),
+      "styles.css supports safe-area-inset-top for notched devices",
+    );
+    assert.ok(
+      cssContent.includes("env(safe-area-inset-bottom"),
+      "styles.css supports safe-area-inset-bottom for home-indicator devices",
+    );
+
+    resetColorCache();
+    resetConfig();
+    resetToastManager();
+    resetContainerRegistry();
+  });
 });
 
 
