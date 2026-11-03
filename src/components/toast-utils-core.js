@@ -212,13 +212,19 @@ export function createUndoAction(toast, options, onClose) {
     : "rgba(255,255,255,0.18)";
 
   const trimmedText = typeof textColor === "string" ? textColor.trim() : "";
-  const hexMatchUndo = trimmedText.match(/^#([0-9a-fA-F]{3}|[0-9a-fA-F]{6})$/);
+  const hexMatchUndo = trimmedText.match(/^#([0-9a-fA-F]{3,8})$/);
   let borderColor = "rgba(128, 128, 128, 0.35)";
   if (hexMatchUndo) {
-    const h = hexMatchUndo[1].length === 3
-      ? `#${hexMatchUndo[1][0]}${hexMatchUndo[1][0]}${hexMatchUndo[1][1]}${hexMatchUndo[1][1]}${hexMatchUndo[1][2]}${hexMatchUndo[1][2]}`
-      : `#${hexMatchUndo[1]}`;
-    borderColor = `${h}55`;
+    const rawHex = hexMatchUndo[1];
+    if (rawHex.length === 3) {
+      borderColor = `#${rawHex[0]}${rawHex[0]}${rawHex[1]}${rawHex[1]}${rawHex[2]}${rawHex[2]}55`;
+    } else if (rawHex.length === 6) {
+      borderColor = `#${rawHex}55`;
+    } else if (rawHex.length === 8) {
+      borderColor = `#${rawHex}`;
+    } else if (rawHex.length === 4) {
+      borderColor = `#${rawHex[0]}${rawHex[0]}${rawHex[1]}${rawHex[1]}${rawHex[2]}${rawHex[2]}${rawHex[3]}${rawHex[3]}`;
+    }
   }
 
   const isRtl = options.fontDirection === "rtl";

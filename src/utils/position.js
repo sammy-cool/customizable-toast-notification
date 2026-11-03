@@ -18,6 +18,7 @@ const DOCUMENTED_POSITIONS = new Set([
   "top-full-width",
   "bottom-full-width",
   "center",
+  "center-center",
 ]);
 
 const LEGACY_POSITIONS = new Set(["top", "bottom"]);
@@ -44,7 +45,7 @@ export async function setPosition(container, options = {}) {
     .toLowerCase()
     .trim()
     .replace(/\s+/g, "-");
-  let effectivePos = rawPos;
+  let effectivePos = rawPos === "center-center" ? "center" : rawPos;
 
   if (!isDocumentedPosition(rawPos) && !LEGACY_POSITIONS.has(rawPos)) {
     console.warn(`Unknown position "${options.position}", defaulting to "bottom-right"`);

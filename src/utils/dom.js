@@ -243,6 +243,7 @@ export function parseToRgb(value) {
 
   const parseHue = (hStr) => {
     const trimmed = hStr.trim().toLowerCase();
+    if (trimmed === "none") return 0;
     let raw = Number.parseFloat(trimmed);
     if (!Number.isFinite(raw)) return 0;
     if (trimmed.endsWith("turn")) {
@@ -256,17 +257,19 @@ export function parseToRgb(value) {
   };
 
   const hslMatch = value?.match(
-    /hsla?\(\s*(-?[\d.]+(?:deg|grad|rad|turn)?)\s*,\s*([\d.]+)%\s*,\s*([\d.]+)%(?:\s*,\s*[\d.%]+)?\s*\)/i,
+    /hsla?\(\s*(-?[\d.]+(?:deg|grad|rad|turn)?|none)\s*,\s*([\d.]+%?|none)\s*,\s*([\d.]+%?|none)(?:\s*,\s*[\d.%]+)?\s*\)/i,
   );
   const hslSpaceMatch = !hslMatch && value?.match(
-    /hsla?\(\s*(-?[\d.]+(?:deg|grad|rad|turn)?)\s+([\d.]+)%\s+([\d.]+)%(?:\s*\/\s*[\d.%]+)?\s*\)/i,
+    /hsla?\(\s*(-?[\d.]+(?:deg|grad|rad|turn)?|none)\s+([\d.]+%?|none)\s+([\d.]+%?|none)(?:\s*\/\s*[\d.%]+)?\s*\)/i,
   );
 
   const activeHslMatch = hslMatch || hslSpaceMatch;
   if (activeHslMatch) {
     const h = parseHue(activeHslMatch[1]);
-    const s = Math.min(1, Math.max(0, Number(activeHslMatch[2]) / 100));
-    const l = Math.min(1, Math.max(0, Number(activeHslMatch[3]) / 100));
+    const rawS = activeHslMatch[2].trim().toLowerCase();
+    const rawL = activeHslMatch[3].trim().toLowerCase();
+    const s = rawS === "none" ? 0 : Math.min(1, Math.max(0, Number.parseFloat(rawS) / 100));
+    const l = rawL === "none" ? 0 : Math.min(1, Math.max(0, Number.parseFloat(rawL) / 100));
     if (s === 0) {
       const gray = Math.round(l * 255);
       return { r: gray, g: gray, b: gray };

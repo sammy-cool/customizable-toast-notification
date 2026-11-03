@@ -1858,6 +1858,7 @@ createToast({
 
           function draw() {
             animFrameId = requestAnimationFrame(draw);
+            if (document.hidden) return;
             scopeCtx.clearRect(0, 0, scopeCanvas.width, scopeCanvas.height);
 
             if (analyser) {
@@ -2101,7 +2102,9 @@ createToast({
         // Fire Toast Trigger
         function fireToast(customOverride) {
           if (!window.customizableToast) {
-            alert("customizableToast library is loading... Please retry in a moment.");
+            console.warn("customizableToast library is still loading... Please retry in a moment.");
+            var codeOutput = document.getElementById("codeOutput");
+            if (codeOutput) codeOutput.textContent = "// Library is loading... please wait a moment.";
             return;
           }
 

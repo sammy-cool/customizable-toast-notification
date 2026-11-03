@@ -10,7 +10,7 @@ await esbuild.build({
   minifySyntax: true,
 
   sourcemap: 'external',
-  target: 'es2020',
+  target: ['chrome60', 'firefox55', 'safari11', 'edge16'],
   legalComments: 'none',
 
   banner: {

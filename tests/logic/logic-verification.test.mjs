@@ -8020,6 +8020,89 @@ describe("Architectural Fortification: Updating Dismissed Toasts & Fallback Spaw
     resetToastManager();
     resetContainerRegistry();
   });
+
+  test("Fortification 12: Position Center-Center Alias, Undo 4/8-digit Hex Border, CSS Color 4 HSL none, and Package Distribution Cleanliness", async () => {
+    freshDom();
+    const {
+      createToast,
+      resetToastManager,
+      resetConfig,
+      resetContainerRegistry,
+    } = await import("../../src/index.js");
+    resetToastManager();
+    resetContainerRegistry();
+    resetConfig();
+
+    // 1. Position 'center-center' alias positions container at center without console.warn
+    const { setPosition } = await import("../../src/utils/position.js");
+    let warnLogged = false;
+    const origWarn = console.warn;
+    console.warn = (...args) => {
+      warnLogged = true;
+      origWarn(...args);
+    };
+
+    const dummyContainer = document.createElement("div");
+    dummyContainer.id = "toast-container-center";
+    await setPosition(dummyContainer, { position: "center-center" });
+    console.warn = origWarn;
+
+    assert.strictEqual(warnLogged, false, "center-center does not log an unknown position warning");
+    assert.strictEqual(dummyContainer.style.top, "50%", "center-center sets top: 50%");
+    assert.strictEqual(dummyContainer.style.left, "50%", "center-center sets left: 50%");
+    assert.strictEqual(dummyContainer.style.transform, "translate(-50%, -50%)", "center-center centers container");
+    assert.strictEqual(dummyContainer.classList.contains("toast-position-center"), true, "toast-position-center class applied");
+
+    // 2. Undo button border supports 4-digit and 8-digit hex colors
+    const { createUndoAction } = await import("../../src/components/toast-utils-core.js");
+    const undoToast8 = document.createElement("div");
+    createUndoAction(undoToast8, {
+      undo: () => {},
+      textColor: "#10b981ff",
+      backgroundColor: "#18181b",
+    }, () => {});
+    const undoBtn8 = undoToast8.querySelector(".toast-undo-btn");
+    assert.ok(undoBtn8, "Undo button created for 8-digit hex");
+    assert.ok(
+      undoBtn8.style.border.includes("16, 185, 129") || undoBtn8.style.border.includes("#10b981"),
+      "8-digit hex used directly for undo border rather than fallback gray",
+    );
+
+    const undoToast4 = document.createElement("div");
+    createUndoAction(undoToast4, {
+      undo: () => {},
+      textColor: "#ff08",
+      backgroundColor: "#18181b",
+    }, () => {});
+    const undoBtn4 = undoToast4.querySelector(".toast-undo-btn");
+    assert.ok(undoBtn4, "Undo button created for 4-digit hex");
+    assert.ok(
+      undoBtn4.style.border.includes("255, 255, 0") || undoBtn4.style.border.includes("#ffff00"),
+      "4-digit hex expanded for undo border rather than fallback gray",
+    );
+
+    // 3. CSS Color 4 HSL with 'none' component parses cleanly
+    const { getDynamicAccessibleTextColorHex } = await import("../../src/utils/dom.js");
+    const contrastForHslNone = getDynamicAccessibleTextColorHex("hsl(none 0% 10%)");
+    assert.strictEqual(typeof contrastForHslNone, "string");
+    assert.strictEqual(contrastForHslNone.startsWith("#"), true, "Resolves to valid hex color");
+    assert.strictEqual(contrastForHslNone, "#9a9a9a", "Calculates accessible contrast color for dark HSL with none");
+
+    const contrastForHslSatNone = getDynamicAccessibleTextColorHex("hsl(200deg none 90%)");
+    assert.strictEqual(typeof contrastForHslSatNone, "string");
+    assert.strictEqual(contrastForHslSatNone.startsWith("#"), true, "Resolves to valid hex color");
+    assert.strictEqual(contrastForHslSatNone, "#676767", "Calculates accessible contrast color for light HSL with none saturation");
+
+    // 4. package.json files distribution field
+    const fs = await import("fs");
+    const path = await import("path");
+    const pkg = JSON.parse(fs.readFileSync(path.resolve("./package.json"), "utf-8"));
+    assert.ok(pkg.files.includes("dist"), "package.json files includes dist directory");
+
+    resetConfig();
+    resetToastManager();
+    resetContainerRegistry();
+  });
 });
 
 

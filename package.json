@@ -175,16 +175,7 @@
   },
   "license": "Apache-2.0",
   "files": [
-    "dist/*.cjs",
-    "dist/*.cjs.map",
-    "dist/*.esm.mjs",
-    "dist/*.esm.mjs.map",
-    "dist/*.umd.js",
-    "dist/*.umd.js.map",
-    "dist/*.d.ts",
-    "dist/*.css",
-    "dist/*.css.map",
-    "dist/*.css.d.ts",
+    "dist",
     "README.md",
     "LICENSE",
     "CHANGELOG.md"
