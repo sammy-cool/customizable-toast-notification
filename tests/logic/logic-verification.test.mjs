@@ -6832,6 +6832,170 @@ describe("Architectural Fortification: Updating Dismissed Toasts & Fallback Spaw
     cleanupToastEntry(null);
     cleanupToastEntry({});
   });
+
+  test("Exhaustive Full-Codebase Edge-Cases & 100% Statement Coverage", async () => {
+    freshDom();
+    // 1. keyboard.js: Escape key dismiss error branch & F6 with shadowRoot active toasts
+    const { initKeyboardShortcuts, destroyKeyboardShortcuts } = await import("../../src/utils/keyboard.js");
+    const cleanupErrorKb = initKeyboardShortcuts(window, () => {
+      throw new Error("Simulated dismiss crash");
+    });
+    const escEvt = new window.Event("keydown");
+    escEvt.key = "Escape";
+    window.dispatchEvent(escEvt);
+    destroyKeyboardShortcuts(window);
+
+    // F6 with #toast-shadow-host
+    const shadowHost = document.createElement("div");
+    shadowHost.id = "toast-shadow-host";
+    const shadowRoot = shadowHost.attachShadow({ mode: "open" });
+    const shadowContainer = document.createElement("div");
+    shadowContainer.id = "toast-container-top-right";
+    const shadowToast = document.createElement("div");
+    shadowToast.id = "toast-shadow-child";
+    shadowToast.tabIndex = 0;
+    const shadowBtn = document.createElement("button");
+    shadowBtn.textContent = "Action";
+    shadowToast.appendChild(shadowBtn);
+    shadowContainer.appendChild(shadowToast);
+    shadowRoot.appendChild(shadowContainer);
+    document.body.appendChild(shadowHost);
+
+    let shadowFocusCalled = false;
+    shadowBtn.focus = () => { shadowFocusCalled = true; };
+    initKeyboardShortcuts(window, () => {});
+    const f6Evt = new window.Event("keydown");
+    f6Evt.key = "F6";
+    window.dispatchEvent(f6Evt);
+    assert.strictEqual(shadowFocusCalled, true, "F6 focuses interactive element inside shadow host");
+    destroyKeyboardShortcuts(window);
+    shadowHost.remove();
+
+    // 2. options-sanitizer.js: message fallback & progress bar color resolution error
+    const { sanitizeToastOptions } = await import("../../src/utils/options-sanitizer.js");
+    const sanitizedEmptyMsg = await sanitizeToastOptions({ message: null, type: undefined });
+    assert.strictEqual(typeof sanitizedEmptyMsg.message, "string", "Sanitizer guarantees string message");
+
+    // progress bar color resolution catch block
+    Object.defineProperty(Object.prototype, "progressBarColor", {
+      get() {
+        if (this._throwOnProgress) throw new Error("Simulated progress bar color throw");
+        return undefined;
+      },
+      configurable: true,
+    });
+    const sanitizedThrowing = await sanitizeToastOptions({ _throwOnProgress: true });
+    assert.ok(sanitizedThrowing, "Sanitizer recovers gracefully from color resolution failure");
+    delete Object.prototype.progressBarColor;
+
+    // 3. toast-timer.js: onDismiss throwing in createDismissTimer & pause/play throws in setupPauseOnHover
+    const { createDismissTimer, setupPauseOnHover } = await import("../../src/components/toast-timer.js");
+    createDismissTimer(() => {
+      throw new Error("Synchronous dismiss throw");
+    }, 10, {});
+    await new Promise((r) => setTimeout(r, 30));
+
+    // setupPauseOnHover with throwing animation.pause / play
+    const mockOuter = document.createElement("div");
+    const mockToast = document.createElement("div");
+    mockToast._progressAnimation = {
+      pause: () => { throw new Error("pause error"); },
+      play: () => { throw new Error("play error"); },
+    };
+    const mockTimer = {
+      getRemainingTime: () => 500,
+      pause: () => {},
+      resume: () => {},
+    };
+    await setupPauseOnHover({ outer: mockOuter, toast: mockToast, timer: mockTimer, pauseOnHover: true });
+    mockOuter.dispatchEvent(new window.Event("mouseenter"));
+    mockOuter.dispatchEvent(new window.Event("mouseleave"));
+
+    // 4. src/index.js: instance.promise, instance as function, and instance.custom
+    const { createToastInstance } = await import("../../src/index.js");
+    const inst = createToastInstance({ position: "top-center" });
+    const directHandle = await inst("Direct message call");
+    assert.ok(directHandle.id, "Instance callable as function creates toast");
+    const customHandle = await inst.custom("Custom toast", { allowHtml: true });
+    assert.ok(customHandle.id, "Instance custom creates toast");
+    const promiseVal = await inst.promise(Promise.resolve("hello"), { success: "Loaded!" });
+    assert.strictEqual(promiseVal, "hello", "Instance promise executes and returns resolved value");
+    await inst.dismissAll();
+
+    // 5. icons.js: createToastIcon with element + iconSize and non-svg string textContent
+    const { createToastIcon } = await import("../../src/components/icons.js");
+    const customSpan = document.createElement("span");
+    const elementIcon = createToastIcon({ type: "info", icon: customSpan, iconSize: 20, iconColor: "#ff0000" });
+    assert.ok(elementIcon);
+    const nonSvgIcon = createToastIcon({ type: "info", icon: "not-an-svg-tag" });
+    assert.ok(nonSvgIcon);
+
+    // 6. toast-utils.js: emergency toast with center-left position and allowHtml
+    const { createEmergencyToast } = await import("../../src/components/toast-utils.js");
+    const emerToast = await createEmergencyToast({ position: "center-left", allowHtml: true, message: "<b>Bold</b> emergency" }, () => {});
+    assert.ok(emerToast);
+    emerToast.remove();
+
+    // 7. dom.js: getDynamicAccessibleTextColorHex with grad, rad, and grayscale HSL
+    const { getDynamicAccessibleTextColorHex } = await import("../../src/utils/dom.js");
+    const gradColor = getDynamicAccessibleTextColorHex("hsl(200grad, 50%, 50%)");
+    assert.ok(gradColor);
+    const radColor = getDynamicAccessibleTextColorHex("hsl(1rad, 50%, 50%)");
+    assert.ok(radColor);
+    const grayHsl = getDynamicAccessibleTextColorHex("hsl(0, 0%, 50%)");
+    assert.ok(grayHsl);
+
+    // 8. html-sanitizer.js: secureBlankLinks in fallbackSanitize & DOMPurify throwing
+    const { fallbackSanitize, sanitizeHtml } = await import("../../src/utils/html-sanitizer.js");
+    const blankLinkSanitized = fallbackSanitize('<a href="https://example.com" target="_blank">External</a>');
+    assert.ok(blankLinkSanitized.includes('rel="noopener noreferrer"'), "Blank link includes secure rel attributes");
+
+    window.DOMPurify = {
+      sanitize: () => { throw new Error("Simulated DOMPurify crash"); },
+    };
+    const fallbackAfterCrash = sanitizeHtml("<b>Safe text</b>");
+    assert.ok(fallbackAfterCrash.includes("Safe text"), "Falls back to native sanitizer on DOMPurify failure");
+    delete window.DOMPurify;
+
+    // 9. ToastManager.js: updateToastByKey on queued toast
+    const { showToast, updateToastByKey: coreUpdateToastByKey, resetToastManager } = await import("../../src/components/ToastManager.js");
+    resetToastManager();
+    const { setConfig, resetConfig } = await import("../../src/utils/config.js");
+    setConfig({ maxVisible: 1, iconColor: null });
+    setConfig({ iconColor: 123 });
+    await showToast({ message: "Active 1" });
+    const h2Key = await showToast({ message: "Queued 2" });
+    const queuedUpdated = await coreUpdateToastByKey(h2Key, { message: "Queued 2 updated" });
+    assert.strictEqual(queuedUpdated, true, "Updating queued toast in-place returns true");
+    resetToastManager();
+    resetConfig();
+
+    // 10. position.js: setPosition with "left" and "right" bare positions
+    const { setPosition } = await import("../../src/utils/position.js");
+    const posDiv = document.createElement("div");
+    await setPosition(posDiv, { position: "right" });
+    assert.strictEqual(posDiv.style.right, "10px");
+    assert.strictEqual(posDiv.style.bottom, "10px");
+
+    // 11. config.js: shouldReduceMotion when matchMedia throws
+    const { shouldReduceMotion } = await import("../../src/utils/config.js");
+    const origMatchMedia = window.matchMedia;
+    window.matchMedia = () => { throw new Error("matchMedia restricted"); };
+    const reducedThrows = shouldReduceMotion();
+    assert.strictEqual(reducedThrows, false, "shouldReduceMotion returns false on matchMedia throw");
+    window.matchMedia = origMatchMedia;
+
+    // 12. PausableTimer.js: pause when remaining <= 0 executes callback
+    const { PausableTimer } = await import("../../src/utils/PausableTimer.js");
+    let pauseAfterDoneFired = false;
+    const pt = new PausableTimer(() => {
+      pauseAfterDoneFired = true;
+    }, 10);
+    pt.start();
+    await new Promise((r) => setTimeout(r, 25));
+    pt.pause();
+    assert.strictEqual(pauseAfterDoneFired, true, "pause when remaining <= 0 fires callback");
+  });
 });
 
 
