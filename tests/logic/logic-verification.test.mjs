@@ -6128,6 +6128,152 @@ describe("v4.0.3 WAAPI Animation & Reduced Motion Exhaustive Coverage Suite", ()
   });
 });
 
+describe("Architectural Fortification: Updating Dismissed Toasts & Fallback Spawning", () => {
+  test("handle.update spawns fresh toast and updates handle.id when toast was already dismissed", async () => {
+    freshDom();
+    const { createToast, resetToastManager } = await import("../../src/index.js");
+    resetToastManager();
+
+    try {
+      // 1. Create a loading toast
+      const handle = await createToast.loading("Uploading asset...");
+      await new Promise((r) => setTimeout(r, 50));
+      const initialId = handle.id;
+      assert.ok(initialId);
+
+      // Verify it is on screen
+      let toastEl = document.querySelector(".toast");
+      assert.ok(toastEl);
+      assert.match(toastEl.textContent, /Uploading asset\.\.\./);
+
+      // 2. Dismiss the toast early
+      await handle.dismiss();
+      await new Promise((r) => setTimeout(r, 60));
+      assert.strictEqual(document.querySelectorAll(".toast").length, 0);
+
+      // 3. Update the dismissed handle with a success state
+      const updateResult = await handle.update({
+        type: "success",
+        message: "Asset uploaded successfully!",
+        duration: 3000,
+      });
+
+      assert.strictEqual(updateResult, true);
+      await new Promise((r) => setTimeout(r, 50));
+
+      // 4. Verify fresh success toast is now rendered
+      toastEl = document.querySelector(".toast-success");
+      assert.ok(toastEl, "Fresh success toast should be spawned");
+      assert.match(toastEl.textContent, /Asset uploaded successfully!/);
+      assert.notStrictEqual(handle.id, initialId, "handle.id should update to the new toast key");
+
+      // 5. Subsequent dismiss on handle dismisses the new toast
+      await handle.dismiss();
+      await new Promise((r) => setTimeout(r, 60));
+      assert.strictEqual(document.querySelectorAll(".toast-success").length, 0);
+    } finally {
+      resetToastManager();
+    }
+  });
+
+  test("handle.update with { fallback: false } returns false without spawning when toast is dismissed", async () => {
+    freshDom();
+    const { createToast, resetToastManager } = await import("../../src/index.js");
+    resetToastManager();
+
+    try {
+      const handle = await createToast({ message: "Initial notice", duration: 100 });
+      await new Promise((r) => setTimeout(r, 50));
+      await handle.dismiss();
+      await new Promise((r) => setTimeout(r, 60));
+
+      // Attempt update with fallback disabled
+      const updateResult = await handle.update({ message: "Should not appear" }, { fallback: false });
+      assert.strictEqual(updateResult, false);
+      assert.strictEqual(document.querySelectorAll(".toast").length, 0);
+    } finally {
+      resetToastManager();
+    }
+  });
+
+  test("toastPromise spawns success toast even if loading toast was dismissed before promise resolves", async () => {
+    freshDom();
+    const { toastPromise, resetToastManager } = await import("../../src/index.js");
+    resetToastManager();
+
+    try {
+      let resolvePromise;
+      const slowPromise = new Promise((resolve) => { resolvePromise = resolve; });
+
+      const p = toastPromise(slowPromise, {
+        loading: "Processing operation...",
+        success: (res) => `Operation completed: ${res.status}`,
+        error: "Operation failed",
+      });
+
+      await new Promise((r) => setTimeout(r, 50));
+      const loadingToast = document.querySelector(".toast");
+      assert.ok(loadingToast);
+      assert.match(loadingToast.textContent, /Processing operation\.\.\./);
+
+      // User dismisses loading toast manually
+      loadingToast.remove();
+      await new Promise((r) => setTimeout(r, 50));
+      assert.strictEqual(document.querySelectorAll(".toast").length, 0);
+
+      // Now resolve the promise
+      resolvePromise({ status: "OK" });
+      const res = await p;
+      assert.deepStrictEqual(res, { status: "OK" });
+
+      await new Promise((r) => setTimeout(r, 60));
+      const successToast = document.querySelector(".toast-success");
+      assert.ok(successToast, "Success toast must appear even though loading toast was dismissed");
+      assert.match(successToast.textContent, /Operation completed: OK/);
+    } finally {
+      resetToastManager();
+    }
+  });
+
+  test("toastPromise spawns error toast even if loading toast was dismissed before promise rejects", async () => {
+    freshDom();
+    const { toastPromise, resetToastManager } = await import("../../src/index.js");
+    resetToastManager();
+
+    try {
+      let rejectPromise;
+      const failingPromise = new Promise((_, reject) => { rejectPromise = reject; });
+
+      const p = toastPromise(failingPromise, {
+        loading: "Synchronizing data...",
+        success: "Synced successfully!",
+        error: (err) => `Sync error: ${err.message}`,
+      });
+
+      await new Promise((r) => setTimeout(r, 50));
+      const loadingToast = document.querySelector(".toast");
+      assert.ok(loadingToast);
+
+      // Dismiss loading toast early
+      loadingToast.remove();
+      await new Promise((r) => setTimeout(r, 50));
+      assert.strictEqual(document.querySelectorAll(".toast").length, 0);
+
+      // Reject the promise
+      rejectPromise(new Error("Connection reset by peer"));
+      await assert.rejects(p, /Connection reset by peer/);
+
+      await new Promise((r) => setTimeout(r, 60));
+      const errorToast = document.querySelector(".toast-error");
+      assert.ok(errorToast, "Error toast must appear even though loading toast was dismissed");
+      assert.match(errorToast.textContent, /Sync error: Connection reset by peer/);
+    } finally {
+      resetToastManager();
+    }
+  });
+});
+
+
 
 
 

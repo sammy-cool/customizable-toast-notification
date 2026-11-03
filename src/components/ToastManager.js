@@ -1040,7 +1040,12 @@ export async function updateToastByKey(key, newOptions = {}) {
   }
 
   const data = active.get(key);
-  if (!data || !data.toast) return false;
+  if (!data || !data.toast || !data.toast.isConnected) {
+    if (data && !data.toast?.isConnected) {
+      active.delete(key);
+    }
+    return false;
+  }
 
   const prevOptions = { ...data.options };
   data.options = { ...data.options, ...newOptions };

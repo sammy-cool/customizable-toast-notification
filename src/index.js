@@ -163,7 +163,7 @@ import { generateToastId, resetToastIdCounter } from "./utils/id.js";
  * @typedef {Object} ToastHandle
  * @property {string} [id] - The unique identifier/key of the toast notification.
  * @property {() => Promise<void>} dismiss
- * @property {(newOptions: Partial<ToastOptions>) => Promise<boolean>} update
+ * @property {(newOptions: Partial<ToastOptions>, updateOpts?: { fallback?: boolean }) => Promise<boolean>} update
  */
 
 /**
@@ -478,12 +478,42 @@ const originalCreateToast = createToast;
  */
 async function createToastWithPriority(messageOrOptions = {}, maybeOptions) {
   const normalized = normalizeToastOptions(messageOrOptions, maybeOptions);
-  const key = await runWithClosePriority(() => originalCreateToast(normalized));
+  let key = await runWithClosePriority(() => originalCreateToast(normalized));
+  let lastOptions = { ...normalized };
+
   return {
-    id: key,
+    get id() {
+      return key;
+    },
     dismiss: () => (key ? closeToastByKey(key) : Promise.resolve()),
-    update: (newOptions) =>
-      key ? updateToastByKey(key, newOptions) : Promise.resolve(false),
+    update: async (newOptions, updateOpts) => {
+      if (key) {
+        const updated = await updateToastByKey(key, newOptions);
+        if (updated) {
+          if (newOptions && typeof newOptions === "object") {
+            lastOptions = { ...lastOptions, ...newOptions };
+          }
+          return true;
+        }
+      }
+      if (updateOpts?.fallback !== false && newOptions && typeof newOptions === "object") {
+        const spawnOptions = { ...lastOptions, ...newOptions };
+        if (
+          spawnOptions.duration === 0 &&
+          newOptions.duration === undefined &&
+          newOptions.type &&
+          newOptions.type !== "loading"
+        ) {
+          spawnOptions.duration = 2500;
+          spawnOptions.showLoader = false;
+        }
+        const newHandle = await createToastWithPriority(spawnOptions);
+        key = newHandle.id;
+        lastOptions = spawnOptions;
+        return true;
+      }
+      return false;
+    },
   };
 }
 
