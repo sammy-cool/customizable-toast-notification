@@ -216,7 +216,22 @@ export function createToastIcon(options = {}) {
 
   const iconTag = document.createElement("i");
   iconTag.className = "toast-icon";
-  iconTag.setAttribute("aria-hidden", "true");
+
+  let iconAriaLabel = safeOptions.iconAriaLabel;
+  if (iconAriaLabel === undefined) {
+    const globalAriaLabel = config.iconAriaLabel;
+    if (globalAriaLabel !== undefined) {
+      iconAriaLabel = globalAriaLabel;
+    }
+  }
+
+  if (iconAriaLabel && typeof iconAriaLabel === "string" && iconAriaLabel.trim()) {
+    iconTag.setAttribute("aria-hidden", "false");
+    iconTag.setAttribute("role", "img");
+    iconTag.setAttribute("aria-label", iconAriaLabel.trim());
+  } else {
+    iconTag.setAttribute("aria-hidden", "true");
+  }
 
   let iconColorOpt = safeOptions.iconColor;
   if (iconColorOpt === undefined) {

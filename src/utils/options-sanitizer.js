@@ -110,6 +110,7 @@ export async function sanitizeToastOptions(
     textColor: undefined,
     showCloseButton: true,
     iconColor: undefined,
+    iconAriaLabel: undefined,
     animationDuration: "0.4s",
     animationEasing: "ease",
     showProgressBar: true,

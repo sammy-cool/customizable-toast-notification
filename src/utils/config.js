@@ -34,6 +34,7 @@
  * @property {boolean} sound
  * @property {boolean} [icon]
  * @property {string} [iconColor]
+ * @property {string | null} [iconAriaLabel]
  * @property {string|null} [cspNonce]
  * @property {string} [soundPreset]
  * @property {boolean} [pauseOnHover]
@@ -59,6 +60,7 @@ const DEFAULT_GLOBAL_CONFIG = Object.freeze({
   sound: false,
   icon: true,
   iconColor: undefined,
+  iconAriaLabel: null,
   cspNonce: null,
   soundPreset: "default",
   pauseOnHover: false,
@@ -100,6 +102,7 @@ export function setConfig(options = {}) {
     sound,
     icon,
     iconColor,
+    iconAriaLabel,
     cspNonce,
     soundPreset,
     pauseOnHover,
@@ -206,6 +209,10 @@ export function setConfig(options = {}) {
     globalConfig.iconColor = typeof iconColor === "string" ? iconColor.trim() : (iconColor === null ? null : undefined);
   }
 
+  if (iconAriaLabel !== undefined) {
+    globalConfig.iconAriaLabel = typeof iconAriaLabel === "string" ? iconAriaLabel.trim() : null;
+  }
+
   if (cspNonce !== undefined) {
     globalConfig.cspNonce = typeof cspNonce === "string" ? cspNonce.trim() : null;
   }
@@ -252,7 +259,7 @@ export function resetConfig() {
  * @returns {ToastGlobalConfig}
  */
 export function getConfig() {
-  return { ...globalConfig };
+  return Object.freeze({ ...globalConfig });
 }
 
 /**

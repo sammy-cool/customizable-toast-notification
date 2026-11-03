@@ -7928,6 +7928,98 @@ describe("Architectural Fortification: Updating Dismissed Toasts & Fallback Spaw
     resetToastManager();
     resetContainerRegistry();
   });
+
+  test("Fortification 11: Icon Accessible Name (iconAriaLabel), In-Place Update, Immutable getConfig Snapshot, and strictNullChecks", async () => {
+    freshDom();
+    const {
+      createToast,
+      resetToastManager,
+      resetConfig,
+      setConfig,
+      getConfig,
+      resetContainerRegistry,
+    } = await import("../../src/index.js");
+    resetToastManager();
+    resetContainerRegistry();
+    resetConfig();
+
+    // 1. Immutable getConfig() snapshot
+    const cfg = getConfig();
+    assert.strictEqual(Object.isFrozen(cfg), true, "getConfig() returns an Object.freeze snapshot");
+    assert.throws(
+      () => {
+        cfg.maxVisible = 999;
+      },
+      /TypeError/,
+      "Mutating frozen getConfig snapshot throws TypeError in strict mode",
+    );
+    assert.notStrictEqual(getConfig().maxVisible, 999, "Global configuration is untouched");
+
+    // 2. tsconfig.types.json strictNullChecks
+    const fs = await import("fs");
+    const path = await import("path");
+    const tsconfig = JSON.parse(fs.readFileSync(path.resolve("./tsconfig.types.json"), "utf-8"));
+    assert.strictEqual(
+      tsconfig.compilerOptions.strictNullChecks,
+      true,
+      "tsconfig.types.json enables strictNullChecks",
+    );
+
+    // 3. createToastIcon with iconAriaLabel
+    const { createToastIcon } = await import("../../src/components/icons.js");
+    const decorativeIcon = createToastIcon({ icon: "🎉" });
+    assert.strictEqual(decorativeIcon.getAttribute("aria-hidden"), "true", "Default icon is aria-hidden='true'");
+    assert.strictEqual(decorativeIcon.hasAttribute("role"), false, "Default icon has no role");
+
+    const accessibleIcon = createToastIcon({ icon: "🎉", iconAriaLabel: "Party popper celebration" });
+    assert.strictEqual(accessibleIcon.getAttribute("aria-hidden"), "false", "Accessible icon has aria-hidden='false'");
+    assert.strictEqual(accessibleIcon.getAttribute("role"), "img", "Accessible icon has role='img'");
+    assert.strictEqual(accessibleIcon.getAttribute("aria-label"), "Party popper celebration", "Accessible icon has correct aria-label");
+
+    // 4. setConfig({ iconAriaLabel }) applies when toast options omit it
+    setConfig({ iconAriaLabel: "Global status icon" });
+    const globalLabeledIcon = createToastIcon({ icon: "checkmark" });
+    assert.strictEqual(globalLabeledIcon.getAttribute("aria-hidden"), "false");
+    assert.strictEqual(globalLabeledIcon.getAttribute("role"), "img");
+    assert.strictEqual(globalLabeledIcon.getAttribute("aria-label"), "Global status icon");
+    resetConfig();
+
+    // 5. In-place update of iconAriaLabel via handle.update()
+    const handle = await createToast({
+      message: "Processing file upload...",
+      icon: "circle",
+      iconAriaLabel: "Pending status indicator",
+      duration: 5000,
+    });
+    await new Promise((r) => setTimeout(r, 60));
+
+    const toastEl = document.querySelector(".toast");
+    assert.ok(toastEl, "Toast element mounted");
+    let iconEl = toastEl.querySelector(".toast-icon");
+    assert.ok(iconEl, "Icon element found in toast");
+    assert.strictEqual(iconEl.getAttribute("aria-hidden"), "false");
+    assert.strictEqual(iconEl.getAttribute("role"), "img");
+    assert.strictEqual(iconEl.getAttribute("aria-label"), "Pending status indicator");
+
+    // Dynamic update with new iconAriaLabel
+    await handle.update({
+      message: "File uploaded successfully!",
+      icon: "checkmark",
+      iconAriaLabel: "Upload completed successfully",
+    });
+    await new Promise((r) => setTimeout(r, 60));
+
+    iconEl = toastEl.querySelector(".toast-icon");
+    assert.ok(iconEl, "Updated icon element found");
+    assert.strictEqual(iconEl.getAttribute("aria-hidden"), "false");
+    assert.strictEqual(iconEl.getAttribute("role"), "img");
+    assert.strictEqual(iconEl.getAttribute("aria-label"), "Upload completed successfully");
+
+    await handle.dismiss();
+    resetConfig();
+    resetToastManager();
+    resetContainerRegistry();
+  });
 });
 
 

@@ -171,6 +171,7 @@ export async function applyToastDOMUpdates(data, newOptions, context) {
   if (
     newOptions.icon !== undefined ||
     newOptions.iconColor !== undefined ||
+    newOptions.iconAriaLabel !== undefined ||
     newOptions.type !== undefined
   ) {
     const existingIcon = toast?.querySelector(".toast-icon");

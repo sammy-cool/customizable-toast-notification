@@ -108,6 +108,7 @@ import {
  * @property {((options: ToastOptions) => void)} [onSound] - Sound playback handler callback
  * @property {boolean | string | HTMLElement | ((options: ToastOptions) => boolean | string | HTMLElement | null | undefined)} [icon]
  * @property {string} [iconColor] - Custom color for the toast icon (overriding currentColor / text color)
+ * @property {string} [iconAriaLabel] - Accessible text description for the icon for screen readers (sets aria-hidden="false", role="img", aria-label)
  * @property {boolean} [swipeToDismiss]
  * @property {number | string | 'indeterminate'} [progress]
  * @property {boolean} [progressNormalized]
@@ -194,6 +195,7 @@ import {
  * @property {boolean} [sound]
  * @property {boolean} [icon]
  * @property {string} [iconColor]
+ * @property {string | null} [iconAriaLabel]
  * @property {string | null} [cspNonce]
  * @property {string} [soundPreset]
  * @property {boolean} [pauseOnHover]
