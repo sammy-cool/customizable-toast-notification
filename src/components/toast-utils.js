@@ -129,6 +129,13 @@ export async function applyRichStyling(toast, options, onClose) {
     });
   }
 
+  if (options?.fontDirection && options.fontDirection !== "auto") {
+    toast.setAttribute("dir", options.fontDirection);
+    if (options.fontDirection === "rtl") {
+      toast.classList.add("toast-rtl");
+    }
+  }
+
   const isError = options?.type === "error";
   const role = options?.role || "alert";
   const ariaLive = options?.ariaLive || (isError ? "assertive" : "polite");

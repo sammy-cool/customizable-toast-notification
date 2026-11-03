@@ -685,23 +685,38 @@
 }
 
 [dir="rtl"] .toast-icon,
-.toast[style*="direction: rtl"] .toast-icon {
+.toast[dir="rtl"] .toast-icon,
+.toast-rtl .toast-icon,
+.toast[style*="direction: rtl"] .toast-icon,
+.toast[style*="direction:rtl"] .toast-icon {
   margin-right: 0;
   margin-left: 8px;
 }
 
 [dir="rtl"] .toast-cta,
+.toast[dir="rtl"] .toast-cta,
+.toast-rtl .toast-cta,
 .toast[style*="direction: rtl"] .toast-cta,
+.toast[style*="direction:rtl"] .toast-cta,
 [dir="rtl"] .toast-undo-btn,
+.toast[dir="rtl"] .toast-undo-btn,
+.toast-rtl .toast-undo-btn,
 .toast[style*="direction: rtl"] .toast-undo-btn,
+.toast[style*="direction:rtl"] .toast-undo-btn,
 [dir="rtl"] .toast-close-btn,
-.toast[style*="direction: rtl"] .toast-close-btn {
+.toast[dir="rtl"] .toast-close-btn,
+.toast-rtl .toast-close-btn,
+.toast[style*="direction: rtl"] .toast-close-btn,
+.toast[style*="direction:rtl"] .toast-close-btn {
   margin-left: 0;
   margin-right: 10px;
 }
 
 [dir="rtl"] .toast-cta + .toast-cta,
-.toast[style*="direction: rtl"] .toast-cta + .toast-cta {
+.toast[dir="rtl"] .toast-cta + .toast-cta,
+.toast-rtl .toast-cta + .toast-cta,
+.toast[style*="direction: rtl"] .toast-cta + .toast-cta,
+.toast[style*="direction:rtl"] .toast-cta + .toast-cta {
   margin-left: 0;
   margin-right: 6px;
 }

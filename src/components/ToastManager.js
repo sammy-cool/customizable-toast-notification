@@ -1255,6 +1255,13 @@ export async function updateToastByKey(key, newOptions = {}) {
     const dir = newOptions.fontDirection !== "auto" ? newOptions.fontDirection : "";
     toast.style.direction = dir;
     if (messageSpan) messageSpan.style.direction = dir;
+    if (dir === "rtl") {
+      toast.setAttribute("dir", "rtl");
+      toast.classList.add("toast-rtl");
+    } else {
+      toast.removeAttribute("dir");
+      toast.classList.remove("toast-rtl");
+    }
     const isRtl = dir === "rtl";
     toast.querySelectorAll(".toast-cta, .toast-undo-btn, .toast-close-btn").forEach((btn) => {
       btn.style.marginLeft = isRtl ? "0px" : "10px";

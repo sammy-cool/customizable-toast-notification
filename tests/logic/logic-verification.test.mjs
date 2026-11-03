@@ -6315,6 +6315,52 @@ describe("Architectural Fortification: Updating Dismissed Toasts & Fallback Spaw
       resetToastManager();
     }
   });
+
+  test("RTL fontDirection sets semantic dir attribute and toast-rtl class on initial render and handle.update", async () => {
+    freshDom();
+    const { createToast, resetToastManager } = await import("../../src/index.js");
+    resetToastManager();
+
+    try {
+      const handle = await createToast({
+        message: "مرحبا بالعالم",
+        fontDirection: "rtl",
+        duration: 0,
+      });
+      await new Promise((r) => setTimeout(r, 50));
+
+      const toast = document.querySelector(".toast");
+      assert.ok(toast);
+      assert.strictEqual(toast.getAttribute("dir"), "rtl");
+      assert.ok(toast.classList.contains("toast-rtl"));
+
+      // Update to ltr
+      await handle.update({ fontDirection: "ltr" });
+      assert.strictEqual(toast.getAttribute("dir"), null);
+      assert.strictEqual(toast.classList.contains("toast-rtl"), false);
+
+      // Update back to rtl
+      await handle.update({ fontDirection: "rtl" });
+      assert.strictEqual(toast.getAttribute("dir"), "rtl");
+      assert.ok(toast.classList.contains("toast-rtl"));
+
+      await handle.dismiss();
+    } finally {
+      resetToastManager();
+    }
+  });
+
+  test("styles.css includes print accessibility and tablet responsive rules", async () => {
+    const fs = await import("fs");
+    const path = await import("path");
+    const css = fs.readFileSync(path.resolve("src/styles.css"), "utf8");
+
+    assert.ok(css.includes("@media print"), "styles.css must include @media print");
+    assert.ok(css.includes(".toast-container-base"), "print media query must target container");
+    assert.ok(css.includes("display: none !important"), "print media must hide toasts on print");
+    assert.ok(css.includes("max-width: 768px"), "styles.css must include tablet breakpoint <= 768px");
+    assert.ok(css.includes(".toast-rtl"), "styles.css must include .toast-rtl selector");
+  });
 });
 
 
