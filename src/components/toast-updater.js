@@ -462,8 +462,12 @@ export async function applyToastDOMUpdates(data, newOptions, context) {
     }
   }
 
-  // 5.1 Update Position Migration
-  if (newOptions.position !== undefined) {
+  // 5.1 Update Position / Container Migration
+  if (newOptions.position !== undefined || newOptions.containerId !== undefined) {
+    const targetContainerId =
+      typeof newOptions.containerId === "string" && newOptions.containerId.trim()
+        ? newOptions.containerId.trim()
+        : null;
     const targetPos = normalizePositionKey(newOptions.position || getConfig().defaultPosition);
     const currentContainer =
       (typeof toast.closest === "function" &&
@@ -472,12 +476,25 @@ export async function applyToastDOMUpdates(data, newOptions, context) {
     const currentPos = currentContainer?.id?.startsWith("toast-container-")
       ? normalizePositionKey(currentContainer.id.replace("toast-container-", ""))
       : null;
+    const currentContainerId = currentContainer?.id || null;
 
-    if (currentPos && currentPos !== targetPos) {
-      const targetContainer = await getOrCreateToastContainer({ ...data.options, position: targetPos });
+    const needsMigration = targetContainerId
+      ? currentContainerId !== targetContainerId
+      : (currentPos && currentPos !== targetPos);
+
+    if (needsMigration) {
+      const targetContainer = await getOrCreateToastContainer({
+        ...data.options,
+        position: targetPos,
+        containerId: targetContainerId || undefined,
+      });
       if (targetContainer && data.outer) {
         targetContainer.appendChild(data.outer);
-        data.options.position = targetPos;
+        if (targetContainerId) {
+          data.options.containerId = targetContainerId;
+        } else {
+          data.options.position = targetPos;
+        }
         if (currentContainer && currentContainer.children.length === 0) {
           try {
             unregisterContainer(currentContainer.id);

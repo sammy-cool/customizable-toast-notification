@@ -68,6 +68,9 @@ export function resetContainerRegistry() {
       /* safe fallback if custom target shadow host query fails */
     }
     const containerSet = new Set(document.querySelectorAll('[id^="toast-container-"]'));
+    for (const [, el] of containerRegistry.entries()) {
+      if (el) containerSet.add(el);
+    }
     try {
       const customTarget = getConfig?.()?.targetNode;
       if (customTarget && typeof customTarget.querySelectorAll === "function") {
@@ -93,6 +96,11 @@ export function resetContainerRegistry() {
  */
 export function unregisterContainer(idOrPosition) {
   if (!idOrPosition) return;
+  if (containerRegistry.has(idOrPosition)) {
+    containerRegistry.delete(idOrPosition);
+    containerLocks.delete(idOrPosition);
+    return;
+  }
   const id = typeof idOrPosition === "string" && idOrPosition.startsWith("toast-container-")
     ? idOrPosition
     : getContainerId(idOrPosition);
@@ -143,7 +151,10 @@ function applyContainerBaseStyles(el) {
  */
 export async function getOrCreateToastContainer(options = {}, setPosition) {
   const config = getConfig();
-  const id = getContainerId(options?.position || config.defaultPosition);
+  const id =
+    typeof options?.containerId === "string" && options.containerId.trim()
+      ? options.containerId.trim()
+      : getContainerId(options?.position || config.defaultPosition);
   let root = getContainerRoot();
   if (!root) throw new Error("Toast container root is unavailable");
 

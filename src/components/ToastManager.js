@@ -150,19 +150,21 @@ function makeKey(options = {}) {
   if (safe.dedup === false || safe.group === false) {
     return generateToastId("toast-standalone");
   }
+  const posKey =
+    typeof safe.containerId === "string" && safe.containerId.trim()
+      ? `cid:${safe.containerId.trim()}`
+      : normalizePositionKey(safe.position || "bottom-right");
+
   if (safe.tag !== undefined && safe.tag !== null && safe.tag !== "") {
-    const position = normalizePositionKey(safe.position || "bottom-right");
-    return `tag:${String(safe.tag).trim()}:${position}`;
+    return `tag:${String(safe.tag).trim()}:${posKey}`;
   }
   if (safe.groupId !== undefined && safe.groupId !== null && safe.groupId !== "") {
-    const position = normalizePositionKey(safe.position || "bottom-right");
-    return `group:${String(safe.groupId).trim()}:${position}`;
+    return `group:${String(safe.groupId).trim()}:${posKey}`;
   }
   const type = String(safe.type || "info").trim().toLowerCase();
   const messageHash = hashString(String(safe.message || "")).toString(16);
-  const position = normalizePositionKey(safe.position || "bottom-right");
 
-  return `${type}|${messageHash}|${position}`;
+  return `${type}|${messageHash}|${posKey}`;
 }
 
 export async function showToast(options = {}) {

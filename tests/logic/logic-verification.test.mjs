@@ -8487,6 +8487,38 @@ describe("Architectural Fortification: Updating Dismissed Toasts & Fallback Spaw
     destroyKeyboardShortcuts(window);
     assert.strictEqual(window.__customizableToastEscapeAttached, undefined, "Escape handler cleared from window");
 
+    // 9. containerId: mounts toast in custom container and supports dynamic container migration
+    const { createToast } = await import("../../src/index.js");
+    const customHandle = await createToast({
+      message: "Custom Container Toast",
+      containerId: "toast-container-custom-alpha",
+      duration: 3000,
+    });
+    await new Promise((r) => setTimeout(r, 60));
+    const customContainer = document.getElementById("toast-container-custom-alpha");
+    assert.ok(customContainer, "custom container element exists in DOM");
+    assert.strictEqual(customContainer.contains(document.querySelector("#toast-container-custom-alpha .toast")), true, "toast is mounted inside custom container");
+
+    await customHandle.update({ containerId: "toast-container-custom-beta" });
+    await new Promise((r) => setTimeout(r, 60));
+    const betaContainer = document.getElementById("toast-container-custom-beta");
+    assert.ok(betaContainer, "migrated beta container exists in DOM");
+    assert.strictEqual(betaContainer.contains(document.querySelector("#toast-container-custom-beta .toast")), true, "toast migrated into beta container");
+
+    await customHandle.dismiss();
+
+    // 10. createProgressBar and createUndoAction dynamically resolve global defaultDuration
+    const { createProgressBar, createUndoAction } = await import("../../src/components/toast-utils-core.js");
+    setConfig({ defaultDuration: 5500 });
+    const dummyToast = document.createElement("div");
+    createProgressBar(dummyToast, { showProgressBar: true });
+    assert.ok(dummyToast.querySelector(".toast-progress-bar"), "progress bar mounted");
+
+    createUndoAction(dummyToast, { undo: () => {} }, () => {});
+    const undoBtn = dummyToast.querySelector(".toast-undo-btn");
+    assert.ok(undoBtn, "undo button mounted");
+    assert.ok(undoBtn.textContent.includes("6s"), "undo countdown initialized with ceil(5500/1000) = 6s");
+
     resetConfig();
     resetToastManager();
     resetContainerRegistry();

@@ -471,7 +471,7 @@ export async function createEmergencyToast(options = {}, onClose) {
     };
     closeSpan.addEventListener("click", onClick);
 
-    const duration = Number(options?.duration) || 2500;
+    const duration = Number(options?.duration) || Number(getConfig?.()?.defaultDuration ?? 2500);
     timer = setTimeout(() => {
       closeSpan.removeEventListener("click", onClick);
       emergency.remove();

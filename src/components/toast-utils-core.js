@@ -221,7 +221,8 @@ export function createUndoAction(toast, options, onClose) {
       ? undoCfg.label.trim()
       : (typeof options?.undoText === "string" && options.undoText.trim() ? options.undoText.trim() : "Undo");
 
-  const totalDuration = Number(options?.duration);
+  const defaultDur = Number(getConfig?.()?.defaultDuration ?? 2500);
+  const totalDuration = options?.duration !== undefined ? Number(options.duration) : defaultDur;
   const showCountdown =
     undoCfg.showCountdown !== false &&
     Number.isFinite(totalDuration) &&
@@ -282,7 +283,7 @@ export function createUndoAction(toast, options, onClose) {
       ? options.remainingTime
       : (typeof options?.timer?.getRemainingTime === "function"
           ? options.timer.getRemainingTime()
-          : Math.max(1000, Number(totalDuration) || 2500));
+          : Math.max(1000, Number(totalDuration) || Number(getConfig?.()?.defaultDuration ?? 2500)));
   let remainingSec = Math.max(1, Math.ceil(remainingMs / 1000));
   const updateLabel = () => {
     btn.textContent = showCountdown
@@ -548,7 +549,8 @@ export function createProgressBar(toast, options = {}) {
     }
   }
 
-  const duration = Number(options.duration ?? 2500);
+  const defaultDur = Number(getConfig?.()?.defaultDuration ?? 2500);
+  const duration = Number(options.duration ?? defaultDur);
   const progressDuration = Math.max(0, duration + 5);
 
   const leftOffset = Math.min(borderRadiusNum, Math.min(progressHeightPx * 2, 16));
