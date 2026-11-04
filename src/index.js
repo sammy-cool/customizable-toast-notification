@@ -315,16 +315,22 @@ const SSR_NOOP_HANDLE = Object.freeze({
   update: () => Promise.resolve(false),
 });
 
-async function createToast(options = {}) {
+function checkBrowserEnvironment() {
   const isBrowser =
     typeof window !== "undefined" && typeof document !== "undefined";
-
   if (!isBrowser) {
     if (getConfig().debug) {
       console.warn(
         "ToastNotification: running in non-browser environment, no DOM available.",
       );
     }
+    return false;
+  }
+  return true;
+}
+
+async function createToast(options = {}) {
+  if (!checkBrowserEnvironment()) {
     return SSR_NOOP_HANDLE;
   }
 
@@ -420,14 +426,7 @@ const originalCreateToast = createToast;
  * @returns {Promise<ToastHandle>}
  */
 async function createToastWithPriority(messageOrOptions = {}, maybeOptions) {
-  const isBrowser =
-    typeof window !== "undefined" && typeof document !== "undefined";
-  if (!isBrowser) {
-    if (getConfig().debug) {
-      console.warn(
-        "ToastNotification: running in non-browser environment, no DOM available.",
-      );
-    }
+  if (!checkBrowserEnvironment()) {
     return SSR_NOOP_HANDLE;
   }
   const normalized = normalizeToastOptions(messageOrOptions, maybeOptions);

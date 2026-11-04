@@ -1,29 +1,7 @@
 import {
-  createToast,
   createToastAPI,
   createToastInstance,
-  on,
-  off,
-  getActiveCount,
-  success,
-  error,
-  warning,
-  info,
-  loading,
-  custom,
-  toastPromise,
-  dismiss,
-  dismissAll,
-  clear,
-  setConfig,
-  getConfig,
-  resetConfig,
   getToastMetrics,
-  setDefaultColors,
-  setDefaultMessages,
-  initKeyboardShortcuts,
-  destroyKeyboardShortcuts,
-  version,
 } from "../index.js";
 
 /**
@@ -115,31 +93,5 @@ export const useToast = (defaultOptions) => {
   return toast;
 };
 
-export {
-  createToast,
-  createToastAPI,
-  createToastInstance,
-  on,
-  off,
-  toastStore,
-  success,
-  error,
-  warning,
-  info,
-  loading,
-  custom,
-  toastPromise,
-  dismiss,
-  dismissAll,
-  clear,
-  getActiveCount,
-  setConfig,
-  getConfig,
-  resetConfig,
-  getToastMetrics,
-  setDefaultColors,
-  setDefaultMessages,
-  initKeyboardShortcuts,
-  destroyKeyboardShortcuts,
-  version,
-};
+export { toastStore };
+export * from "../index.js";

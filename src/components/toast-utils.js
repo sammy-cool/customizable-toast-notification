@@ -122,6 +122,42 @@ export function appendMessageContent(messageSpan, rawMessage, allowHtml = false)
   messageSpan.appendChild(document.createTextNode(String(rawMessage ?? "")));
 }
 
+/**
+ * Applies or removes 3-line text truncation styling and CSS classes on messageSpan.
+ *
+ * @param {HTMLElement} messageSpan
+ * @param {string | boolean | undefined} wrapText
+ * @param {boolean} [disableInlineStyles=false]
+ */
+export function applyMessageTruncation(messageSpan, wrapText, disableInlineStyles = false) {
+  const isTruncate = wrapText === "truncate" || wrapText === "ellipsis" || wrapText === false;
+  if (isTruncate || !wrapText) {
+    messageSpan.classList.add("is-truncated");
+    if (!disableInlineStyles) {
+      Object.assign(messageSpan.style, {
+        display: "-webkit-box",
+        WebkitBoxOrient: "vertical",
+        WebkitLineClamp: "3",
+        whiteSpace: "normal",
+        overflow: "hidden",
+        textOverflow: "ellipsis",
+      });
+    }
+  } else {
+    messageSpan.classList.remove("is-truncated");
+    if (!disableInlineStyles) {
+      Object.assign(messageSpan.style, {
+        display: "block",
+        WebkitBoxOrient: "",
+        WebkitLineClamp: "",
+        whiteSpace: "normal",
+        overflow: "visible",
+        textOverflow: "clip",
+      });
+    }
+  }
+}
+
 export async function applyRichStyling(toast, options, onClose) {
   const config = getConfig();
   const animType = String(options?.animationType || "").toLowerCase().trim();
@@ -218,29 +254,7 @@ export async function applyRichStyling(toast, options, onClose) {
   messageSpan.className = "toast-message";
   toast._messageSpan = messageSpan;
 
-  const isTruncate =
-    options?.wrapText === "truncate" ||
-    options?.wrapText === "ellipsis" ||
-    options?.wrapText === false;
-
-  if (isTruncate || !options?.wrapText) {
-    messageSpan.classList.add("is-truncated");
-    if (!config.disableInlineStyles) {
-      Object.assign(messageSpan.style, {
-        display: "-webkit-box",
-        WebkitBoxOrient: "vertical",
-        WebkitLineClamp: "3",
-        whiteSpace: "normal",
-        overflow: "hidden",
-        textOverflow: "ellipsis",
-      });
-    }
-  } else if (!config.disableInlineStyles) {
-    Object.assign(messageSpan.style, {
-      display: "block",
-      whiteSpace: "normal",
-    });
-  }
+  applyMessageTruncation(messageSpan, options?.wrapText, config.disableInlineStyles);
 
   const fontSize =
     typeof options?.fontSize === "number"

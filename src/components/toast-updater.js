@@ -1,7 +1,7 @@
 import { getDynamicAccessibleTextColorHex } from "../utils/dom.js";
 import { createToastIcon } from "./icons.js";
 import { createLoader } from "./loader.js";
-import { appendMessageContent, playNativeTone } from "./toast-utils.js";
+import { appendMessageContent, playNativeTone, applyMessageTruncation } from "./toast-utils.js";
 import {
   createCTA,
   createUndoAction,
@@ -265,35 +265,7 @@ export async function applyToastDOMUpdates(data, newOptions, context) {
   }
 
   if (newOptions.wrapText !== undefined && messageSpan) {
-    const isTruncate =
-      newOptions.wrapText === "truncate" ||
-      newOptions.wrapText === "ellipsis" ||
-      newOptions.wrapText === false;
-    if (isTruncate || !newOptions.wrapText) {
-      messageSpan.classList.add("is-truncated");
-      if (!getConfig().disableInlineStyles) {
-        Object.assign(messageSpan.style, {
-          display: "-webkit-box",
-          WebkitBoxOrient: "vertical",
-          WebkitLineClamp: "3",
-          whiteSpace: "normal",
-          overflow: "hidden",
-          textOverflow: "ellipsis",
-        });
-      }
-    } else {
-      messageSpan.classList.remove("is-truncated");
-      if (!getConfig().disableInlineStyles) {
-        Object.assign(messageSpan.style, {
-          display: "block",
-          WebkitBoxOrient: "",
-          WebkitLineClamp: "",
-          whiteSpace: "normal",
-          overflow: "visible",
-          textOverflow: "clip",
-        });
-      }
-    }
+    applyMessageTruncation(messageSpan, newOptions.wrapText, getConfig().disableInlineStyles);
   }
 
   if (newOptions.role !== undefined) {

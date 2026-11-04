@@ -1,30 +1,4 @@
-import {
-  createToast,
-  createToastAPI,
-  createToastInstance,
-  on,
-  off,
-  getActiveCount,
-  success,
-  error,
-  warning,
-  info,
-  loading,
-  custom,
-  toastPromise,
-  dismiss,
-  dismissAll,
-  clear,
-  setConfig,
-  getConfig,
-  resetConfig,
-  getToastMetrics,
-  setDefaultColors,
-  setDefaultMessages,
-  initKeyboardShortcuts,
-  destroyKeyboardShortcuts,
-  version,
-} from "../index.js";
+import * as core from "../index.js";
 
 /**
  * Angular-compatible Toast Service.
@@ -37,96 +11,96 @@ export class ToastService {
       defaultOptions &&
       typeof defaultOptions === "object" &&
       Object.keys(defaultOptions).length > 0
-        ? createToastInstance(defaultOptions)
+        ? core.createToastInstance(defaultOptions)
         : null;
   }
 
   success(message, options) {
-    return this._instance ? this._instance.success(message, options) : createToast.success(message, options);
+    return this._instance ? this._instance.success(message, options) : core.createToast.success(message, options);
   }
 
   error(message, options) {
-    return this._instance ? this._instance.error(message, options) : createToast.error(message, options);
+    return this._instance ? this._instance.error(message, options) : core.createToast.error(message, options);
   }
 
   warning(message, options) {
-    return this._instance ? this._instance.warning(message, options) : createToast.warning(message, options);
+    return this._instance ? this._instance.warning(message, options) : core.createToast.warning(message, options);
   }
 
   info(message, options) {
-    return this._instance ? this._instance.info(message, options) : createToast.info(message, options);
+    return this._instance ? this._instance.info(message, options) : core.createToast.info(message, options);
   }
 
   loading(message, options) {
-    return this._instance ? this._instance.loading(message, options) : createToast.loading(message, options);
+    return this._instance ? this._instance.loading(message, options) : core.createToast.loading(message, options);
   }
 
   custom(message, options) {
-    return this._instance ? this._instance.custom(message, options) : createToast.custom(message, options);
+    return this._instance ? this._instance.custom(message, options) : core.createToast.custom(message, options);
   }
 
   show(options) {
-    return this._instance ? this._instance.show(options) : createToast(options);
+    return this._instance ? this._instance.show(options) : core.createToast(options);
   }
 
   promise(promiseOrFn, messages, options) {
-    return this._instance ? this._instance.promise(promiseOrFn, messages, options) : toastPromise(promiseOrFn, messages, options);
+    return this._instance ? this._instance.promise(promiseOrFn, messages, options) : core.toastPromise(promiseOrFn, messages, options);
   }
 
   dismiss(target) {
-    return this._instance ? this._instance.dismiss(target) : dismiss(target);
+    return this._instance ? this._instance.dismiss(target) : core.dismiss(target);
   }
 
   dismissAll() {
-    return this._instance ? this._instance.dismissAll() : dismissAll();
+    return this._instance ? this._instance.dismissAll() : core.dismissAll();
   }
 
   clear() {
-    return this._instance ? this._instance.clear() : clear();
+    return this._instance ? this._instance.clear() : core.clear();
   }
 
   on(event, listener) {
-    return this._instance ? this._instance.on(event, listener) : on(event, listener);
+    return this._instance ? this._instance.on(event, listener) : core.on(event, listener);
   }
 
   off(event, listener) {
-    return this._instance ? this._instance.off(event, listener) : off(event, listener);
+    return this._instance ? this._instance.off(event, listener) : core.off(event, listener);
   }
 
   getActiveCount() {
-    return this._instance ? this._instance.getActiveCount() : getActiveCount();
+    return this._instance ? this._instance.getActiveCount() : core.getActiveCount();
   }
 
   get size() {
-    return this._instance ? this._instance.size : getActiveCount();
+    return this._instance ? this._instance.size : core.getActiveCount();
   }
 
   setConfig(options) {
-    return setConfig(options);
+    return core.setConfig(options);
   }
 
   getConfig() {
-    return getConfig();
+    return core.getConfig();
   }
 
   resetConfig() {
-    return resetConfig();
+    return core.resetConfig();
   }
 
   getToastMetrics() {
-    return this._instance ? this._instance.getToastMetrics() : getToastMetrics();
+    return this._instance ? this._instance.getToastMetrics() : core.getToastMetrics();
   }
 
   setDefaultColors(colors) {
-    return setDefaultColors(colors);
+    return core.setDefaultColors(colors);
   }
 
   setDefaultMessages(messages) {
-    return setDefaultMessages(messages);
+    return core.setDefaultMessages(messages);
   }
 
   get version() {
-    return version;
+    return core.version;
   }
 }
 
@@ -168,31 +142,5 @@ function resetToastService() {
 
 export const toast = injectToast();
 
-export {
-  createToast,
-  createToastAPI,
-  createToastInstance,
-  on,
-  off,
-  success,
-  error,
-  warning,
-  info,
-  loading,
-  custom,
-  toastPromise,
-  dismiss,
-  dismissAll,
-  clear,
-  getActiveCount,
-  resetToastService,
-  setConfig,
-  getConfig,
-  resetConfig,
-  getToastMetrics,
-  setDefaultColors,
-  setDefaultMessages,
-  initKeyboardShortcuts,
-  destroyKeyboardShortcuts,
-  version,
-};
+export { resetToastService };
+export * from "../index.js";

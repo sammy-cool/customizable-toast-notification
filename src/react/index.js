@@ -1,32 +1,6 @@
 "use client";
 
-import {
-  createToast,
-  createToastAPI,
-  createToastInstance,
-  on,
-  off,
-  getActiveCount,
-  success,
-  error,
-  warning,
-  info,
-  loading,
-  custom,
-  toastPromise,
-  dismiss,
-  dismissAll,
-  clear,
-  setConfig,
-  getConfig,
-  resetConfig,
-  getToastMetrics,
-  setDefaultColors,
-  setDefaultMessages,
-  initKeyboardShortcuts,
-  destroyKeyboardShortcuts,
-  version,
-} from "../index.js";
+import { createToastAPI, createToastInstance } from "../index.js";
 
 let cachedAPI = null;
 const scopedCache = new Map();
@@ -117,31 +91,5 @@ function resetReactCache() {
   scopedCache.clear();
 }
 
-export {
-  createToast,
-  createToastAPI,
-  createToastInstance,
-  on,
-  off,
-  success,
-  error,
-  warning,
-  info,
-  loading,
-  custom,
-  toastPromise,
-  dismiss,
-  dismissAll,
-  clear,
-  getActiveCount,
-  setConfig,
-  getConfig,
-  resetConfig,
-  getToastMetrics,
-  setDefaultColors,
-  setDefaultMessages,
-  initKeyboardShortcuts,
-  destroyKeyboardShortcuts,
-  resetReactCache,
-  version,
-};
+export { resetReactCache };
+export * from "../index.js";
