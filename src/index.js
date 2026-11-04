@@ -39,6 +39,10 @@ import { createInstance, buildToastAPI } from "./utils/instance-factory.js";
  */
 
 /**
+ * @typedef {'light' | 'dark' | 'high-contrast' | 'compact' | 'spacious' | 'glass'} ToastTheme
+ */
+
+/**
  * @typedef {Object} CTAOptions
  * @property {string} [label]
  * @property {string} [href]
@@ -122,15 +126,19 @@ import { createInstance, buildToastAPI } from "./utils/instance-factory.js";
  * @property {boolean} [shadowDom] - Whether to isolate the container in an attached Shadow DOM root
  * @property {'alert' | 'status' | string} [role] - ARIA role attribute (default: 'alert')
  * @property {'polite' | 'assertive' | 'off'} [ariaLive] - ARIA live region politeness
+ * @property {string} [undoText] - Alternative custom label for undo button
+ * @property {string} [closeAriaLabel] - Accessible aria-label for close button
+ * @property {number} [iconSize] - Custom pixel size for the icon (default 18)
+ * @property {ToastTheme} [theme] - Theme preset override for this toast ('light' | 'dark' | 'high-contrast' | 'compact' | 'spacious' | 'glass')
+ * @property {boolean} [autoFocus] - Whether to automatically focus interactive CTA/undo button when trapFocus is enabled (default true)
+ * @property {boolean} [dedup] - Whether to deduplicate identical toasts (set false to show duplicate toasts independently)
+ * @property {boolean} [group] - Alias for dedup
+ * @property {string} [containerId] - Explicit container ID to mount this toast into
  */
 
 
 /**
  * @typedef {'auto' | 'always' | 'never'} ReducedMotionMode
- */
-
-/**
- * @typedef {'light' | 'dark' | 'high-contrast' | 'compact' | 'spacious' | 'glass'} ToastTheme
  */
 
 /**
@@ -445,12 +453,12 @@ async function createToastWithPriority(messageOrOptions = {}, maybeOptions) {
       if (updateOpts?.fallback !== false && newOptions && typeof newOptions === "object") {
         const spawnOptions = { ...lastOptions, ...newOptions };
         if (
-          spawnOptions.duration === 0 &&
+          (spawnOptions.duration === 0 || spawnOptions.duration >= 86400000) &&
           newOptions.duration === undefined &&
           newOptions.type &&
           newOptions.type !== "loading"
         ) {
-          spawnOptions.duration = 2500;
+          spawnOptions.duration = Number(getConfig?.()?.defaultDuration ?? 2500);
           spawnOptions.showLoader = false;
         }
         const newHandle = await createToastWithPriority(spawnOptions);

@@ -32,7 +32,27 @@ let cachedAPI = null;
 const scopedCache = new Map();
 const MAX_SCOPED_CACHE = 50;
 
+function hasFunctionProps(obj, seen = new Set()) {
+  if (!obj || typeof obj !== "object") return false;
+  if (typeof HTMLElement !== "undefined" && obj instanceof HTMLElement) return false;
+  if (typeof Node !== "undefined" && obj instanceof Node) return false;
+  if (seen.has(obj)) return false;
+  seen.add(obj);
+
+  try {
+    for (const key of Object.keys(obj)) {
+      const val = obj[key];
+      if (typeof val === "function") return true;
+      if (val && typeof val === "object" && hasFunctionProps(val, seen)) return true;
+    }
+  } catch {
+    /* safe fallback if property access throws */
+  }
+  return false;
+}
+
 function getScopedKey(opts) {
+  if (hasFunctionProps(opts)) return null;
   try {
     return JSON.stringify(opts);
   } catch {

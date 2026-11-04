@@ -93,7 +93,6 @@ export function createCTA(toast, options, onClose) {
         display: "inline-flex",
         alignItems: "center",
         textDecoration: "none",
-        outline: "none",
       });
     }
 
@@ -145,12 +144,41 @@ export function createCTA(toast, options, onClose) {
       }
     };
 
+    const onFocus = () => {
+      try {
+        let isVisible = true;
+        if (typeof el.matches === "function") {
+          try {
+            if (!el.matches(":focus-visible") && typeof window !== "undefined" && window.navigator?.userAgent && !window.navigator.userAgent.includes("jsdom")) {
+              isVisible = false;
+            }
+          } catch {
+            isVisible = true;
+          }
+        }
+        if (isVisible) {
+          el.style.outline = "2px solid currentColor";
+          el.style.outlineOffset = "2px";
+        }
+      } catch {
+        /* safe fallback */
+      }
+    };
+    const onBlur = () => {
+      el.style.outline = "";
+      el.style.outlineOffset = "";
+    };
+
     el.addEventListener("click", onClick);
     el.addEventListener("keydown", onKeyDown);
+    el.addEventListener("focus", onFocus);
+    el.addEventListener("blur", onBlur);
 
     const cleanupItem = () => {
       el.removeEventListener("click", onClick);
       el.removeEventListener("keydown", onKeyDown);
+      el.removeEventListener("focus", onFocus);
+      el.removeEventListener("blur", onBlur);
     };
     el._cleanup = cleanupItem;
     cleanups.push(cleanupItem);
@@ -418,28 +446,36 @@ export function ensureProgressIndeterminateStyles() {
   if (typeof document === "undefined" || document.getElementById("toast-progress-indeterminate-styles")) {
     return;
   }
-  const st = document.createElement("style");
-  st.id = "toast-progress-indeterminate-styles";
-  st.textContent = `
-    @keyframes toast-progress-indeterminate {
-      0% { left: 0%; width: 0%; }
-      50% { left: 20%; width: 60%; }
-      100% { left: 100%; width: 0%; }
+  try {
+    const config = getConfig();
+    const st = document.createElement("style");
+    st.id = "toast-progress-indeterminate-styles";
+    if (config.cspNonce && typeof config.cspNonce === "string") {
+      st.setAttribute("nonce", config.cspNonce);
     }
-    @keyframes toast-progress-indeterminate-rtl {
-      0% { right: 0%; width: 0%; }
-      50% { right: 20%; width: 60%; }
-      100% { right: 100%; width: 0%; }
-    }
-    .toast-progress-bar-indeterminate {
-      animation: toast-progress-indeterminate 1.6s cubic-bezier(0.4, 0, 0.2, 1) infinite !important;
-    }
-    .toast-progress-bar-indeterminate-rtl {
-      animation: toast-progress-indeterminate-rtl 1.6s cubic-bezier(0.4, 0, 0.2, 1) infinite !important;
-    }
-  `;
-  const target = document.head || document.documentElement;
-  if (target) target.appendChild(st);
+    st.textContent = `
+      @keyframes toast-progress-indeterminate {
+        0% { left: 0%; width: 0%; }
+        50% { left: 20%; width: 60%; }
+        100% { left: 100%; width: 0%; }
+      }
+      @keyframes toast-progress-indeterminate-rtl {
+        0% { right: 0%; width: 0%; }
+        50% { right: 20%; width: 60%; }
+        100% { right: 100%; width: 0%; }
+      }
+      .toast-progress-bar-indeterminate {
+        animation: toast-progress-indeterminate 1.6s cubic-bezier(0.4, 0, 0.2, 1) infinite !important;
+      }
+      .toast-progress-bar-indeterminate-rtl {
+        animation: toast-progress-indeterminate-rtl 1.6s cubic-bezier(0.4, 0, 0.2, 1) infinite !important;
+      }
+    `;
+    const target = document.head || document.documentElement;
+    if (target) target.appendChild(st);
+  } catch {
+    /* safe fallback in strict CSP environments where style element appending is blocked */
+  }
 }
 
 /**

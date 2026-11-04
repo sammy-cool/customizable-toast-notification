@@ -56,6 +56,17 @@ export function resetContainerRegistry() {
         /* safe fallback if shadow host removal fails */
       }
     }
+    try {
+      const customTarget = getConfig?.()?.targetNode;
+      if (customTarget && typeof customTarget.querySelector === "function") {
+        const customShadowHost = customTarget.querySelector("#toast-shadow-host");
+        if (customShadowHost) {
+          customShadowHost.remove();
+        }
+      }
+    } catch {
+      /* safe fallback if custom target shadow host query fails */
+    }
     const containerSet = new Set(document.querySelectorAll('[id^="toast-container-"]'));
     try {
       const customTarget = getConfig?.()?.targetNode;

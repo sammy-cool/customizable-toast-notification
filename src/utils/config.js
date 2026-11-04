@@ -38,6 +38,7 @@
  * @property {string|null} [cspNonce]
  * @property {string} [soundPreset]
  * @property {boolean} [pauseOnHover]
+ * @property {number} [defaultDuration]
  * @property {boolean} priorityQueue
  * @property {boolean} [shadowDom]
  * @property {boolean} [trapFocus]
@@ -49,6 +50,7 @@
 const DEFAULT_GLOBAL_CONFIG = Object.freeze({
   maxVisible: 3,
   maxQueueSize: 100,
+  defaultDuration: 2500,
   zIndex: 9999,
   targetNode: null,
   disableInlineStyles: false,
@@ -91,6 +93,7 @@ export function setConfig(options = {}) {
   const {
     maxVisible,
     maxQueueSize,
+    defaultDuration,
     zIndex,
     targetNode,
     disableInlineStyles,
@@ -137,6 +140,13 @@ export function setConfig(options = {}) {
     const q = Number(maxQueueSize);
     if (Number.isFinite(q) && q >= 0) {
       globalConfig.maxQueueSize = Math.floor(q);
+    }
+  }
+
+  if (defaultDuration !== undefined) {
+    const d = Number(defaultDuration);
+    if (Number.isFinite(d) && d >= 0) {
+      globalConfig.defaultDuration = d;
     }
   }
 

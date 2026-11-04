@@ -19,6 +19,7 @@ export function attachSwipeToDismiss(toast, onClose) {
   let isDragging = false;
   let isHorizontal = false;
   let touchId = null;
+  let lastTouchTime = 0;
 
   let isWindowListening = false;
 
@@ -79,9 +80,13 @@ export function attachSwipeToDismiss(toast, onClose) {
     }
     let ev = e;
     if (e.touches && e.touches.length > 0) {
+      lastTouchTime = Date.now();
       ev = e.touches[0];
       touchId = ev.identifier ?? null;
     } else {
+      if (Date.now() - lastTouchTime < 600) {
+        return;
+      }
       touchId = null;
     }
     startX = ev.clientX;

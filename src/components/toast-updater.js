@@ -468,24 +468,25 @@ export async function applyToastDOMUpdates(data, newOptions, context) {
       }
     }
   } else if (
-    (data.options.duration === 0 || !data.timer) &&
+    (data.options.duration === 0 || data.options.duration >= 86400000 || !data.timer) &&
     (newOptions.type === "success" ||
       newOptions.type === "error" ||
       newOptions.type === "warning" ||
       newOptions.showLoader === false)
   ) {
-    // If it was a persistent loading toast (duration: 0) and transitioned to a resolved state
+    // If it was a persistent loading toast (duration: 0 or 24-hr loading placeholder) and transitioned to a resolved state
     // without an explicit duration, start a standard auto-dismiss timer so it doesn't stay permanently stuck on screen.
-    data.options.duration = 2500;
+    const resolvedDuration = Number(getConfig?.()?.defaultDuration ?? 2500);
+    data.options.duration = resolvedDuration;
     data.timer?.clear();
-    data.timer = createDismissTimer(toast, { duration: 2500 });
+    data.timer = createDismissTimer(toast, { duration: resolvedDuration });
     await setupPauseOnHover(data);
     if (progressBar && !progressBar._isManualProgress) {
       progressBar._isIndeterminate = false;
       progressBar.classList.remove("toast-progress-bar-indeterminate");
       progressBar.classList.remove("toast-progress-bar-indeterminate-rtl");
       progressBar.style.animation = "none";
-      bindProgressBarAnimation(toast, progressBar, 2505);
+      bindProgressBarAnimation(toast, progressBar, resolvedDuration + 5);
     }
   }
 

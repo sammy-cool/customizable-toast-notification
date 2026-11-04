@@ -10,6 +10,7 @@ import { runToastAnimation } from "./toast-utils-core.js";
 import { getConfig, shouldReduceMotion } from "../utils/config.js";
 import { updateStackedLayout } from "./stacked-layout.js";
 import { applyToastDOMUpdates } from "./toast-updater.js";
+import { generateToastId } from "../utils/id.js";
 
 export { updateStackedLayout };
 
@@ -145,6 +146,9 @@ function hashString(str) {
 function makeKey(options = {}) {
   const safe = options && typeof options === "object" ? options : {};
   if (safe.id !== undefined && safe.id !== null && safe.id !== "") return String(safe.id);
+  if (safe.dedup === false || safe.group === false) {
+    return generateToastId("toast-standalone");
+  }
   if (safe.tag !== undefined && safe.tag !== null && safe.tag !== "") {
     const position = normalizePositionKey(safe.position || "bottom-right");
     return `tag:${String(safe.tag).trim()}:${position}`;

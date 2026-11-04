@@ -102,7 +102,7 @@ export async function sanitizeToastOptions(
     allowHtml: false,
     sanitizeHtml: true,
     pauseOnHover: undefined,
-    duration: 2500,
+    duration: Number(config.defaultDuration ?? 2500),
     position: config.defaultPosition,
     type: "info",
     borderRadius: "50px",

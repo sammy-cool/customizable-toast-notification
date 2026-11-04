@@ -66,10 +66,15 @@ export async function toastPromise(promiseOrFn, messages = {}, options = {}, cre
         ? safeMessages.success(result)
         : (safeMessages.success ?? "Done!");
 
+    const resolvedSuccessDuration =
+      (typeof successResult === "object" && successResult !== null && successResult.duration !== undefined)
+        ? successResult.duration
+        : (safeOptions.duration !== undefined ? safeOptions.duration : 2500);
+
     const successOptions =
       typeof successResult === "object" && successResult !== null && !Array.isArray(successResult)
-        ? { ...baseOptions, type: "success", showLoader: false, ...successResult }
-        : { ...baseOptions, type: "success", showLoader: false, message: String(successResult) };
+        ? { duration: resolvedSuccessDuration, ...baseOptions, type: "success", showLoader: false, ...successResult }
+        : { ...baseOptions, duration: resolvedSuccessDuration, type: "success", showLoader: false, message: String(successResult) };
 
     if (loadingHandle && typeof loadingHandle.update === "function") {
       const updated = await loadingHandle.update(successOptions);
@@ -87,10 +92,15 @@ export async function toastPromise(promiseOrFn, messages = {}, options = {}, cre
         ? safeMessages.error(err)
         : (safeMessages.error ?? "Something went wrong.");
 
+    const resolvedErrorDuration =
+      (typeof errorResult === "object" && errorResult !== null && errorResult.duration !== undefined)
+        ? errorResult.duration
+        : (safeOptions.duration !== undefined ? safeOptions.duration : 2500);
+
     const errorOptions =
       typeof errorResult === "object" && errorResult !== null && !Array.isArray(errorResult)
-        ? { ...baseOptions, type: "error", showLoader: false, ...errorResult }
-        : { ...baseOptions, type: "error", showLoader: false, message: String(errorResult) };
+        ? { duration: resolvedErrorDuration, ...baseOptions, type: "error", showLoader: false, ...errorResult }
+        : { ...baseOptions, duration: resolvedErrorDuration, type: "error", showLoader: false, message: String(errorResult) };
 
     if (loadingHandle && typeof loadingHandle.update === "function") {
       const updated = await loadingHandle.update(errorOptions);

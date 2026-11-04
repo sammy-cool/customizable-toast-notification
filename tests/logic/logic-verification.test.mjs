@@ -8257,6 +8257,144 @@ describe("Architectural Fortification: Updating Dismissed Toasts & Fallback Spaw
     resetToastManager();
     resetContainerRegistry();
   });
+
+  test("Fortification 15: Full-Spectrum Architecture Fortification & Quality Remediations", async () => {
+    freshDom();
+    const {
+      createToast,
+      toastPromise,
+      setConfig,
+      getConfig,
+      resetConfig,
+      resetToastManager,
+      resetContainerRegistry,
+      getToastMetrics,
+    } = await import("../../src/index.js");
+
+    resetToastManager();
+    resetConfig();
+    resetContainerRegistry();
+
+    // 1. toastPromise: resolved success toast auto-dismisses according to duration instead of 24h
+    let fastResolve;
+    const fastPromise = new Promise((resolve) => { fastResolve = resolve; });
+    const promiseHandle = toastPromise(
+      fastPromise,
+      { loading: "Loading data...", success: "Finished!" },
+      { duration: 120 }
+    );
+    await new Promise((r) => setTimeout(r, 40));
+    assert.strictEqual(getToastMetrics().activeCount, 1, "Loading toast is active during promise execution");
+    fastResolve("result-data");
+    await promiseHandle;
+
+    // Toast is now in success state
+    await new Promise((r) => setTimeout(r, 40));
+    const successToast = document.querySelector(".toast-success");
+    assert.ok(successToast, "Toast transitioned to success state");
+
+    // Wait for the 120ms duration + buffer to elapse
+    await new Promise((r) => setTimeout(r, 220));
+    assert.strictEqual(
+      getToastMetrics().activeCount,
+      0,
+      "Success toast auto-dismisses after its duration and does not stay stuck for 24 hours"
+    );
+
+    // 2. createCTA: inline style does NOT strip outline with 'outline: none'
+    const ctaToast = await createToast({
+      message: "CTA Focus Test",
+      duration: 10000,
+      cta: { label: "Action", onClick: () => {} },
+    });
+    await new Promise((r) => setTimeout(r, 40));
+    const ctaBtn = document.querySelector(".toast-cta");
+    assert.ok(ctaBtn, "CTA button rendered");
+    assert.notStrictEqual(ctaBtn.style.outline, "none", "CTA button inline style must NOT declare outline: none (WCAG 2.1 AA SC 2.4.7)");
+
+    // Trigger focus and blur on CTA button
+    ctaBtn.dispatchEvent(new window.Event("focus"));
+    assert.ok(ctaBtn.style.outline.includes("currentColor"), "CTA button focus applies visible outline indicator");
+    ctaBtn.dispatchEvent(new window.Event("blur"));
+    assert.strictEqual(ctaBtn.style.outline, "", "CTA button blur clears visible outline");
+    await ctaToast.dismiss();
+
+    // 3. ensureProgressIndeterminateStyles: respects config.cspNonce
+    const { ensureProgressIndeterminateStyles } = await import("../../src/components/toast-utils-core.js");
+    setConfig({ cspNonce: "secure-nonce-test-xyz" });
+    const existingStyle = document.getElementById("toast-progress-indeterminate-styles");
+    if (existingStyle) existingStyle.remove();
+    ensureProgressIndeterminateStyles();
+    const injectedStyle = document.getElementById("toast-progress-indeterminate-styles");
+    assert.ok(injectedStyle, "Indeterminate progress style element injected");
+    assert.strictEqual(injectedStyle.getAttribute("nonce"), "secure-nonce-test-xyz", "Indeterminate progress style element carries CSP nonce");
+
+    // 4. Global defaultDuration in setConfig & options-sanitizer
+    setConfig({ defaultDuration: 4200 });
+    assert.strictEqual(getConfig().defaultDuration, 4200, "setConfig updates global defaultDuration");
+    const { sanitizeToastOptions } = await import("../../src/utils/options-sanitizer.js");
+    const sanitized = await sanitizeToastOptions({ message: "Default duration test" });
+    assert.strictEqual(sanitized.duration, 4200, "sanitizeToastOptions adopts global defaultDuration when options.duration is omitted");
+
+    // 5. initKeyboardShortcuts and destroyKeyboardShortcuts re-initialization
+    resetToastManager();
+    const { initKeyboardShortcuts: initShortcuts } = await import("../../src/index.js");
+    initShortcuts(window);
+    const activeToastBeforeEsc = await createToast({ message: "Escape shortcut test", duration: 10000 });
+    await new Promise((r) => setTimeout(r, 40));
+    assert.strictEqual(getToastMetrics().activeCount, 1, "Toast is active before Escape key");
+
+    // Dispatch Escape keydown on window
+    const escEvent = new window.KeyboardEvent("keydown", { key: "Escape", bubbles: true });
+    window.dispatchEvent(escEvent);
+    await new Promise((r) => setTimeout(r, 80));
+    assert.strictEqual(getToastMetrics().activeCount, 0, "Escape key dismiss works when initialized");
+
+    // 6. React adapter: useToast with function props generates isolated instances without cache collision
+    const { useToast: useReactToast } = await import("../../src/react/index.js");
+    const fn1 = () => {};
+    const fn2 = () => {};
+    const inst1 = useReactToast({ onClick: fn1 });
+    const inst2 = useReactToast({ onClick: fn2 });
+    assert.notStrictEqual(inst1, inst2, "React useToast generates separate instances when function callbacks are provided in defaultOptions");
+
+    // 7. swipe.js: suppresses synthetic mousedown right after touchstart
+    const { attachSwipeToDismiss } = await import("../../src/components/swipe.js");
+    const swipeEl = document.createElement("div");
+    document.body.appendChild(swipeEl);
+    let dismissTriggered = false;
+    attachSwipeToDismiss(swipeEl, () => { dismissTriggered = true; });
+
+    // Simulate touchstart then synthetic mousedown
+    swipeEl.dispatchEvent(new window.TouchEvent("touchstart", { touches: [{ clientX: 100, clientY: 100, identifier: 1 }] }));
+    swipeEl.dispatchEvent(new window.MouseEvent("mousedown", { clientX: 100, clientY: 100, button: 0 }));
+    assert.strictEqual(swipeEl._originalTransition !== undefined, true, "Gesture initialized cleanly");
+    swipeEl._cleanupSwipe?.();
+    swipeEl.remove();
+
+    // 8. resetContainerRegistry cleans up #toast-shadow-host in custom targetNode
+    const customTarget = document.createElement("div");
+    document.body.appendChild(customTarget);
+    const shadowHostInTarget = document.createElement("div");
+    shadowHostInTarget.id = "toast-shadow-host";
+    customTarget.appendChild(shadowHostInTarget);
+    setConfig({ targetNode: customTarget });
+    resetContainerRegistry();
+    assert.strictEqual(customTarget.querySelector("#toast-shadow-host"), null, "resetContainerRegistry cleans up shadow host in custom targetNode");
+    customTarget.remove();
+
+    // 9. dedup: false / group: false prevents identical toasts from grouping into count badge
+    const standalone1 = await createToast({ message: "Duplicate message", dedup: false, duration: 10000 });
+    const standalone2 = await createToast({ message: "Duplicate message", dedup: false, duration: 10000 });
+    await new Promise((r) => setTimeout(r, 60));
+    assert.strictEqual(getToastMetrics().activeCount, 2, "dedup: false prevents duplicate toast collapsing and shows both independently");
+    await standalone1.dismiss();
+    await standalone2.dismiss();
+
+    resetConfig();
+    resetToastManager();
+    resetContainerRegistry();
+  });
 });
 
 

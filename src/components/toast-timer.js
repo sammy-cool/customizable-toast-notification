@@ -2,6 +2,7 @@
 "use strict";
 
 import { PausableTimer } from "../utils/PausableTimer.js";
+import { getConfig } from "../utils/config.js";
 
 /**
  * Creates and starts a pausable auto-dismiss timer for a toast element.
@@ -15,7 +16,8 @@ export function createDismissTimer(toast, options, onDismiss) {
   if (options?.duration === Infinity || (typeof options?.duration === "number" && options?.duration <= 0)) {
     return null;
   }
-  const duration = Number.isFinite(raw) && raw > 0 ? raw : 2500;
+  const defaultDur = Number(getConfig?.()?.defaultDuration ?? 2500);
+  const duration = Number.isFinite(raw) && raw > 0 ? raw : defaultDur;
   const delay = duration + 5;
   const timer = new PausableTimer(() => {
     if (typeof onDismiss === "function") {
