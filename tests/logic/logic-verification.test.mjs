@@ -7753,6 +7753,17 @@ describe("Architectural Fortification: Updating Dismissed Toasts & Fallback Spaw
       delete globalThis.document;
       const ssrOutput = fallbackSanitize("<b>Server rendered</b> message");
       assert.strictEqual(ssrOutput, "Server rendered message", "Raw HTML tags stripped and text preserved in SSR");
+
+      // Verify immunity against incomplete multi-character sanitization and script injection in SSR
+      const ssrScript = fallbackSanitize("<script>alert(1)</script>Safe text");
+      assert.strictEqual(ssrScript, "Safe text", "Script tags and contents discarded in SSR");
+
+      const ssrNested = fallbackSanitize("<scr<script>ipt>alert(1)</script>");
+      assert.doesNotMatch(ssrNested, /<script/i, "Nested script tag evasion neutralized in SSR");
+      assert.doesNotMatch(ssrNested, /alert/i, "Script payload discarded in SSR");
+
+      const ssrAttr = fallbackSanitize('<img src="x" onerror="alert(1)">Image text');
+      assert.strictEqual(ssrAttr, "Image text", "Event attributes and tags stripped in SSR");
     } finally {
       globalThis.document = origDoc;
     }

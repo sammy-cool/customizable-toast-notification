@@ -214,11 +214,75 @@ export function secureBlankLinks(container) {
   });
 }
 
+/**
+ * Deterministic linear character scanner to strip HTML tags and script/style contents
+ * in headless SSR environments without DOMParser or document.
+ * Operates in strict O(N) time with zero regular expressions to guarantee immunity against
+ * ReDoS backtracking (SonarCloud S5852) and incomplete multi-character sanitization (CodeQL js/incomplete-sanitization).
+ *
+ * @param {string} dirty
+ * @returns {string}
+ */
+function stripHtmlTagsSSR(dirty) {
+  if (typeof dirty !== "string" || !dirty) return "";
+
+  let result = "";
+  let inTag = false;
+  let inScript = false;
+  let quote = null;
+  let currentTag = "";
+  let isClosingTag = false;
+
+  for (let i = 0; i < dirty.length; i++) {
+    const ch = dirty[i];
+
+    if (ch === "<") {
+      inTag = true;
+      quote = null;
+      currentTag = "";
+      isClosingTag = dirty[i + 1] === "/";
+      continue;
+    }
+
+    if (inTag) {
+      if (quote) {
+        if (ch === quote) {
+          quote = null;
+        }
+        continue;
+      }
+      if (ch === "\"" || ch === "'") {
+        quote = ch;
+        continue;
+      }
+      if (ch === ">") {
+        inTag = false;
+        const tag = currentTag.trim().toLowerCase();
+        const normalizedTag = tag.startsWith("/") ? tag.slice(1) : tag;
+        if (normalizedTag === "script" || normalizedTag === "style") {
+          inScript = !isClosingTag;
+        }
+        continue;
+      }
+      if (currentTag.length < 10 && ch !== " " && ch !== "/" && ch !== "\t" && ch !== "\n") {
+        currentTag += ch;
+      }
+      continue;
+    }
+
+    if (!inScript && ch !== "<" && ch !== ">") {
+      result += ch;
+    }
+  }
+
+  return result;
+}
+
 export function fallbackSanitize(dirty) {
   if (!dirty || typeof dirty !== "string") return "";
 
   const container = parseHtmlInert(dirty);
-  if (!container) return dirty.replace(/<[^>]*>/g, "");
+  if (!container) return stripHtmlTagsSSR(dirty);
 
   const outFrag = document.createDocumentFragment();
   Array.from(container.childNodes).forEach((child) => {
