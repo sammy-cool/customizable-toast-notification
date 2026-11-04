@@ -609,12 +609,6 @@
   outline-offset: 2px;
 }
 
-[data-toast-theme="high-contrast"] .toast-count-badge {
-  background: #ffff00 !important;
-  color: #000000 !important;
-  border: 1px solid #000000 !important;
-}
-
 /* ========== STACKED CARD DECK (CSP MODE & DEFAULT) ========== */
 [data-stacked="true"] .toast {
   cursor: pointer;

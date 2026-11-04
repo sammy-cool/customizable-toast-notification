@@ -766,11 +766,9 @@ export function attachFocusTrap(toast, options = {}) {
         last.focus();
         e.preventDefault();
       }
-    } else {
-      if (document.activeElement === last) {
-        first.focus();
-        e.preventDefault();
-      }
+    } else if (document.activeElement === last) {
+      first.focus();
+      e.preventDefault();
     }
   };
 

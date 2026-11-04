@@ -110,39 +110,37 @@ export function updateStackedLayout(container) {
         item.style.opacity = "1";
         item.style.zIndex = String(100 + index);
         item.style.pointerEvents = "auto";
+      } else if (depthFromTop === 0) {
+        item.style.transform = "scale(1)";
+        item.style.marginTop = "0px";
+        item.style.marginBottom = "0px";
+        item.style.opacity = "1";
+        item.style.zIndex = "30";
+        item.style.pointerEvents = "auto";
+      } else if (depthFromTop === 1) {
+        const y = isTop ? 10 : (isCenter ? 6 : -10);
+        item.style.transform = `scale(0.95) translateY(${y}px)`;
+        item.style.marginTop = isTop ? "0px" : (isCenter ? "-48px" : "-55px");
+        item.style.marginBottom = isTop ? "-55px" : "0px";
+        item.style.opacity = "0.9";
+        item.style.zIndex = "20";
+        item.style.pointerEvents = "auto";
+      } else if (depthFromTop === 2) {
+        const y = isTop ? 20 : (isCenter ? 12 : -20);
+        item.style.transform = `scale(0.90) translateY(${y}px)`;
+        item.style.marginTop = isTop ? "0px" : (isCenter ? "-48px" : "-55px");
+        item.style.marginBottom = isTop ? "-55px" : "0px";
+        item.style.opacity = "0.75";
+        item.style.zIndex = "10";
+        item.style.pointerEvents = "auto";
       } else {
-        if (depthFromTop === 0) {
-          item.style.transform = "scale(1)";
-          item.style.marginTop = "0px";
-          item.style.marginBottom = "0px";
-          item.style.opacity = "1";
-          item.style.zIndex = "30";
-          item.style.pointerEvents = "auto";
-        } else if (depthFromTop === 1) {
-          const y = isTop ? 10 : (isCenter ? 6 : -10);
-          item.style.transform = `scale(0.95) translateY(${y}px)`;
-          item.style.marginTop = isTop ? "0px" : (isCenter ? "-48px" : "-55px");
-          item.style.marginBottom = isTop ? "-55px" : "0px";
-          item.style.opacity = "0.9";
-          item.style.zIndex = "20";
-          item.style.pointerEvents = "auto";
-        } else if (depthFromTop === 2) {
-          const y = isTop ? 20 : (isCenter ? 12 : -20);
-          item.style.transform = `scale(0.90) translateY(${y}px)`;
-          item.style.marginTop = isTop ? "0px" : (isCenter ? "-48px" : "-55px");
-          item.style.marginBottom = isTop ? "-55px" : "0px";
-          item.style.opacity = "0.75";
-          item.style.zIndex = "10";
-          item.style.pointerEvents = "auto";
-        } else {
-          const y = isTop ? 30 : (isCenter ? 18 : -30);
-          item.style.transform = `scale(0.85) translateY(${y}px)`;
-          item.style.marginTop = isTop ? "0px" : (isCenter ? "-48px" : "-55px");
-          item.style.marginBottom = isTop ? "-55px" : "0px";
-          item.style.opacity = "0";
-          item.style.zIndex = "1";
-          item.style.pointerEvents = "none";
-        }
+        const y = isTop ? 30 : (isCenter ? 18 : -30);
+        item.style.transform = `scale(0.85) translateY(${y}px)`;
+        item.style.marginTop = isTop ? "0px" : (isCenter ? "-48px" : "-55px");
+        item.style.marginBottom = isTop ? "-55px" : "0px";
+        item.style.opacity = "0";
+        item.style.zIndex = "1";
+        item.style.pointerEvents = "none";
       }
     }
   });

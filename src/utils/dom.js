@@ -299,6 +299,77 @@ export function parseToRgb(value) {
   return null;
 }
 
+function rgbToHsl(red, green, blue) {
+  const r = red / 255;
+  const g = green / 255;
+  const b = blue / 255;
+  const max = Math.max(r, g, b);
+  const min = Math.min(r, g, b);
+  let h = 0;
+  let s = 0;
+  const l = (max + min) / 2;
+  if (max !== min) {
+    const d = max - min;
+    s = l > 0.5 ? d / (2 - max - min) : d / (max + min);
+    switch (max) {
+      case r:
+        h = (g - b) / d + (g < b ? 6 : 0);
+        break;
+      case g:
+        h = (b - r) / d + 2;
+        break;
+      case b:
+        h = (r - g) / d + 4;
+        break;
+    }
+    h /= 6;
+  }
+  return [h * 360, s, l];
+}
+
+function hslToRgb(h, s, l) {
+  const normH = h / 360;
+  if (s === 0) {
+    const v = Math.round(l * 255);
+    return [v, v, v];
+  }
+  const hue2rgb = (p, q, t) => {
+    let normT = t;
+    if (normT < 0) normT += 1;
+    if (normT > 1) normT -= 1;
+    if (normT < 1 / 6) return p + (q - p) * 6 * normT;
+    if (normT < 1 / 2) return q;
+    if (normT < 2 / 3) return p + (q - p) * (2 / 3 - normT) * 6;
+    return p;
+  };
+  const q = l < 0.5 ? l * (1 + s) : l + s - l * s;
+  const p = 2 * l - q;
+  const r = hue2rgb(p, q, normH + 1 / 3);
+  const g = hue2rgb(p, q, normH);
+  const b = hue2rgb(p, q, normH - 1 / 3);
+  return [Math.round(r * 255), Math.round(g * 255), Math.round(b * 255)];
+}
+
+function luminance(r, g, b) {
+  const a = [r, g, b].map((v) => {
+    const normV = v / 255;
+    return normV <= 0.03928 ? normV / 12.92 : Math.pow((normV + 0.055) / 1.055, 2.4);
+  });
+  return 0.2126 * a[0] + 0.7152 * a[1] + 0.0722 * a[2];
+}
+
+function contrastRatio(rgb1, rgb2) {
+  const L1 = luminance(rgb1[0], rgb1[1], rgb1[2]);
+  const L2 = luminance(rgb2[0], rgb2[1], rgb2[2]);
+  return (Math.max(L1, L2) + 0.05) / (Math.min(L1, L2) + 0.05);
+}
+
+function rgbToHex(r, g, b) {
+  return `#${r.toString(16).padStart(2, "0")}${g.toString(16).padStart(2, "0")}${b
+    .toString(16)
+    .padStart(2, "0")}`;
+}
+
 export function getDynamicAccessibleTextColorHex(toastBg, targetContrast = 4.5) {
   if (!toastBg) return "#ffffff";
 
@@ -331,73 +402,8 @@ export function getDynamicAccessibleTextColorHex(toastBg, targetContrast = 4.5) 
     r = g = b = 128;
   }
 
-  const rgbToHsl = (r, g, b) => {
-    r /= 255;
-    g /= 255;
-    b /= 255;
-    const max = Math.max(r, g, b),
-      min = Math.min(r, g, b);
-    let h,
-      s,
-      l = (max + min) / 2;
-    if (max === min) h = s = 0;
-    else {
-      const d = max - min;
-      s = l > 0.5 ? d / (2 - max - min) : d / (max + min);
-      switch (max) {
-        case r:
-          h = (g - b) / d + (g < b ? 6 : 0);
-          break;
-        case g:
-          h = (b - r) / d + 2;
-          break;
-        case b:
-          h = (r - g) / d + 4;
-      }
-      h /= 6;
-    }
-    return [h * 360, s, l];
-  };
-  const hslToRgb = (h, s, l) => {
-    h /= 360;
-    let r, g, b;
-    if (s === 0) r = g = b = l;
-    else {
-      const hue2rgb = (p, q, t) => {
-        if (t < 0) t += 1;
-        if (t > 1) t -= 1;
-        if (t < 1 / 6) return p + (q - p) * 6 * t;
-        if (t < 1 / 2) return q;
-        if (t < 2 / 3) return p + (q - p) * (2 / 3 - t) * 6;
-        return p;
-      };
-      const q = l < 0.5 ? l * (1 + s) : l + s - l * s;
-      const p = 2 * l - q;
-      r = hue2rgb(p, q, h + 1 / 3);
-      g = hue2rgb(p, q, h);
-      b = hue2rgb(p, q, h - 1 / 3);
-    }
-    return [Math.round(r * 255), Math.round(g * 255), Math.round(b * 255)];
-  };
-  const luminance = (r, g, b) => {
-    const a = [r, g, b].map((v) => {
-      v /= 255;
-      return v <= 0.03928 ? v / 12.92 : Math.pow((v + 0.055) / 1.055, 2.4);
-    });
-    return 0.2126 * a[0] + 0.7152 * a[1] + 0.0722 * a[2];
-  };
-  const contrastRatio = (rgb1, rgb2) => {
-    const L1 = luminance(...rgb1);
-    const L2 = luminance(...rgb2);
-    return (Math.max(L1, L2) + 0.05) / (Math.min(L1, L2) + 0.05);
-  };
-  const rgbToHex = (r, g, b) =>
-    `#${r.toString(16).padStart(2, "0")}${g.toString(16).padStart(2, "0")}${b
-      .toString(16)
-      .padStart(2, "0")}`;
-
-  let [h, s, l] = rgbToHsl(r, g, b);
-  let textL = l < 0.5 ? Math.min(l + 0.5, 1) : Math.max(l - 0.5, 0);
+  const [h, s, l] = rgbToHsl(r, g, b);
+  const textL = l < 0.5 ? Math.min(l + 0.5, 1) : Math.max(l - 0.5, 0);
   let [tr, tg, tb] = hslToRgb(h, s, textL);
 
   if (contrastRatio([r, g, b], [tr, tg, tb]) < minContrast) {

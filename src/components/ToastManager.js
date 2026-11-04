@@ -1,7 +1,7 @@
 "use strict";
 
 import { createToastElement } from "./Toast.js";
-import { removeElement, resetColorCache } from "../utils/dom.js";
+import { resetColorCache } from "../utils/dom.js";
 import { createEmergencyToast } from "./toast-utils.js";
 import { getOrCreateToastContainer, normalizePositionKey, unregisterContainer } from "../utils/containerRegistry.js";
 import { setPosition } from "../utils/position.js";
@@ -11,8 +11,9 @@ import { getConfig, shouldReduceMotion } from "../utils/config.js";
 import { updateStackedLayout } from "./stacked-layout.js";
 import { applyToastDOMUpdates } from "./toast-updater.js";
 import { generateToastId } from "../utils/id.js";
+import { removeWithTransition, updateBadge } from "./toast-transitions.js";
 
-export { updateStackedLayout };
+export { updateStackedLayout, removeWithTransition, updateBadge };
 
 
 const active = new Map();
@@ -753,129 +754,6 @@ async function drainQueue() {
     emitMetrics();
   } finally {
     isDraining = false;
-  }
-}
-
-async function removeWithTransition(el, targetEl, animationDurationMs = 400) {
-  if (!el) return Promise.resolve();
-
-  return new Promise((resolve) => {
-    let done = false;
-    let fallbackTimer = null;
-    const animEl = targetEl || el.firstElementChild || el;
-
-    const finish = () => {
-      if (done) return;
-      done = true;
-      if (fallbackTimer) {
-        clearTimeout(fallbackTimer);
-        fallbackTimer = null;
-      }
-      try {
-        animEl?.removeEventListener?.("transitionend", onEnd, true);
-      } catch {
-        /* safe fallback if listener removal fails */
-      }
-      void removeElement(el).catch(console.error);
-      resolve();
-    };
-
-    if (shouldReduceMotion() || animationDurationMs <= 0) {
-      finish();
-      return;
-    }
-
-    const onEnd = (e) => {
-      try {
-        if (e.target !== animEl) return;
-        if (
-          e.propertyName === "transform" ||
-          ((!animEl.style.transform || animEl.style.transform === "none" || animEl.style.transform === "initial") &&
-            e.propertyName === "opacity")
-        ) {
-          finish();
-        }
-      } catch (error) {
-        console.error("removeWithTransition error:", error);
-      }
-    };
-
-    if (!animEl) return finish();
-
-    try {
-      animEl.addEventListener("transitionend", onEnd, true);
-    } catch (error) {
-      console.error("removeWithTransition error:", error);
-    }
-
-    // Use animation duration + 100ms buffer for fallback timeout
-    const fallbackTimeout = animationDurationMs + 100;
-    fallbackTimer = setTimeout(finish, fallbackTimeout);
-    if (typeof fallbackTimer?.unref === "function") {
-      fallbackTimer.unref();
-    }
-  });
-}
-
-async function updateBadge({ outer, count }) {
-  if (!outer || !(outer instanceof HTMLElement)) {
-    throw new Error("updateBadge: outer must be a valid HTMLElement");
-  }
-
-  if (count < 2) {
-    const badge = outer.querySelector(".toast-count-badge");
-    if (badge) badge.remove();
-    return;
-  }
-
-  let badge = outer.querySelector(".toast-count-badge");
-  if (!badge) {
-    badge = document.createElement("span");
-    badge.className = "toast-count-badge";
-    badge.setAttribute("aria-label", `${count} identical notifications`);
-
-    if (!getConfig().disableInlineStyles) {
-      Object.assign(badge.style, {
-      position: "absolute",
-      top: "6px",
-      right: "6px",
-      backgroundColor: "#f44336",
-      color: "#fff",
-      borderRadius: "50%",
-      minWidth: "20px",
-      height: "20px",
-      fontSize: "12px",
-      fontWeight: "600",
-      display: "flex",
-      alignItems: "center",
-      justifyContent: "center",
-      border: "2px solid #fff",
-      boxShadow: "0 2px 6px rgba(0,0,0,0.3)",
-      zIndex: "2",
-      pointerEvents: "none",
-      transition: "transform 150ms ease",
-    }); 
-    }
-
-    outer.appendChild(badge);
-  }
-
-  badge.textContent = count > 99 ? "99+" : String(count);
-
-  try {
-    if (!shouldReduceMotion()) {
-      if (badge._scaleTimer) clearTimeout(badge._scaleTimer);
-      badge.style.transform = "scale(1.2)";
-      badge._scaleTimer = setTimeout(() => {
-        badge.style.transform = "scale(1)";
-        badge._scaleTimer = null;
-      }, 150);
-      if (typeof badge._scaleTimer?.unref === "function") {
-        badge._scaleTimer.unref();
-      }
-    }
-  } catch (error) {
-    console.error("updateBadge animation error:", error);
   }
 }
 

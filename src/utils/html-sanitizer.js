@@ -125,7 +125,6 @@ function sanitizeAttributes(el, allowedAttrs) {
           return;
         }
         attrsToRemove.push(attr.name);
-        return;
       }
     }
   });

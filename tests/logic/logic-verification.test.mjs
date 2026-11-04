@@ -8395,6 +8395,76 @@ describe("Architectural Fortification: Updating Dismissed Toasts & Fallback Spaw
     resetToastManager();
     resetContainerRegistry();
   });
+
+  test("Fortification 16: SonarQube Modular Architecture, Zero Variable Shadowing, and Code Quality Fortifications", async () => {
+    freshDom();
+    const {
+      resetConfig,
+      resetToastManager,
+      resetContainerRegistry,
+    } = await import("../../src/index.js");
+
+    resetConfig();
+    resetToastManager();
+    resetContainerRegistry();
+
+    // 1. toast-transitions.js exports removeWithTransition and updateBadge
+    const { removeWithTransition, updateBadge } = await import("../../src/components/toast-transitions.js");
+    assert.strictEqual(typeof removeWithTransition, "function", "removeWithTransition is exported");
+    assert.strictEqual(typeof updateBadge, "function", "updateBadge is exported");
+
+    // 2. updateBadge creates badge when count >= 2 and removes when count < 2
+    const mockOuter = document.createElement("div");
+    document.body.appendChild(mockOuter);
+    await updateBadge({ outer: mockOuter, count: 3 });
+    const badgeEl = mockOuter.querySelector(".toast-count-badge");
+    assert.ok(badgeEl, "badge element created");
+    assert.strictEqual(badgeEl.textContent, "3", "badge displays correct count");
+
+    await updateBadge({ outer: mockOuter, count: 1 });
+    assert.strictEqual(mockOuter.querySelector(".toast-count-badge"), null, "badge is removed when count < 2");
+    mockOuter.remove();
+
+    // 3. removeWithTransition resolves cleanly
+    const mockFadeEl = document.createElement("div");
+    document.body.appendChild(mockFadeEl);
+    let transitionResolved = false;
+    await removeWithTransition(mockFadeEl, null, 0);
+    transitionResolved = true;
+    assert.strictEqual(transitionResolved, true, "removeWithTransition resolved immediately when duration is 0");
+    mockFadeEl.remove();
+
+    // 4. dom.js getDynamicAccessibleTextColorHex calculates high contrast without variable shadowing
+    const { getDynamicAccessibleTextColorHex } = await import("../../src/utils/dom.js");
+    const lightText = getDynamicAccessibleTextColorHex("#000000", 7.0);
+    const darkText = getDynamicAccessibleTextColorHex("#ffffff", 7.0);
+    assert.ok(typeof lightText === "string" && lightText.startsWith("#"), "light background text hex returned");
+    assert.ok(typeof darkText === "string" && darkText.startsWith("#"), "dark background text hex returned");
+
+    // 5. html-sanitizer fallbackSanitize processes links cleanly without redundant returns
+    const { fallbackSanitize } = await import("../../src/utils/html-sanitizer.js");
+    const sanitized = fallbackSanitize('<a href="https://example.com/safe" class="test-link">Safe Link</a>');
+    assert.ok(sanitized.includes('href="https://example.com/safe"'), "sanitizes valid https link correctly");
+
+    // 6. stacked-layout updates depths without exception
+    const { updateStackedLayout } = await import("../../src/components/stacked-layout.js");
+    const testContainer = document.createElement("div");
+    testContainer.id = "toast-container-bottom-right";
+    testContainer.setAttribute("data-stacked", "true");
+    document.body.appendChild(testContainer);
+    const card1 = document.createElement("div");
+    const card2 = document.createElement("div");
+    testContainer.appendChild(card1);
+    testContainer.appendChild(card2);
+    updateStackedLayout(testContainer);
+    assert.strictEqual(card1.getAttribute("data-stacked-depth"), "1", "top card assigned depth 1");
+    assert.strictEqual(card2.getAttribute("data-stacked-depth"), "0", "front card assigned depth 0");
+    testContainer.remove();
+
+    resetConfig();
+    resetToastManager();
+    resetContainerRegistry();
+  });
 });
 
 

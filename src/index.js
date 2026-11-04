@@ -808,8 +808,8 @@ try {
       enumerable: true,
     });
   }
-} catch (error) {
-  console.error("Global assignment failed:", error);
+} catch (globalError) {
+  console.error("Global assignment failed:", globalError);
 }
 
 export default createToastWithPriority;
