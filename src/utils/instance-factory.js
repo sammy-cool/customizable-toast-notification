@@ -1,6 +1,7 @@
 "use strict";
 
 import { generateToastId } from "./id.js";
+import { normalizeToastOptions } from "./options-sanitizer.js";
 
 /**
  * Creates an isolated toast notification instance with preset configuration and scoped lifecycle events.
@@ -74,13 +75,8 @@ export function createInstance(defaultOptions = {}, deps) {
   });
 
   const normalizeOptions = (messageOrOpts, callerOpts) => {
-    let opts = {};
-    if (typeof messageOrOpts === "string") {
-      opts = { ...(callerOpts && typeof callerOpts === "object" ? callerOpts : {}), message: messageOrOpts };
-    } else if (messageOrOpts && typeof messageOrOpts === "object") {
-      opts = { ...messageOrOpts };
-    }
-    return { ...safeDefaults, ...opts, _instanceId: instanceId };
+    const normalized = normalizeToastOptions(messageOrOpts, callerOpts);
+    return { ...safeDefaults, ...normalized, _instanceId: instanceId };
   };
 
   const trackHandle = async (handlePromise) => {

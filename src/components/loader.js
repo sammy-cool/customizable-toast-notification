@@ -36,6 +36,7 @@ export function createLoader(opts = {}) {
   circle.setAttribute("stroke", color);
   circle.setAttribute("stroke-width", "4");
   circle.setAttribute("stroke-linecap", "round");
+  circle.setAttribute("shape-rendering", "geometricPrecision");
   if (!config.disableInlineStyles) {
     circle.style.opacity = "0.85";
     circle.style.strokeDasharray = "90";

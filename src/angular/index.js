@@ -102,6 +102,12 @@ export class ToastService {
   get version() {
     return core.version;
   }
+
+  ngOnDestroy() {
+    if (this._instance) {
+      void this._instance.dismissAll();
+    }
+  }
 }
 
 // Angular Ivy dependency injection token compatibility metadata

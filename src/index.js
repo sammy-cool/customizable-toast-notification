@@ -452,11 +452,14 @@ async function createToastWithPriority(messageOrOptions = {}, maybeOptions) {
       }
       if (updateOpts?.fallback !== false && newOptions && typeof newOptions === "object") {
         const spawnOptions = { ...lastOptions, ...newOptions };
+        const isResolvingLoading =
+          (newOptions.type && newOptions.type !== "loading") ||
+          newOptions.showLoader === false ||
+          newOptions.loader === null;
         if (
           (spawnOptions.duration === 0 || spawnOptions.duration >= 86400000) &&
           newOptions.duration === undefined &&
-          newOptions.type &&
-          newOptions.type !== "loading"
+          isResolvingLoading
         ) {
           spawnOptions.duration = Number(getConfig?.()?.defaultDuration ?? 2500);
           spawnOptions.showLoader = false;

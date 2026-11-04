@@ -367,8 +367,10 @@ export async function applyToastDOMUpdates(data, newOptions, context) {
     }
 
     if (newOptions.progressPosition) {
-      progressBar.style.top = newOptions.progressPosition === "top" ? "0" : "auto";
-      progressBar.style.bottom = newOptions.progressPosition === "bottom" ? "0" : "auto";
+      const isTop = newOptions.progressPosition === "top";
+      progressBar.style.top = isTop ? "0" : "auto";
+      progressBar.style.bottom = isTop ? "auto" : "0";
+      progressBar.classList.toggle("toast-progress-top", isTop);
     }
 
     if (newOptions.progressHeight !== undefined) {

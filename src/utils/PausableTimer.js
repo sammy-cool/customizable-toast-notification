@@ -75,6 +75,7 @@ export class PausableTimer {
 
   getRemainingTime() {
     if (this.isCompleted) return 0;
+    if (this.isInfinite) return Infinity;
     if (this.isPaused) return this.remaining;
     if (!this.timeoutId) return this.delay;
     return Math.max(0, Math.round(this.remaining - (getNow() - this.startTime)));

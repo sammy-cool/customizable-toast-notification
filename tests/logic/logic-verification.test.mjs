@@ -8519,6 +8519,46 @@ describe("Architectural Fortification: Updating Dismissed Toasts & Fallback Spaw
     assert.ok(undoBtn, "undo button mounted");
     assert.ok(undoBtn.textContent.includes("6s"), "undo countdown initialized with ceil(5500/1000) = 6s");
 
+    // 11. createInstance handles non-string primitives and Error objects properly
+    const { createToastInstance } = await import("../../src/index.js");
+    const inst = createToastInstance();
+    const numHandle = await inst(404);
+    assert.strictEqual(numHandle.id.length > 0, true);
+    const errHandle = await inst(new Error("Database connection timed out"));
+    assert.strictEqual(errHandle.id.length > 0, true);
+    await inst.dismissAll();
+
+    // 12. applyToastDOMUpdates synchronizes toast-progress-top class
+    const { applyToastDOMUpdates } = await import("../../src/components/toast-updater.js");
+    const pbToast = document.createElement("div");
+    const testPb = document.createElement("div");
+    testPb.className = "toast-progress-bar";
+    pbToast.appendChild(testPb);
+    const mockContext = {
+      closeToast: () => {},
+      createDismissTimer: () => null,
+      setupPauseOnHover: () => {},
+      updateStackedLayout: () => {},
+    };
+    await applyToastDOMUpdates({ toast: pbToast, options: {} }, { progressPosition: "top" }, mockContext);
+    assert.strictEqual(testPb.classList.contains("toast-progress-top"), true, "toast-progress-top added for top position");
+    await applyToastDOMUpdates({ toast: pbToast, options: {} }, { progressPosition: "bottom" }, mockContext);
+    assert.strictEqual(testPb.classList.contains("toast-progress-top"), false, "toast-progress-top removed for bottom position");
+
+    // 13. PausableTimer getRemainingTime with Infinity returns Infinity
+    const { PausableTimer } = await import("../../src/utils/PausableTimer.js");
+    const infiniteTimer = new PausableTimer(() => {}, Infinity);
+    assert.strictEqual(infiniteTimer.getRemainingTime(), Infinity, "infinite timer returns Infinity remaining time");
+
+    // 14. Angular ToastService ngOnDestroy dismisses scoped toasts
+    const { ToastService } = await import("../../src/angular/index.js");
+    const angularService = new ToastService({ defaultPosition: "bottom-left" });
+    const angHandle = await angularService.success("Angular message");
+    assert.ok(angHandle.id);
+    assert.strictEqual(angularService._instance.size, 1);
+    angularService.ngOnDestroy();
+    assert.strictEqual(angularService._instance.size, 0, "ngOnDestroy cleared scoped instance");
+
     resetConfig();
     resetToastManager();
     resetContainerRegistry();

@@ -155,10 +155,16 @@ function makeKey(options = {}) {
       ? `cid:${safe.containerId.trim()}`
       : normalizePositionKey(safe.position || "bottom-right");
 
-  if (safe.tag !== undefined && safe.tag !== null && safe.tag !== "") {
+  if (
+    (typeof safe.tag === "string" || typeof safe.tag === "number") &&
+    String(safe.tag).trim() !== ""
+  ) {
     return `tag:${String(safe.tag).trim()}:${posKey}`;
   }
-  if (safe.groupId !== undefined && safe.groupId !== null && safe.groupId !== "") {
+  if (
+    (typeof safe.groupId === "string" || typeof safe.groupId === "number") &&
+    String(safe.groupId).trim() !== ""
+  ) {
     return `group:${String(safe.groupId).trim()}:${posKey}`;
   }
   const type = String(safe.type || "info").trim().toLowerCase();
@@ -302,7 +308,7 @@ export async function showToast(options = {}) {
           item.seq = ++queueSequence;
           queue.push(item);
           if (usesPriority) {
-            queue.sort((a, b) => (getItemPriority(b) - getItemPriority(a)) || (a.seq - b.seq));
+            queue.sort((a, b) => (getItemPriority(b) - getItemPriority(a)) || ((a.seq || 0) - (b.seq || 0)));
           }
           emitMetrics();
           emitLifecycle("queue", { key: item.key, options: item.options });
@@ -732,7 +738,7 @@ async function drainQueue() {
 
     // Apply priority sorting if enabled globally or on queued items
     if ((config.priorityQueue || typeof config.priorityScorer === "function" || queue.some(i => i.options?.priorityQueue || typeof i.options?.priority === "number")) && queue.length > 1) {
-      queue.sort((a, b) => (getItemPriority(b) - getItemPriority(a)) || (a.seq - b.seq)); // Higher priority first, FIFO tie-breaker
+      queue.sort((a, b) => (getItemPriority(b) - getItemPriority(a)) || ((a.seq || 0) - (b.seq || 0))); // Higher priority first, FIFO tie-breaker
     }
 
     const maxVis = Math.max(1, Number(config.maxVisible) || 1);

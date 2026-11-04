@@ -874,6 +874,8 @@
 /* ========== PRINT ACCESSIBILITY ========== */
 @media print {
   .toast-container-base,
+  .toast-emergency,
+  .toast-outer-wrapper,
   #toast-shadow-host {
     display: none !important;
   }
