@@ -80,6 +80,8 @@ export function initKeyboardShortcuts(
   const cleanup = () => {
     try {
       win.removeEventListener("keydown", onKeyDown);
+      win.__customizableToastEscapeAttached = undefined;
+      win.__customizableToastEscapeCleanup = undefined;
       delete win.__customizableToastEscapeAttached;
       delete win.__customizableToastEscapeCleanup;
     } catch {

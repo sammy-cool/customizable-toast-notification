@@ -8461,6 +8461,32 @@ describe("Architectural Fortification: Updating Dismissed Toasts & Fallback Spaw
     assert.strictEqual(card2.getAttribute("data-stacked-depth"), "0", "front card assigned depth 0");
     testContainer.remove();
 
+    // 7. toastPromise respects global defaultDuration when transition resolves
+    const { setConfig } = await import("../../src/utils/config.js");
+    const { toastPromise } = await import("../../src/components/toast-promise.js");
+    setConfig({ defaultDuration: 4200 });
+    let capturedDuration = null;
+    const mockHandle = {
+      update: async (opts) => {
+        capturedDuration = opts.duration;
+        return true;
+      },
+    };
+    await toastPromise(
+      Promise.resolve("test-res"),
+      { success: "Success message" },
+      {},
+      async () => mockHandle
+    );
+    assert.strictEqual(capturedDuration, 4200, "toastPromise uses configured global defaultDuration for success");
+
+    // 8. keyboard shortcuts cleanly attach and detach window flags
+    const { initKeyboardShortcuts, destroyKeyboardShortcuts } = await import("../../src/utils/keyboard.js");
+    initKeyboardShortcuts(window, () => {});
+    assert.strictEqual(window.__customizableToastEscapeAttached, true, "Escape handler attached to window");
+    destroyKeyboardShortcuts(window);
+    assert.strictEqual(window.__customizableToastEscapeAttached, undefined, "Escape handler cleared from window");
+
     resetConfig();
     resetToastManager();
     resetContainerRegistry();

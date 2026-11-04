@@ -209,6 +209,7 @@ import { createInstance, buildToastAPI } from "./utils/instance-factory.js";
  * @property {string | null} [cspNonce]
  * @property {string} [soundPreset]
  * @property {boolean} [pauseOnHover]
+ * @property {number} [defaultDuration]
  * @property {boolean} [priorityQueue]
  * @property {boolean} [shadowDom]
  * @property {boolean} [trapFocus]

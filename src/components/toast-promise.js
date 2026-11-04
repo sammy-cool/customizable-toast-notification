@@ -1,5 +1,7 @@
 "use strict";
 
+import { getConfig } from "../utils/config.js";
+
 const TOAST_PROMISE_LOADING_DURATION_MS = 24 * 60 * 60 * 1000;
 
 /**
@@ -66,10 +68,12 @@ export async function toastPromise(promiseOrFn, messages = {}, options = {}, cre
         ? safeMessages.success(result)
         : (safeMessages.success ?? "Done!");
 
+    const fallbackDuration = Number(getConfig?.()?.defaultDuration ?? 2500);
+
     const resolvedSuccessDuration =
       (typeof successResult === "object" && successResult !== null && successResult.duration !== undefined)
         ? successResult.duration
-        : (safeOptions.duration !== undefined ? safeOptions.duration : 2500);
+        : (safeOptions.duration !== undefined ? safeOptions.duration : fallbackDuration);
 
     const successOptions =
       typeof successResult === "object" && successResult !== null && !Array.isArray(successResult)
@@ -92,10 +96,12 @@ export async function toastPromise(promiseOrFn, messages = {}, options = {}, cre
         ? safeMessages.error(err)
         : (safeMessages.error ?? "Something went wrong.");
 
+    const fallbackDuration = Number(getConfig?.()?.defaultDuration ?? 2500);
+
     const resolvedErrorDuration =
       (typeof errorResult === "object" && errorResult !== null && errorResult.duration !== undefined)
         ? errorResult.duration
-        : (safeOptions.duration !== undefined ? safeOptions.duration : 2500);
+        : (safeOptions.duration !== undefined ? safeOptions.duration : fallbackDuration);
 
     const errorOptions =
       typeof errorResult === "object" && errorResult !== null && !Array.isArray(errorResult)
