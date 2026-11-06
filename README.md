@@ -180,12 +180,13 @@ await handle.update({
   },
 });
 
-// Or dismiss manually at any point:
-await handle.dismiss();
+// Or dismiss manually at any point (with or without await):
+handle.dismiss();
 ```
 
 `handle.dismiss()` and `handle.update()` are always safe to call, even if the toast already
-auto-dismissed on its own — they no-op gracefully rather than throwing. You can update `message`,
+auto-dismissed on its own — they no-op gracefully rather than throwing. You can call them synchronously
+even if `await` was omitted on `createToast()` (via Fluent Thenable Handle). You can update `message`,
 `progress`, `type`, `showLoader`, `loader`, `cta` (single object, array, or `null`), and `undo` in-place.
 
 #### Options
