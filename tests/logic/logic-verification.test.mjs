@@ -8568,13 +8568,153 @@ describe("Architectural Fortification: Updating Dismissed Toasts & Fallback Spaw
     await dismissPromise;
     await new Promise((r) => setTimeout(r, 60));
 
+    // unawaited promise update on active toast
+    const activePromise = createToast({ message: "Active unawaited toast", duration: 10000 });
+    const updateResult = await activePromise.update({ message: "Updated active unawaited toast" });
+    assert.strictEqual(updateResult, true, "activePromise.update returned true");
+    await activePromise.dismiss();
+
+    // unawaited promise fallback update on dismissed toast
+    const dismissedToast = await createToast({ message: "Dismissed toast", duration: 10000 });
+    await dismissedToast.dismiss();
+    const fallbackOk = await dismissedToast.update({ message: "Fallback resurrected toast" });
+    assert.strictEqual(fallbackOk, true, "fallback update on dismissed toast succeeded");
+    await dismissedToast.dismiss();
+
+    // unawaited promise update with fallback: false on dismissed toast
+    const noFallbackOk = await dismissedToast.update({ message: "Cannot resurrect" }, { fallback: false });
+    assert.strictEqual(noFallbackOk, false, "update with fallback: false returns false");
+
+    // unawaited promise fallback update when resolving loading toast without duration
+    const loadingToast = await createToast({ message: "Loading toast", type: "loading", duration: 0 });
+    await loadingToast.dismiss();
+    const loadingResurrectOk = await loadingToast.update({ message: "Resolved toast", type: "success" });
+    assert.strictEqual(loadingResurrectOk, true, "loading fallback resurrection succeeded");
+    await loadingToast.dismiss();
+
     // 16. Fluent thenable handle on createToastInstance
     const testInst = createToastInstance();
     const instPromise = testInst.success("Instance sync dismiss test", { duration: 10000 });
     assert.strictEqual(typeof instPromise.dismiss, "function", "instance promise has .dismiss()");
     assert.strictEqual(typeof instPromise.update, "function", "instance promise has .update()");
+    const instUpdateOk = await instPromise.update({ message: "Instance updated message" });
+    assert.strictEqual(instUpdateOk, true, "instPromise.update returned true");
     await instPromise.dismiss();
     await new Promise((r) => setTimeout(r, 60));
+
+    // 17. decorateToastPromise edge cases and branch coverage
+    const { decorateToastPromise } = await import("../../src/index.js");
+
+    // Case A: Rejecting promise passed to decorateToastPromise
+    const rejectingP = Promise.reject(new Error("Simulated creation failure"));
+    rejectingP.catch(() => {}); // prevent uncaught rejection
+    const decoratedReject = decorateToastPromise(rejectingP, () => "err-id");
+    assert.strictEqual(decoratedReject.id, "err-id");
+    // dismiss on rejected promise suppresses error cleanly
+    await decoratedReject.dismiss();
+    // update on rejected promise returns false
+    const rejectUpdateRes = await decoratedReject.update({ message: "won't apply" });
+    assert.strictEqual(rejectUpdateRes, false);
+
+    // Case B: Resolved promise with null handle or no methods
+    const decoratedNull = decorateToastPromise(Promise.resolve(null), () => "null-id");
+    await decoratedNull.dismiss();
+    const nullUpdateRes = await decoratedNull.update({ message: "none" });
+    assert.strictEqual(nullUpdateRes, false);
+
+    // Case C: Resolved handle whose dismiss() and update() throw
+    const throwingHandle = {
+      id: "throw-id",
+      dismiss: () => { throw new Error("dismiss failure"); },
+      update: () => { throw new Error("update failure"); },
+    };
+    const decoratedThrowing = decorateToastPromise(Promise.resolve(throwingHandle), () => "throw-id");
+    await decoratedThrowing.dismiss(); // catch block suppresses
+    const throwUpdateRes = await decoratedThrowing.update({ message: "throw" });
+    assert.strictEqual(throwUpdateRes, false); // catch block returns false
+
+    // 18. instance-factory trackHandle rejection, throwing handle, and id-less handle coverage
+    const { createInstance } = await import("../../src/utils/instance-factory.js");
+
+    // Case A: Rejection propagates through trackHandle and error handler throws
+    const failingDeps = {
+      createToast: () => Promise.reject(new Error("trackHandle rejected")),
+      closeToastByKey: () => {},
+      managerOn: () => () => {},
+      getToastMetrics: () => ({}),
+      toastPromise: () => {},
+      version: "4.1.0",
+    };
+    const failingInst = createInstance({}, failingDeps);
+    const failingHandlePromise = failingInst.show({ message: "Fail" });
+    let caughtRejection = false;
+    try {
+      await failingHandlePromise;
+    } catch (err) {
+      caughtRejection = true;
+      assert.strictEqual(err.message, "trackHandle rejected");
+    }
+    assert.ok(caughtRejection, "trackHandle propagates rejection to caller");
+    await failingHandlePromise.dismiss();
+    const failUpdate = await failingHandlePromise.update({ message: "fail" });
+    assert.strictEqual(failUpdate, false, "update on failing instance promise returns false");
+
+    // Case B: Handle resolved without id, dismiss & update throw
+    const noIdDeps = {
+      createToast: () => Promise.resolve({
+        customProp: 42,
+        dismiss: () => { throw new Error("no-id dismiss failure"); },
+        update: () => { throw new Error("no-id update failure"); },
+      }),
+      closeToastByKey: () => {},
+      managerOn: () => () => {},
+      getToastMetrics: () => ({}),
+      toastPromise: () => {},
+      version: "4.1.0",
+    };
+    const noIdInst = createInstance({}, noIdDeps);
+    const noIdHandle = noIdInst.show({ message: "No id" });
+    assert.strictEqual(typeof noIdHandle.id, "undefined");
+    const resolvedNoId = await noIdHandle;
+    assert.strictEqual(resolvedNoId.customProp, 42);
+    await noIdHandle.dismiss();
+    const noIdUpdateRes = await noIdHandle.update({ message: "no-id" });
+    assert.strictEqual(noIdUpdateRes, false);
+
+    // Case C: Normal trackHandle resolution with custom id
+    let instDismissed = false;
+    let instUpdated = false;
+    const normalTrackDeps = {
+      createToast: () => Promise.resolve({
+        id: "custom-track-id",
+        dismiss: () => { instDismissed = true; return Promise.resolve(); },
+        update: () => { instUpdated = true; return Promise.resolve(true); },
+      }),
+      closeToastByKey: () => {},
+      managerOn: () => () => {},
+      getToastMetrics: () => ({}),
+      toastPromise: () => {},
+      version: "4.1.0",
+    };
+    const normalInst = createInstance({}, normalTrackDeps);
+    const normalHandle = normalInst.show({ message: "Normal" });
+    await normalHandle;
+    assert.strictEqual(normalHandle.id, "custom-track-id");
+    const normUpdateRes = await normalHandle.update({ message: "updated" });
+    assert.strictEqual(normUpdateRes, true);
+    assert.strictEqual(instUpdated, true);
+    await normalHandle.dismiss();
+    assert.strictEqual(instDismissed, true);
+
+    // 19. parseToRgb non-string defensive guards
+    const { parseToRgb } = await import("../../src/utils/dom.js");
+    assert.strictEqual(parseToRgb(null), null);
+    assert.strictEqual(parseToRgb(undefined), null);
+    assert.strictEqual(parseToRgb(123), null);
+    assert.strictEqual(parseToRgb({}), null);
+    assert.strictEqual(parseToRgb([]), null);
+    assert.strictEqual(parseToRgb(true), null);
+    assert.strictEqual(parseToRgb("not-a-hex"), null);
 
     resetConfig();
     resetToastManager();

@@ -272,8 +272,16 @@ let domReady = false;
 let domReadyPromise = null;
 
 async function checkDOMReady() {
-  if (domReady || typeof window === "undefined" || typeof document === "undefined") return;
-  if (document.readyState === "complete" || document.readyState === "interactive") {
+  if (domReady) return;
+
+  if (typeof window === "undefined" || typeof document === "undefined") {
+    return;
+  }
+
+  if (
+    document.readyState === "complete" ||
+    document.readyState === "interactive"
+  ) {
     domReady = true;
     return;
   }
@@ -403,7 +411,10 @@ async function runWithClosePriority(fn, positionKey) {
       try {
         await posPromise;
       } catch (closeError) {
-        console.warn(`Previous close operation for position "${normalizedPos}" failed:`, closeError);
+        console.warn(
+          `Previous close operation for position "${normalizedPos}" failed (continuing anyway):`,
+          closeError,
+        );
       }
     }
   }
@@ -412,6 +423,12 @@ async function runWithClosePriority(fn, positionKey) {
 
 const originalCreateToast = createToast;
 
+/**
+ * Decorates a toast creation promise with synchronous handle methods (.dismiss and .update).
+ * @param {Promise<ToastHandle>} p
+ * @param {() => (string | undefined)} getKey
+ * @returns {ToastPromiseHandle}
+ */
 function decorateToastPromise(p, getKey) {
   Object.defineProperty(p, "id", { get: getKey, configurable: true });
   p.dismiss = async () => {
@@ -555,14 +572,8 @@ const { success, error, warning, info, loading, custom } = createToastWithPriori
 
 export {
   createToastWithPriority as createToast,
-  success,
-  error,
-  warning,
-  info,
-  loading,
-  custom,
-  setDefaultColors,
-  setDefaultMessages,
+  success, error, warning, info, loading, custom,
+  setDefaultColors, setDefaultMessages, decorateToastPromise,
 };
 
 /**
@@ -756,17 +767,11 @@ if (typeof window !== "undefined" && typeof document !== "undefined") {
 }
 
 const targetGlobal =
-  typeof window !== "undefined"
-    ? window
-    : typeof globalThis !== "undefined"
-      ? globalThis
-      : null;
+  typeof window !== "undefined" ? window : typeof globalThis !== "undefined" ? globalThis : null;
 
 try {
   if (targetGlobal) {
-    targetGlobal.customizableToast = Object.assign(
-      targetGlobal.customizableToast || {},
-      {
+    targetGlobal.customizableToast = Object.assign(targetGlobal.customizableToast || {}, {
         setConfig,
         getConfig,
         resetConfig,
