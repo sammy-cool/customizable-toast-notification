@@ -190,7 +190,8 @@ export function resolveCssCustomProperty(value) {
 }
 
 export function parseToRgb(value) {
-  const hexMatch = value?.match(/^#(?:([0-9a-f]{3,4})|([0-9a-f]{6})|([0-9a-f]{8}))$/i);
+  const hexMatch =
+    typeof value === "string" ? value.match(/^#(?:([0-9a-f]{3,4})|([0-9a-f]{6})|([0-9a-f]{8}))$/i) : null;
   if (hexMatch) {
     let hex = hexMatch[1] || hexMatch[2] || hexMatch[3];
     if (hex.length === 3 || hex.length === 4) {
