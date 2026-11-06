@@ -81,32 +81,52 @@ export function createInstance(defaultOptions = {}, deps) {
 
   const trackHandle = (handlePromise) => {
     let resolvedKey;
-    const p = (async () => {
-      const handle = await handlePromise;
-      if (handle?.id) {
-        resolvedKey = handle.id;
-        instanceKeys.add(handle.id);
-        return {
-          get id() {
-            return handle.id;
-          },
-          update: handle.update,
-          dismiss: async () => {
-            instanceKeys.delete(handle.id);
-            return handle.dismiss();
-          },
-        };
+    const p = handlePromise.then(
+      (handle) => {
+        if (handle?.id) {
+          resolvedKey = handle.id;
+          instanceKeys.add(handle.id);
+          return {
+            get id() {
+              return handle.id;
+            },
+            update: handle.update,
+            dismiss: async () => {
+              instanceKeys.delete(handle.id);
+              return handle.dismiss();
+            },
+          };
+        }
+        return handle;
+      },
+      (err) => {
+        /* propagate rejection to caller */
+        throw err;
       }
-      return handle;
-    })();
+    );
 
     Object.defineProperty(p, "id", {
       get: () => resolvedKey,
       configurable: true,
     });
-    p.dismiss = () => p.then((h) => (h && typeof h.dismiss === "function" ? h.dismiss() : Promise.resolve()));
-    p.update = (newOptions, updateOpts) =>
-      p.then((h) => (h && typeof h.update === "function" ? h.update(newOptions, updateOpts) : Promise.resolve(false)));
+    p.dismiss = async () => {
+      try {
+        const h = await p;
+        if (h && typeof h.dismiss === "function") {
+          await h.dismiss();
+        }
+      } catch {
+        /* ignore dismissal errors */
+      }
+    };
+    p.update = async (newOptions, updateOpts) => {
+      try {
+        const h = await p;
+        return h && typeof h.update === "function" ? await h.update(newOptions, updateOpts) : false;
+      } catch {
+        return false;
+      }
+    };
 
     return p;
   };

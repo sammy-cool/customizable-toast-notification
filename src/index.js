@@ -272,16 +272,8 @@ let domReady = false;
 let domReadyPromise = null;
 
 async function checkDOMReady() {
-  if (domReady) return;
-
-  if (typeof window === "undefined" || typeof document === "undefined") {
-    return;
-  }
-
-  if (
-    document.readyState === "complete" ||
-    document.readyState === "interactive"
-  ) {
+  if (domReady || typeof window === "undefined" || typeof document === "undefined") return;
+  if (document.readyState === "complete" || document.readyState === "interactive") {
     domReady = true;
     return;
   }
@@ -411,10 +403,7 @@ async function runWithClosePriority(fn, positionKey) {
       try {
         await posPromise;
       } catch (closeError) {
-        console.warn(
-          `Previous close operation for position "${normalizedPos}" failed (continuing anyway):`,
-          closeError,
-        );
+        console.warn(`Previous close operation for position "${normalizedPos}" failed:`, closeError);
       }
     }
   }
@@ -425,9 +414,18 @@ const originalCreateToast = createToast;
 
 function decorateToastPromise(p, getKey) {
   Object.defineProperty(p, "id", { get: getKey, configurable: true });
-  p.dismiss = () => p.then((h) => (h && typeof h.dismiss === "function" ? h.dismiss() : Promise.resolve()));
-  p.update = (opts, uOpts) =>
-    p.then((h) => (h && typeof h.update === "function" ? h.update(opts, uOpts) : Promise.resolve(false)));
+  p.dismiss = async () => {
+    try {
+      const h = await p;
+      if (h && typeof h.dismiss === "function") await h.dismiss();
+    } catch { /* ignore dismissal errors */ }
+  };
+  p.update = async (opts, uOpts) => {
+    try {
+      const h = await p;
+      return h && typeof h.update === "function" ? await h.update(opts, uOpts) : false;
+    } catch { return false; }
+  };
   return p;
 }
 
