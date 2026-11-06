@@ -1,52 +1,21 @@
-import {
-  createToast,
-  toastPromise,
-  dismiss,
-  dismissAll,
-  clear,
-  setConfig,
-  getConfig,
-  resetConfig,
-  getToastMetrics,
-  setDefaultColors,
-  setDefaultMessages,
-  version,
-} from "../index.js";
-
-/**
- * Creates the toast API object.
- * @returns {import('./index.d.ts').UseToastAPI}
- */
-export function createToastAPI() {
-  return {
-    success: (message, options) => createToast.success(message, options),
-    error: (message, options) => createToast.error(message, options),
-    warning: (message, options) => createToast.warning(message, options),
-    info: (message, options) => createToast.info(message, options),
-    loading: (message, options) => createToast.loading(message, options),
-    custom: (message, options) => createToast.custom(message, options),
-    show: (options) => createToast(options),
-    promise: toastPromise,
-    dismiss,
-    dismissAll,
-    clear,
-    setConfig,
-    getConfig,
-    resetConfig,
-    getToastMetrics,
-    setDefaultColors,
-    setDefaultMessages,
-    version,
-  };
-}
+import { createToastAPI, createToastInstance } from "../index.js";
 
 let cachedVueAPI = null;
 
 /**
  * Vue 3 / Composition API Composable for customizable-toast-notification.
+ * When called with defaultOptions, returns an isolated, scoped toast instance.
+ * @param {import('../index.js').ToastOptions} [defaultOptions] - Optional component-level preset options.
  * @returns {import('./index.d.ts').UseToastAPI}
  */
-export function useToast() {
+export function useToast(defaultOptions) {
+  if (
+    defaultOptions &&
+    typeof defaultOptions === "object" &&
+    Object.keys(defaultOptions).length > 0
+  ) {
+    return createToastInstance(defaultOptions);
+  }
   if (!cachedVueAPI) {
     cachedVueAPI = createToastAPI();
   }
@@ -55,17 +24,4 @@ export function useToast() {
 
 export const toast = useToast();
 
-export {
-  createToast,
-  toastPromise,
-  dismiss,
-  dismissAll,
-  clear,
-  setConfig,
-  getConfig,
-  resetConfig,
-  getToastMetrics,
-  setDefaultColors,
-  setDefaultMessages,
-  version,
-};
+export * from "../index.js";

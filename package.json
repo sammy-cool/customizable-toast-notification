@@ -15,6 +15,10 @@
       "require": "./dist/index.cjs",
       "default": "./dist/index.umd.js"
     },
+    "./types": {
+      "types": "./dist/index.d.ts",
+      "default": "./dist/index.d.ts"
+    },
     "./index.css": {
       "types": "./dist/index.css.d.ts",
       "default": "./dist/index.css"
@@ -91,15 +95,15 @@
   ],
   "sideEffects": false,
   "scripts": {
-    "dist:clean": "rm -rf dist",
+    "dist:clean": "node scripts/clean.cjs dist",
     "build:js": "rollup -c",
     "build:css": "node esbuild-css.mjs",
     "build": "npm run build:js && npm run build:css",
     "build:types:emit": "tsc -p tsconfig.types.json",
     "build:types:bundle": "rollup -c rollup.dts.config.mjs",
     "build:adapter:types": "node scripts/copy-adapter-types.cjs",
-    "build:types": "npm run build:types:emit && npm run build:types:bundle && npm run build:adapter:types && rm -rf dist/types",
-    "zone-build": "npm run dist:clean && npm run build && npm run build:types && du -h dist/*",
+    "build:types": "npm run build:types:emit && npm run build:types:bundle && npm run build:adapter:types && node scripts/clean.cjs dist/types",
+    "zone-build": "npm run dist:clean && npm run build && npm run build:types && node scripts/test-build.cjs",
     "test:builds": "node scripts/test-build.cjs",
     "test": "npm run ci:test",
     "ci:test": "node tests/logic/logic-verification.test.mjs",
@@ -110,6 +114,7 @@
     "test:e2e": "playwright test",
     "test:e2e:ui": "playwright test --ui",
     "test:e2e:headed": "playwright test --headed",
+    "example:ai": "node examples/typesafe-ai-smart-toast.mjs",
     "version": "node scripts/sync-version.cjs",
     "prepublishOnly": "npm run zone-build",
     "prepare": "husky"
@@ -170,16 +175,7 @@
   },
   "license": "Apache-2.0",
   "files": [
-    "dist/*.cjs",
-    "dist/*.cjs.map",
-    "dist/*.esm.mjs",
-    "dist/*.esm.mjs.map",
-    "dist/*.umd.js",
-    "dist/*.umd.js.map",
-    "dist/*.d.ts",
-    "dist/*.css",
-    "dist/*.css.map",
-    "dist/*.css.d.ts",
+    "dist",
     "README.md",
     "LICENSE",
     "CHANGELOG.md"

@@ -7,13 +7,13 @@ import type {
 } from '../index.js';
 
 export interface SolidToastAPI {
-  success: (messageOrOptions: string | ToastOptions, options?: Partial<ToastOptions>) => Promise<ToastHandle>;
-  error: (messageOrOptions: string | ToastOptions, options?: Partial<ToastOptions>) => Promise<ToastHandle>;
-  warning: (messageOrOptions: string | ToastOptions, options?: Partial<ToastOptions>) => Promise<ToastHandle>;
-  info: (messageOrOptions: string | ToastOptions, options?: Partial<ToastOptions>) => Promise<ToastHandle>;
-  loading: (messageOrOptions: string | ToastOptions, options?: Partial<ToastOptions>) => Promise<ToastHandle>;
-  custom: (messageOrOptions: string | ToastOptions, options?: Partial<ToastOptions>) => Promise<ToastHandle>;
-  show: (options: ToastOptions) => Promise<ToastHandle>;
+  success: (messageOrOptions?: string | ToastOptions, options?: Partial<ToastOptions>) => Promise<ToastHandle>;
+  error: (messageOrOptions?: string | ToastOptions, options?: Partial<ToastOptions>) => Promise<ToastHandle>;
+  warning: (messageOrOptions?: string | ToastOptions, options?: Partial<ToastOptions>) => Promise<ToastHandle>;
+  info: (messageOrOptions?: string | ToastOptions, options?: Partial<ToastOptions>) => Promise<ToastHandle>;
+  loading: (messageOrOptions?: string | ToastOptions, options?: Partial<ToastOptions>) => Promise<ToastHandle>;
+  custom: (messageOrOptions?: string | ToastOptions, options?: Partial<ToastOptions>) => Promise<ToastHandle>;
+  show: (options?: ToastOptions) => Promise<ToastHandle>;
   promise: <T>(
     promiseOrFn: Promise<T> | (() => Promise<T> | T),
     messages?: ToastPromiseMessages,
@@ -22,6 +22,10 @@ export interface SolidToastAPI {
   dismiss: (target?: string | ToastHandle | HTMLElement | Promise<ToastHandle>) => Promise<void>;
   dismissAll: () => Promise<void>;
   clear: () => Promise<void>;
+  on: (event: 'open' | 'show' | 'close' | 'queue' | 'drop', listener: (data: any) => void) => () => void;
+  off: (event: 'open' | 'show' | 'close' | 'queue' | 'drop', listener: (data: any) => void) => void;
+  getActiveCount: () => number;
+  readonly size: number;
   setConfig: (options?: Partial<ToastGlobalConfig>) => ToastGlobalConfig;
   getConfig: () => ToastGlobalConfig;
   resetConfig: () => ToastGlobalConfig;
@@ -31,24 +35,47 @@ export interface SolidToastAPI {
   version: string;
 }
 
+export interface SolidToastOptions extends Partial<ToastOptions> {
+  autoDismissOnCleanup?: boolean;
+  onCleanup?: (fn: () => void) => void;
+}
+
 /**
  * SolidJS primitive for customizable-toast-notification.
+ * When called with defaultOptions, returns an isolated, scoped toast instance.
+ * Supports auto-cleanup with `autoDismissOnCleanup: true`.
  */
-export function useToast(): SolidToastAPI;
+export function useToast(
+  defaultOptions?: SolidToastOptions,
+  onCleanup?: (fn: () => void) => void
+): SolidToastAPI;
 
 export const toast: SolidToastAPI;
 
 export {
   createToast,
+  createToastAPI,
+  createToastInstance,
+  on,
+  off,
+  success,
+  error,
+  warning,
+  info,
+  loading,
+  custom,
   toastPromise,
   dismiss,
   dismissAll,
   clear,
+  getActiveCount,
   setConfig,
   getConfig,
   resetConfig,
   getToastMetrics,
   setDefaultColors,
   setDefaultMessages,
+  initKeyboardShortcuts,
+  destroyKeyboardShortcuts,
   version,
 } from '../index.js';

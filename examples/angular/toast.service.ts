@@ -3,7 +3,11 @@ import {
   createToast,
   toastPromise,
   dismiss,
+  dismissAll,
   noop,
+  on,
+  off,
+  getActiveCount,
   setConfig,
   getConfig,
   getToastMetrics,
@@ -12,6 +16,8 @@ import {
   type ToastPromiseMessages,
   type ToastGlobalConfig,
   type ToastMetrics,
+  type ToastLifecycleEvent,
+  type ToastLifecyclePayload,
 } from 'customizable-toast-notification';
 
 @Injectable({
@@ -46,12 +52,36 @@ export class ToastService {
     return toastPromise(promiseOrFn, messages, options);
   }
 
-  dismissAll(): Promise<void> {
-    return dismiss();
+  dismiss(target?: string | HTMLElement | ToastHandle): Promise<void> {
+    return dismiss(target);
   }
 
-  resetStats(): void {
-    noop();
+  dismissAll(): Promise<void> {
+    return dismissAll();
+  }
+
+  clearAll(): Promise<void> {
+    return dismissAll();
+  }
+
+  resetStats(): Promise<void> {
+    return dismissAll();
+  }
+
+  on(event: ToastLifecycleEvent, listener: (payload: ToastLifecyclePayload) => void): () => void {
+    return on(event, listener);
+  }
+
+  off(event: ToastLifecycleEvent, listener: (payload: ToastLifecyclePayload) => void): void {
+    off(event, listener);
+  }
+
+  getActiveCount(): number {
+    return getActiveCount();
+  }
+
+  get size(): number {
+    return getActiveCount();
   }
 
   setConfig(options?: Partial<ToastGlobalConfig>): ToastGlobalConfig {

@@ -1,117 +1,97 @@
 import {
-  createToast,
-  toastPromise,
-  dismiss,
-  dismissAll,
-  clear,
-  setConfig,
-  getConfig,
-  resetConfig,
+  createToastAPI,
+  createToastInstance,
   getToastMetrics,
-  setDefaultColors,
-  setDefaultMessages,
-  version,
 } from "../index.js";
-
-const subscribers = new Set();
-
-function notifySubscribers() {
-  const state = {
-    metrics: getToastMetrics(),
-  };
-  for (const fn of subscribers) {
-    try {
-      fn(state);
-    } catch {}
-  }
-}
 
 /**
  * Creates the Svelte store and toast API.
+ * When called with defaultOptions, returns an isolated, scoped toast store.
+ * @param {import('../index.js').ToastOptions} [defaultOptions] - Optional component-level preset options.
  * @returns {import('./index.d.ts').SvelteToastStore}
  */
-export function createToastStore() {
-  return {
+export function createToastStore(defaultOptions) {
+  const subscribers = new Set();
+
+  function notifySubscribers() {
+    const state = {
+      metrics: getToastMetrics(),
+    };
+    for (const fn of subscribers) {
+      try {
+        fn(state);
+      } catch {
+        /* safe fallback if subscriber callback throws */
+      }
+    }
+  }
+
+  const hasDefaults =
+    defaultOptions &&
+    typeof defaultOptions === "object" &&
+    Object.keys(defaultOptions).length > 0;
+  const base = hasDefaults ? createToastInstance(defaultOptions) : createToastAPI();
+  const wrap = (fn) => (...args) => {
+    const res = fn(...args);
+    notifySubscribers();
+    return res;
+  };
+  const wrapAsync = (fn) => async (...args) => {
+    const res = await fn(...args);
+    notifySubscribers();
+    return res;
+  };
+
+  const store = {
+    ...base,
     subscribe(run) {
       if (typeof run === "function") {
         subscribers.add(run);
         run({ metrics: getToastMetrics() });
         return () => subscribers.delete(run);
       }
-      return () => {};
+      return () => {
+        /* no-op unsubscribe */
+      };
     },
-    success: (message, options) => {
-      const res = createToast.success(message, options);
-      notifySubscribers();
-      return res;
-    },
-    error: (message, options) => {
-      const res = createToast.error(message, options);
-      notifySubscribers();
-      return res;
-    },
-    warning: (message, options) => {
-      const res = createToast.warning(message, options);
-      notifySubscribers();
-      return res;
-    },
-    info: (message, options) => {
-      const res = createToast.info(message, options);
-      notifySubscribers();
-      return res;
-    },
-    loading: (message, options) => {
-      const res = createToast.loading(message, options);
-      notifySubscribers();
-      return res;
-    },
-    custom: (message, options) => {
-      const res = createToast.custom(message, options);
-      notifySubscribers();
-      return res;
-    },
-    show: (options) => {
-      const res = createToast(options);
-      notifySubscribers();
-      return res;
-    },
-    promise: toastPromise,
-    dismiss: async (target) => {
-      await dismiss(target);
-      notifySubscribers();
-    },
-    dismissAll: async () => {
-      await dismissAll();
-      notifySubscribers();
-    },
-    clear: async () => {
-      await clear();
-      notifySubscribers();
-    },
-    setConfig,
-    getConfig,
-    resetConfig,
-    getToastMetrics,
-    setDefaultColors,
-    setDefaultMessages,
-    version,
+    success: wrap(base.success),
+    error: wrap(base.error),
+    warning: wrap(base.warning),
+    info: wrap(base.info),
+    loading: wrap(base.loading),
+    custom: wrap(base.custom),
+    show: wrap(base.show),
+    dismiss: wrapAsync(base.dismiss),
+    dismissAll: wrapAsync(base.dismissAll),
+    clear: wrapAsync(base.clear),
   };
+  Object.defineProperty(store, "size", {
+    get: () => base.size,
+    configurable: true,
+    enumerable: true,
+  });
+  return store;
 }
 
 export const toast = createToastStore();
-export const useToast = () => toast;
+const toastStore = toast;
 
-export {
-  createToast,
-  toastPromise,
-  dismiss,
-  dismissAll,
-  clear,
-  setConfig,
-  getConfig,
-  resetConfig,
-  getToastMetrics,
-  setDefaultColors,
-  setDefaultMessages,
-  version,
+/**
+ * Svelte helper for customizable-toast-notification.
+ * When called with defaultOptions, returns an isolated, scoped store.
+ * @param {import('../index.js').ToastOptions} [defaultOptions] - Optional component-level preset options.
+ * @returns {import('./index.d.ts').SvelteToastStore}
+ */
+export const useToast = (defaultOptions) => {
+  if (
+    defaultOptions &&
+    typeof defaultOptions === "object" &&
+    Object.keys(defaultOptions).length > 0
+  ) {
+    return createToastStore(defaultOptions);
+  }
+  return toast;
 };
+
+export { toastStore };
+export * from "../index.js";

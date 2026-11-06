@@ -147,6 +147,7 @@
       if (offlineHandle) await offlineHandle.dismiss();
 
       offlineHandle = await createToast({
+        tag: "network-connectivity",
         type: "error",
         message: "You are currently offline. Changes will sync once reconnected.",
         position: "top-center",
@@ -180,6 +181,7 @@
       }
 
       await createToast({
+        tag: "network-connectivity",
         type: "success",
         message: "Back online! All queued sync operations restored.",
         position: "top-center",

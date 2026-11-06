@@ -3,7 +3,10 @@ import {
   createToast,
   toastPromise,
   dismiss,
-  noop,
+  dismissAll,
+  on,
+  off,
+  getActiveCount,
   setConfig,
   getConfig,
   getToastMetrics,
@@ -12,6 +15,7 @@ import {
 /**
  * Svelte store and helper wrapper for customizable-toast-notification.
  * Provides reactive metrics tracking and convenient notification helpers.
+ * Note: Consumers can also directly import from 'customizable-toast-notification/svelte'.
  */
 export function createToastStore() {
   const metrics = writable(getToastMetrics());
@@ -31,8 +35,16 @@ export function createToastStore() {
     info: (message, options = {}) => createToast({ type: 'info', message, ...options }),
     show: (options) => createToast(options),
     promise: toastPromise,
-    dismissAll: dismiss,
-    resetStats: noop,
+    dismiss: (target) => dismiss(target),
+    dismissAll: () => dismissAll(),
+    clearAll: () => dismissAll(),
+    resetStats: () => dismissAll(),
+    on,
+    off,
+    getActiveCount,
+    get size() {
+      return getActiveCount();
+    },
     setConfig,
     getConfig,
     getMetrics: getToastMetrics,
@@ -40,3 +52,4 @@ export function createToastStore() {
 }
 
 export const toast = createToastStore();
+export const toastStore = toast;

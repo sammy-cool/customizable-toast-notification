@@ -17,7 +17,7 @@ export async function createToastElement(options, onClose) {
 
   // PRIMARY: Full-featured toast
   try {
-    toast = await createElementWithId(tagName, prefix);
+    toast = createElementWithId(tagName, prefix);
     await applyRichStyling(toast, options, onClose);
     return toast;
   } catch (error) {

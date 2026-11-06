@@ -27,14 +27,23 @@
   <script>
     const { useState, useMemo } = React;
 
-    function useToast() {
-      return useMemo(() => ({
-        success: (msg, opts) => customizableToast.createToast({ type: 'success', message: msg, ...opts }),
-        error: (msg, opts) => customizableToast.createToast({ type: 'error', message: msg, ...opts }),
-        warning: (msg, opts) => customizableToast.createToast({ type: 'warning', message: msg, ...opts }),
-        info: (msg, opts) => customizableToast.createToast({ type: 'info', message: msg, ...opts }),
-        dismissAll: () => customizableToast.dismiss(),
-      }), []);
+    // In modern React applications (Vite, Next.js, CRA), install and use the native subpath:
+    // import { useToast } from 'customizable-toast-notification/react';
+    function useToast(defaultOptions) {
+      return useMemo(() => {
+        const api = customizableToast.createToastInstance
+          ? customizableToast.createToastInstance(defaultOptions)
+          : customizableToast.createToastAPI();
+        return {
+          ...api,
+          success: (msg, opts) => customizableToast.createToast({ type: 'success', message: msg, ...opts }),
+          error: (msg, opts) => customizableToast.createToast({ type: 'error', message: msg, ...opts }),
+          warning: (msg, opts) => customizableToast.createToast({ type: 'warning', message: msg, ...opts }),
+          info: (msg, opts) => customizableToast.createToast({ type: 'info', message: msg, ...opts }),
+          dismiss: (target) => customizableToast.dismiss(target),
+          dismissAll: () => customizableToast.dismissAll(),
+        };
+      }, [JSON.stringify(defaultOptions)]);
     }
 
     function App() {

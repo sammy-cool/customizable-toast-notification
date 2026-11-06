@@ -793,6 +793,7 @@
         .telemetry-row { grid-template-columns: 1fr; }
         .pos-grid { grid-template-columns: repeat(3, 1fr); gap: 4px; }
         .quick-btn { min-height: 38px; }
+        [id^="toast-container-"][id*="bottom"] { bottom: 84px !important; }
       }
     </style>
   </head>
@@ -859,6 +860,8 @@
           <button class="quick-btn" id="quickShimmerBtn">🌊 Shimmer Progress</button>
           <button class="quick-btn" id="quickStackedBtn">📚 iOS Card Stack</button>
           <button class="quick-btn" id="quickBouncyBtn">💫 Bouncy Spring</button>
+          <button class="quick-btn" id="quickInstanceBtn">🏢 Scoped Instance</button>
+          <button class="quick-btn" id="quickLifecycleBtn">📡 Lifecycle Pub-Sub</button>
           <button class="quick-btn primary" id="quickFloodBtn">⚡ 50x Burst Flood</button>
         </div>
       </section>
@@ -1459,6 +1462,72 @@ createToast({
                   <td class="opt-default">'normal'</td>
                   <td>Text display behavior: 'normal' for full multi-line text, or 'truncate' for 3-line clamp.</td>
                 </tr>
+                <tr>
+                  <td class="opt-name">theme</td>
+                  <td class="opt-type">'light' | 'dark' | 'glass' | 'high-contrast' | 'compact' | 'spacious'</td>
+                  <td class="opt-default">'light'</td>
+                  <td>Design system color theme applied via data-toast-theme attribute.</td>
+                </tr>
+                <tr>
+                  <td class="opt-name">soundPreset</td>
+                  <td class="opt-type">'bell' | 'subtle' | 'modern' | 'retro' | 'futuristic'</td>
+                  <td class="opt-default">'bell'</td>
+                  <td>Zero-asset Web Audio synthesis frequency and harmonic preset curve.</td>
+                </tr>
+                <tr>
+                  <td class="opt-name">tag</td>
+                  <td class="opt-type">string</td>
+                  <td class="opt-default">undefined</td>
+                  <td>Thread identifier for replacement/updating of identical operational toasts.</td>
+                </tr>
+                <tr>
+                  <td class="opt-name">groupId</td>
+                  <td class="opt-type">string</td>
+                  <td class="opt-default">undefined</td>
+                  <td>Logical grouping identifier for collating and bulk-dismissing related toasts.</td>
+                </tr>
+                <tr>
+                  <td class="opt-name">trapFocus</td>
+                  <td class="opt-type">boolean</td>
+                  <td class="opt-default">false</td>
+                  <td>Traps keyboard Tab navigation strictly within the toast (recommended for modal alerts).</td>
+                </tr>
+                <tr>
+                  <td class="opt-name">shadowDom</td>
+                  <td class="opt-type">boolean</td>
+                  <td class="opt-default">false</td>
+                  <td>Isolates toast elements and styles within a closed or open Shadow DOM root.</td>
+                </tr>
+                <tr>
+                  <td class="opt-name">role</td>
+                  <td class="opt-type">'alert' | 'status'</td>
+                  <td class="opt-default">'alert'</td>
+                  <td>ARIA role semantics for screen-reader announcement prioritization.</td>
+                </tr>
+                <tr>
+                  <td class="opt-name">ariaLive</td>
+                  <td class="opt-type">'polite' | 'assertive' | 'off'</td>
+                  <td class="opt-default">'polite' / 'assertive'</td>
+                  <td>WCAG live region politeness level for screen reader assistive technology.</td>
+                </tr>
+                <tr>
+                  <td class="opt-name">onDismiss</td>
+                  <td class="opt-type">(toastId: string) => void</td>
+                  <td class="opt-default">undefined</td>
+                  <td>Lifecycle hook triggered when toast completely exits DOM.</td>
+                </tr>
+                <tr>
+                  <td class="opt-name">containerId</td>
+                  <td class="opt-type">string</td>
+                  <td class="opt-default">undefined</td>
+                  <td>Custom DOM element ID override for the toast notification container.</td>
+                </tr>
+                <tr>
+                  <td class="opt-name">target</td>
+                  <td class="opt-type">Element | DocumentFragment | ShadowRoot</td>
+                  <td class="opt-default">document.body</td>
+                  <td>Custom DOM mount target node for scoped dashboard panels and modals.</td>
+                </tr>
               </tbody>
             </table>
           </div>
@@ -1789,6 +1858,7 @@ createToast({
 
           function draw() {
             animFrameId = requestAnimationFrame(draw);
+            if (document.hidden) return;
             scopeCtx.clearRect(0, 0, scopeCanvas.width, scopeCanvas.height);
 
             if (analyser) {
@@ -2032,7 +2102,9 @@ createToast({
         // Fire Toast Trigger
         function fireToast(customOverride) {
           if (!window.customizableToast) {
-            alert("customizableToast library is loading... Please retry in a moment.");
+            console.warn("customizableToast library is still loading... Please retry in a moment.");
+            var codeOutput = document.getElementById("codeOutput");
+            if (codeOutput) codeOutput.textContent = "// Library is loading... please wait a moment.";
             return;
           }
 
@@ -2160,6 +2232,9 @@ createToast({
             updateCodeSnippet();
           } catch (err) {
             console.warn("Could not deserialize URL preset:", err);
+            if (window.customizableToast && window.customizableToast.createToast?.error) {
+              window.customizableToast.createToast.error("Failed to parse preset configuration from URL hash.", { sound: true });
+            }
           }
         }
 
@@ -2403,6 +2478,44 @@ createToast({
 
         document.getElementById("quickBouncyBtn").addEventListener("click", function () {
           fireToast({ type: "success", message: "Bouncy dynamic spring physics!", spring: true, animationType: "spring", position: currentPosition });
+        });
+
+        document.getElementById("quickInstanceBtn").addEventListener("click", function () {
+          if (!window.customizableToast || !window.customizableToast.createToastInstance) return;
+          if (!window._demoScopedInstance) {
+            window._demoScopedInstance = window.customizableToast.createToastInstance({
+              position: "top-left",
+              theme: "dark",
+              sound: true,
+              maxVisibleToasts: 3
+            });
+          }
+          window._demoScopedInstance.success("Scoped Instance: Isolated container at top-left with dark theme!", {
+            duration: 4000
+          });
+        });
+
+        var _lifecycleSubscribed = false;
+        document.getElementById("quickLifecycleBtn").addEventListener("click", function () {
+          if (!window.customizableToast || !window.customizableToast.on) return;
+          if (!_lifecycleSubscribed) {
+            _lifecycleSubscribed = true;
+            window.customizableToast.on("open", function (payload) {
+              console.log("[ToastLifecycle open]", payload);
+            });
+            window.customizableToast.on("close", function (payload) {
+              console.log("[ToastLifecycle close]", payload);
+            });
+            window.customizableToast.createToast.info("Lifecycle listener active! Check browser DevTools console for open/close event stream.", {
+              duration: 4500,
+              position: currentPosition
+            });
+          } else {
+            window.customizableToast.createToast.success("Lifecycle listener already subscribed and streaming events to console!", {
+              duration: 3000,
+              position: currentPosition
+            });
+          }
         });
 
         document.getElementById("quickFloodBtn").addEventListener("click", function () {

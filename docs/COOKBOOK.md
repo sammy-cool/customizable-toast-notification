@@ -14,6 +14,7 @@ A collection of battle-tested, zero-dependency recipes for common real-world not
 6. [High-Frequency Burst Stream with Card Deck Stacking & Sound](#6-high-frequency-burst-stream-with-card-deck-stacking--sound)
 7. [Inactive Tab Attention Alerting (tabTitleAlert)](#7-inactive-tab-attention-alerting-tabtitlealert)
 8. [Persistent Notification Center History Drawer](#8-persistent-notification-center-history-drawer)
+9. [Native Framework Subpaths & Strict TypeScript Integration](#9-native-framework-subpaths--strict-typescript-integration)
 
 ---
 
@@ -413,6 +414,89 @@ export async function dispatchAndArchive(options) {
   });
 
   return await createToast(options);
+}
+```
+
+---
+
+## 9. Native Framework Subpaths & Strict TypeScript Integration
+
+Modern frontend frameworks with strict TypeScript definitions:
+
+### 9.1 React 18 / 19 & Next.js 15 (App Router)
+```typescript
+import React from 'react';
+import { useToast, type ToastHandle, type ToastOptions } from 'customizable-toast-notification/react';
+
+export function ActionPanel() {
+  const toast = useToast({ position: 'top-right', duration: 4000 });
+
+  const handleSave = async (): Promise<ToastHandle> => {
+    return await toast.success('Profile preferences updated in-place!', {
+      sound: true,
+      animationType: 'spring',
+    });
+  };
+
+  return <button onClick={handleSave}>Save Settings</button>;
+}
+```
+
+### 9.2 Vue 3 / Nuxt 3 (Composition API)
+```typescript
+<script setup lang="ts">
+import { useToast, type ToastOptions } from 'customizable-toast-notification/vue';
+
+const toast = useToast({ position: 'bottom-center' });
+
+function triggerAlert() {
+  toast.warning('Unsaved form changes detected', {
+    undo: { label: 'Discard', showCountdown: true, onUndo: () => console.log('Discarded') }
+  });
+}
+</script>
+```
+
+### 9.3 Svelte 4 / 5 & SvelteKit (Reactive Store)
+```typescript
+<script lang="ts">
+import { toast, toastStore, type SvelteToastStore } from 'customizable-toast-notification/svelte';
+
+function notify() {
+  toast.info('Synchronizing workspace data...', { showLoader: true });
+}
+</script>
+
+<button on:click={notify}>Sync Status (Active: {$toast.metrics.activeCount})</button>
+```
+
+### 9.4 SolidJS (Fine-Grained Reactivity with Auto-Cleanup)
+```typescript
+import { useToast, type SolidToastAPI } from 'customizable-toast-notification/solid';
+
+export function ItemCard() {
+  // Automatically dismisses active component notifications when component unmounts
+  const toast: SolidToastAPI = useToast({ position: 'top-center', autoDismissOnCleanup: true });
+
+  return <button onClick={() => toast.success('Item added to cart!')}>Add to Cart</button>;
+}
+```
+
+### 9.5 Angular 16+ (Dependency Injection)
+```typescript
+import { Component } from '@angular/core';
+import { injectToast, ToastService } from 'customizable-toast-notification/angular';
+
+@Component({
+  selector: 'app-user-profile',
+  template: `<button (click)="onSubmit()">Submit</button>`,
+})
+export class UserProfileComponent {
+  private toast: ToastService = injectToast({ position: 'top-right' });
+
+  onSubmit() {
+    this.toast.success('Form submitted successfully!');
+  }
 }
 ```
 

@@ -27,4 +27,4 @@ export interface UseToastComposable {
 /**
  * A Vue composable for customizable-toast-notification.
  */
-export function useToast(): UseToastComposable;
+export function useToast(defaultOptions?: Partial<ToastOptions>): UseToastComposable;

@@ -52,13 +52,39 @@ export function resetContainerRegistry() {
     if (host) {
       try {
         host.remove();
-      } catch {}
+      } catch {
+        /* safe fallback if shadow host removal fails */
+      }
     }
-    const containers = document.querySelectorAll('[id^="toast-container-"]');
-    containers.forEach((c) => {
+    try {
+      const customTarget = getConfig?.()?.targetNode;
+      if (customTarget && typeof customTarget.querySelector === "function") {
+        const customShadowHost = customTarget.querySelector("#toast-shadow-host");
+        if (customShadowHost) {
+          customShadowHost.remove();
+        }
+      }
+    } catch {
+      /* safe fallback if custom target shadow host query fails */
+    }
+    const containerSet = new Set(document.querySelectorAll('[id^="toast-container-"]'));
+    for (const [, el] of containerRegistry.entries()) {
+      if (el) containerSet.add(el);
+    }
+    try {
+      const customTarget = getConfig?.()?.targetNode;
+      if (customTarget && typeof customTarget.querySelectorAll === "function") {
+        customTarget.querySelectorAll('[id^="toast-container-"]').forEach((c) => containerSet.add(c));
+      }
+    } catch {
+      /* safe fallback if targetNode query fails */
+    }
+    containerSet.forEach((c) => {
       try {
         c.remove();
-      } catch {}
+      } catch {
+        /* safe fallback if container removal fails */
+      }
     });
   }
 }
@@ -70,6 +96,11 @@ export function resetContainerRegistry() {
  */
 export function unregisterContainer(idOrPosition) {
   if (!idOrPosition) return;
+  if (containerRegistry.has(idOrPosition)) {
+    containerRegistry.delete(idOrPosition);
+    containerLocks.delete(idOrPosition);
+    return;
+  }
   const id = typeof idOrPosition === "string" && idOrPosition.startsWith("toast-container-")
     ? idOrPosition
     : getContainerId(idOrPosition);
@@ -103,6 +134,7 @@ function applyContainerBaseStyles(el) {
   el.style.position = "fixed";
   el.style.zIndex = String(config.zIndex);
   el.style.pointerEvents = "none";
+  el.style.contain = "layout style";
   el.style.inset = "auto 10px 10px auto";
   el.style.display = "flex";
   el.style.justifyContent = "space-between";
@@ -119,7 +151,10 @@ function applyContainerBaseStyles(el) {
  */
 export async function getOrCreateToastContainer(options = {}, setPosition) {
   const config = getConfig();
-  const id = getContainerId(options?.position || config.defaultPosition);
+  const id =
+    typeof options?.containerId === "string" && options.containerId.trim()
+      ? options.containerId.trim()
+      : getContainerId(options?.position || config.defaultPosition);
   let root = getContainerRoot();
   if (!root) throw new Error("Toast container root is unavailable");
 
@@ -128,7 +163,9 @@ export async function getOrCreateToastContainer(options = {}, setPosition) {
     let host = null;
     try {
       host = root.querySelector ? root.querySelector("#toast-shadow-host") : null;
-    } catch {}
+    } catch {
+      /* safe fallback if querySelector on non-standard root fails */
+    }
     if (!host) {
       host = document.createElement("div");
       host.id = "toast-shadow-host";
@@ -142,7 +179,9 @@ export async function getOrCreateToastContainer(options = {}, setPosition) {
     if (!host.shadowRoot && typeof host.attachShadow === "function") {
       try {
         host.attachShadow({ mode: "open" });
-      } catch {}
+      } catch {
+        /* safe fallback if shadow root already attached or unsupported */
+      }
     }
     if (host.shadowRoot) {
       root = host.shadowRoot;
@@ -260,8 +299,13 @@ export async function getOrCreateToastContainer(options = {}, setPosition) {
       if (all.length > 1) {
         for (let i = 1; i < all.length; i++) {
           try {
+            while (all[i].firstChild) {
+              el.appendChild(all[i].firstChild);
+            }
             all[i].remove();
-          } catch {}
+          } catch {
+            /* safe fallback if duplicate node already detached */
+          }
         }
       }
     }

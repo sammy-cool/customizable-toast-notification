@@ -15,6 +15,51 @@ import {
 import { getConfig } from "../utils/config.js";
 import { createToastIcon } from "./icons.js";
 
+let sharedAudioCtx = null;
+
+/**
+ * Synthesizes a subtle, dependency-free Web Audio chime.
+ * @param {string} [type]
+ */
+export function playNativeTone(type = "info") {
+  try {
+    if (typeof window === "undefined") return;
+    const AudioCtx = window.AudioContext || window.webkitAudioContext;
+    if (!AudioCtx) return;
+
+    if (!sharedAudioCtx || sharedAudioCtx.state === "closed") {
+      sharedAudioCtx = new AudioCtx();
+    }
+    if (sharedAudioCtx.state === "suspended") {
+      sharedAudioCtx.resume().catch(() => {
+        /* ignore audio unlock rejection */
+      });
+    }
+
+    const now = sharedAudioCtx.currentTime;
+    const osc = sharedAudioCtx.createOscillator();
+    const gain = sharedAudioCtx.createGain();
+
+    osc.type = "sine";
+    const baseFreq = type === "error" ? 220 : type === "warning" ? 440 : 587.33;
+    const endFreq = type === "error" ? 180 : type === "warning" ? 520 : 880;
+
+    osc.frequency.setValueAtTime(baseFreq, now);
+    osc.frequency.exponentialRampToValueAtTime(endFreq, now + 0.12);
+
+    gain.gain.setValueAtTime(0.06, now);
+    gain.gain.exponentialRampToValueAtTime(0.001, now + 0.18);
+
+    osc.connect(gain);
+    gain.connect(sharedAudioCtx.destination);
+
+    osc.start(now);
+    osc.stop(now + 0.2);
+  } catch {
+    /* safe fallback if AudioContext graph nodes fail */
+  }
+}
+
 /**
  * Applies rich styling and content to a toast element.
  * @param {HTMLElement} toast - The toast container element.
@@ -52,6 +97,65 @@ function getInitialTransform(position, animationType, isSpring) {
   }
 
   return isTop ? "translateY(-20px)" : "translateY(20px)";
+}
+
+/**
+ * Appends sanitized HTML or text content to a toast message container.
+ * @param {HTMLElement} messageSpan
+ * @param {string|number|any} rawMessage
+ * @param {boolean} [allowHtml=false]
+ */
+export function appendMessageContent(messageSpan, rawMessage, allowHtml = false) {
+  if (allowHtml && typeof rawMessage === "string" && rawMessage.trim().length > 0) {
+    try {
+      const sanitized = sanitizeHtml(rawMessage);
+      const tmp = document.createElement("div");
+      tmp.innerHTML = sanitized;
+      while (tmp.firstChild) {
+        messageSpan.appendChild(tmp.firstChild);
+      }
+      return;
+    } catch (err) {
+      console.warn("HTML message sanitization failed, falling back to text:", err);
+    }
+  }
+  messageSpan.appendChild(document.createTextNode(String(rawMessage ?? "")));
+}
+
+/**
+ * Applies or removes 3-line text truncation styling and CSS classes on messageSpan.
+ *
+ * @param {HTMLElement} messageSpan
+ * @param {string | boolean | undefined} wrapText
+ * @param {boolean} [disableInlineStyles=false]
+ */
+export function applyMessageTruncation(messageSpan, wrapText, disableInlineStyles = false) {
+  const isTruncate = wrapText === "truncate" || wrapText === "ellipsis" || wrapText === false;
+  if (isTruncate || !wrapText) {
+    messageSpan.classList.add("is-truncated");
+    if (!disableInlineStyles) {
+      Object.assign(messageSpan.style, {
+        display: "-webkit-box",
+        WebkitBoxOrient: "vertical",
+        WebkitLineClamp: "3",
+        whiteSpace: "normal",
+        overflow: "hidden",
+        textOverflow: "ellipsis",
+      });
+    }
+  } else {
+    messageSpan.classList.remove("is-truncated");
+    if (!disableInlineStyles) {
+      Object.assign(messageSpan.style, {
+        display: "block",
+        WebkitBoxOrient: "",
+        WebkitLineClamp: "",
+        whiteSpace: "normal",
+        overflow: "visible",
+        textOverflow: "clip",
+      });
+    }
+  }
 }
 
 export async function applyRichStyling(toast, options, onClose) {
@@ -118,6 +222,8 @@ export async function applyRichStyling(toast, options, onClose) {
       boxSizing: "border-box",
       userSelect: "text",
       pointerEvents: "auto",
+      contain: "layout style",
+      willChange: "transform, opacity",
       touchAction: options?.swipeToDismiss === false ? "auto" : "pan-y",
       transition: `opacity ${opacityDuration} ${opacityEasing}, transform ${validAnimationDuration} ${easing}`,
       transform: getInitialTransform(options?.position, options?.animationType, isSpring),
@@ -127,6 +233,13 @@ export async function applyRichStyling(toast, options, onClose) {
           ? options.fontDirection
           : undefined,
     });
+  }
+
+  if (options?.fontDirection && options.fontDirection !== "auto") {
+    toast.setAttribute("dir", options.fontDirection);
+    if (options.fontDirection === "rtl") {
+      toast.classList.add("toast-rtl");
+    }
   }
 
   const isError = options?.type === "error";
@@ -141,29 +254,7 @@ export async function applyRichStyling(toast, options, onClose) {
   messageSpan.className = "toast-message";
   toast._messageSpan = messageSpan;
 
-  const isTruncate =
-    options?.wrapText === "truncate" ||
-    options?.wrapText === "ellipsis" ||
-    options?.wrapText === false;
-
-  if (isTruncate || !options?.wrapText) {
-    messageSpan.classList.add("is-truncated");
-    if (!config.disableInlineStyles) {
-      Object.assign(messageSpan.style, {
-        display: "-webkit-box",
-        WebkitBoxOrient: "vertical",
-        WebkitLineClamp: "3",
-        whiteSpace: "normal",
-        overflow: "hidden",
-        textOverflow: "ellipsis",
-      });
-    }
-  } else if (!config.disableInlineStyles) {
-    Object.assign(messageSpan.style, {
-      display: "block",
-      whiteSpace: "normal",
-    });
-  }
+  applyMessageTruncation(messageSpan, options?.wrapText, config.disableInlineStyles);
 
   const fontSize =
     typeof options?.fontSize === "number"
@@ -211,28 +302,7 @@ export async function applyRichStyling(toast, options, onClose) {
     messageSpan.appendChild(spacer);
   }
 
-  if (
-    allowHtml &&
-    typeof rawMessage === "string" &&
-    rawMessage.trim().length > 0
-  ) {
-    try {
-      const sanitized = sanitizeHtml(rawMessage);
-      const tmp = document.createElement("div");
-      tmp.innerHTML = sanitized;
-      while (tmp.firstChild) {
-        messageSpan.appendChild(tmp.firstChild);
-      }
-    } catch (err) {
-      console.warn(
-        "HTML message sanitization failed, falling back to text:",
-        err
-      );
-      messageSpan.appendChild(document.createTextNode(String(rawMessage)));
-    }
-  } else {
-    messageSpan.appendChild(document.createTextNode(String(rawMessage)));
-  }
+  appendMessageContent(messageSpan, rawMessage, allowHtml);
 
   messageSpan.setAttribute("title", messageSpan.textContent || "");
   toast.appendChild(messageSpan);
@@ -264,12 +334,22 @@ export async function applyRichStyling(toast, options, onClose) {
   if (shouldPlaySound) {
     if (typeof options?.sound === "string" && typeof window !== "undefined" && typeof window.Audio === "function") {
       try {
-        new window.Audio(options.sound).play().catch(() => {});
-      } catch {}
+        const audio = new window.Audio(options.sound);
+        toast._audio = audio;
+        audio.play().catch(() => {
+          /* ignore browser autoplay restrictions */
+        });
+      } catch {
+        /* safe fallback if Audio element construction fails */
+      }
     } else if (typeof options?.onSound === "function") {
       try {
         options.onSound(options);
-      } catch {}
+      } catch {
+        /* safe fallback if onSound callback throws */
+      }
+    } else if (typeof window !== "undefined") {
+      playNativeTone(options?.type);
     }
   }
 
@@ -391,7 +471,7 @@ export async function createEmergencyToast(options = {}, onClose) {
     };
     closeSpan.addEventListener("click", onClick);
 
-    const duration = Number(options?.duration) || 2500;
+    const duration = Number(options?.duration) || Number(getConfig?.()?.defaultDuration ?? 2500);
     timer = setTimeout(() => {
       closeSpan.removeEventListener("click", onClick);
       emergency.remove();

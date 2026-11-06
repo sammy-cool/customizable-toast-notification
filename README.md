@@ -36,13 +36,13 @@
            └──────────────────────────────────────────────────┘
 ```
 
-Toast notifications that work the same everywhere — plain JavaScript, Vue, Svelte, Angular, SolidJS, or a multi-page app. Built with sanitized-by-default HTML rendering, zero runtime dependencies, and 238 automated unit & logic tests plus 80 Playwright cross-browser specifications.
+Toast notifications that work the same everywhere — plain JavaScript, Vue, Svelte, Angular, SolidJS, or a multi-page app. Built with sanitized-by-default HTML rendering, zero runtime dependencies, and 287 automated unit & logic tests plus 77 Playwright cross-browser specifications.
 
 ## ✨ Key Features
 
 - 🌐 **Actually Framework Agnostic** - Not a React library with "vanilla JS support" bolted on — the same API works identically in React, Vue, Angular, Svelte, htmx, or plain HTML with no build step at all
 - 🛡️ **Sanitized by Default** - `allowHtml` content is sanitized before render (DOMPurify if it's on the page, a verified-equivalent fallback if not) — safe to use with content you don't fully control
-- ✅ **Rigorously Tested** - 238 real logic & unit tests across 88 suites plus 80 Playwright end-to-end specifications across Chromium, Firefox, and WebKit — not just "it worked on my machine"
+- ✅ **Rigorously Tested** - 287 real logic & unit tests across 82 suites plus 77 Playwright end-to-end specifications across Chromium, Firefox, and WebKit — not just "it worked on my machine"
 - 🚫 **Zero Runtime Dependencies** - Nothing pulled in when your users load your app
 - 🔧 **Real TypeScript Types** - Full type definitions with real autocomplete and type-checking, not a placeholder `any`
 - 🎨 **Highly Customizable** - Colors, positions, animations, progress bars, and styling
@@ -220,6 +220,7 @@ auto-dismissed on its own — they no-op gracefully rather than throwing. You ca
 | `loader`            | `object`           | `null`                          | Custom loader config (`size`, `color`, `text`)                                 |
 | `icon`              | `boolean \| string \| HTMLElement` | `true` for typed, `null` | Status icon: `true` (built-in SVG), `false` (hide), emoji (`"🎉"`), SVG string, or DOM node |
 | `iconColor`         | `string`           | `undefined`                     | Custom icon color (e.g. `"#3b82f6"`, `"currentColor"`, overrides text color)  |
+| `iconAriaLabel`     | `string`           | `undefined`                     | Accessible screen reader label for icon (`role="img"`, sets `aria-hidden="false"`) |
 | `fontDirection`     | `string`           | `"auto"`                        | Font direction: `"auto"`, `"ltr"`, `"rtl"`                                     |
 | `fontPadding`       | `string`           | `undefined`                     | Custom padding for message container (e.g. `"4px 8px"`)                         |
 | `className`         | `string`           | `undefined`                     | Custom CSS class name(s) for animations / styling                              |
@@ -231,6 +232,7 @@ auto-dismissed on its own — they no-op gracefully rather than throwing. You ca
 | `progressDirection` | `string`           | `"decreasing"`                  | Progress bar fill direction: `"decreasing"`, `"increasing"`, `"reverse"`, `"ltr"` |
 | `progressBarColor`  | `string`           | Falls back to `textColor`       | Alias for `progressColor` (accepts hex, rgb, hsl, CSS var)                     |
 | `progress`          | `number \| 'indeterminate'`| `undefined`            | Explicit percentage (0 to 100) or `"indeterminate"` moving gradient            |
+| `progressNormalized`| `boolean`          | `false`                         | When true, forces 0.0 - 1.0 progress numbers to scale to 0% - 100%               |
 | `tag` / `groupId`   | `string`           | `undefined`                     | Thread grouping identifier to replace notification in-place instead of stacking |
 | `trapFocus`         | `boolean`          | `false`                         | Modal keyboard focus trap (`Tab`/`Shift+Tab`) cycling for high-priority toasts  |
 | `shadowDom`         | `boolean`          | `false`                         | Render toast container inside isolated Shadow Root to prevent CSS bleed         |
@@ -616,6 +618,42 @@ setConfig({
 });
 ```
 
+### 🏢 Isolated Instances & Lifecycle Pub-Sub
+
+For multi-tenant applications, micro-frontends, or modular dashboards, create independent toast instances with preset defaults and scoped event pub-sub:
+
+```js
+import { createToastInstance, createToast } from "customizable-toast-notification";
+
+// 1. Create an isolated instance with preset default options
+const adminToasts = createToastInstance({
+  position: "top-left",
+  theme: "dark",
+  sound: true,
+});
+
+adminToasts.success("Admin configuration updated!");
+
+// 2. Global or instance-scoped lifecycle pub-sub for monitoring and analytics ("open" / alias: "show")
+const unsubscribe = createToast.on("open", ({ key, options }) => {
+  console.log(`Toast shown: ${key}`, options);
+});
+
+createToast.on("close", ({ key, reason }) => {
+  console.log(`Toast dismissed: ${key}, reason: ${reason}`); // "manual" | "timer" | "swipe"
+});
+
+createToast.on("queue", ({ key, options }) => {
+  console.log(`Toast queued: ${key}`);
+});
+
+createToast.on("drop", ({ key, reason }) => {
+  console.warn(`Toast dropped: ${key}, reason: ${reason}`); // "queue_overflow"
+});
+
+// Clean up listener when no longer needed
+unsubscribe();
+```
 
 ### Use Cases
 

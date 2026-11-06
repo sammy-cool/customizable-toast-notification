@@ -9,6 +9,7 @@
     "outDir": "dist/types",
     "skipLibCheck": true,
     "strict": false,
+    "strictNullChecks": true,
     "esModuleInterop": true,
     "allowSyntheticDefaultImports": true,
     "forceConsistentCasingInFileNames": true,

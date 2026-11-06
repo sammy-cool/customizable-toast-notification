@@ -10,11 +10,21 @@ import {
   dismiss,
   noop as managerNoop,
   getToastMetrics,
+  getToastPosition,
+  on as managerOn,
+  off as managerOff,
 } from "./components/ToastManager.js";
-import { getOrCreateToastContainer, resetContainerRegistry } from "./utils/containerRegistry.js";
-import { getDynamicAccessibleTextColorHex } from "./utils/dom.js";
+import { getOrCreateToastContainer, resetContainerRegistry, normalizePositionKey } from "./utils/containerRegistry.js";
 import { setPosition } from "./utils/position.js";
 import { generateToastId, resetToastIdCounter } from "./utils/id.js";
+import { initKeyboardShortcuts as initCoreKeyboardShortcuts, destroyKeyboardShortcuts } from "./utils/keyboard.js";
+import {
+  validateStringDictionary,
+  normalizeToastOptions,
+  sanitizeToastOptions as resolveToastOptions,
+} from "./utils/options-sanitizer.js";
+import { toastPromise as coreToastPromise } from "./components/toast-promise.js";
+import { createInstance, buildToastAPI } from "./utils/instance-factory.js";
 
 /**
  * @typedef {'modern' | 'retro' | 'futuristic' | 'subtle' | 'bell' | string} SoundPreset
@@ -26,6 +36,10 @@ import { generateToastId, resetToastIdCounter } from "./utils/id.js";
 
 /**
  * @typedef {'top-left' | 'top-right' | 'bottom-left' | 'bottom-right' | 'top-center' | 'bottom-center' | 'left-center' | 'right-center' | 'top-full-width' | 'bottom-full-width' | 'center'} ToastPosition
+ */
+
+/**
+ * @typedef {'light' | 'dark' | 'high-contrast' | 'compact' | 'spacious' | 'glass'} ToastTheme
  */
 
 /**
@@ -100,6 +114,7 @@ import { generateToastId, resetToastIdCounter } from "./utils/id.js";
  * @property {((options: ToastOptions) => void)} [onSound] - Sound playback handler callback
  * @property {boolean | string | HTMLElement | ((options: ToastOptions) => boolean | string | HTMLElement | null | undefined)} [icon]
  * @property {string} [iconColor] - Custom color for the toast icon (overriding currentColor / text color)
+ * @property {string} [iconAriaLabel] - Accessible text description for the icon for screen readers (sets aria-hidden="false", role="img", aria-label)
  * @property {boolean} [swipeToDismiss]
  * @property {number | string | 'indeterminate'} [progress]
  * @property {boolean} [progressNormalized]
@@ -111,15 +126,19 @@ import { generateToastId, resetToastIdCounter } from "./utils/id.js";
  * @property {boolean} [shadowDom] - Whether to isolate the container in an attached Shadow DOM root
  * @property {'alert' | 'status' | string} [role] - ARIA role attribute (default: 'alert')
  * @property {'polite' | 'assertive' | 'off'} [ariaLive] - ARIA live region politeness
+ * @property {string} [undoText] - Alternative custom label for undo button
+ * @property {string} [closeAriaLabel] - Accessible aria-label for close button
+ * @property {number} [iconSize] - Custom pixel size for the icon (default 18)
+ * @property {ToastTheme} [theme] - Theme preset override for this toast ('light' | 'dark' | 'high-contrast' | 'compact' | 'spacious' | 'glass')
+ * @property {boolean} [autoFocus] - Whether to automatically focus interactive CTA/undo button when trapFocus is enabled (default true)
+ * @property {boolean} [dedup] - Whether to deduplicate identical toasts (set false to show duplicate toasts independently)
+ * @property {boolean} [group] - Alias for dedup
+ * @property {string} [containerId] - Explicit container ID to mount this toast into
  */
 
 
 /**
  * @typedef {'auto' | 'always' | 'never'} ReducedMotionMode
- */
-
-/**
- * @typedef {'light' | 'dark' | 'high-contrast' | 'compact' | 'spacious' | 'glass'} ToastTheme
  */
 
 /**
@@ -133,6 +152,42 @@ import { generateToastId, resetToastIdCounter } from "./utils/id.js";
  * @property {number} visibleCount - Count of currently visible toasts
  * @property {number} droppedCount - Number of toasts dropped due to queue overflow
  * @property {number} timestamp - Epoch timestamp (ms) when metrics were recorded
+ */
+
+/**
+ * @typedef {'open' | 'close' | 'queue' | 'drop' | 'show'} ToastLifecycleEvent
+ */
+
+/**
+ * @typedef {Object} ToastLifecyclePayload
+ * @property {string} [key]
+ * @property {ToastOptions} [options]
+ * @property {HTMLElement} [toast]
+ * @property {string} [reason]
+ */
+
+/**
+ * @typedef {Object} ToastInstance
+ * @property {string} instanceId
+ * @property {string} version
+ * @property {() => ToastMetrics} getToastMetrics
+ * @property {ToastInstance} createToast
+ * @property {(messageOrOpts?: string | ToastOptions, opts?: ToastOptions) => Promise<ToastHandle>} show
+ * @property {(message: string, opts?: ToastOptions) => Promise<ToastHandle>} success
+ * @property {(message: string, opts?: ToastOptions) => Promise<ToastHandle>} error
+ * @property {(message: string, opts?: ToastOptions) => Promise<ToastHandle>} warning
+ * @property {(message: string, opts?: ToastOptions) => Promise<ToastHandle>} info
+ * @property {(message: string, opts?: ToastOptions) => Promise<ToastHandle>} loading
+ * @property {(message: string, opts?: ToastOptions) => Promise<ToastHandle>} custom
+ * @property {<T>(promiseOrFn: Promise<T> | (() => Promise<T>), messages?: ToastPromiseMessages, opts?: ToastOptions) => Promise<T>} promise
+ * @property {(target?: any) => Promise<void>} dismiss
+ * @property {() => Promise<void>} dismissAll
+ * @property {() => Promise<void>} clear
+ * @property {() => number} getActiveCount
+ * @property {number} size
+ * @property {(event: ToastLifecycleEvent, callback: (payload: ToastLifecyclePayload) => void) => () => void} on
+ * @property {(event: ToastLifecycleEvent, callback: (payload: ToastLifecyclePayload) => void) => void} off
+ * @property {() => Partial<ToastOptions>} getDefaults
  */
 
 /**
@@ -150,7 +205,11 @@ import { generateToastId, resetToastIdCounter } from "./utils/id.js";
  * @property {boolean} [sound]
  * @property {boolean} [icon]
  * @property {string} [iconColor]
+ * @property {string | null} [iconAriaLabel]
+ * @property {string | null} [cspNonce]
+ * @property {string} [soundPreset]
  * @property {boolean} [pauseOnHover]
+ * @property {number} [defaultDuration]
  * @property {boolean} [priorityQueue]
  * @property {boolean} [shadowDom]
  * @property {boolean} [trapFocus]
@@ -162,8 +221,8 @@ import { generateToastId, resetToastIdCounter } from "./utils/id.js";
 /**
  * @typedef {Object} ToastHandle
  * @property {string} [id] - The unique identifier/key of the toast notification.
- * @property {() => Promise<void>} dismiss
- * @property {(newOptions: Partial<ToastOptions>) => Promise<boolean>} update
+ * @property {() => Promise<void>} dismiss - Dismisses this specific toast notification.
+ * @property {(newOptions: Partial<ToastOptions>, updateOpts?: { fallback?: boolean }) => Promise<boolean>} update - Updates this toast notification in-place. Properties omitted from newOptions retain their current values via shallow merge.
  */
 
 /**
@@ -173,19 +232,33 @@ import { generateToastId, resetToastIdCounter } from "./utils/id.js";
  * @property {string | Partial<ToastOptions> | ((error: unknown) => string | Partial<ToastOptions>)} [error]
  */
 
+/**
+ * @typedef {Object} UseToastAPI
+ * @property {(messageOrOptions?: string | ToastOptions, options?: Partial<ToastOptions>) => Promise<ToastHandle>} success
+ * @property {(messageOrOptions?: string | ToastOptions, options?: Partial<ToastOptions>) => Promise<ToastHandle>} error
+ * @property {(messageOrOptions?: string | ToastOptions, options?: Partial<ToastOptions>) => Promise<ToastHandle>} warning
+ * @property {(messageOrOptions?: string | ToastOptions, options?: Partial<ToastOptions>) => Promise<ToastHandle>} info
+ * @property {(messageOrOptions?: string | ToastOptions, options?: Partial<ToastOptions>) => Promise<ToastHandle>} loading
+ * @property {(messageOrOptions?: string | ToastOptions, options?: Partial<ToastOptions>) => Promise<ToastHandle>} custom
+ * @property {(options?: ToastOptions) => Promise<ToastHandle>} show
+ * @property {<T>(promiseOrFn: Promise<T> | (() => Promise<T> | T), messages?: ToastPromiseMessages, options?: ToastOptions) => Promise<T>} promise
+ * @property {(target?: string | ToastHandle | HTMLElement | Promise<ToastHandle>) => Promise<void>} dismiss
+ * @property {() => Promise<void>} dismissAll
+ * @property {() => Promise<void>} clear
+ * @property {(options?: Partial<ToastGlobalConfig>) => ToastGlobalConfig} setConfig
+ * @property {() => ToastGlobalConfig} getConfig
+ * @property {() => ToastGlobalConfig} resetConfig
+ * @property {() => ToastMetrics} getToastMetrics
+ * @property {(colors: Record<string, string>) => void} setDefaultColors
+ * @property {(messages: Record<string, string>) => void} setDefaultMessages
+ * @property {string} version
+ */
+
 let defaultColors = {
   success: "#28a745",
   error: "#dc3545",
   warning: "#ffc107",
   info: "#17a2b8",
-};
-
-const DEFAULT_TYPE_MESSAGES = {
-  success: "Operation completed successfully!",
-  error: "Something went wrong!",
-  warning: "Warning message!",
-  info: "Information message!",
-  loading: "Loading, please wait...",
 };
 
 let customDefaultMessages = {};
@@ -237,15 +310,29 @@ async function createToastNow(options = {}) {
   }
 }
 
-async function createToast(options = {}) {
+const SSR_NOOP_HANDLE = Object.freeze({
+  id: "ssr-noop",
+  dismiss: () => Promise.resolve(),
+  update: () => Promise.resolve(false),
+});
+
+function checkBrowserEnvironment() {
   const isBrowser =
     typeof window !== "undefined" && typeof document !== "undefined";
-
   if (!isBrowser) {
-    console.warn(
-      "ToastNotification: running in non-browser environment, no DOM available.",
-    );
-    return null;
+    if (getConfig().debug) {
+      console.warn(
+        "ToastNotification: running in non-browser environment, no DOM available.",
+      );
+    }
+    return false;
+  }
+  return true;
+}
+
+async function createToast(options = {}) {
+  if (!checkBrowserEnvironment()) {
+    return SSR_NOOP_HANDLE;
   }
 
   await checkDOMReady();
@@ -263,146 +350,8 @@ async function createFirstToastContainer(options) {
   }
 }
 
-function normalizeToastOptions(messageOrOptions, maybeOptions) {
-  const extra =
-    typeof maybeOptions === "object" && maybeOptions !== null && !Array.isArray(maybeOptions)
-      ? maybeOptions
-      : {};
-
-  if (
-    typeof messageOrOptions === "string" ||
-    typeof messageOrOptions === "number" ||
-    typeof messageOrOptions === "boolean" ||
-    typeof messageOrOptions === "bigint" ||
-    typeof messageOrOptions === "symbol"
-  ) {
-    return {
-      ...extra,
-      message: typeof messageOrOptions === "symbol"
-        ? (messageOrOptions.description || String(messageOrOptions))
-        : String(messageOrOptions),
-    };
-  }
-
-  if (messageOrOptions instanceof Error) {
-    return {
-      ...extra,
-      message: messageOrOptions.message || String(messageOrOptions),
-    };
-  }
-
-  if (typeof messageOrOptions === "object" && messageOrOptions !== null && !Array.isArray(messageOrOptions)) {
-    return {
-      ...extra,
-      ...messageOrOptions,
-    };
-  }
-
-  return { ...extra };
-}
-
 async function sanitizeToastOptions(rawOptions) {
-  const options = normalizeToastOptions(rawOptions);
-  const config = getConfig();
-  const contPosition = String(options?.position ?? config.defaultPosition).toLowerCase().trim();
-  const contMaxWidth =
-    contPosition?.includes("top-full-width") ||
-    contPosition?.includes("bottom-full-width")
-      ? "100vw"
-      : "400px";
-
-  const defaults = {
-    allowHtml: false,
-    sanitizeHtml: true,
-    pauseOnHover: undefined,
-    duration: 2500,
-    position: config.defaultPosition,
-    type: "info",
-    borderRadius: "50px",
-    backgroundColor: undefined,
-    textColor: undefined,
-    showCloseButton: true,
-    iconColor: undefined,
-    animationDuration: "0.4s",
-    animationEasing: "ease",
-    showProgressBar: true,
-    progressColor: undefined,
-    progressBarColor: undefined,
-    progressHeight: "4px",
-    progressPosition: "bottom",
-    progressDirection: "decreasing",
-    animationType: "default",
-    fontFamily:
-      '-apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif, "Apple Color Emoji", "Segoe UI Emoji", "Segoe UI Symbol"',
-    fontSize: "14px",
-    fontWeight: "400",
-    fontLineHeight: "1.4",
-    fontDirection: "auto",
-    wrapText: "normal",
-    maxWidth: contMaxWidth,
-  };
-
-  const final = {
-    ...defaults,
-    ...options,
-  };
-
-  final.message = options?.message ?? final.message;
-
-  try {
-    if (!final.backgroundColor) {
-      const prefersDark =
-        typeof window !== "undefined" &&
-        typeof window.matchMedia === "function" &&
-        window.matchMedia("(prefers-color-scheme: dark)")?.matches;
-      final.backgroundColor =
-        defaultColors?.[final.type] ?? (prefersDark ? "#111111" : "#f5f5f5");
-    }
-  } catch (error) {
-    console.warn("Background color resolution failed:", error);
-    if (!final.backgroundColor) {
-      final.backgroundColor = "#111111";
-    }
-  }
-
-  try {
-    final.message =
-      final.message ||
-      customDefaultMessages[final.type] ||
-      DEFAULT_TYPE_MESSAGES[final.type] ||
-      "No Message Provided!";
-  } catch (error) {
-    console.warn("Default message resolution failed:", error);
-  }
-
-  try {
-    if (!final.textColor && final.backgroundColor) {
-      final.textColor = getDynamicAccessibleTextColorHex(final.backgroundColor);
-    }
-  } catch (error) {
-    console.warn("Text color resolution failed:", error);
-  }
-
-  try {
-    const rawProgressColor = options?.progressBarColor || options?.progressColor;
-    if (rawProgressColor) {
-      final.progressColor = rawProgressColor;
-      final.progressBarColor = rawProgressColor;
-    } else if (!final.progressColor && final.backgroundColor) {
-      final.progressColor =
-        final.textColor ||
-        getDynamicAccessibleTextColorHex(final.backgroundColor);
-      final.progressBarColor = final.progressColor;
-    }
-  } catch (error) {
-    console.warn("Progress bar color resolution failed:", error);
-  }
-
-  if (typeof final.message !== "string") {
-    final.message = "No Message Provided!";
-  }
-
-  return final;
+  return resolveToastOptions(rawOptions, customDefaultMessages, defaultColors);
 }
 
 /**
@@ -411,16 +360,9 @@ async function sanitizeToastOptions(rawOptions) {
  */
 function setDefaultColors(colors) {
   try {
-    if (colors && typeof colors === "object" && !Array.isArray(colors)) {
-      const validated = {};
-      for (const [key, value] of Object.entries(colors)) {
-        if (typeof key === "string" && key.trim() && typeof value === "string" && value.trim()) {
-          validated[key.trim()] = value.trim();
-        }
-      }
-      if (Object.keys(validated).length > 0) {
-        defaultColors = { ...defaultColors, ...validated };
-      }
+    const validated = validateStringDictionary(colors);
+    if (Object.keys(validated).length > 0) {
+      defaultColors = { ...defaultColors, ...validated };
     }
   } catch (error) {
     console.error("setDefaultColors failed:", error);
@@ -433,34 +375,42 @@ function setDefaultColors(colors) {
  */
 function setDefaultMessages(messages) {
   try {
-    if (messages && typeof messages === "object" && !Array.isArray(messages)) {
-      const validated = {};
-      for (const [key, value] of Object.entries(messages)) {
-        if (typeof key === "string" && key.trim() && typeof value === "string" && value.trim()) {
-          validated[key.trim()] = value.trim();
-        }
-      }
-      if (Object.keys(validated).length > 0) {
-        customDefaultMessages = { ...customDefaultMessages, ...validated };
-      }
+    const validated = validateStringDictionary(messages);
+    if (Object.keys(validated).length > 0) {
+      customDefaultMessages = { ...customDefaultMessages, ...validated };
     }
   } catch (error) {
     console.error("setDefaultMessages failed:", error);
   }
 }
 
-let closeInProgress = false;
-let closePromise = null;
+const closePromisesByPosition = new Map();
+let globalClosePromise = null;
 
-async function runWithClosePriority(fn) {
-  if (closeInProgress && closePromise) {
+async function runWithClosePriority(fn, positionKey) {
+  if (globalClosePromise) {
     try {
-      await closePromise;
+      await globalClosePromise;
     } catch (closeError) {
       console.warn(
-        "Previous close operation failed (continuing anyway):",
+        "Previous global close operation failed (continuing anyway):",
         closeError,
       );
+    }
+  }
+
+  const normalizedPos = positionKey ? normalizePositionKey(positionKey) : null;
+  if (normalizedPos) {
+    const posPromise = closePromisesByPosition.get(normalizedPos);
+    if (posPromise) {
+      try {
+        await posPromise;
+      } catch (closeError) {
+        console.warn(
+          `Previous close operation for position "${normalizedPos}" failed (continuing anyway):`,
+          closeError,
+        );
+      }
     }
   }
   return fn();
@@ -477,13 +427,50 @@ const originalCreateToast = createToast;
  * @returns {Promise<ToastHandle>}
  */
 async function createToastWithPriority(messageOrOptions = {}, maybeOptions) {
+  if (!checkBrowserEnvironment()) {
+    return SSR_NOOP_HANDLE;
+  }
   const normalized = normalizeToastOptions(messageOrOptions, maybeOptions);
-  const key = await runWithClosePriority(() => originalCreateToast(normalized));
+  const posKey = normalizePositionKey(normalized.position);
+  let key = await runWithClosePriority(() => originalCreateToast(normalized), posKey);
+  let lastOptions = { ...normalized };
+
   return {
-    id: key,
+    get id() {
+      return key;
+    },
     dismiss: () => (key ? closeToastByKey(key) : Promise.resolve()),
-    update: (newOptions) =>
-      key ? updateToastByKey(key, newOptions) : Promise.resolve(false),
+    update: async (newOptions, updateOpts) => {
+      if (key) {
+        const updated = await updateToastByKey(key, newOptions);
+        if (updated) {
+          if (newOptions && typeof newOptions === "object") {
+            lastOptions = { ...lastOptions, ...newOptions };
+          }
+          return true;
+        }
+      }
+      if (updateOpts?.fallback !== false && newOptions && typeof newOptions === "object") {
+        const spawnOptions = { ...lastOptions, ...newOptions };
+        const isResolvingLoading =
+          (newOptions.type && newOptions.type !== "loading") ||
+          newOptions.showLoader === false ||
+          newOptions.loader === null;
+        if (
+          (spawnOptions.duration === 0 || spawnOptions.duration >= 86400000) &&
+          newOptions.duration === undefined &&
+          isResolvingLoading
+        ) {
+          spawnOptions.duration = Number(getConfig?.()?.defaultDuration ?? 2500);
+          spawnOptions.showLoader = false;
+        }
+        const newHandle = await createToastWithPriority(spawnOptions);
+        key = newHandle.id;
+        lastOptions = spawnOptions;
+        return true;
+      }
+      return false;
+    },
   };
 }
 
@@ -600,8 +587,9 @@ const dismissToast = async (target) => {
     }
   }
 
-  closeInProgress = true;
-  closePromise = (async () => {
+  const rawPosKey = getToastPosition(resolvedTarget);
+  const posKey = rawPosKey ? normalizePositionKey(rawPosKey) : null;
+  const runClose = async () => {
     try {
       if (typeof resolvedTarget === "string" && resolvedTarget.length > 0) {
         await closeToastByKey(resolvedTarget);
@@ -619,29 +607,39 @@ const dismissToast = async (target) => {
         await dismiss();
       }
     } finally {
-      closeInProgress = false;
-      closePromise = null;
+      if (posKey) {
+        closePromisesByPosition.delete(posKey);
+      } else {
+        globalClosePromise = null;
+      }
     }
-  })();
-  await closePromise;
+  };
+
+  const closeTask = runClose();
+  if (posKey) {
+    closePromisesByPosition.set(posKey, closeTask);
+  } else {
+    globalClosePromise = closeTask;
+  }
+  await closeTask;
 };
 const noopAll = async () => {
-  closeInProgress = true;
-  closePromise = (async () => {
+  globalClosePromise = (async () => {
     try {
       await managerNoop();
     } finally {
-      closeInProgress = false;
-      closePromise = null;
+      globalClosePromise = null;
+      closePromisesByPosition.clear();
     }
   })();
-  await closePromise;
+  await globalClosePromise;
 };
 const clear = noopAll;
 const dismissAll = noopAll;
 export { dismissToast as dismiss, noopAll as noop, dismissAll, clear };
 
-const TOAST_PROMISE_LOADING_DURATION_MS = 24 * 60 * 60 * 1000;
+/** @type {string} */
+const version = typeof __VERSION__ !== "undefined" ? __VERSION__ : "4.0.3";
 
 /**
  * Wraps a promise or function with automatic loading, success, and error toasts.
@@ -649,113 +647,89 @@ const TOAST_PROMISE_LOADING_DURATION_MS = 24 * 60 * 60 * 1000;
  * @param {Promise<T> | (() => Promise<T> | T)} promiseOrFn
  * @param {ToastPromiseMessages} [messages]
  * @param {ToastOptions} [options]
+ * @param {Function} [creator]
  * @returns {Promise<T>}
  */
-async function toastPromise(promiseOrFn, messages = {}, options = {}) {
-  if (!promiseOrFn || (typeof promiseOrFn !== "function" && typeof promiseOrFn.then !== "function")) {
-    throw new TypeError("toastPromise requires a Promise or Promise-returning function");
-  }
-
-  const safeMessages = messages && typeof messages === "object" ? messages : {};
-  const safeOptions = options && typeof options === "object" ? options : {};
-
-  const loadingInput = safeMessages.loading ?? "Loading...";
-  const loadingOptions =
-    typeof loadingInput === "object" && loadingInput !== null && !Array.isArray(loadingInput)
-      ? {
-          ...safeOptions,
-          type: "info",
-          showProgressBar: false,
-          pauseOnHover: false,
-          showLoader: safeOptions.showLoader ?? true,
-          ...loadingInput,
-          duration: loadingInput.duration !== undefined ? Number(loadingInput.duration) : TOAST_PROMISE_LOADING_DURATION_MS,
-        }
-      : {
-          ...safeOptions,
-          type: "info",
-          message: String(loadingInput),
-          duration: TOAST_PROMISE_LOADING_DURATION_MS,
-          showProgressBar: false,
-          pauseOnHover: false,
-          showLoader: safeOptions.showLoader ?? true,
-        };
-
-  const loadingHandle = await createToastWithPriority(loadingOptions);
-
-  const baseOptions = {
-    ...safeOptions,
-    pauseOnHover: safeOptions.pauseOnHover,
-  };
-
-  try {
-    const settledPromise =
-      typeof promiseOrFn === "function" ? promiseOrFn() : promiseOrFn;
-    const result = await settledPromise;
-
-    const successResult =
-      typeof safeMessages.success === "function"
-        ? safeMessages.success(result)
-        : (safeMessages.success ?? "Done!");
-
-    const successOptions =
-      typeof successResult === "object" && successResult !== null && !Array.isArray(successResult)
-        ? { ...baseOptions, type: "success", showLoader: false, ...successResult }
-        : { ...baseOptions, type: "success", showLoader: false, message: String(successResult) };
-
-    if (loadingHandle && typeof loadingHandle.update === "function") {
-      const updated = await loadingHandle.update(successOptions);
-      if (!updated) {
-        await createToastWithPriority(successOptions);
-      }
-    } else {
-      await createToastWithPriority(successOptions);
-    }
-
-    return result;
-  } catch (err) {
-    const errorResult =
-      typeof safeMessages.error === "function"
-        ? safeMessages.error(err)
-        : (safeMessages.error ?? "Something went wrong.");
-
-    const errorOptions =
-      typeof errorResult === "object" && errorResult !== null && !Array.isArray(errorResult)
-        ? { ...baseOptions, type: "error", showLoader: false, ...errorResult }
-        : { ...baseOptions, type: "error", showLoader: false, message: String(errorResult) };
-
-    if (loadingHandle && typeof loadingHandle.update === "function") {
-      const updated = await loadingHandle.update(errorOptions);
-      if (!updated) {
-        await createToastWithPriority(errorOptions);
-      }
-    } else {
-      await createToastWithPriority(errorOptions);
-    }
-
-    throw err;
-  }
+async function toastPromise(promiseOrFn, messages = {}, options = {}, creator = createToastWithPriority) {
+  return coreToastPromise(promiseOrFn, messages, options, creator);
 }
+
 
 createToastWithPriority.promise = toastPromise;
 createToastWithPriority.dismiss = dismissToast;
 createToastWithPriority.dismissAll = noopAll;
 createToastWithPriority.clear = noopAll;
+createToastWithPriority.on = managerOn;
+createToastWithPriority.off = managerOff;
+createToastWithPriority.createToastInstance = createToastInstance;
+createToastWithPriority.getActiveCount = () => getToastMetrics().activeCount;
+Object.defineProperty(createToastWithPriority, "size", {
+  get: () => getToastMetrics().activeCount,
+  configurable: true,
+  enumerable: true,
+});
 
 /**
  * Resets all internal ToastManager state, active toasts, queues, timers, and index-level locks.
  */
 function resetToastManager() {
-  closeInProgress = false;
-  closePromise = null;
+  globalClosePromise = null;
+  closePromisesByPosition.clear();
   coreResetToastManager();
+  if (typeof window !== "undefined") {
+    destroyKeyboardShortcuts(window);
+  }
 }
 
-/** @type {string} */
-const version = typeof __VERSION__ !== "undefined" ? __VERSION__ : "4.0.3";
+/**
+ * Creates an isolated toast notification instance with preset configuration and scoped lifecycle events.
+ * @param {Partial<ToastOptions>} [defaultOptions]
+ * @returns {ToastInstance}
+ */
+function createToastInstance(defaultOptions = {}) {
+  return createInstance(defaultOptions, {
+    createToast: createToastWithPriority,
+    closeToastByKey,
+    managerOn,
+    getToastMetrics,
+    toastPromise: (p, m, o, inst) => coreToastPromise(p, m, o, inst || createToastWithPriority),
+    version,
+  });
+}
+
+/**
+ * Creates the standard dictionary of toast methods and utilities for framework adapters and consumers.
+ * @returns {Record<string, any>}
+ */
+function createToastAPI() {
+  return buildToastAPI({
+    createToast: createToastWithPriority,
+    toastPromise,
+    dismissToast,
+    noopAll,
+    managerOn,
+    managerOff,
+    createToastInstance,
+    getToastMetrics,
+    setConfig,
+    getConfig,
+    resetConfig,
+    setDefaultColors,
+    setDefaultMessages,
+    initKeyboardShortcuts,
+    destroyKeyboardShortcuts,
+    version,
+  });
+}
+
+const getActiveCount = () => getToastMetrics().activeCount;
 
 export {
   version,
+  createToastAPI,
+  createToastInstance,
+  managerOn as on,
+  managerOff as off,
   toastPromise,
   setConfig,
   getConfig,
@@ -767,6 +741,7 @@ export {
   generateToastId,
   resetToastIdCounter,
   getToastMetrics,
+  getActiveCount,
 };
 
 /**
@@ -775,113 +750,69 @@ export {
  * @returns {(() => void) | void} Teardown/unsubscribe function
  */
 export function initKeyboardShortcuts(win = typeof window !== "undefined" ? window : null) {
-  if (!win || !win.document || win.__customizableToastEscapeAttached) return;
-  win.__customizableToastEscapeAttached = true;
-  const onKeyDown = (e) => {
-    if (e.key === "Escape" || e.key === "Esc") {
-      void (async () => {
-        try {
-          closeInProgress = true;
-          closePromise = (async () => {
-            try {
-              await dismiss();
-            } finally {
-              closeInProgress = false;
-              closePromise = null;
-            }
-          })();
-          await closePromise;
-        } catch (error) {
-          console.error("Escape key dismiss failed:", error);
-          closeInProgress = false;
-          closePromise = null;
-        }
-      })();
-    } else if (e.key === "F6" || ((e.altKey || e.metaKey) && (e.key === "t" || e.key === "T"))) {
-      // Accessible landmark navigation: focus the most recent active toast
-      const targetNode = getConfig().targetNode;
-      const root = (targetNode && typeof targetNode.querySelectorAll === "function") ? targetNode : win.document;
-      let activeToasts = Array.from(root.querySelectorAll('[id^="toast-container-"] [id^="toast-"]'));
-      if (activeToasts.length === 0 && typeof root.querySelector === "function") {
-        const shadowHost = root.querySelector("#toast-shadow-host");
-        if (shadowHost?.shadowRoot?.querySelectorAll) {
-          activeToasts = Array.from(shadowHost.shadowRoot.querySelectorAll('[id^="toast-container-"] [id^="toast-"]'));
-        }
-      }
-      if (activeToasts.length > 0) {
-        const targetToast = activeToasts[activeToasts.length - 1];
-        // Try focusing the interactive CTA, undo, or close button inside the toast first
-        const interactive = targetToast.querySelector("button, a, [tabindex='0']");
-        if (interactive && typeof interactive.focus === "function") {
-          interactive.focus();
-        } else if (typeof targetToast.focus === "function") {
-          targetToast.focus();
-        }
-      }
-    }
-  };
-  win.addEventListener("keydown", onKeyDown, { passive: true });
-  const cleanup = () => {
-    try {
-      win.removeEventListener("keydown", onKeyDown);
-      delete win.__customizableToastEscapeAttached;
-      delete win.__customizableToastEscapeCleanup;
-    } catch {}
-  };
-  win.__customizableToastEscapeCleanup = cleanup;
-  return cleanup;
+  return initCoreKeyboardShortcuts(win, dismissToast);
 }
 
-/**
- * Remove global keyboard event listeners attached by initKeyboardShortcuts.
- * @param {Window} [win]
- * @returns {void}
- */
-export function destroyKeyboardShortcuts(win = typeof window !== "undefined" ? window : null) {
-  if (win && typeof win.__customizableToastEscapeCleanup === "function") {
-    win.__customizableToastEscapeCleanup();
-  }
-}
+export { destroyKeyboardShortcuts };
 
 if (typeof window !== "undefined" && typeof document !== "undefined") {
   initKeyboardShortcuts(window);
 }
 
+const targetGlobal =
+  typeof window !== "undefined"
+    ? window
+    : typeof globalThis !== "undefined"
+      ? globalThis
+      : null;
+
 try {
-  if (typeof window !== "undefined") {
-    window.customizableToast = {
-      setConfig,
-      getConfig,
-      resetConfig,
-      shouldReduceMotion,
-      version,
-      createToast: createToastWithPriority,
-      success,
-      error,
-      warning,
-      info,
-      loading,
-      custom,
-      setDefaultColors,
-      setDefaultMessages,
-      noop: noopAll,
-      dismiss: dismissToast,
-      dismissAll: noopAll,
-      clear: noopAll,
-      toastPromise,
-      promise: toastPromise,
-      updateToastByKey,
-      generateToastId,
-      resetToastIdCounter,
-      getToastMetrics,
-      resetToastManager,
-      resetContainerRegistry,
-      initKeyboardShortcuts,
-      destroyKeyboardShortcuts,
-    };
+  if (targetGlobal) {
+    targetGlobal.customizableToast = Object.assign(
+      targetGlobal.customizableToast || {},
+      {
+        setConfig,
+        getConfig,
+        resetConfig,
+        shouldReduceMotion,
+        version,
+        createToast: createToastWithPriority,
+        success,
+        error,
+        warning,
+        info,
+        loading,
+        custom,
+        setDefaultColors,
+        setDefaultMessages,
+        noop: noopAll,
+        dismiss: dismissToast,
+        dismissAll: noopAll,
+        clear: noopAll,
+        toastPromise,
+        promise: toastPromise,
+        updateToastByKey,
+        generateToastId,
+        resetToastIdCounter,
+        getToastMetrics,
+        resetToastManager,
+        resetContainerRegistry,
+        on: managerOn,
+        off: managerOff,
+        createToastInstance,
+        getActiveCount,
+        initKeyboardShortcuts,
+        destroyKeyboardShortcuts,
+      }
+    );
+    Object.defineProperty(targetGlobal.customizableToast, "size", {
+      get: () => getToastMetrics().activeCount,
+      configurable: true,
+      enumerable: true,
+    });
   }
-} catch (error) {
-  console.error("Global assignment failed:", error);
+} catch (globalError) {
+  console.error("Global assignment failed:", globalError);
 }
 
 export default createToastWithPriority;

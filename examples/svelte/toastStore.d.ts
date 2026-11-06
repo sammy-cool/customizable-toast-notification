@@ -29,7 +29,7 @@ export interface ToastStoreAPI {
 /**
  * Creates an instance of the Svelte Toast Store.
  */
-export function createToastStore(): ToastStoreAPI;
+export function createToastStore(defaultOptions?: Partial<ToastOptions>): ToastStoreAPI;
 
 /**
  * Default singleton instance of the Svelte Toast Store.

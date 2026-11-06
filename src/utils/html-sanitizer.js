@@ -57,6 +57,9 @@ const ALLOWED_ATTRS = new Set([
   "loading",
 ]);
 
+const PRECOMPUTED_ALLOWED_TAGS = Object.freeze(Array.from(ALLOWED_TAGS));
+const PRECOMPUTED_ALLOWED_ATTRS = Object.freeze(Array.from(ALLOWED_ATTRS));
+
 const DISCARDED_TAGS = new Set([
   "SCRIPT",
   "STYLE",
@@ -122,23 +125,18 @@ function sanitizeAttributes(el, allowedAttrs) {
           return;
         }
         attrsToRemove.push(attr.name);
-        return;
       }
-    }
-    if (name === "target" && typeof val === "string" && val.trim().toLowerCase() === "_blank") {
-      const rel = (el.getAttribute("rel") || "").split(/\s+/).filter(Boolean);
-      if (!rel.includes("noopener")) rel.push("noopener");
-      if (!rel.includes("noreferrer")) rel.push("noreferrer");
-      el.setAttribute("rel", rel.join(" "));
     }
   });
   attrsToRemove.forEach((name) => el.removeAttribute(name));
 
   const finalTarget = el.getAttribute("target");
-  if (el.tagName === "A" && typeof finalTarget === "string" && finalTarget.trim().toLowerCase() === "_blank") {
+  if (el.tagName === "A" && typeof finalTarget === "string" && finalTarget.trim().length > 0) {
     const rel = (el.getAttribute("rel") || "").split(/\s+/).filter(Boolean);
     if (!rel.includes("noopener")) rel.push("noopener");
-    if (!rel.includes("noreferrer")) rel.push("noreferrer");
+    if (finalTarget.trim().toLowerCase() === "_blank" && !rel.includes("noreferrer")) {
+      rel.push("noreferrer");
+    }
     el.setAttribute("rel", rel.join(" "));
   }
 }
@@ -188,7 +186,9 @@ function parseHtmlInert(html) {
       const parser = new DOMParser();
       const doc = parser.parseFromString(html, "text/html");
       if (doc && doc.body) return doc.body;
-    } catch {}
+    } catch {
+      /* safe fallback to template/div parsing if DOMParser fails */
+    }
   }
   if (typeof document !== "undefined") {
     const template = document.createElement("template");
@@ -203,11 +203,85 @@ function parseHtmlInert(html) {
   return null;
 }
 
+export function secureBlankLinks(container) {
+  if (!container || typeof container.querySelectorAll !== "function") return;
+  container.querySelectorAll('a[target="_blank"]').forEach((a) => {
+    const rel = (a.getAttribute("rel") || "").split(/\s+/).filter(Boolean);
+    if (!rel.includes("noopener")) rel.push("noopener");
+    if (!rel.includes("noreferrer")) rel.push("noreferrer");
+    a.setAttribute("rel", rel.join(" "));
+  });
+}
+
+/**
+ * Deterministic linear character scanner to strip HTML tags and script/style contents
+ * in headless SSR environments without DOMParser or document.
+ * Operates in strict O(N) time with zero regular expressions to guarantee immunity against
+ * ReDoS backtracking (SonarCloud S5852) and incomplete multi-character sanitization (CodeQL js/incomplete-sanitization).
+ *
+ * @param {string} dirty
+ * @returns {string}
+ */
+function stripHtmlTagsSSR(dirty) {
+  if (typeof dirty !== "string" || !dirty) return "";
+
+  let result = "";
+  let inTag = false;
+  let inScript = false;
+  let quote = null;
+  let currentTag = "";
+  let isClosingTag = false;
+
+  for (let i = 0; i < dirty.length; i++) {
+    const ch = dirty[i];
+
+    if (ch === "<") {
+      inTag = true;
+      quote = null;
+      currentTag = "";
+      isClosingTag = dirty[i + 1] === "/";
+      continue;
+    }
+
+    if (inTag) {
+      if (quote) {
+        if (ch === quote) {
+          quote = null;
+        }
+        continue;
+      }
+      if (ch === "\"" || ch === "'") {
+        quote = ch;
+        continue;
+      }
+      if (ch === ">") {
+        inTag = false;
+        const tag = currentTag.trim().toLowerCase();
+        const normalizedTag = tag.startsWith("/") ? tag.slice(1) : tag;
+        if (normalizedTag === "script" || normalizedTag === "style") {
+          inScript = !isClosingTag;
+        }
+        continue;
+      }
+      if (currentTag.length < 10 && ch !== " " && ch !== "/" && ch !== "\t" && ch !== "\n") {
+        currentTag += ch;
+      }
+      continue;
+    }
+
+    if (!inScript && ch !== "<" && ch !== ">") {
+      result += ch;
+    }
+  }
+
+  return result;
+}
+
 export function fallbackSanitize(dirty) {
   if (!dirty || typeof dirty !== "string") return "";
 
   const container = parseHtmlInert(dirty);
-  if (!container) return "";
+  if (!container) return stripHtmlTagsSSR(dirty);
 
   const outFrag = document.createDocumentFragment();
   Array.from(container.childNodes).forEach((child) => {
@@ -217,14 +291,7 @@ export function fallbackSanitize(dirty) {
 
   const wrapper = document.createElement("div");
   wrapper.appendChild(outFrag);
-
-  wrapper.querySelectorAll('a[target="_blank"]').forEach((a) => {
-    const rel = (a.getAttribute("rel") || "").split(/\s+/).filter(Boolean);
-    if (!rel.includes("noopener")) rel.push("noopener");
-    if (!rel.includes("noreferrer")) rel.push("noreferrer");
-    a.setAttribute("rel", rel.join(" "));
-  });
-
+  secureBlankLinks(wrapper);
   return wrapper.innerHTML;
 }
 
@@ -234,8 +301,8 @@ export function sanitizeHtml(dirty, opts = {}) {
     if (!opts.forceFallback && hasDOMPurify()) {
       const DOMPurify = window.DOMPurify;
       const cleaned = DOMPurify.sanitize(dirty, {
-        ALLOWED_TAGS: Array.from(ALLOWED_TAGS),
-        ALLOWED_ATTR: Array.from(ALLOWED_ATTRS),
+        ALLOWED_TAGS: PRECOMPUTED_ALLOWED_TAGS,
+        ALLOWED_ATTR: PRECOMPUTED_ALLOWED_ATTRS,
         ALLOWED_URI_REGEXP: ALLOWED_URI_REGEX,
       });
 
@@ -247,12 +314,7 @@ export function sanitizeHtml(dirty, opts = {}) {
           a.setAttribute("href", "#");
         }
       });
-      wrapper.querySelectorAll('a[target="_blank"]').forEach((a) => {
-        const rel = (a.getAttribute("rel") || "").split(/\s+/).filter(Boolean);
-        if (!rel.includes("noopener")) rel.push("noopener");
-        if (!rel.includes("noreferrer")) rel.push("noreferrer");
-        a.setAttribute("rel", rel.join(" "));
-      });
+      secureBlankLinks(wrapper);
       return wrapper.innerHTML;
     }
   } catch (err) {

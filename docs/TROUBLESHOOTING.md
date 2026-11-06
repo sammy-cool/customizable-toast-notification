@@ -100,13 +100,26 @@ Audio chimes fail to sound when `sound: true` is configured.
 Notifications created in Tab A do not replicate to Tab B.
 
 ### Solution
-1. Verify `syncTabs: true` is set in both tabs:
+Following our zero-runtime-dependency architecture, cross-tab synchronization is implemented at the application level using the standard browser `BroadcastChannel` API:
+1. Ensure both tabs share the exact same origin (`https://example.com`) and listen on the same channel:
    ```javascript
-   import { setConfig } from "@sammy-cool/customizable-toast-notification";
-   setConfig({ syncTabs: true });
+   import { createToast } from "customizable-toast-notification";
+
+   const toastChannel = new BroadcastChannel("app-notifications");
+   toastChannel.onmessage = (event) => {
+     if (event.data?.message) {
+       createToast(event.data);
+     }
+   };
+
+   // To broadcast from any tab:
+   export function notifyAllTabs(toastOptions) {
+     createToast(toastOptions);
+     toastChannel.postMessage(toastOptions);
+   }
    ```
-2. Both tabs must share the exact same origin (`https://example.com`).
-3. In private browsing / incognito mode, some browser settings partition `BroadcastChannel`.
+2. Explore the complete live implementation in [`examples/notification-center/index.html`](../examples/notification-center/index.html).
+3. In private browsing / incognito mode, note that some browser configurations isolate or partition `BroadcastChannel`.
 
 ---
 

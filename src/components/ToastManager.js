@@ -1,16 +1,19 @@
 "use strict";
 
 import { createToastElement } from "./Toast.js";
-import { removeElement, getDynamicAccessibleTextColorHex } from "../utils/dom.js";
+import { resetColorCache } from "../utils/dom.js";
 import { createEmergencyToast } from "./toast-utils.js";
 import { getOrCreateToastContainer, normalizePositionKey, unregisterContainer } from "../utils/containerRegistry.js";
 import { setPosition } from "../utils/position.js";
-import { PausableTimer } from "../utils/PausableTimer.js";
-import { sanitizeHtml } from "../utils/html-sanitizer.js";
-import { createProgressBar, createCTA, createUndoAction, createCloseButton, runToastAnimation, parseProgressValue, ensureProgressIndeterminateStyles, attachSwipeToDismiss } from "./toast-utils-core.js";
-import { createLoader } from "./loader.js";
-import { createToastIcon } from "./icons.js";
+import { createDismissTimer as makeDismissTimer, setupPauseOnHover, cleanupToastEntry } from "./toast-timer.js";
+import { runToastAnimation } from "./toast-utils-core.js";
 import { getConfig, shouldReduceMotion } from "../utils/config.js";
+import { updateStackedLayout } from "./stacked-layout.js";
+import { applyToastDOMUpdates } from "./toast-updater.js";
+import { generateToastId } from "../utils/id.js";
+import { removeWithTransition, updateBadge } from "./toast-transitions.js";
+
+export { updateStackedLayout, removeWithTransition, updateBadge };
 
 
 const active = new Map();
@@ -44,6 +47,57 @@ function emitMetrics() {
       config.onMetrics(getToastMetrics());
     } catch (err) {
       console.error("onMetrics callback error:", err);
+    }
+  }
+}
+
+function createDismissTimer(toast, options) {
+  return makeDismissTimer(toast, options, closeToast);
+}
+
+const lifecycleListeners = new Map();
+
+/**
+ * Registers a subscriber for toast lifecycle events ('open', 'close', 'queue', 'drop').
+ * @param {'open' | 'close' | 'queue' | 'drop'} event
+ * @param {(payload: object) => void} callback
+ * @returns {() => void} Unsubscribe function
+ */
+export function on(event, callback) {
+  if (typeof event !== "string" || typeof callback !== "function") return () => { /* no-op unsubscribe */ };
+  const canonicalEvent = event === "show" ? "open" : event;
+  if (!lifecycleListeners.has(canonicalEvent)) {
+    lifecycleListeners.set(canonicalEvent, new Set());
+  }
+  lifecycleListeners.get(canonicalEvent).add(callback);
+  return () => off(canonicalEvent, callback);
+}
+
+/**
+ * Removes a subscriber for toast lifecycle events.
+ * @param {'open' | 'close' | 'queue' | 'drop' | 'show'} event
+ * @param {(payload: object) => void} callback
+ * @returns {void}
+ */
+export function off(event, callback) {
+  const canonicalEvent = event === "show" ? "open" : event;
+  if (!lifecycleListeners.has(canonicalEvent)) return;
+  lifecycleListeners.get(canonicalEvent).delete(callback);
+}
+
+/**
+ * Emits a lifecycle event to registered subscribers.
+ * @param {'open' | 'close' | 'queue' | 'drop'} event
+ * @param {object} payload
+ * @returns {void}
+ */
+export function emitLifecycle(event, payload) {
+  if (!lifecycleListeners.has(event)) return;
+  for (const fn of lifecycleListeners.get(event)) {
+    try {
+      fn(payload);
+    } catch (err) {
+      console.error(`[Toast] Error in lifecycle listener for '${event}':`, err);
     }
   }
 }
@@ -84,147 +138,6 @@ function getItemPriority(item) {
   return TYPE_PRIORITIES[item?.options?.type] || 0;
 }
 
-export function updateStackedLayout(container) {
-  if (!container || !container.children) return;
-  const isStacked = container.getAttribute("data-stacked") === "true";
-  if (!isStacked) return;
-
-  if (!container._stackedInitialized && typeof container.addEventListener === "function") {
-    container._stackedInitialized = true;
-    const onMouseEnter = () => {
-      container._isExpanded = true;
-      updateStackedLayout(container);
-    };
-    const onMouseLeave = () => {
-      container._isExpanded = false;
-      updateStackedLayout(container);
-    };
-    const onFocusIn = () => {
-      container._isExpanded = true;
-      updateStackedLayout(container);
-    };
-    const onFocusOut = (e) => {
-      if (!container.contains(e.relatedTarget)) {
-        container._isExpanded = false;
-        updateStackedLayout(container);
-      }
-    };
-    const onClick = (e) => {
-      if (
-        e?.target &&
-        typeof e.target.closest === "function" &&
-        e.target.closest("button, a, input, select, textarea, [role='button'], [role='link']")
-      ) {
-        return;
-      }
-      container._isExpanded = !container._isExpanded;
-      updateStackedLayout(container);
-    };
-
-    const onDocClick = (e) => {
-      if (container._isExpanded && e?.target && !container.contains(e.target)) {
-        container._isExpanded = false;
-        updateStackedLayout(container);
-      }
-    };
-
-    container.addEventListener("mouseenter", onMouseEnter);
-    container.addEventListener("mouseleave", onMouseLeave);
-    container.addEventListener("focusin", onFocusIn);
-    container.addEventListener("focusout", onFocusOut);
-    container.addEventListener("click", onClick);
-    if (typeof document !== "undefined" && typeof document.addEventListener === "function") {
-      document.addEventListener("click", onDocClick);
-    }
-
-    container._stackedCleanup = () => {
-      container.removeEventListener("mouseenter", onMouseEnter);
-      container.removeEventListener("mouseleave", onMouseLeave);
-      container.removeEventListener("focusin", onFocusIn);
-      container.removeEventListener("focusout", onFocusOut);
-      container.removeEventListener("click", onClick);
-      if (typeof document !== "undefined" && typeof document.removeEventListener === "function") {
-        document.removeEventListener("click", onDocClick);
-      }
-      container._stackedInitialized = false;
-    };
-  }
-
-  if (!container.children || container.children.length === 0) {
-    container._isExpanded = false;
-    return;
-  }
-  const items = Array.from(container.children);
-  const count = items.length;
-  const isExpanded = Boolean(container._isExpanded);
-  const isTop = Boolean(
-    (container.id && container.id.includes("top")) ||
-    (container.className && container.className.includes("top")) ||
-    (typeof container.getAttribute === "function" && container.getAttribute("data-position")?.includes("top"))
-  );
-  const isCenter = Boolean(
-    (!isTop && (container.id && (container.id.includes("center") || container.id.includes("middle")))) ||
-    (container.className && (container.className.includes("center") || container.className.includes("middle"))) ||
-    (typeof container.getAttribute === "function" && !isTop && (container.getAttribute("data-position")?.includes("center") || container.getAttribute("data-position")?.includes("middle")))
-  );
-
-  items.forEach((item, index) => {
-    const depthFromTop = count - 1 - index;
-    const depthKey = isExpanded ? "expanded" : (depthFromTop >= 3 ? "overflow" : String(depthFromTop));
-    if (typeof item.setAttribute === "function") {
-      item.setAttribute("data-stacked-depth", depthKey);
-    }
-
-    if (!getConfig().disableInlineStyles) {
-      item.style.cursor = isExpanded ? "default" : "pointer";
-      item.style.transition =
-        "transform 240ms cubic-bezier(0.16, 1, 0.3, 1), margin 240ms cubic-bezier(0.16, 1, 0.3, 1), opacity 240ms ease";
-
-      if (isExpanded) {
-        item.style.transform = "none";
-        item.style.marginTop = "0px";
-        item.style.marginBottom = "10px";
-        item.style.opacity = "1";
-        item.style.zIndex = String(100 + index);
-        item.style.pointerEvents = "auto";
-      } else {
-        if (depthFromTop === 0) {
-          item.style.transform = "scale(1)";
-          item.style.marginTop = "0px";
-          item.style.marginBottom = "0px";
-          item.style.opacity = "1";
-          item.style.zIndex = "30";
-          item.style.pointerEvents = "auto";
-        } else if (depthFromTop === 1) {
-          const y = isTop ? 10 : (isCenter ? 6 : -10);
-          item.style.transform = `scale(0.95) translateY(${y}px)`;
-          item.style.marginTop = isTop ? "0px" : (isCenter ? "-48px" : "-55px");
-          item.style.marginBottom = isTop ? "-55px" : "0px";
-          item.style.opacity = "0.9";
-          item.style.zIndex = "20";
-          item.style.pointerEvents = "auto";
-        } else if (depthFromTop === 2) {
-          const y = isTop ? 20 : (isCenter ? 12 : -20);
-          item.style.transform = `scale(0.90) translateY(${y}px)`;
-          item.style.marginTop = isTop ? "0px" : (isCenter ? "-48px" : "-55px");
-          item.style.marginBottom = isTop ? "-55px" : "0px";
-          item.style.opacity = "0.75";
-          item.style.zIndex = "10";
-          item.style.pointerEvents = "auto";
-        } else {
-          const y = isTop ? 30 : (isCenter ? 18 : -30);
-          item.style.transform = `scale(0.85) translateY(${y}px)`;
-          item.style.marginTop = isTop ? "0px" : (isCenter ? "-48px" : "-55px");
-          item.style.marginBottom = isTop ? "-55px" : "0px";
-          item.style.opacity = "0";
-          item.style.zIndex = "1";
-          item.style.pointerEvents = "none";
-        }
-      }
-    }
-  });
-}
-
 function hashString(str) {
   let h = 5381;
   for (let i = 0; i < str.length; i++) h = (h << 5) + h + str.charCodeAt(i);
@@ -234,19 +147,30 @@ function hashString(str) {
 function makeKey(options = {}) {
   const safe = options && typeof options === "object" ? options : {};
   if (safe.id !== undefined && safe.id !== null && safe.id !== "") return String(safe.id);
-  if (safe.tag !== undefined && safe.tag !== null && safe.tag !== "") {
-    const position = normalizePositionKey(safe.position || "bottom-right");
-    return `tag:${String(safe.tag).trim()}:${position}`;
+  if (safe.dedup === false || safe.group === false) {
+    return generateToastId("toast-standalone");
   }
-  if (safe.groupId !== undefined && safe.groupId !== null && safe.groupId !== "") {
-    const position = normalizePositionKey(safe.position || "bottom-right");
-    return `group:${String(safe.groupId).trim()}:${position}`;
+  const posKey =
+    typeof safe.containerId === "string" && safe.containerId.trim()
+      ? `cid:${safe.containerId.trim()}`
+      : normalizePositionKey(safe.position || "bottom-right");
+
+  if (
+    (typeof safe.tag === "string" || typeof safe.tag === "number") &&
+    String(safe.tag).trim() !== ""
+  ) {
+    return `tag:${String(safe.tag).trim()}:${posKey}`;
+  }
+  if (
+    (typeof safe.groupId === "string" || typeof safe.groupId === "number") &&
+    String(safe.groupId).trim() !== ""
+  ) {
+    return `group:${String(safe.groupId).trim()}:${posKey}`;
   }
   const type = String(safe.type || "info").trim().toLowerCase();
   const messageHash = hashString(String(safe.message || "")).toString(16);
-  const position = normalizePositionKey(safe.position || "bottom-right");
 
-  return `${type}|${messageHash}|${position}`;
+  return `${type}|${messageHash}|${posKey}`;
 }
 
 export async function showToast(options = {}) {
@@ -286,81 +210,118 @@ export async function showToast(options = {}) {
     const entry = { options, count: 1, rafId: 0 };
     pending.set(key, entry);
 
-    entry.rafId = requestAnimationFrame(async () => {
-      const current = pending.get(key);
-      if (!current) return;
-      pending.delete(key);
+    entry.rafId = requestAnimationFrame(() => {
+      void (async () => {
+        const current = pending.get(key);
+        if (!current) return;
+        pending.delete(key);
 
-      if (visibleCount >= getConfig().maxVisible) {
-        const item = { options: current.options, key, count: current.count };
-        const maxQ = getConfig().maxQueueSize ?? 100;
-        if (maxQ <= 0) {
-          droppedCount++;
-          emitMetrics();
-          return;
-        }
-
-        const existingQueued = queue.find((queuedItem) => queuedItem.key === key);
-        if (existingQueued) {
-          existingQueued.count += current.count;
-          if (typeof current.options?.priority === "number") {
-            existingQueued.options = { ...existingQueued.options, ...current.options };
-            existingQueued.priority = { score: getItemPriority(existingQueued) };
+        const maxVis = Math.max(1, Number(getConfig().maxVisible) || 1);
+        if (visibleCount >= maxVis) {
+          const item = { options: current.options, key, count: current.count };
+          const maxQ = getConfig().maxQueueSize ?? 100;
+          if (maxQ <= 0) {
+            droppedCount++;
+            emitMetrics();
+            emitLifecycle("drop", {
+              key,
+              type: current.options?.type,
+              message: current.options?.message,
+              priority: typeof current.options?.priority === "number" ? current.options.priority : 0,
+              options: current.options,
+              reason: "queue_disabled",
+            });
+            return;
           }
-          emitMetrics();
-          return;
-        }
-        const usesPriority =
-          typeof current.options?.priority === "number" ||
-          typeof getConfig().priorityScorer === "function" ||
-          queue.some((queuedItem) => typeof queuedItem?.options?.priority === "number");
 
-        if (usesPriority) {
-          item.priority = { score: getItemPriority(item) };
-        }
+          const existingQueued = queue.find((queuedItem) => queuedItem.key === key);
+          if (existingQueued) {
+            existingQueued.count += current.count;
+            if (typeof current.options?.priority === "number") {
+              existingQueued.options = { ...existingQueued.options, ...current.options };
+              existingQueued.priority = { score: getItemPriority(existingQueued) };
+            }
+            emitMetrics();
+            return;
+          }
+          const usesPriority =
+            typeof current.options?.priority === "number" ||
+            typeof getConfig().priorityScorer === "function" ||
+            queue.some((queuedItem) => typeof queuedItem?.options?.priority === "number");
 
-        if (queue.length >= maxQ) {
           if (usesPriority) {
-            const incomingPriority = getItemPriority(item);
-            let lowestIndex = 0;
-            let lowestPriority = getItemPriority(queue[0]);
-
-            for (let index = 1; index < queue.length; index++) {
-              const candidatePriority = getItemPriority(queue[index]);
-              if (candidatePriority < lowestPriority) {
-                lowestIndex = index;
-                lowestPriority = candidatePriority;
-              }
-            }
-
-            if (incomingPriority <= lowestPriority) {
-              droppedCount++;
-              emitMetrics();
-              return;
-            }
-
-            queue.splice(lowestIndex, 1);
-          } else {
-            queue.shift();
+            item.priority = { score: getItemPriority(item) };
           }
-          droppedCount++;
+
+          if (queue.length >= maxQ) {
+            if (usesPriority) {
+              const incomingPriority = getItemPriority(item);
+              let lowestIndex = 0;
+              let lowestPriority = getItemPriority(queue[0]);
+
+              for (let index = 1; index < queue.length; index++) {
+                const candidatePriority = getItemPriority(queue[index]);
+                if (candidatePriority < lowestPriority) {
+                  lowestIndex = index;
+                  lowestPriority = candidatePriority;
+                }
+              }
+
+              if (incomingPriority <= lowestPriority) {
+                droppedCount++;
+                emitMetrics();
+                emitLifecycle("drop", {
+                  key: item.key,
+                  type: item.options?.type,
+                  message: item.options?.message,
+                  priority: incomingPriority,
+                  options: item.options,
+                  reason: "queue_overflow",
+                });
+                return;
+              }
+
+              const droppedItem = queue.splice(lowestIndex, 1)[0];
+              droppedCount++;
+              emitLifecycle("drop", {
+                key: droppedItem?.key,
+                type: droppedItem?.options?.type,
+                message: droppedItem?.options?.message,
+                priority: getItemPriority(droppedItem),
+                options: droppedItem?.options,
+                reason: "queue_overflow",
+              });
+            } else {
+              const droppedItem = queue.shift();
+              droppedCount++;
+              emitLifecycle("drop", {
+                key: droppedItem?.key,
+                type: droppedItem?.options?.type,
+                message: droppedItem?.options?.message,
+                priority: getItemPriority(droppedItem),
+                options: droppedItem?.options,
+                reason: "queue_overflow",
+              });
+            }
+          }
+
+          item.seq = ++queueSequence;
+          queue.push(item);
+          if (usesPriority) {
+            queue.sort((a, b) => (getItemPriority(b) - getItemPriority(a)) || ((a.seq || 0) - (b.seq || 0)));
+          }
+          emitMetrics();
+          emitLifecycle("queue", { key: item.key, options: item.options });
+          await drainQueue();
+          return;
         }
 
-        item.seq = ++queueSequence;
-        queue.push(item);
-        if (usesPriority) {
-          queue.sort((a, b) => (getItemPriority(b) - getItemPriority(a)) || (a.seq - b.seq));
+        try {
+          await createOne(current.options, key, current.count);
+        } catch (error) {
+          console.error("showToast failed:", error);
         }
-        emitMetrics();
-        await drainQueue();
-        return;
-      }
-
-      try {
-        await createOne(current.options, key, current.count);
-      } catch (error) {
-        console.error("showToast failed:", error);
-      }
+      })();
     });
 
     return key;
@@ -441,6 +402,7 @@ async function createOne(options, key, initialCount) {
     toast._key = key;
 
     emitMetrics();
+    emitLifecycle("open", { key, options: data.options, toast });
 
     if (data.count > 1) await updateBadge(data);
 
@@ -459,6 +421,43 @@ async function createOne(options, key, initialCount) {
       active.set(key, { toast: emergencyEl, outer: emergencyEl, count: 1, options });
     }
   }
+}
+
+/**
+ * Resolves the normalized position of a toast given its key, element, or handle.
+ * If target is omitted, resolves the position of the most recent active toast.
+ * @param {unknown} [target]
+ * @returns {string | null}
+ */
+export function getToastPosition(target) {
+  if (!target) {
+    if (active.size > 0) {
+      const last = Array.from(active.values()).at(-1);
+      return last?.options?.position ? normalizePositionKey(last.options.position) : "bottom-right";
+    }
+    if (pending.size > 0) {
+      const lastPending = Array.from(pending.values()).at(-1);
+      return lastPending?.options?.position ? normalizePositionKey(lastPending.options.position) : "bottom-right";
+    }
+    return null;
+  }
+  let key = null;
+  if (typeof target === "string") {
+    key = target;
+  } else if (target && typeof target === "object") {
+    key = target.id || target._key || null;
+  }
+  if (key) {
+    const data = active.get(key) || pending.get(key);
+    if (data?.options?.position) {
+      return normalizePositionKey(data.options.position);
+    }
+    const q = queue.find((item) => item.key === key);
+    if (q?.options?.position) {
+      return normalizePositionKey(q.options.position);
+    }
+  }
+  return null;
 }
 
 export async function dismissMostRecent() {
@@ -550,161 +549,43 @@ export function resetToastManager() {
   pending.clear();
   queue.length = 0;
   for (const [, data] of active) {
-    data.timer?.clear();
-    data.outer?._pauseCleanup?.();
-    data.toast?._cleanupCloseButton?.();
-    data.toast?._cleanupCTA?.();
-    data.toast?._cleanupUndo?.();
-    data.toast?._cleanupSwipe?.();
-    data.toast?._cleanupFocusTrap?.();
-    data.toast?._cleanup?.();
-    if (data.toast?._progressAnimation) {
-      try {
-        data.toast._progressAnimation.pause();
-      } catch {}
-    }
-    const badge = data.outer?.querySelector(".toast-count-badge");
-    if (badge?._scaleTimer) {
-      clearTimeout(badge._scaleTimer);
-      badge._scaleTimer = null;
-    }
+    cleanupToastEntry(data);
     try {
       data.outer?.remove?.();
-    } catch {}
+    } catch {
+      /* safe fallback if DOM node already detached */
+    }
   }
   if (typeof document !== "undefined") {
-    const containers = document.querySelectorAll('[id^="toast-container-"]');
-    containers.forEach((c) => {
+    const containerSet = new Set(document.querySelectorAll('[id^="toast-container-"]'));
+    try {
+      const customTarget = getConfig?.()?.targetNode;
+      if (customTarget && typeof customTarget.querySelectorAll === "function") {
+        customTarget.querySelectorAll('[id^="toast-container-"]').forEach((c) => containerSet.add(c));
+      }
+    } catch {
+      /* safe fallback if custom targetNode query fails */
+    }
+    containerSet.forEach((c) => {
       try {
         c._stackedCleanup?.();
-      } catch {}
+      } catch {
+        /* safe fallback on stacked cleanup */
+      }
     });
   }
   active.clear();
   visibleCount = 0;
   droppedCount = 0;
+  queueSequence = 0;
   isDraining = false;
+  lifecycleListeners.clear();
+  resetColorCache();
   emitMetrics();
 }
 
 export const dismiss = dismissMostRecent;
 export const noop = closeAllToasts;
-
-function createDismissTimer(toast, options) {
-  const raw = Number(options?.duration);
-  if (options?.duration === Infinity || (typeof options?.duration === "number" && options?.duration <= 0)) {
-    return null;
-  }
-  const duration = Number.isFinite(raw) && raw > 0 ? raw : 2500;
-  const delay = duration + 5;
-  const timer = new PausableTimer(() => {
-    void closeToast(toast).catch(console.error);
-  }, delay);
-  timer.start();
-  return timer;
-}
-
-async function setupPauseOnHover(data) {
-  if (!data.pauseOnHover || !data.outer || !data.timer) return;
-
-  data.outer._pauseCleanup?.();
-
-  const { outer, timer, toast } = data;
-
-  const pauseProgressBar = () => {
-    if (toast?._progressAnimation) {
-      try {
-        toast._progressAnimation.pause();
-      } catch {}
-    } else if (toast?._progressBar) {
-      try {
-        if (toast._progressBar._isIndeterminate) {
-          toast._progressBar.style.animationPlayState = "paused";
-        } else if (toast._progressBar._isManualProgress) {
-          // Manual determinate progress: do NOT pause or overwrite manual width
-        } else {
-          const computedWidth = window.getComputedStyle(toast._progressBar).width;
-          toast._progressBar._pausedWidth = computedWidth;
-          toast._progressBar.style.transition = "none";
-          toast._progressBar.style.width = computedWidth;
-        }
-      } catch {}
-    }
-  };
-
-  const resumeProgressBar = () => {
-    if (toast?._progressAnimation) {
-      try {
-        toast._progressAnimation.play();
-      } catch {}
-    } else if (toast?._progressBar) {
-      try {
-        if (toast._progressBar._isIndeterminate) {
-          toast._progressBar.style.animationPlayState = "running";
-        } else if (toast._progressBar._isManualProgress) {
-          // Manual determinate progress: preserve current manual width
-        } else if (toast._progressBar._pausedWidth) {
-          const remainingMs = timer.getRemainingTime?.() ?? 1000;
-          const isReverse = toast._progressBar._isReverse;
-          const finalWidth = toast._progressBar._finalWidth || "100%";
-          toast._progressBar.style.transition = `width ${Math.max(0, remainingMs)}ms linear`;
-          void toast._progressBar.offsetWidth;
-          toast._progressBar.style.width = isReverse ? finalWidth : "0%";
-          toast._progressBar._pausedWidth = null;
-        }
-      } catch {}
-    }
-  };
-
-  const onMouseEnter = () => {
-    timer.pause();
-    pauseProgressBar();
-    toast?._pauseUndo?.();
-    toast?.classList.add("toast-paused");
-  };
-  const onMouseLeave = () => {
-    timer.resume();
-    resumeProgressBar();
-    toast?._resumeUndo?.();
-    toast?.classList.remove("toast-paused");
-  };
-
-  const onFocusIn = (e) => {
-    if (
-      e?.target &&
-      typeof e.target.matches === "function" &&
-      e.target.matches(
-        "button, a[href], input, select, textarea, [role='button'], [role='link'], [data-toast-interactive]"
-      )
-    ) {
-      timer.pause();
-      pauseProgressBar();
-      toast?._pauseUndo?.();
-      toast?.classList.add("toast-paused");
-    }
-  };
-
-  const onFocusOut = (e) => {
-    if (!outer.contains(e.relatedTarget)) {
-      timer.resume();
-      resumeProgressBar();
-      toast?._resumeUndo?.();
-      toast?.classList.remove("toast-paused");
-    }
-  };
-
-  outer.addEventListener("mouseenter", onMouseEnter);
-  outer.addEventListener("mouseleave", onMouseLeave);
-  outer.addEventListener("focusin", onFocusIn);
-  outer.addEventListener("focusout", onFocusOut);
-
-  outer._pauseCleanup = () => {
-    outer.removeEventListener("mouseenter", onMouseEnter);
-    outer.removeEventListener("mouseleave", onMouseLeave);
-    outer.removeEventListener("focusin", onFocusIn);
-    outer.removeEventListener("focusout", onFocusOut);
-  };
-}
 
 export async function closeToast(toast) {
   if (!toast?._key) return;
@@ -744,6 +625,7 @@ export async function closeToastByKey(key) {
       cancelAnimationFrame(pendingEntry.rafId);
       pending.delete(key);
       emitMetrics();
+      emitLifecycle("close", { key, options: pendingEntry.options });
       return;
     }
 
@@ -753,31 +635,15 @@ export async function closeToastByKey(key) {
     // yet showing, waiting for a slot to free up via drainQueue().
     const queueIndex = queue.findIndex((item) => item.key === key);
     if (queueIndex !== -1) {
-      queue.splice(queueIndex, 1);
+      const removed = queue.splice(queueIndex, 1)[0];
       emitMetrics();
+      emitLifecycle("close", { key, options: removed?.options });
       return;
     }
 
     if (!data) return;
 
-    data.timer?.clear();
-    data.outer?._pauseCleanup?.();
-    data.toast?._cleanupCloseButton?.();
-    data.toast?._cleanupCTA?.();
-    data.toast?._cleanupUndo?.();
-    data.toast?._cleanupSwipe?.();
-    data.toast?._cleanupFocusTrap?.();
-    data.toast?._cleanup?.();
-    if (data.toast?._progressAnimation) {
-      try {
-        data.toast._progressAnimation.pause();
-      } catch {}
-    }
-    const badge = data.outer?.querySelector(".toast-count-badge");
-    if (badge?._scaleTimer) {
-      clearTimeout(badge._scaleTimer);
-      badge._scaleTimer = null;
-    }
+    cleanupToastEntry(data);
     // Clean up CTA click listener if present directly on button/link
     const ctaEl = data.toast?.querySelector("button, a");
     ctaEl?._cleanup?.();
@@ -785,8 +651,6 @@ export async function closeToastByKey(key) {
     active.delete(key);
     visibleCount = Math.max(0, visibleCount - 1);
     emitMetrics();
-
-    if (badge) badge.remove();
 
     const animDuration = data.toast?._animationDuration ?? 400;
     const exitDuration = Math.min(animDuration, 300);
@@ -834,6 +698,7 @@ export async function closeToastByKey(key) {
 
     const parentContainer = data.outer?.parentElement;
     await removeWithTransition(data.outer, data.toast, exitDuration);
+    emitLifecycle("close", { key, options: data.options, toast: data.toast });
 
     if (
       parentContainer &&
@@ -849,7 +714,9 @@ export async function closeToastByKey(key) {
           parentContainer._stackedCleanup?.();
           unregisterContainer(parentContainer.id);
           parentContainer.remove();
-        } catch {}
+        } catch {
+          /* safe fallback if container already removed */
+        }
       }
     } else if (parentContainer && parentContainer.getAttribute("data-stacked") === "true") {
       updateStackedLayout(parentContainer);
@@ -871,10 +738,11 @@ async function drainQueue() {
 
     // Apply priority sorting if enabled globally or on queued items
     if ((config.priorityQueue || typeof config.priorityScorer === "function" || queue.some(i => i.options?.priorityQueue || typeof i.options?.priority === "number")) && queue.length > 1) {
-      queue.sort((a, b) => (getItemPriority(b) - getItemPriority(a)) || (a.seq - b.seq)); // Higher priority first, FIFO tie-breaker
+      queue.sort((a, b) => (getItemPriority(b) - getItemPriority(a)) || ((a.seq || 0) - (b.seq || 0))); // Higher priority first, FIFO tie-breaker
     }
 
-    while (visibleCount < config.maxVisible && queue.length) {
+    const maxVis = Math.max(1, Number(config.maxVisible) || 1);
+    while (visibleCount < maxVis && queue.length) {
       const item = queue.shift();
       if (active.has(item.key)) {
         const data = active.get(item.key);
@@ -894,127 +762,6 @@ async function drainQueue() {
     emitMetrics();
   } finally {
     isDraining = false;
-  }
-}
-
-async function removeWithTransition(el, targetEl, animationDurationMs = 400) {
-  if (!el) return Promise.resolve();
-
-  return new Promise((resolve) => {
-    let done = false;
-    let fallbackTimer = null;
-    const animEl = targetEl || el.firstElementChild || el;
-
-    const finish = () => {
-      if (done) return;
-      done = true;
-      if (fallbackTimer) {
-        clearTimeout(fallbackTimer);
-        fallbackTimer = null;
-      }
-      try {
-        animEl?.removeEventListener?.("transitionend", onEnd, true);
-      } catch {}
-      void removeElement(el).catch(console.error);
-      resolve();
-    };
-
-    if (shouldReduceMotion() || animationDurationMs <= 0) {
-      finish();
-      return;
-    }
-
-    const onEnd = (e) => {
-      try {
-        if (e.target !== animEl) return;
-        if (
-          e.propertyName === "transform" ||
-          ((!animEl.style.transform || animEl.style.transform === "none" || animEl.style.transform === "initial") &&
-            e.propertyName === "opacity")
-        ) {
-          finish();
-        }
-      } catch (error) {
-        console.error("removeWithTransition error:", error);
-      }
-    };
-
-    if (!animEl) return finish();
-
-    try {
-      animEl.addEventListener("transitionend", onEnd, true);
-    } catch (error) {
-      console.error("removeWithTransition error:", error);
-    }
-
-    // Use animation duration + 100ms buffer for fallback timeout
-    const fallbackTimeout = animationDurationMs + 100;
-    fallbackTimer = setTimeout(finish, fallbackTimeout);
-    if (typeof fallbackTimer?.unref === "function") {
-      fallbackTimer.unref();
-    }
-  });
-}
-
-async function updateBadge({ outer, count }) {
-  if (!outer || !(outer instanceof HTMLElement)) {
-    throw new Error("updateBadge: outer must be a valid HTMLElement");
-  }
-
-  if (count < 2) {
-    const badge = outer.querySelector(".toast-count-badge");
-    if (badge) badge.remove();
-    return;
-  }
-
-  let badge = outer.querySelector(".toast-count-badge");
-  if (!badge) {
-    badge = document.createElement("span");
-    badge.className = "toast-count-badge";
-    badge.setAttribute("aria-label", `${count} identical notifications`);
-
-    if (!getConfig().disableInlineStyles) {
-      Object.assign(badge.style, {
-      position: "absolute",
-      top: "6px",
-      right: "6px",
-      backgroundColor: "#f44336",
-      color: "#fff",
-      borderRadius: "50%",
-      minWidth: "20px",
-      height: "20px",
-      fontSize: "12px",
-      fontWeight: "600",
-      display: "flex",
-      alignItems: "center",
-      justifyContent: "center",
-      border: "2px solid #fff",
-      boxShadow: "0 2px 6px rgba(0,0,0,0.3)",
-      zIndex: "2",
-      pointerEvents: "none",
-      transition: "transform 150ms ease",
-    }); 
-    }
-
-    outer.appendChild(badge);
-  }
-
-  badge.textContent = count > 99 ? "99+" : String(count);
-
-  try {
-    if (!shouldReduceMotion()) {
-      if (badge._scaleTimer) clearTimeout(badge._scaleTimer);
-      badge.style.transform = "scale(1.2)";
-      badge._scaleTimer = setTimeout(() => {
-        badge.style.transform = "scale(1)";
-        badge._scaleTimer = null;
-      }, 150);
-      if (typeof badge._scaleTimer?.unref === "function") {
-        badge._scaleTimer.unref();
-      }
-    }
-  } catch (error) {
-    console.error("updateBadge animation error:", error);
   }
 }
 
@@ -1040,596 +787,18 @@ export async function updateToastByKey(key, newOptions = {}) {
   }
 
   const data = active.get(key);
-  if (!data || !data.toast) return false;
-
-  const prevOptions = { ...data.options };
-  data.options = { ...data.options, ...newOptions };
-  const toast = data.toast;
-  const messageSpan =
-    toast._messageSpan ||
-    toast.querySelector(".toast-message") ||
-    toast.querySelector("span:not(.toast-count-badge)");
-
-  // 1. Update message
-  if (newOptions.message !== undefined) {
-    const rawMessage = String(newOptions.message ?? "");
-    const allowHtml =
-      newOptions.allowHtml !== undefined
-        ? Boolean(newOptions.allowHtml)
-        : Boolean(data.options.allowHtml);
-
-    const isFinishingLoading =
-      (newOptions.type === "success" ||
-        newOptions.type === "error" ||
-        newOptions.type === "warning" ||
-        newOptions.type === "info") &&
-      newOptions.showLoader !== true;
-
-    if (messageSpan) {
-      const existingLoader = messageSpan.querySelector(".toast-loader");
-      messageSpan.innerHTML = "";
-      if (
-        existingLoader &&
-        newOptions.showLoader !== false &&
-        newOptions.loader !== null &&
-        !isFinishingLoading
-      ) {
-        messageSpan.appendChild(existingLoader);
-        const spacer = document.createElement("span");
-        spacer.style.display = "inline-block";
-        spacer.style.width = "8px";
-        messageSpan.appendChild(spacer);
-      }
-
-      if (allowHtml && rawMessage.trim().length > 0) {
-        try {
-          const sanitized = sanitizeHtml(rawMessage);
-          const tmp = document.createElement("div");
-          tmp.innerHTML = sanitized;
-          while (tmp.firstChild) {
-            messageSpan.appendChild(tmp.firstChild);
-          }
-        } catch {
-          messageSpan.appendChild(document.createTextNode(rawMessage));
-        }
-      } else {
-        messageSpan.appendChild(document.createTextNode(rawMessage));
-      }
-
-      messageSpan.setAttribute("title", messageSpan.textContent || "");
+  if (!data || !data.toast || !data.toast.isConnected) {
+    if (data && !data.toast?.isConnected) {
+      active.delete(key);
     }
+    return false;
   }
 
-  // 2. Handle Loader
-  const isFinishingLoading =
-    (newOptions.type === "success" ||
-      newOptions.type === "error" ||
-      newOptions.type === "warning" ||
-      newOptions.type === "info") &&
-    newOptions.showLoader !== true;
-
-  if (
-    newOptions.showLoader === false ||
-    newOptions.loader === null ||
-    isFinishingLoading
-  ) {
-    const loaderEl = messageSpan?.querySelector(".toast-loader");
-    if (loaderEl) {
-      if (loaderEl.nextSibling && loaderEl.nextSibling.nodeName === "SPAN") {
-        loaderEl.nextSibling.remove();
-      }
-      loaderEl.remove();
-    }
-  } else if (
-    (newOptions.showLoader === true ||
-      (newOptions.loader && typeof newOptions.loader === "object")) &&
-    messageSpan &&
-    !messageSpan.querySelector(".toast-loader")
-  ) {
-    const loaderEl = createLoader(newOptions.loader || {});
-    messageSpan.insertBefore(loaderEl, messageSpan.firstChild);
-    const spacer = document.createElement("span");
-    spacer.style.display = "inline-block";
-    spacer.style.width = "8px";
-    messageSpan.insertBefore(spacer, loaderEl.nextSibling);
-  }
-
-  // 3. Update type & colors
-  if (newOptions.type) {
-    const newType = String(newOptions.type).toLowerCase().trim();
-    toast.className = toast.className.replace(
-      /\btoast-(info|success|error|warning)\b/g,
-      `toast-${newType}`,
-    );
-    const isErr = newType === "error";
-    if (newOptions.role) {
-      toast.setAttribute("role", newOptions.role);
-    } else {
-      toast.setAttribute("role", "alert");
-    }
-    toast.setAttribute("aria-live", newOptions.ariaLive || (isErr ? "assertive" : "polite"));
-
-    if (!newOptions.backgroundColor) {
-      const typeColors = {
-        success: "#28a745",
-        error: "#dc3545",
-        warning: "#ffc107",
-        info: "#17a2b8",
-      };
-      if (typeColors[newType]) {
-        toast.style.background = typeColors[newType];
-        toast.style.backgroundColor = typeColors[newType];
-      }
-    }
-  }
-
-  // 3.1 Update icon
-  if (
-    newOptions.icon !== undefined ||
-    newOptions.iconColor !== undefined ||
-    newOptions.type !== undefined
-  ) {
-    const existingIcon = toast?.querySelector(".toast-icon");
-    if (existingIcon) existingIcon.remove();
-    const mergedForIcon = { ...data.options, ...newOptions };
-    const newIconEl = createToastIcon(mergedForIcon);
-    if (newIconEl) {
-      if (messageSpan) {
-        toast.insertBefore(newIconEl, messageSpan);
-      } else {
-        toast.appendChild(newIconEl);
-      }
-    }
-  }
-
-  if (newOptions.backgroundColor) {
-    toast.style.background = newOptions.backgroundColor;
-    toast.style.backgroundColor = newOptions.backgroundColor;
-  }
-
-  if (newOptions.textColor) {
-    toast.style.color = newOptions.textColor;
-    if (messageSpan) messageSpan.style.color = newOptions.textColor;
-  } else if (newOptions.type || newOptions.backgroundColor) {
-    const bg = toast.style.backgroundColor || toast.style.background;
-    if (bg) {
-      const dynamicColor = getDynamicAccessibleTextColorHex(bg);
-      toast.style.color = dynamicColor;
-      if (messageSpan) messageSpan.style.color = dynamicColor;
-    }
-  }
-
-  if (newOptions.borderRadius !== undefined) {
-    const br = typeof newOptions.borderRadius === "number" ? `${newOptions.borderRadius}px` : newOptions.borderRadius;
-    toast.style.borderRadius = br;
-  }
-
-  if (newOptions.maxWidth !== undefined) {
-    const mw = typeof newOptions.maxWidth === "number" ? `${newOptions.maxWidth}px` : newOptions.maxWidth;
-    toast.style.maxWidth = mw;
-  }
-
-  if (newOptions.fontDirection !== undefined) {
-    const dir = newOptions.fontDirection !== "auto" ? newOptions.fontDirection : "";
-    toast.style.direction = dir;
-    if (messageSpan) messageSpan.style.direction = dir;
-    const isRtl = dir === "rtl";
-    toast.querySelectorAll(".toast-cta, .toast-undo-btn, .toast-close-btn").forEach((btn) => {
-      btn.style.marginLeft = isRtl ? "0px" : "10px";
-      btn.style.marginRight = isRtl ? "10px" : "0px";
-    });
-  }
-
-  if (newOptions.fontSize !== undefined) {
-    const fs = typeof newOptions.fontSize === "number" ? `${newOptions.fontSize}px` : newOptions.fontSize;
-    toast.style.fontSize = fs;
-    if (messageSpan) messageSpan.style.fontSize = fs;
-  }
-
-  if (newOptions.fontFamily !== undefined) {
-    toast.style.fontFamily = newOptions.fontFamily;
-    if (messageSpan) messageSpan.style.fontFamily = newOptions.fontFamily;
-  }
-
-  if (newOptions.fontWeight !== undefined) {
-    const fw = typeof newOptions.fontWeight === "number" ? String(newOptions.fontWeight) : newOptions.fontWeight;
-    toast.style.fontWeight = fw;
-    if (messageSpan) messageSpan.style.fontWeight = fw;
-  }
-
-  if (newOptions.fontLineHeight !== undefined) {
-    toast.style.lineHeight = newOptions.fontLineHeight;
-    if (messageSpan) messageSpan.style.lineHeight = newOptions.fontLineHeight;
-  }
-
-  if (newOptions.fontPadding !== undefined && messageSpan) {
-    messageSpan.style.padding = newOptions.fontPadding;
-  }
-
-  if (newOptions.wrapText !== undefined && messageSpan) {
-    const isTruncate =
-      newOptions.wrapText === "truncate" ||
-      newOptions.wrapText === "ellipsis" ||
-      newOptions.wrapText === false;
-    if (isTruncate || !newOptions.wrapText) {
-      messageSpan.classList.add("is-truncated");
-      if (!getConfig().disableInlineStyles) {
-        Object.assign(messageSpan.style, {
-          display: "-webkit-box",
-          WebkitBoxOrient: "vertical",
-          WebkitLineClamp: "3",
-          whiteSpace: "normal",
-          overflow: "hidden",
-          textOverflow: "ellipsis",
-        });
-      }
-    } else {
-      messageSpan.classList.remove("is-truncated");
-      if (!getConfig().disableInlineStyles) {
-        Object.assign(messageSpan.style, {
-          display: "block",
-          WebkitBoxOrient: "",
-          WebkitLineClamp: "",
-          whiteSpace: "normal",
-          overflow: "visible",
-          textOverflow: "clip",
-        });
-      }
-    }
-  }
-
-  if (newOptions.role !== undefined) {
-    toast.setAttribute("role", newOptions.role);
-  }
-  if (newOptions.ariaLive !== undefined) {
-    toast.setAttribute("aria-live", newOptions.ariaLive);
-  }
-
-  if (newOptions.className !== undefined) {
-    const prevClass = prevOptions.className;
-    if (prevClass && typeof prevClass === "string") {
-      const tokens = prevClass.trim().split(/\s+/).filter(Boolean);
-      if (tokens.length > 0) toast.classList.remove(...tokens);
-    }
-    if (newOptions.className && typeof newOptions.className === "string") {
-      const tokens = newOptions.className.trim().split(/\s+/).filter(Boolean);
-      if (tokens.length > 0) toast.classList.add(...tokens);
-    }
-  }
-  // 4. Progress bar updates
-  let progressBar = toast.querySelector(".toast-progress-bar");
-
-  if (newOptions.showProgressBar === false) {
-    if (toast._progressAnimation) {
-      try {
-        toast._progressAnimation.cancel();
-      } catch {}
-      toast._progressAnimation = null;
-    }
-    if (progressBar) {
-      progressBar.remove();
-    }
-    toast._progressBar = null;
-    progressBar = null;
-  } else if (
-    !progressBar &&
-    newOptions.showProgressBar !== false &&
-    (newOptions.progress !== undefined ||
-      newOptions.showProgressBar === true ||
-      ((newOptions.duration && Number(newOptions.duration) > 0) || (data.options.duration && Number(data.options.duration) > 0)))
-  ) {
-    createProgressBar(toast, {
-      ...data.options,
-      ...newOptions,
-      showProgressBar: true,
-    });
-    progressBar = toast.querySelector(".toast-progress-bar");
-  }
-
-  if (progressBar) {
-    if (newOptions.progress !== undefined) {
-      if (newOptions.progress === "indeterminate") {
-        progressBar._isIndeterminate = true;
-        progressBar._isManualProgress = false;
-        if (toast._progressAnimation) {
-          try {
-            toast._progressAnimation.cancel();
-          } catch {}
-          toast._progressAnimation = null;
-        }
-        progressBar.classList.add("toast-progress-bar-indeterminate");
-        const isRtl = progressBar._isRtl || newOptions.fontDirection === "rtl" || newOptions.progressDirection === "rtl";
-        if (isRtl) {
-          progressBar.classList.add("toast-progress-bar-indeterminate-rtl");
-        }
-        if (!getConfig().disableInlineStyles) {
-          ensureProgressIndeterminateStyles();
-          const animName = isRtl ? "toast-progress-indeterminate-rtl" : "toast-progress-indeterminate";
-          progressBar.style.animation = `${animName} 1.6s cubic-bezier(0.4, 0, 0.2, 1) infinite`;
-        }
-        progressBar.style.width = progressBar._finalWidth || "100%";
-      } else {
-        const pct = parseProgressValue(newOptions.progress, toast, { ...data.options, ...newOptions });
-        progressBar._isIndeterminate = false;
-        progressBar._isManualProgress = true;
-        progressBar.classList.remove("toast-progress-bar-indeterminate");
-        progressBar.classList.remove("toast-progress-bar-indeterminate-rtl");
-        progressBar.style.animation = "none";
-        const currentWidth = (typeof window !== "undefined" && window.getComputedStyle)
-          ? window.getComputedStyle(progressBar).width
-          : null;
-        if (toast._progressAnimation) {
-          try {
-            toast._progressAnimation.cancel();
-          } catch {}
-          toast._progressAnimation = null;
-        }
-        if (currentWidth) {
-          progressBar.style.transition = "none";
-          progressBar.style.width = currentWidth;
-          void progressBar.offsetWidth;
-        }
-        progressBar.style.transition = "width 200ms ease";
-        progressBar.style.width = `${pct}%`;
-      }
-    }
-
-    if (newOptions.progressBarColor || newOptions.progressColor) {
-      progressBar.style.background = newOptions.progressBarColor || newOptions.progressColor;
-    }
-
-    if (newOptions.progressPosition) {
-      progressBar.style.top = newOptions.progressPosition === "top" ? "0" : "auto";
-      progressBar.style.bottom = newOptions.progressPosition === "bottom" ? "0" : "auto";
-    }
-
-    if (newOptions.progressHeight !== undefined) {
-      const ph = typeof newOptions.progressHeight === "number" ? `${newOptions.progressHeight}px` : newOptions.progressHeight;
-      progressBar.style.height = ph;
-    }
-  }
-
-  if (newOptions.animationType !== undefined) {
-    data.options.animationType = newOptions.animationType;
-    toast._animationType = newOptions.animationType;
-  }
-
-  if (newOptions.spring !== undefined) {
-    data.options.spring = newOptions.spring;
-  }
-
-  if (newOptions.swipeToDismiss !== undefined) {
-    data.options.swipeToDismiss = newOptions.swipeToDismiss;
-    if (newOptions.swipeToDismiss === false) {
-      toast._cleanupSwipe?.();
-      toast._cleanupSwipe = null;
-    } else if (newOptions.swipeToDismiss === true && !toast._cleanupSwipe) {
-      attachSwipeToDismiss(toast, closeToast);
-    }
-  }
-
-  // 5. Update Duration / Timer
-  if (newOptions.duration !== undefined) {
-    data.timer?.clear();
-    const raw = Number(newOptions.duration);
-    if (Number.isFinite(raw) && raw > 0) {
-      data.timer = createDismissTimer(toast, { duration: raw });
-      await setupPauseOnHover(data);
-      if (progressBar) {
-        if (newOptions.progress === undefined) {
-          progressBar._isManualProgress = false;
-          progressBar._isIndeterminate = false;
-          progressBar.classList.remove("toast-progress-bar-indeterminate");
-          progressBar.classList.remove("toast-progress-bar-indeterminate-rtl");
-          progressBar.style.animation = "none";
-        }
-        if (!progressBar._isManualProgress && !progressBar._isIndeterminate) {
-          const newDuration = raw + 5;
-          const finalWidth = progressBar._finalWidth || "100%";
-          const isReverse = progressBar._isReverse;
-          if (typeof progressBar.animate === "function") {
-            try {
-              toast._progressAnimation?.cancel();
-            } catch {}
-            const keyframes = isReverse
-              ? [{ width: "0%" }, { width: finalWidth }]
-              : [{ width: finalWidth }, { width: "0%" }];
-            toast._progressAnimation = progressBar.animate(keyframes, {
-              duration: newDuration,
-              easing: "linear",
-              fill: "forwards",
-              delay: 0,
-            });
-          } else {
-            progressBar.style.transition = `width ${newDuration}ms linear`;
-            progressBar.style.width = isReverse ? finalWidth : "0%";
-          }
-        }
-      }
-      if (toast.classList.contains("toast-paused")) {
-        data.timer.pause();
-        if (toast._progressAnimation) {
-          try {
-            toast._progressAnimation.pause();
-          } catch {}
-        }
-      }
-    } else {
-      data.timer = null;
-      if (progressBar && !progressBar._isManualProgress && !progressBar._isIndeterminate) {
-        if (toast._progressAnimation) {
-          try { toast._progressAnimation.cancel(); } catch {}
-          toast._progressAnimation = null;
-        }
-        progressBar.style.width = "0%";
-      }
-    }
-  } else if (
-    (data.options.duration === 0 || !data.timer) &&
-    (newOptions.type === "success" ||
-      newOptions.type === "error" ||
-      newOptions.type === "warning" ||
-      newOptions.showLoader === false)
-  ) {
-    // If it was a persistent loading toast (duration: 0) and transitioned to a resolved state
-    // without an explicit duration, start a standard auto-dismiss timer so it doesn't stay permanently stuck on screen.
-    data.options.duration = 2500;
-    data.timer?.clear();
-    data.timer = createDismissTimer(toast, { duration: 2500 });
-    await setupPauseOnHover(data);
-    if (progressBar && !progressBar._isManualProgress) {
-      progressBar._isIndeterminate = false;
-      progressBar.classList.remove("toast-progress-bar-indeterminate");
-      progressBar.classList.remove("toast-progress-bar-indeterminate-rtl");
-      progressBar.style.animation = "none";
-      const newDuration = 2505;
-      const finalWidth = progressBar._finalWidth || "100%";
-      const isReverse = progressBar._isReverse;
-      if (typeof progressBar.animate === "function") {
-        try { toast._progressAnimation?.cancel(); } catch {}
-        const keyframes = isReverse
-          ? [{ width: "0%" }, { width: finalWidth }]
-          : [{ width: finalWidth }, { width: "0%" }];
-        toast._progressAnimation = progressBar.animate(keyframes, {
-          duration: newDuration,
-          easing: "linear",
-          fill: "forwards",
-          delay: 0,
-        });
-      } else {
-        progressBar.style.transition = `width ${newDuration}ms linear`;
-        progressBar.style.width = isReverse ? finalWidth : "0%";
-      }
-    }
-  }
-
-  // 5.1 Update Position Migration
-  if (newOptions.position !== undefined) {
-    const targetPos = normalizePositionKey(newOptions.position || getConfig().defaultPosition);
-    const currentContainer =
-      (typeof toast.closest === "function" &&
-        toast.closest('.toast-container-base, [id^="toast-container-"]')) ||
-      data.outer?.parentElement;
-    const currentPos = currentContainer?.id?.startsWith("toast-container-")
-      ? normalizePositionKey(currentContainer.id.replace("toast-container-", ""))
-      : null;
-
-    if (currentPos && currentPos !== targetPos) {
-      const targetContainer = await getOrCreateToastContainer({ ...data.options, position: targetPos });
-      if (targetContainer && data.outer) {
-        targetContainer.appendChild(data.outer);
-        data.options.position = targetPos;
-        if (currentContainer && currentContainer.children.length === 0) {
-          try {
-            unregisterContainer(currentContainer.id);
-            currentContainer.remove();
-          } catch {}
-        } else if (currentContainer && currentContainer.getAttribute("data-stacked") === "true") {
-          updateStackedLayout(currentContainer);
-        }
-        if (targetContainer.getAttribute("data-stacked") === "true") {
-          updateStackedLayout(targetContainer);
-        }
-      }
-    }
-  }
-
-  // 5.2 Update CTA
-  if (newOptions.cta !== undefined) {
-    if (toast._cleanupCTA) {
-      toast._cleanupCTA();
-      toast._cleanupCTA = null;
-    }
-    toast.querySelectorAll(".toast-cta").forEach((el) => el.remove());
-
-    if (newOptions.cta && typeof newOptions.cta === "object") {
-      const mergedOpts = { ...data.options, ...newOptions };
-      createCTA(toast, mergedOpts, closeToast);
-    }
-  }
-
-  // 5.3 Update Undo Action
-  if (newOptions.undo !== undefined) {
-    if (toast._cleanupUndo) {
-      toast._cleanupUndo();
-      toast._cleanupUndo = null;
-    }
-    toast.querySelectorAll(".toast-undo-btn").forEach((el) => el.remove());
-
-    if (newOptions.undo) {
-      const mergedOpts = { ...data.options, ...newOptions };
-      createUndoAction(toast, mergedOpts, closeToast);
-    }
-  }
-
-  // 5.4 Update Close Button
-  if (newOptions.showCloseButton !== undefined) {
-    const existingCloseBtn = toast.querySelector(".toast-close-btn");
-    if (newOptions.showCloseButton === false) {
-      if (toast._cleanupCloseButton) {
-        toast._cleanupCloseButton();
-        toast._cleanupCloseButton = null;
-      }
-      if (existingCloseBtn) existingCloseBtn.remove();
-    } else if (newOptions.showCloseButton === true && !existingCloseBtn) {
-      const mergedOpts = { ...data.options, ...newOptions };
-      createCloseButton(toast, mergedOpts, closeToast);
-    }
-  }
-
-  // 6. Audio / Sound
-  const shouldPlayAudio =
-    newOptions.sound !== undefined
-      ? Boolean(newOptions.sound)
-      : Boolean(newOptions.type && (data.options.sound || getConfig().sound));
-
-  if (shouldPlayAudio) {
-    if (data._audio) {
-      try {
-        data._audio.pause();
-        data._audio.src = "";
-      } catch {}
-      data._audio = null;
-    }
-    if (typeof newOptions.sound === "string" && typeof window !== "undefined" && typeof window.Audio === "function") {
-      try {
-        const audio = new window.Audio(newOptions.sound);
-        data._audio = audio;
-        audio.play().catch(() => {});
-      } catch {}
-    } else if (typeof newOptions.onSound === "function") {
-      try {
-        newOptions.onSound(newOptions);
-      } catch {}
-    }
-  }
-
-  // 7. Stacked update
-  const container =
-    (typeof toast.closest === "function" &&
-      toast.closest('.toast-container-base, [id^="toast-container-"]')) ||
-    data.outer?.parentElement;
-  if (container) {
-    if (newOptions.stacked === true) {
-      container.setAttribute("data-stacked", "true");
-      updateStackedLayout(container);
-    } else if (newOptions.stacked === false) {
-      container.removeAttribute("data-stacked");
-      container._stackedCleanup?.();
-      Array.from(container.children).forEach((child) => {
-        child.removeAttribute("data-stacked-depth");
-        child.style.transform = "";
-        child.style.marginTop = "";
-        child.style.marginBottom = "10px";
-        child.style.opacity = "";
-        child.style.zIndex = "";
-        child.style.pointerEvents = "auto";
-      });
-    } else if (container.getAttribute("data-stacked") === "true") {
-      updateStackedLayout(container);
-    }
-  }
-
-  return true;
+  return applyToastDOMUpdates(data, newOptions, {
+    closeToast,
+    createDismissTimer,
+    setupPauseOnHover,
+    updateStackedLayout,
+  });
 }
 

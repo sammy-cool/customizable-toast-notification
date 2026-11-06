@@ -1,52 +1,41 @@
-import {
-  createToast,
-  toastPromise,
-  dismiss,
-  dismissAll,
-  clear,
-  setConfig,
-  getConfig,
-  resetConfig,
-  getToastMetrics,
-  setDefaultColors,
-  setDefaultMessages,
-  version,
-} from "../index.js";
-
-/**
- * Creates the SolidJS toast API object.
- * @returns {import('./index.d.ts').SolidToastAPI}
- */
-export function createToastAPI() {
-  return {
-    success: (message, options) => createToast.success(message, options),
-    error: (message, options) => createToast.error(message, options),
-    warning: (message, options) => createToast.warning(message, options),
-    info: (message, options) => createToast.info(message, options),
-    loading: (message, options) => createToast.loading(message, options),
-    custom: (message, options) => createToast.custom(message, options),
-    show: (options) => createToast(options),
-    promise: toastPromise,
-    dismiss,
-    dismissAll,
-    clear,
-    setConfig,
-    getConfig,
-    resetConfig,
-    getToastMetrics,
-    setDefaultColors,
-    setDefaultMessages,
-    version,
-  };
-}
+import { createToastAPI, createToastInstance } from "../index.js";
 
 let cachedSolidAPI = null;
 
 /**
  * SolidJS primitive for customizable-toast-notification.
+ * When called with defaultOptions, returns an isolated, scoped toast instance.
+ * Supports optional `autoDismissOnCleanup: true` or custom `onCleanup` hook for automated teardown on component unmount.
+ *
+ * @param {import('../index.js').ToastOptions & { autoDismissOnCleanup?: boolean, onCleanup?: (fn: () => void) => void }} [defaultOptions] - Optional component-level preset options.
+ * @param {((fn: () => void) => void)} [onCleanupHook] - Optional explicit SolidJS onCleanup lifecycle hook.
  * @returns {import('./index.d.ts').SolidToastAPI}
  */
-export function useToast() {
+export function useToast(defaultOptions, onCleanupHook) {
+  if (
+    defaultOptions &&
+    typeof defaultOptions === "object" &&
+    Object.keys(defaultOptions).length > 0
+  ) {
+    const instance = createToastInstance(defaultOptions);
+    const cleanup =
+      (typeof onCleanupHook === "function" ? onCleanupHook : null) ||
+      (typeof defaultOptions.onCleanup === "function" ? defaultOptions.onCleanup : null) ||
+      (typeof window !== "undefined" && typeof window.Solid?.onCleanup === "function"
+        ? window.Solid.onCleanup
+        : null);
+
+    if (defaultOptions.autoDismissOnCleanup && typeof cleanup === "function") {
+      try {
+        cleanup(() => {
+          void instance.dismissAll();
+        });
+      } catch {
+        /* safe fallback if cleanup registration fails outside reactive root */
+      }
+    }
+    return instance;
+  }
   if (!cachedSolidAPI) {
     cachedSolidAPI = createToastAPI();
   }
@@ -55,17 +44,4 @@ export function useToast() {
 
 export const toast = useToast();
 
-export {
-  createToast,
-  toastPromise,
-  dismiss,
-  dismissAll,
-  clear,
-  setConfig,
-  getConfig,
-  resetConfig,
-  getToastMetrics,
-  setDefaultColors,
-  setDefaultMessages,
-  version,
-};
+export * from "../index.js";

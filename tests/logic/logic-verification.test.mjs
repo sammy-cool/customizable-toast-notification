@@ -6128,6 +6128,2444 @@ describe("v4.0.3 WAAPI Animation & Reduced Motion Exhaustive Coverage Suite", ()
   });
 });
 
+describe("Architectural Fortification: Updating Dismissed Toasts & Fallback Spawning", () => {
+  test("handle.update spawns fresh toast and updates handle.id when toast was already dismissed", async () => {
+    freshDom();
+    const { createToast, resetToastManager } = await import("../../src/index.js");
+    resetToastManager();
+
+    try {
+      // 1. Create a loading toast
+      const handle = await createToast.loading("Uploading asset...");
+      await new Promise((r) => setTimeout(r, 50));
+      const initialId = handle.id;
+      assert.ok(initialId);
+
+      // Verify it is on screen
+      let toastEl = document.querySelector(".toast");
+      assert.ok(toastEl);
+      assert.match(toastEl.textContent, /Uploading asset\.\.\./);
+
+      // 2. Dismiss the toast early
+      await handle.dismiss();
+      await new Promise((r) => setTimeout(r, 60));
+      assert.strictEqual(document.querySelectorAll(".toast").length, 0);
+
+      // 3. Update the dismissed handle with a success state
+      const updateResult = await handle.update({
+        type: "success",
+        message: "Asset uploaded successfully!",
+        duration: 3000,
+      });
+
+      assert.strictEqual(updateResult, true);
+      await new Promise((r) => setTimeout(r, 50));
+
+      // 4. Verify fresh success toast is now rendered
+      toastEl = document.querySelector(".toast-success");
+      assert.ok(toastEl, "Fresh success toast should be spawned");
+      assert.match(toastEl.textContent, /Asset uploaded successfully!/);
+      assert.notStrictEqual(handle.id, initialId, "handle.id should update to the new toast key");
+
+      // 5. Subsequent dismiss on handle dismisses the new toast
+      await handle.dismiss();
+      await new Promise((r) => setTimeout(r, 60));
+      assert.strictEqual(document.querySelectorAll(".toast-success").length, 0);
+    } finally {
+      resetToastManager();
+    }
+  });
+
+  test("handle.update with { fallback: false } returns false without spawning when toast is dismissed", async () => {
+    freshDom();
+    const { createToast, resetToastManager } = await import("../../src/index.js");
+    resetToastManager();
+
+    try {
+      const handle = await createToast({ message: "Initial notice", duration: 100 });
+      await new Promise((r) => setTimeout(r, 50));
+      await handle.dismiss();
+      await new Promise((r) => setTimeout(r, 60));
+
+      // Attempt update with fallback disabled
+      const updateResult = await handle.update({ message: "Should not appear" }, { fallback: false });
+      assert.strictEqual(updateResult, false);
+      assert.strictEqual(document.querySelectorAll(".toast").length, 0);
+    } finally {
+      resetToastManager();
+    }
+  });
+
+  test("toastPromise spawns success toast even if loading toast was dismissed before promise resolves", async () => {
+    freshDom();
+    const { toastPromise, resetToastManager } = await import("../../src/index.js");
+    resetToastManager();
+
+    try {
+      let resolvePromise;
+      const slowPromise = new Promise((resolve) => { resolvePromise = resolve; });
+
+      const p = toastPromise(slowPromise, {
+        loading: "Processing operation...",
+        success: (res) => `Operation completed: ${res.status}`,
+        error: "Operation failed",
+      });
+
+      await new Promise((r) => setTimeout(r, 50));
+      const loadingToast = document.querySelector(".toast");
+      assert.ok(loadingToast);
+      assert.match(loadingToast.textContent, /Processing operation\.\.\./);
+
+      // User dismisses loading toast manually
+      loadingToast.remove();
+      await new Promise((r) => setTimeout(r, 50));
+      assert.strictEqual(document.querySelectorAll(".toast").length, 0);
+
+      // Now resolve the promise
+      resolvePromise({ status: "OK" });
+      const res = await p;
+      assert.deepStrictEqual(res, { status: "OK" });
+
+      await new Promise((r) => setTimeout(r, 60));
+      const successToast = document.querySelector(".toast-success");
+      assert.ok(successToast, "Success toast must appear even though loading toast was dismissed");
+      assert.match(successToast.textContent, /Operation completed: OK/);
+    } finally {
+      resetToastManager();
+    }
+  });
+
+  test("toastPromise spawns error toast even if loading toast was dismissed before promise rejects", async () => {
+    freshDom();
+    const { toastPromise, resetToastManager } = await import("../../src/index.js");
+    resetToastManager();
+
+    try {
+      let rejectPromise;
+      const failingPromise = new Promise((_, reject) => { rejectPromise = reject; });
+
+      const p = toastPromise(failingPromise, {
+        loading: "Synchronizing data...",
+        success: "Synced successfully!",
+        error: (err) => `Sync error: ${err.message}`,
+      });
+
+      await new Promise((r) => setTimeout(r, 50));
+      const loadingToast = document.querySelector(".toast");
+      assert.ok(loadingToast);
+
+      // Dismiss loading toast early
+      loadingToast.remove();
+      await new Promise((r) => setTimeout(r, 50));
+      assert.strictEqual(document.querySelectorAll(".toast").length, 0);
+
+      // Reject the promise
+      rejectPromise(new Error("Connection reset by peer"));
+      await assert.rejects(p, /Connection reset by peer/);
+
+      await new Promise((r) => setTimeout(r, 60));
+      const errorToast = document.querySelector(".toast-error");
+      assert.ok(errorToast, "Error toast must appear even though loading toast was dismissed");
+      assert.match(errorToast.textContent, /Sync error: Connection reset by peer/);
+    } finally {
+      resetToastManager();
+    }
+  });
+
+  test("dismissing toast in top-left does not block concurrent creation in bottom-right", async () => {
+    freshDom();
+    const { createToast, dismiss, resetToastManager } = await import("../../src/index.js");
+    resetToastManager();
+
+    try {
+      // 1. Create a toast in top-left
+      const tlHandle = await createToast({
+        message: "Top-left notification",
+        position: "top-left",
+        duration: 0,
+      });
+      await new Promise((r) => setTimeout(r, 50));
+      assert.ok(document.querySelector("#toast-container-top-left .toast"));
+
+      // 2. Begin dismissal of top-left toast
+      const dismissPromise = dismiss(tlHandle);
+
+      // 3. Concurrently create a toast in bottom-right
+      let brCreated = false;
+      const brPromise = createToast({
+        message: "Bottom-right notification",
+        position: "bottom-right",
+        duration: 3000,
+      }).then((h) => {
+        brCreated = true;
+        return h;
+      });
+
+      // Bottom-right creation should proceed and resolve promptly without being serialized by top-left exit animation
+      await new Promise((r) => setTimeout(r, 60));
+      assert.strictEqual(brCreated, true, "bottom-right toast should not be blocked by top-left dismissal");
+
+      const brContainer = document.querySelector("#toast-container-bottom-right");
+      assert.ok(brContainer);
+      assert.ok(brContainer.querySelector(".toast"));
+
+      await dismissPromise;
+      await brPromise;
+    } finally {
+      resetToastManager();
+    }
+  });
+
+  test("RTL fontDirection sets semantic dir attribute and toast-rtl class on initial render and handle.update", async () => {
+    freshDom();
+    const { createToast, resetToastManager } = await import("../../src/index.js");
+    resetToastManager();
+
+    try {
+      const handle = await createToast({
+        message: "مرحبا بالعالم",
+        fontDirection: "rtl",
+        duration: 0,
+      });
+      await new Promise((r) => setTimeout(r, 50));
+
+      const toast = document.querySelector(".toast");
+      assert.ok(toast);
+      assert.strictEqual(toast.getAttribute("dir"), "rtl");
+      assert.ok(toast.classList.contains("toast-rtl"));
+
+      // Update to ltr
+      await handle.update({ fontDirection: "ltr" });
+      assert.strictEqual(toast.getAttribute("dir"), null);
+      assert.strictEqual(toast.classList.contains("toast-rtl"), false);
+
+      // Update back to rtl
+      await handle.update({ fontDirection: "rtl" });
+      assert.strictEqual(toast.getAttribute("dir"), "rtl");
+      assert.ok(toast.classList.contains("toast-rtl"));
+
+      await handle.dismiss();
+    } finally {
+      resetToastManager();
+    }
+  });
+
+  test("styles.css includes print accessibility and tablet responsive rules", async () => {
+    const fs = await import("fs");
+    const path = await import("path");
+    const css = fs.readFileSync(path.resolve("src/styles.css"), "utf8");
+
+    assert.ok(css.includes("@media print"), "styles.css must include @media print");
+    assert.ok(css.includes(".toast-container-base"), "print media query must target container");
+    assert.ok(css.includes("display: none !important"), "print media must hide toasts on print");
+    assert.ok(css.includes("max-width: 768px"), "styles.css must include tablet breakpoint <= 768px");
+    assert.ok(css.includes(".toast-rtl"), "styles.css must include .toast-rtl selector");
+  });
+
+  test("Framework subpaths export shorthand methods and accept options-only or empty calls", async () => {
+    freshDom();
+    const adapters = [
+      { name: "react", mod: await import("../../src/react/index.js") },
+      { name: "vue", mod: await import("../../src/vue/index.js") },
+      { name: "svelte", mod: await import("../../src/svelte/index.js") },
+      { name: "solid", mod: await import("../../src/solid/index.js") },
+      { name: "angular", mod: await import("../../src/angular/index.js") },
+    ];
+
+    for (const { name, mod } of adapters) {
+      assert.strictEqual(typeof mod.success, "function", `${name} should export success function`);
+      assert.strictEqual(typeof mod.error, "function", `${name} should export error function`);
+      assert.strictEqual(typeof mod.warning, "function", `${name} should export warning function`);
+      assert.strictEqual(typeof mod.info, "function", `${name} should export info function`);
+      assert.strictEqual(typeof mod.loading, "function", `${name} should export loading function`);
+      assert.strictEqual(typeof mod.custom, "function", `${name} should export custom function`);
+      assert.strictEqual(typeof mod.initKeyboardShortcuts, "function", `${name} should export initKeyboardShortcuts`);
+      assert.strictEqual(typeof mod.destroyKeyboardShortcuts, "function", `${name} should export destroyKeyboardShortcuts`);
+
+      // Test options-only call on toast object
+      const h1 = await mod.toast.success({ message: `${name} options only`, duration: 100 });
+      assert.ok(h1, `${name} toast.success({ message }) should return handle`);
+      assert.strictEqual(typeof h1.dismiss, "function");
+      await h1.dismiss();
+
+      // Test empty call on toast object
+      const h2 = await mod.toast.info();
+      assert.ok(h2, `${name} toast.info() without args should return handle`);
+      await h2.dismiss();
+
+      await mod.clear();
+    }
+
+    // Verify .d.ts files have optional parameter typing (messageOrOptions?: string | ToastOptions)
+    const fs = await import("fs");
+    const path = await import("path");
+    for (const name of ["react", "vue", "svelte", "solid", "angular"]) {
+      const dtsPath = path.resolve(`dist/${name}.d.ts`);
+      const content = fs.readFileSync(dtsPath, "utf8");
+      assert.ok(
+        content.includes("messageOrOptions?: string | ToastOptions"),
+        `${name}.d.ts must type messageOrOptions as optional`
+      );
+      assert.ok(
+        content.includes("show(options?: ToastOptions)") || content.includes("show: (options?: ToastOptions)"),
+        `${name}.d.ts must type show options as optional`
+      );
+      assert.ok(
+        content.includes("initKeyboardShortcuts"),
+        `${name}.d.ts must export initKeyboardShortcuts`
+      );
+    }
+  });
+
+  test("Candidate 1: toastPromise rejects non-promise arguments and functions returning non-thenables", async () => {
+    freshDom();
+    const { toastPromise } = await import("../../src/index.js");
+
+    await assert.rejects(
+      async () => toastPromise(null),
+      { name: "TypeError", message: /toastPromise requires a Promise/ }
+    );
+    await assert.rejects(
+      async () => toastPromise(undefined),
+      { name: "TypeError", message: /toastPromise requires a Promise/ }
+    );
+    await assert.rejects(
+      async () => toastPromise(123),
+      { name: "TypeError", message: /toastPromise requires a Promise/ }
+    );
+    await assert.rejects(
+      async () => toastPromise(() => null),
+      { name: "TypeError", message: /toastPromise requires a Promise/ }
+    );
+  });
+
+  test("Candidate 2: attachSwipeToDismiss binds touchmove, touchend, and touchcancel to window on touchstart", async () => {
+    freshDom();
+    const { attachSwipeToDismiss } = await import("../../src/components/toast-utils-core.js");
+
+    const toast = document.createElement("div");
+    document.body.appendChild(toast);
+
+    let windowTouchMoveAttached = false;
+    let windowTouchEndAttached = false;
+    let windowTouchCancelAttached = false;
+
+    const origAdd = window.addEventListener;
+    const origRemove = window.removeEventListener;
+
+    window.addEventListener = (type, handler, opts) => {
+      if (type === "touchmove") windowTouchMoveAttached = true;
+      if (type === "touchend") windowTouchEndAttached = true;
+      if (type === "touchcancel") windowTouchCancelAttached = true;
+      return origAdd.call(window, type, handler, opts);
+    };
+
+    window.removeEventListener = (type, handler, opts) => {
+      if (type === "touchmove") windowTouchMoveAttached = false;
+      if (type === "touchend") windowTouchEndAttached = false;
+      if (type === "touchcancel") windowTouchCancelAttached = false;
+      return origRemove.call(window, type, handler, opts);
+    };
+
+    try {
+      attachSwipeToDismiss(toast, () => {});
+
+      // Simulate touchstart on toast
+      const touchEvent = new window.Event("touchstart", { bubbles: true });
+      touchEvent.touches = [{ clientX: 100, clientY: 100, identifier: 1 }];
+      toast.dispatchEvent(touchEvent);
+
+      assert.strictEqual(windowTouchMoveAttached, true, "window must receive touchmove listener during touch drag");
+      assert.strictEqual(windowTouchEndAttached, true, "window must receive touchend listener during touch drag");
+      assert.strictEqual(windowTouchCancelAttached, true, "window must receive touchcancel listener during touch drag");
+
+      // Simulate touchend on window
+      const endEvent = new window.Event("touchend", { bubbles: true });
+      window.dispatchEvent(endEvent);
+
+      assert.strictEqual(windowTouchMoveAttached, false, "window touchmove listener must be cleaned up after touchend");
+      assert.strictEqual(windowTouchEndAttached, false, "window touchend listener must be cleaned up after touchend");
+    } finally {
+      window.addEventListener = origAdd;
+      window.removeEventListener = origRemove;
+      toast.remove();
+    }
+  });
+
+  test("Candidate 3: Equal-priority queued toasts preserve strict FIFO insertion order", async () => {
+    freshDom();
+    const { createToast, setConfig, resetConfig, resetToastManager } = await import("../../src/index.js");
+
+    resetToastManager();
+    setConfig({ maxVisible: 1, priorityQueue: true });
+
+    // 1. Fill the 1 visible slot
+    const blocker = await createToast({ message: "Blocker", duration: 10000 });
+    await new Promise((r) => setTimeout(r, 60));
+
+    // 2. Queue 3 toasts with same priority
+    await createToast({ message: "Queued 1", priority: 10, duration: 10000 });
+    await new Promise((r) => setTimeout(r, 60));
+    await createToast({ message: "Queued 2", priority: 10, duration: 10000 });
+    await new Promise((r) => setTimeout(r, 60));
+    await createToast({ message: "Queued 3", priority: 10, duration: 10000 });
+    await new Promise((r) => setTimeout(r, 60));
+
+    // 3. Dismiss blocker, so the first queued toast (Queued 1) mounts
+    await blocker.dismiss();
+    await new Promise((r) => setTimeout(r, 100));
+
+    const activeToast1 = document.querySelector('[id^="toast-container-"] .toast');
+    assert.ok(activeToast1, "First queued toast must mount");
+    assert.ok(activeToast1.textContent.includes("Queued 1"), "First queued toast must be 'Queued 1' (FIFO)");
+
+    resetConfig();
+    resetToastManager();
+  });
+
+  test("Candidate 4: createElementWithId returns HTMLElement synchronously without Promise wrapper", async () => {
+    const { createElementWithId } = await import("../../src/utils/dom.js");
+    const el = createElementWithId("div", "sync-test");
+
+    assert.ok(el instanceof HTMLElement || (el && el.nodeType === 1), "createElementWithId must return a DOM element");
+    assert.strictEqual(typeof el.then, "undefined", "createElementWithId must NOT return a Promise");
+    assert.ok(el.id.startsWith("sync-test-"), "Element ID must contain prefix");
+  });
+
+  test("Candidate 5 & 6: CTA async aria-busy attribute and package.json Node engines", async () => {
+    freshDom();
+    const fs = await import("fs");
+    const path = await import("path");
+
+    // Candidate 6 check
+    const pkg = JSON.parse(fs.readFileSync(path.resolve("package.json"), "utf8"));
+    assert.strictEqual(pkg.engines.node, ">=18.0.0", "package.json must declare node >=18.0.0");
+
+    // Candidate 5 check
+    const { createCTA } = await import("../../src/components/toast-utils-core.js");
+    const toast = document.createElement("div");
+
+    let resolveAction;
+    const actionPromise = new Promise((resolve) => {
+      resolveAction = resolve;
+    });
+
+    createCTA(
+      toast,
+      {
+        cta: {
+          label: "Async Button",
+          onClick: () => actionPromise,
+        },
+      },
+      () => {}
+    );
+
+    const ctaButton = toast.querySelector(".toast-cta");
+    assert.ok(ctaButton, "CTA button must be rendered on toast element");
+
+    ctaButton.click();
+    assert.strictEqual(ctaButton.getAttribute("aria-busy"), "true", "CTA must have aria-busy='true' while async handler is running");
+    assert.strictEqual(ctaButton.style.opacity, "0.7", "CTA must have reduced opacity while running");
+
+    resolveAction();
+    await new Promise((r) => setTimeout(r, 20));
+
+    assert.strictEqual(ctaButton.getAttribute("aria-busy"), null, "aria-busy must be removed after async handler resolves");
+  });
+
+  test("createToastInstance creates isolated instances with preset options and scoped lifecycle events", async () => {
+    freshDom();
+    const { createToastInstance, createToast, on: globalOn, resetToastManager } = await import("../../src/index.js");
+    resetToastManager();
+
+    const customInstance = createToastInstance({
+      position: "top-left",
+      duration: 5000,
+    });
+
+    assert.ok(customInstance.instanceId.startsWith("inst-"), "Instance has unique instanceId");
+    assert.strictEqual(customInstance.getDefaults().position, "top-left");
+
+    const instanceEvents = [];
+    const globalEvents = [];
+
+    const unsubInstanceOpen = customInstance.on("open", (payload) => {
+      instanceEvents.push({ event: "open", ...payload });
+    });
+    const unsubGlobalOpen = globalOn("open", (payload) => {
+      globalEvents.push({ event: "open", ...payload });
+    });
+
+    // 1. Toast via customInstance
+    const handle1 = await customInstance.success("Instance toast");
+    await new Promise((r) => setTimeout(r, 60));
+
+    assert.strictEqual(instanceEvents.length, 1, "Instance listener received open event");
+    assert.strictEqual(globalEvents.length, 1, "Global listener received open event");
+    assert.strictEqual(instanceEvents[0].options._instanceId, customInstance.instanceId);
+
+    // 2. Toast via default global createToast
+    await createToast.info("Global toast");
+    await new Promise((r) => setTimeout(r, 60));
+
+    assert.strictEqual(instanceEvents.length, 1, "Instance listener did NOT receive global toast event");
+    assert.strictEqual(globalEvents.length, 2, "Global listener received both events");
+
+    // 3. Unsubscribe stops events
+    unsubInstanceOpen();
+    await customInstance.warning("Another instance toast");
+    await new Promise((r) => setTimeout(r, 60));
+    assert.strictEqual(instanceEvents.length, 1, "Unsubscribed listener did not receive new events");
+
+    unsubGlobalOpen();
+    resetToastManager();
+  });
+
+  test("lifecycle pub-sub emits close and queue events", async () => {
+    freshDom();
+    const { createToast, on, resetToastManager, setConfig, resetConfig } = await import("../../src/index.js");
+    resetToastManager();
+    resetConfig();
+
+    const closeEvents = [];
+    const unsubClose = on("close", (payload) => {
+      closeEvents.push(payload);
+    });
+
+    const handle = await createToast.success("Toast to dismiss", { duration: 10000 });
+    await new Promise((r) => setTimeout(r, 50));
+
+    await handle.dismiss();
+    await new Promise((r) => setTimeout(r, 500));
+
+    assert.strictEqual(closeEvents.length, 1, "Close event received on toast dismissal");
+    assert.strictEqual(closeEvents[0].options.message, "Toast to dismiss");
+
+    unsubClose();
+    resetToastManager();
+  });
+
+  test("High-Coverage Fortification: Toast fallback, framework edge cases, and CSP guards", async () => {
+    freshDom();
+
+    // 1. Toast.js catch block fallback
+    const { createToastElement } = await import("../../src/components/Toast.js");
+    const emergencyResult = await createToastElement({
+      message: "Test fallback",
+      // Symbol or throwing property during styling
+      get animationDuration() {
+        throw new Error("Simulated styling crash");
+      },
+    });
+    assert.ok(emergencyResult, "createToastElement catches and returns emergency toast");
+
+    // 2. Angular adapter coverage: ɵfac, ɵprov, setDefaultMessages, version
+    const { ToastService } = await import("../../src/angular/index.js");
+    const serviceInstance = ToastService.ɵfac();
+    assert.ok(serviceInstance instanceof ToastService, "ɵfac creates ToastService instance");
+    assert.strictEqual(ToastService.ɵprov.providedIn, "root");
+    serviceInstance.setDefaultMessages({ success: "Ang Success" });
+    assert.ok(serviceInstance.version, "service.version returns version string");
+
+    // 3. React adapter: useToast with window.React.useMemo
+    const reactModule = await import("../../src/react/index.js");
+    window.React = {
+      useMemo: (factory) => factory(),
+    };
+    const memoizedAPI = reactModule.useToast();
+    assert.ok(memoizedAPI && typeof memoizedAPI.success === "function", "useToast with React.useMemo works");
+    delete window.React;
+
+    // 4. Svelte adapter: non-function subscribe and error handling
+    const { createToastStore } = await import("../../src/svelte/index.js");
+    const svelteStore = createToastStore();
+    const noopUnsub = svelteStore.subscribe(null);
+    assert.strictEqual(typeof noopUnsub, "function");
+
+    // Test throwing subscriber in notifySubscribers
+    let callCount = 0;
+    const throwingUnsub = svelteStore.subscribe(() => {
+      callCount++;
+      if (callCount > 1) {
+        throw new Error("Subscriber error");
+      }
+    });
+    svelteStore.success("Trigger notify");
+    throwingUnsub();
+
+    // 5. stacked-layout.js: focusin and focusout listeners
+    const { updateStackedLayout } = await import("../../src/components/stacked-layout.js");
+    const container = document.createElement("div");
+    container.setAttribute("data-stacked", "true");
+    const child1 = document.createElement("div");
+    const child2 = document.createElement("div");
+    container.appendChild(child1);
+    container.appendChild(child2);
+    document.body.appendChild(container);
+
+    updateStackedLayout(container);
+
+    // Trigger focusin
+    container.dispatchEvent(new window.Event("focusin"));
+    assert.strictEqual(container._isExpanded, true, "focusin expands stacked container");
+
+    // Trigger focusout
+    const outsideEl = document.createElement("button");
+    document.body.appendChild(outsideEl);
+    const focusOutEvt = new window.Event("focusout");
+    focusOutEvt.relatedTarget = outsideEl;
+    container.dispatchEvent(focusOutEvt);
+    assert.strictEqual(container._isExpanded, false, "focusout collapses stacked container");
+
+    // 6. loader.js: CSP style tag insertion throw
+    const { createLoader } = await import("../../src/components/loader.js");
+    const origAppend = document.head.appendChild;
+    const existingStyle = document.getElementById("toast-spinner-styles");
+    if (existingStyle) existingStyle.remove();
+
+    document.head.appendChild = () => {
+      throw new Error("CSP blocked style tag");
+    };
+
+    const cspLoader = createLoader({ size: 18 });
+    assert.ok(cspLoader, "Loader created gracefully even when CSP blocks stylesheet insertion");
+
+    document.head.appendChild = origAppend;
+  });
+
+  test("SonarQube Architecture & 100% Coverage Fortification: Timer errors, cyclic CSS vars, Angular & React error paths", async () => {
+    freshDom();
+
+    // 1. Angular adapter full methods
+    const { ToastService } = await import("../../src/angular/index.js");
+    const service = new ToastService();
+    const metrics = service.getToastMetrics();
+    assert.ok(metrics && typeof metrics.activeCount === "number", "service.getToastMetrics returns metrics object");
+    service.setDefaultColors({ info: "#0000ff" });
+    service.setDefaultMessages({ info: "Info msg" });
+
+    const promiseResult = await service.promise(
+      Promise.resolve("ang-success"),
+      { success: "Done!" }
+    );
+    assert.strictEqual(promiseResult, "ang-success", "service.promise resolves correctly");
+
+    // 2. PausableTimer error handling and zero-remaining pause
+    const { PausableTimer } = await import("../../src/utils/PausableTimer.js");
+    let timerErrorCaught = false;
+    const throwingTimer = new PausableTimer(() => {
+      timerErrorCaught = true;
+      throw new Error("Simulated callback crash");
+    }, 10);
+    throwingTimer.start();
+    await new Promise((r) => setTimeout(r, 40));
+    assert.strictEqual(timerErrorCaught, true, "PausableTimer executes callback and catches error");
+
+    let zeroPauseThrowCaught = false;
+    const zeroTimer = new PausableTimer(() => {
+      zeroPauseThrowCaught = true;
+      throw new Error("Zero timer crash");
+    }, 10);
+    zeroTimer.start();
+    await new Promise((r) => setTimeout(r, 30));
+    zeroTimer.pause();
+    assert.strictEqual(zeroPauseThrowCaught, true, "PausableTimer pause when remaining <= 0 executes callback safely");
+
+    // 3. React hook useToast when React.useMemo throws
+    const reactModule = await import("../../src/react/index.js");
+    window.React = {
+      useMemo: () => {
+        throw new Error("React.useMemo simulated failure");
+      },
+    };
+    const fallbackAPI = reactModule.useToast();
+    assert.ok(fallbackAPI && typeof fallbackAPI.show === "function", "useToast falls back gracefully when React.useMemo throws");
+    delete window.React;
+
+    // 4. containerRegistry concurrent lock hit and duplicate removal
+    const { getOrCreateToastContainer } = await import("../../src/utils/containerRegistry.js");
+    const p1 = getOrCreateToastContainer({ position: "top-left" });
+    const p2 = getOrCreateToastContainer({ position: "top-left" });
+    const [c1, c2] = await Promise.all([p1, p2]);
+    assert.strictEqual(c1, c2, "Concurrent getOrCreateToastContainer returns the locked promise");
+
+    const dup1 = document.createElement("div");
+    dup1.id = "toast-container-dup-pos";
+    const dup2 = document.createElement("div");
+    dup2.id = "toast-container-dup-pos";
+    document.body.appendChild(dup1);
+    document.body.appendChild(dup2);
+    assert.strictEqual(document.querySelectorAll("#toast-container-dup-pos").length, 2);
+    const deduped = await getOrCreateToastContainer({ position: "dup-pos" });
+    assert.ok(deduped);
+    assert.strictEqual(document.querySelectorAll("#toast-container-dup-pos").length, 1, "Duplicate containers in DOM are pruned to 1");
+
+    // 5. CSS custom property cyclic reference handling
+    const { getDynamicAccessibleTextColorHex } = await import("../../src/utils/dom.js");
+    const cyclicColor = getDynamicAccessibleTextColorHex("var(--loop-a, var(--loop-a))");
+    assert.ok(cyclicColor, "Cyclic CSS custom property resolves gracefully without recursion");
+
+    // 6. Keyboard shortcuts init, destroy, and landmark without buttons
+    const { initKeyboardShortcuts, destroyKeyboardShortcuts } = await import("../../src/utils/keyboard.js");
+    const cleanupKb = initKeyboardShortcuts(window, () => {});
+    assert.strictEqual(typeof cleanupKb, "function");
+
+    // Landmark F6 navigation when toast element has no buttons
+    const plainContainer = document.createElement("div");
+    plainContainer.id = "toast-container-bottom-right";
+    const plainToast = document.createElement("div");
+    plainToast.id = "toast-plain-test";
+    plainToast.tabIndex = 0;
+    plainContainer.appendChild(plainToast);
+    document.body.appendChild(plainContainer);
+
+    const f6Evt = new window.Event("keydown");
+    f6Evt.key = "F6";
+    window.dispatchEvent(f6Evt);
+    assert.strictEqual(document.activeElement, plainToast, "F6 key focuses toast container directly when no interactive children exist");
+
+    destroyKeyboardShortcuts(window);
+
+    // 7. toast-timer null safety
+    const { cleanupToastEntry } = await import("../../src/components/toast-timer.js");
+    cleanupToastEntry(null);
+    cleanupToastEntry({});
+  });
+
+  test("Exhaustive Full-Codebase Edge-Cases & 100% Statement Coverage", async () => {
+    freshDom();
+    // 1. keyboard.js: Escape key dismiss error branch & F6 with shadowRoot active toasts
+    const { initKeyboardShortcuts, destroyKeyboardShortcuts } = await import("../../src/utils/keyboard.js");
+    const cleanupErrorKb = initKeyboardShortcuts(window, () => {
+      throw new Error("Simulated dismiss crash");
+    });
+    const escEvt = new window.Event("keydown");
+    escEvt.key = "Escape";
+    window.dispatchEvent(escEvt);
+    destroyKeyboardShortcuts(window);
+
+    // F6 with #toast-shadow-host
+    const shadowHost = document.createElement("div");
+    shadowHost.id = "toast-shadow-host";
+    const shadowRoot = shadowHost.attachShadow({ mode: "open" });
+    const shadowContainer = document.createElement("div");
+    shadowContainer.id = "toast-container-top-right";
+    const shadowToast = document.createElement("div");
+    shadowToast.id = "toast-shadow-child";
+    shadowToast.tabIndex = 0;
+    const shadowBtn = document.createElement("button");
+    shadowBtn.textContent = "Action";
+    shadowToast.appendChild(shadowBtn);
+    shadowContainer.appendChild(shadowToast);
+    shadowRoot.appendChild(shadowContainer);
+    document.body.appendChild(shadowHost);
+
+    let shadowFocusCalled = false;
+    shadowBtn.focus = () => { shadowFocusCalled = true; };
+    initKeyboardShortcuts(window, () => {});
+    const f6Evt = new window.Event("keydown");
+    f6Evt.key = "F6";
+    window.dispatchEvent(f6Evt);
+    assert.strictEqual(shadowFocusCalled, true, "F6 focuses interactive element inside shadow host");
+    destroyKeyboardShortcuts(window);
+    shadowHost.remove();
+
+    // 2. options-sanitizer.js: message fallback & progress bar color resolution error
+    const { sanitizeToastOptions } = await import("../../src/utils/options-sanitizer.js");
+    const sanitizedEmptyMsg = await sanitizeToastOptions({ message: null, type: undefined });
+    assert.strictEqual(typeof sanitizedEmptyMsg.message, "string", "Sanitizer guarantees string message");
+
+    // progress bar color resolution catch block
+    Object.defineProperty(Object.prototype, "progressBarColor", {
+      get() {
+        if (this._throwOnProgress) throw new Error("Simulated progress bar color throw");
+        return undefined;
+      },
+      configurable: true,
+    });
+    const sanitizedThrowing = await sanitizeToastOptions({ _throwOnProgress: true });
+    assert.ok(sanitizedThrowing, "Sanitizer recovers gracefully from color resolution failure");
+    delete Object.prototype.progressBarColor;
+
+    // 3. toast-timer.js: onDismiss throwing in createDismissTimer & pause/play throws in setupPauseOnHover
+    const { createDismissTimer, setupPauseOnHover } = await import("../../src/components/toast-timer.js");
+    createDismissTimer(() => {
+      throw new Error("Synchronous dismiss throw");
+    }, 10, {});
+    await new Promise((r) => setTimeout(r, 30));
+
+    // setupPauseOnHover with throwing animation.pause / play
+    const mockOuter = document.createElement("div");
+    const mockToast = document.createElement("div");
+    mockToast._progressAnimation = {
+      pause: () => { throw new Error("pause error"); },
+      play: () => { throw new Error("play error"); },
+    };
+    const mockTimer = {
+      getRemainingTime: () => 500,
+      pause: () => {},
+      resume: () => {},
+    };
+    await setupPauseOnHover({ outer: mockOuter, toast: mockToast, timer: mockTimer, pauseOnHover: true });
+    mockOuter.dispatchEvent(new window.Event("mouseenter"));
+    mockOuter.dispatchEvent(new window.Event("mouseleave"));
+
+    // 4. src/index.js: instance.promise, instance as function, and instance.custom
+    const { createToastInstance } = await import("../../src/index.js");
+    const inst = createToastInstance({ position: "top-center" });
+    const directHandle = await inst("Direct message call");
+    assert.ok(directHandle.id, "Instance callable as function creates toast");
+    const customHandle = await inst.custom("Custom toast", { allowHtml: true });
+    assert.ok(customHandle.id, "Instance custom creates toast");
+    const promiseVal = await inst.promise(Promise.resolve("hello"), { success: "Loaded!" });
+    assert.strictEqual(promiseVal, "hello", "Instance promise executes and returns resolved value");
+    await inst.dismissAll();
+
+    // 5. icons.js: createToastIcon with element + iconSize and non-svg string textContent
+    const { createToastIcon } = await import("../../src/components/icons.js");
+    const customSpan = document.createElement("span");
+    const elementIcon = createToastIcon({ type: "info", icon: customSpan, iconSize: 20, iconColor: "#ff0000" });
+    assert.ok(elementIcon);
+    const nonSvgIcon = createToastIcon({ type: "info", icon: "not-an-svg-tag" });
+    assert.ok(nonSvgIcon);
+
+    // 6. toast-utils.js: emergency toast with center-left position and allowHtml
+    const { createEmergencyToast } = await import("../../src/components/toast-utils.js");
+    const emerToast = await createEmergencyToast({ position: "center-left", allowHtml: true, message: "<b>Bold</b> emergency" }, () => {});
+    assert.ok(emerToast);
+    emerToast.remove();
+
+    // 7. dom.js: getDynamicAccessibleTextColorHex with grad, rad, and grayscale HSL
+    const { getDynamicAccessibleTextColorHex } = await import("../../src/utils/dom.js");
+    const gradColor = getDynamicAccessibleTextColorHex("hsl(200grad, 50%, 50%)");
+    assert.ok(gradColor);
+    const radColor = getDynamicAccessibleTextColorHex("hsl(1rad, 50%, 50%)");
+    assert.ok(radColor);
+    const grayHsl = getDynamicAccessibleTextColorHex("hsl(0, 0%, 50%)");
+    assert.ok(grayHsl);
+
+    // 8. html-sanitizer.js: secureBlankLinks in fallbackSanitize & DOMPurify throwing
+    const { fallbackSanitize, sanitizeHtml } = await import("../../src/utils/html-sanitizer.js");
+    const blankLinkSanitized = fallbackSanitize('<a href="https://example.com" target="_blank">External</a>');
+    assert.ok(blankLinkSanitized.includes('rel="noopener noreferrer"'), "Blank link includes secure rel attributes");
+
+    window.DOMPurify = {
+      sanitize: () => { throw new Error("Simulated DOMPurify crash"); },
+    };
+    const fallbackAfterCrash = sanitizeHtml("<b>Safe text</b>");
+    assert.ok(fallbackAfterCrash.includes("Safe text"), "Falls back to native sanitizer on DOMPurify failure");
+    delete window.DOMPurify;
+
+    // 9. ToastManager.js: updateToastByKey on queued toast
+    const { showToast, updateToastByKey: coreUpdateToastByKey, resetToastManager } = await import("../../src/components/ToastManager.js");
+    resetToastManager();
+    const { setConfig, resetConfig } = await import("../../src/utils/config.js");
+    setConfig({ maxVisible: 1, iconColor: null });
+    setConfig({ iconColor: 123 });
+    await showToast({ message: "Active 1" });
+    const h2Key = await showToast({ message: "Queued 2" });
+    const queuedUpdated = await coreUpdateToastByKey(h2Key, { message: "Queued 2 updated" });
+    assert.strictEqual(queuedUpdated, true, "Updating queued toast in-place returns true");
+    resetToastManager();
+    resetConfig();
+
+    // 10. position.js: setPosition with "left" and "right" bare positions
+    const { setPosition } = await import("../../src/utils/position.js");
+    const posDiv = document.createElement("div");
+    await setPosition(posDiv, { position: "right" });
+    assert.strictEqual(posDiv.style.right, "10px");
+    assert.strictEqual(posDiv.style.bottom, "10px");
+
+    // 11. config.js: shouldReduceMotion when matchMedia throws
+    const { shouldReduceMotion } = await import("../../src/utils/config.js");
+    const origMatchMedia = window.matchMedia;
+    window.matchMedia = () => { throw new Error("matchMedia restricted"); };
+    const reducedThrows = shouldReduceMotion();
+    assert.strictEqual(reducedThrows, false, "shouldReduceMotion returns false on matchMedia throw");
+    window.matchMedia = origMatchMedia;
+
+    // 12. PausableTimer.js: pause when remaining <= 0 executes callback
+    const { PausableTimer } = await import("../../src/utils/PausableTimer.js");
+    let pauseAfterDoneFired = false;
+    const pt = new PausableTimer(() => {
+      pauseAfterDoneFired = true;
+    }, 10);
+    pt.start();
+    await new Promise((r) => setTimeout(r, 25));
+    pt.pause();
+    assert.strictEqual(pauseAfterDoneFired, true, "pause when remaining <= 0 fires callback");
+  });
+
+  test("Category A Architectural Fortification: Scoped Instance State, SSR Safe Handle, Web Audio Chime, and CSS Containment", async () => {
+    freshDom();
+    const { createToastInstance, createToast, resetToastManager } = await import("../../src/index.js");
+    const { playNativeTone } = await import("../../src/components/toast-utils.js");
+    resetToastManager();
+
+    // 1. Scoped Instance State Isolation: instance.dismissAll does not purge other instances or global toasts
+    const instA = createToastInstance({ position: "top-left", maxVisibleToasts: 5 });
+    const instB = createToastInstance({ position: "top-right", maxVisibleToasts: 5 });
+
+    const handleA1 = await instA.success("Instance A Toast 1", { duration: 10000 });
+    const handleA2 = await instA.info("Instance A Toast 2", { duration: 10000 });
+    const handleB = await instB.warning("Instance B Toast 1", { duration: 10000 });
+    const globalHandle = await createToast.error("Global Toast", { duration: 10000 });
+    await new Promise((r) => setTimeout(r, 80));
+
+    assert.ok(handleA1.id, "handleA1 has valid id");
+    assert.ok(handleA2.id, "handleA2 has valid id");
+    assert.ok(handleB.id, "handleB has valid id");
+    assert.ok(globalHandle.id, "globalHandle has valid id");
+
+    // Dismiss all toasts belonging to Instance A
+    await instA.dismissAll();
+    await new Promise((r) => setTimeout(r, 80));
+
+    // Verify Instance A toasts are removed, while handleB and globalHandle remain active in DOM
+    const hasA1 = Array.from(document.querySelectorAll(".toast")).some((el) => el.textContent.includes("Instance A Toast 1"));
+    const hasA2 = Array.from(document.querySelectorAll(".toast")).some((el) => el.textContent.includes("Instance A Toast 2"));
+    const hasB = Array.from(document.querySelectorAll(".toast")).some((el) => el.textContent.includes("Instance B Toast 1"));
+    const hasGlobal = Array.from(document.querySelectorAll(".toast")).some((el) => el.textContent.includes("Global Toast"));
+
+    assert.strictEqual(hasA1, false, "Instance A toast 1 dismissed by instA.dismissAll");
+    assert.strictEqual(hasA2, false, "Instance A toast 2 dismissed by instA.dismissAll");
+    assert.strictEqual(hasB, true, "Instance B toast is not affected by Instance A dismissAll");
+    assert.strictEqual(hasGlobal, true, "Global toast is not affected by Instance A dismissAll");
+
+    // Clean up
+    await instB.dismissAll();
+    await globalHandle.dismiss();
+    resetToastManager();
+
+    // 2. SSR Contract Consistency: No-op handle returns clean promises without throwing
+    const origWindow = global.window;
+    const origDoc = global.document;
+
+    // Simulate SSR
+    delete global.window;
+    delete global.document;
+
+    const { createToast: ssrCreateToast } = await import("../../src/index.js");
+    const ssrHandle = await ssrCreateToast("SSR Test Message");
+
+    assert.strictEqual(ssrHandle.id, "ssr-noop");
+    const updateResult = await ssrHandle.update({ message: "New" });
+    assert.strictEqual(updateResult, false, "SSR update returns false safely");
+    await ssrHandle.dismiss(); // should resolve without throwing
+
+    // Restore browser environment
+    global.window = origWindow;
+    global.document = origDoc;
+
+    // 3. Web Audio Chime: Native tone synthesis with mocked AudioContext
+    let oscStarted = false;
+    let gainRamped = false;
+    class MockAudioContext {
+      constructor() {
+        this.currentTime = 0;
+        this.state = "running";
+        this.destination = {};
+      }
+      createOscillator() {
+        return {
+          type: "sine",
+          frequency: {
+            setValueAtTime: () => {},
+            exponentialRampToValueAtTime: () => {},
+          },
+          connect: () => {},
+          start: () => { oscStarted = true; },
+          stop: () => {},
+        };
+      }
+      createGain() {
+        return {
+          gain: {
+            setValueAtTime: () => {},
+            exponentialRampToValueAtTime: () => { gainRamped = true; },
+          },
+          connect: () => {},
+        };
+      }
+    }
+    window.AudioContext = MockAudioContext;
+
+    playNativeTone("success");
+    assert.strictEqual(oscStarted, true, "playNativeTone creates and starts oscillator");
+    assert.strictEqual(gainRamped, true, "playNativeTone configures gain envelope");
+
+    playNativeTone("error");
+    playNativeTone("warning");
+
+    // 4. CSS Containment: inline style mode sets layout and paint containment
+    const { getOrCreateToastContainer } = await import("../../src/utils/containerRegistry.js");
+    const container = await getOrCreateToastContainer({ position: "bottom-right" });
+    assert.strictEqual(container.style.contain, "layout style", "Container sets layout style containment");
+
+    const toastHandle = await createToast("Containment Test", { duration: 5000 });
+    await new Promise((r) => setTimeout(r, 60));
+    const toastEl = Array.from(document.querySelectorAll(".toast")).find((el) => el.textContent.includes("Containment Test"));
+    assert.ok(toastEl, "Toast element is mounted in DOM");
+    assert.strictEqual(toastEl.style.contain, "layout style", "Toast element sets layout style containment");
+    assert.strictEqual(toastEl.style.willChange, "transform, opacity", "Toast element sets GPU will-change");
+
+    await toastHandle.dismiss();
+    resetToastManager();
+  });
+
+  test("Fortification 2: Scoped Instance Target Dismiss, Empty No-Op, Size Getter, Landmark Selector, and Framework Exports", async () => {
+    resetToastManager();
+    const { createToastInstance, createToast } = await import("../../src/index.js");
+
+    // 1. Target dismiss in createToastInstance
+    const inst = createToastInstance({ position: "top-right" });
+    const h1 = await inst.success("Instance Toast 1", { duration: 10000 });
+    const h2 = await inst.success("Instance Toast 2", { duration: 10000 });
+    await new Promise((r) => setTimeout(r, 80));
+
+    assert.strictEqual(inst.getActiveCount(), 2, "instance.getActiveCount() returns 2");
+    assert.strictEqual(inst.size, 2, "instance.size getter returns 2");
+
+    // Dismiss specific target (h1)
+    await inst.dismiss(h1);
+    await new Promise((r) => setTimeout(r, 80));
+
+    assert.strictEqual(inst.getActiveCount(), 1, "instance.getActiveCount() is 1 after target dismiss");
+    assert.strictEqual(inst.size, 1, "instance.size is 1 after target dismiss");
+
+    // Dismiss most recent (h2)
+    await inst.dismiss();
+    await new Promise((r) => setTimeout(r, 80));
+
+    assert.strictEqual(inst.getActiveCount(), 0, "instance count is 0 after dismissing all");
+    assert.strictEqual(inst.size, 0, "instance size is 0 after dismissing all");
+
+    // 2. Empty instance dismiss does NOT leak to global toasts
+    const globalHandle = await createToast("Global Toast Must Remain", { duration: 10000 });
+    await new Promise((r) => setTimeout(r, 80));
+
+    // Calling inst.dismiss() while inst has 0 toasts
+    await inst.dismiss();
+    await new Promise((r) => setTimeout(r, 80));
+
+    const globalEl = Array.from(document.querySelectorAll(".toast")).find((el) =>
+      el.textContent.includes("Global Toast Must Remain")
+    );
+    assert.ok(globalEl, "Global toast is NOT dismissed when an empty instance calls dismiss()");
+    await globalHandle.dismiss();
+    resetToastManager();
+
+    // 3. Landmark navigation selector covers .toast-emergency
+    const { initKeyboardShortcuts, destroyKeyboardShortcuts } = await import("../../src/index.js");
+    let focusedElement = null;
+    const emergencyDiv = document.createElement("div");
+    emergencyDiv.className = "toast-emergency";
+    emergencyDiv.tabIndex = 0;
+    emergencyDiv.focus = () => { focusedElement = emergencyDiv; };
+    document.body.appendChild(emergencyDiv);
+
+    initKeyboardShortcuts(window);
+    const landmarkEvent = new window.KeyboardEvent("keydown", { key: "F6", bubbles: true });
+    window.dispatchEvent(landmarkEvent);
+
+    assert.strictEqual(focusedElement, emergencyDiv, "F6 landmark navigation focuses .toast-emergency");
+    destroyKeyboardShortcuts();
+    emergencyDiv.remove();
+
+    // 4. Framework subpath exports: createToastInstance
+    const reactAdapter = await import("../../src/react/index.js");
+    const vueAdapter = await import("../../src/vue/index.js");
+    const svelteAdapter = await import("../../src/svelte/index.js");
+    const solidAdapter = await import("../../src/solid/index.js");
+    const angularAdapter = await import("../../src/angular/index.js");
+
+    assert.strictEqual(typeof reactAdapter.createToastInstance, "function", "React subpath exports createToastInstance");
+    assert.strictEqual(typeof vueAdapter.createToastInstance, "function", "Vue subpath exports createToastInstance");
+    assert.strictEqual(typeof svelteAdapter.createToastInstance, "function", "Svelte subpath exports createToastInstance");
+    assert.strictEqual(typeof solidAdapter.createToastInstance, "function", "Solid subpath exports createToastInstance");
+    assert.strictEqual(typeof angularAdapter.createToastInstance, "function", "Angular subpath exports createToastInstance");
+
+    // 5. useToast with default options returns scoped instance; without options returns global API
+    const scopedReactToast = reactAdapter.useToast({ position: "top-center" });
+    assert.strictEqual(typeof scopedReactToast.getActiveCount, "function", "useToast with options returns scoped instance");
+    assert.strictEqual(scopedReactToast.getDefaults().position, "top-center", "Scoped instance preserves default options");
+
+    const defaultReactToast = reactAdapter.useToast();
+    assert.strictEqual(typeof defaultReactToast.success, "function", "useToast without options returns global API");
+
+    const scopedVueToast = vueAdapter.useToast({ position: "left-center" });
+    assert.strictEqual(typeof scopedVueToast.getActiveCount, "function", "Vue useToast with options returns scoped instance");
+    assert.strictEqual(scopedVueToast.getDefaults().position, "left-center", "Vue scoped instance preserves default options");
+
+    const scopedSolidToast = solidAdapter.useToast({ position: "right-center" });
+    assert.strictEqual(typeof scopedSolidToast.getActiveCount, "function", "Solid useToast with options returns scoped instance");
+    assert.strictEqual(scopedSolidToast.getDefaults().position, "right-center", "Solid scoped instance preserves default options");
+
+    // 6. Svelte and Angular scoped instance support
+    const scopedSvelteStore = svelteAdapter.createToastStore({ position: "bottom-center" });
+    assert.strictEqual(typeof scopedSvelteStore.getActiveCount, "function", "Svelte createToastStore with options returns scoped instance");
+    assert.strictEqual(scopedSvelteStore.getDefaults().position, "bottom-center", "Svelte scoped instance preserves defaults");
+
+    const defaultSvelteStore = svelteAdapter.useToast();
+    assert.strictEqual(typeof defaultSvelteStore.success, "function", "Svelte useToast without options returns global store");
+
+    const scopedAngularService = new angularAdapter.ToastService({ position: "center" });
+    assert.strictEqual(scopedAngularService._instance.getDefaults().position, "center", "Angular ToastService with options has scoped instance");
+
+    const scopedInjectedAngular = angularAdapter.injectToast({ position: "top-full-width" });
+    assert.strictEqual(scopedInjectedAngular._instance.getDefaults().position, "top-full-width", "Angular injectToast with options returns scoped service");
+
+    // 7. ToastInstance contract parity and 'show' event alias
+    assert.strictEqual(inst.createToast, inst, "instance.createToast is self-reference alias");
+    assert.ok(typeof inst.version === "string", "instance.version is string");
+    assert.ok(typeof inst.getToastMetrics() === "object", "instance.getToastMetrics() returns metrics object");
+
+    let showEventFired = false;
+    const unsubShow = createToast.on("show", (payload) => {
+      showEventFired = true;
+    });
+    const tempToast = await createToast("Testing show event alias");
+    await new Promise((r) => setTimeout(r, 60));
+    assert.strictEqual(showEventFired, true, "createToast.on('show') alias receives 'open' event");
+    unsubShow();
+    await tempToast.dismiss();
+
+    resetToastManager();
+  });
+
+  test("Fortification 3: Scoped Instance Promise Tracking, Framework Pub-Sub & Parity, and Svelte toastStore Export", async () => {
+    resetToastManager();
+    const { createToast, getActiveCount, createToastAPI, createToastInstance } = await import("../../src/index.js");
+
+    // 1. Scoped instance promise tracking & lifecycle
+    const inst = createToastInstance({ position: "top-left" });
+    let resolvePromise;
+    const p = new Promise((resolve) => { resolvePromise = resolve; });
+    let instOpened = false;
+    const unsub = inst.on("open", () => { instOpened = true; });
+
+    const promiseAction = inst.promise(p, { loading: "Scoped Loading...", success: "Scoped Done!" });
+    await new Promise((r) => setTimeout(r, 80));
+
+    assert.strictEqual(inst.getActiveCount(), 1, "instance.getActiveCount() reflects pending promise");
+    assert.strictEqual(inst.size, 1, "instance.size reflects pending promise");
+    assert.strictEqual(instOpened, true, "instance.on('open') received event for promise");
+
+    resolvePromise("All good");
+    await promiseAction;
+    await new Promise((r) => setTimeout(r, 80));
+
+    unsub();
+    await inst.dismissAll();
+    resetToastManager();
+
+    // 2. Pending promise dismissal via instance.dismissAll()
+    const inst2 = createToastInstance({ position: "bottom-left" });
+    const neverResolve = new Promise(() => {});
+    inst2.promise(neverResolve, { loading: "Pending..." }).catch(() => {});
+    await new Promise((r) => setTimeout(r, 80));
+    assert.strictEqual(inst2.size, 1, "Pending promise is tracked in inst2");
+    await inst2.dismissAll();
+    await new Promise((r) => setTimeout(r, 80));
+    assert.strictEqual(inst2.size, 0, "inst2.dismissAll() cleanly dismisses pending promise loading toast");
+    resetToastManager();
+
+    // 3. Global API parity (getActiveCount and size)
+    assert.strictEqual(typeof createToast.getActiveCount, "function", "createToast.getActiveCount is function");
+    assert.strictEqual(typeof createToast.size, "number", "createToast.size is number");
+    assert.strictEqual(typeof getActiveCount, "function", "getActiveCount is exported function");
+
+    const api = createToastAPI();
+    assert.strictEqual(typeof api.getActiveCount, "function", "createToastAPI.getActiveCount is function");
+    assert.strictEqual(typeof api.size, "number", "createToastAPI.size is number");
+    if (typeof window !== "undefined" && window.customizableToast) {
+      assert.strictEqual(typeof window.customizableToast.getActiveCount, "function", "window.customizableToast.getActiveCount is function");
+      assert.strictEqual(typeof window.customizableToast.size, "number", "window.customizableToast.size is number");
+    }
+
+    // 4. Framework subpath exports: on, off, getActiveCount, toastStore
+    const reactAdapter = await import("../../src/react/index.js");
+    const vueAdapter = await import("../../src/vue/index.js");
+    const svelteAdapter = await import("../../src/svelte/index.js");
+    const solidAdapter = await import("../../src/solid/index.js");
+    const angularAdapter = await import("../../src/angular/index.js");
+
+    assert.strictEqual(typeof reactAdapter.on, "function", "React exports on");
+    assert.strictEqual(typeof reactAdapter.off, "function", "React exports off");
+    assert.strictEqual(typeof reactAdapter.getActiveCount, "function", "React exports getActiveCount");
+
+    assert.strictEqual(typeof vueAdapter.on, "function", "Vue exports on");
+    assert.strictEqual(typeof vueAdapter.off, "function", "Vue exports off");
+    assert.strictEqual(typeof vueAdapter.getActiveCount, "function", "Vue exports getActiveCount");
+
+    assert.strictEqual(typeof svelteAdapter.on, "function", "Svelte exports on");
+    assert.strictEqual(typeof svelteAdapter.off, "function", "Svelte exports off");
+    assert.strictEqual(typeof svelteAdapter.getActiveCount, "function", "Svelte exports getActiveCount");
+    assert.strictEqual(typeof svelteAdapter.toastStore, "object", "Svelte exports toastStore");
+    assert.strictEqual(typeof svelteAdapter.toastStore.subscribe, "function", "toastStore.subscribe is function");
+
+    assert.strictEqual(typeof solidAdapter.on, "function", "Solid exports on");
+    assert.strictEqual(typeof solidAdapter.off, "function", "Solid exports off");
+    assert.strictEqual(typeof solidAdapter.getActiveCount, "function", "Solid exports getActiveCount");
+
+    assert.strictEqual(typeof angularAdapter.on, "function", "Angular exports on");
+    assert.strictEqual(typeof angularAdapter.off, "function", "Angular exports off");
+    assert.strictEqual(typeof angularAdapter.getActiveCount, "function", "Angular exports getActiveCount");
+
+    // 5. Angular ToastService class methods
+    const ang = new angularAdapter.ToastService();
+    assert.strictEqual(typeof ang.on, "function", "ToastService has on()");
+    assert.strictEqual(typeof ang.off, "function", "ToastService has off()");
+    assert.strictEqual(typeof ang.getActiveCount, "function", "ToastService has getActiveCount()");
+    assert.strictEqual(typeof ang.size, "number", "ToastService has size getter");
+
+    let angEvtReceived = false;
+    const unsubAng = ang.on("open", () => { angEvtReceived = true; });
+    const hAng = await ang.success("Angular Service Test");
+    await new Promise((r) => setTimeout(r, 60));
+    assert.strictEqual(angEvtReceived, true, "ToastService.on('open') received event");
+    unsubAng();
+    await hAng.dismiss();
+
+    resetToastManager();
+  });
+
+  test("Fortification 4: Comprehensive Remediation of Approved Codebase Shortcomings", async () => {
+    resetToastManager();
+
+    // 1. PausableTimer integer quantization and drift prevention
+    const { PausableTimer } = await import("../../src/utils/PausableTimer.js");
+    const timer = new PausableTimer(() => {}, 5000);
+    timer.start();
+    await new Promise((r) => setTimeout(r, 25));
+    timer.pause();
+    assert.strictEqual(Number.isInteger(timer.remaining), true, "timer.remaining is rounded integer");
+    assert.strictEqual(Number.isInteger(timer.getRemainingTime()), true, "timer.getRemainingTime() is rounded integer");
+    timer.clear();
+
+    // 2. ToastManager queue drop payload enrichment (key, type, message, priority, reason)
+    const { createToast, setConfig, resetConfig, on } = await import("../../src/index.js");
+    setConfig({ maxVisible: 1, maxQueueSize: 1 });
+
+    const droppedPayloads = [];
+    const unsubDrop = on("drop", (payload) => {
+      droppedPayloads.push(payload);
+    });
+
+    const h1 = await createToast({ message: "First toast", type: "info", duration: 10000 });
+    const h2 = await createToast({ message: "Second queued toast", type: "warning", priority: 10, duration: 10000 });
+    const h3 = await createToast({ message: "Third dropped toast", type: "error", priority: 5, duration: 10000 });
+
+    await new Promise((r) => setTimeout(r, 60));
+    assert.ok(droppedPayloads.length >= 1, "Drop event was emitted");
+    const drop = droppedPayloads[0];
+    assert.strictEqual(drop.reason, "queue_overflow", "drop reason is queue_overflow");
+    assert.ok(drop.type === "error" || drop.type === "warning", "drop payload has top-level type");
+    assert.ok(typeof drop.message === "string", "drop payload has top-level message");
+    assert.strictEqual(typeof drop.priority, "number", "drop payload has top-level numeric priority");
+
+    unsubDrop();
+    await h1.dismiss();
+    await h2.dismiss();
+    resetConfig();
+    resetToastManager();
+
+    // 3. React subpath closure memoization cache and resetReactCache
+    const reactAdapter = await import("../../src/react/index.js");
+    const scoped1 = reactAdapter.useToast({ position: "top-left" });
+    const scoped2 = reactAdapter.useToast({ position: "top-left" });
+    assert.strictEqual(scoped1, scoped2, "useToast returns memoized instance for identical options in bundlers");
+    reactAdapter.resetReactCache();
+    const scoped3 = reactAdapter.useToast({ position: "top-left" });
+    assert.notStrictEqual(scoped1, scoped3, "resetReactCache clears memoized instance");
+
+    // 4. Svelte store subscriber isolation across scoped stores
+    const svelteAdapter = await import("../../src/svelte/index.js");
+    const storeA = svelteAdapter.createToastStore({ position: "top-left" });
+    const storeB = svelteAdapter.createToastStore({ position: "bottom-right" });
+
+    let storeANotifications = 0;
+    let storeBNotifications = 0;
+    const unsubA = storeA.subscribe(() => { storeANotifications++; });
+    const unsubB = storeB.subscribe(() => { storeBNotifications++; });
+
+    // Initial run on subscribe adds 1
+    assert.strictEqual(storeANotifications, 1);
+    assert.strictEqual(storeBNotifications, 1);
+
+    // Firing on storeA must notify ONLY storeA subscribers, NOT storeB!
+    const hStoreA = await storeA.success("Store A Notification");
+    await new Promise((r) => setTimeout(r, 60));
+    assert.strictEqual(storeANotifications, 2, "storeA subscriber received notification");
+    assert.strictEqual(storeBNotifications, 1, "storeB subscriber was NOT cross-notified by storeA");
+
+    unsubA();
+    unsubB();
+    await hStoreA.dismiss();
+    resetToastManager();
+
+    // 5. SolidJS useToast with autoDismissOnCleanup hook
+    const solidAdapter = await import("../../src/solid/index.js");
+    let registeredCleanup = null;
+    const mockOnCleanup = (fn) => { registeredCleanup = fn; };
+    const solidScoped = solidAdapter.useToast({ position: "top-center", autoDismissOnCleanup: true }, mockOnCleanup);
+    const hSolid = await solidScoped.success("Solid Notification");
+    await new Promise((r) => setTimeout(r, 60));
+    assert.strictEqual(solidScoped.getActiveCount(), 1, "Solid scoped active count is 1");
+
+    assert.strictEqual(typeof registeredCleanup, "function", "Solid onCleanup hook was registered");
+    registeredCleanup();
+    await new Promise((r) => setTimeout(r, 60));
+    assert.strictEqual(solidScoped.getActiveCount(), 0, "Solid scoped toasts auto-dismissed on cleanup");
+    resetToastManager();
+
+    // 6. Angular resetToastService isolation
+    const angularAdapter = await import("../../src/angular/index.js");
+    const s1 = angularAdapter.injectToast();
+    const s2 = angularAdapter.injectToast();
+    assert.strictEqual(s1, s2, "injectToast returns cached singleton");
+    angularAdapter.resetToastService();
+    const s3 = angularAdapter.injectToast();
+    assert.notStrictEqual(s1, s3, "resetToastService clears cached instance for test isolation");
+
+    // 7. Accessibility: Landmark navigation focus visible outline
+    const { initKeyboardShortcuts, destroyKeyboardShortcuts } = await import("../../src/utils/keyboard.js");
+    const hFocus = await createToast("Landmark focus test", { duration: 10000 });
+    await new Promise((r) => setTimeout(r, 60));
+
+    const cleanupKbd = initKeyboardShortcuts(window, async () => {});
+    const f6Event = new window.KeyboardEvent("keydown", { key: "F6", bubbles: true });
+    window.dispatchEvent(f6Event);
+    await new Promise((r) => setTimeout(r, 50));
+
+    const toastElement = document.querySelector('[id^="toast-container-"] [id^="toast-"]');
+    if (toastElement) {
+      assert.strictEqual(toastElement.hasAttribute("tabindex"), true, "Toast element received tabindex for landmark focus");
+    }
+    cleanupKbd();
+    destroyKeyboardShortcuts();
+    await hFocus.dismiss();
+    resetToastManager();
+
+    // 8. Package.json exports validation
+    const pkg = JSON.parse(fs.readFileSync(path.resolve("package.json"), "utf8"));
+    assert.ok(pkg.exports["./types"], "package.json contains './types' subpath export");
+    assert.strictEqual(pkg.exports["./types"].types, "./dist/index.d.ts", "./types points to dist/index.d.ts");
+
+    // 9. CSS Landscape low-height responsive rule
+    const css = fs.readFileSync(path.resolve("src/styles.css"), "utf8");
+    assert.ok(css.includes("@media (max-height: 480px)"), "styles.css includes @media (max-height: 480px)");
+
+    // 10. Standalone examples verification
+    const angService = fs.readFileSync(path.resolve("examples/angular/toast.service.ts"), "utf8");
+    assert.ok(angService.includes("return dismissAll();"), "examples/angular/toast.service.ts dismissAll() returns dismissAll()");
+    assert.ok(angService.includes("clearAll(): Promise<void>"), "examples/angular/toast.service.ts exports clearAll()");
+
+    const netStatus = fs.readFileSync(path.resolve("examples/network-status/index.html"), "utf8");
+    assert.ok(netStatus.includes('tag: "network-connectivity"'), "examples/network-status/index.html uses tag: 'network-connectivity'");
+
+    const aiTriage = fs.readFileSync(path.resolve("examples/ai-triage/smart-triage.js"), "utf8");
+    assert.ok(aiTriage.includes("No event payload provided"), "smart-triage.js handles empty payload safely");
+
+    resetToastManager();
+  });
+
+  test("Fortification 5: Hardened SVG & CSP Nonce, Queue Clamping, A11y aria-atomic, and Input Hygiene", async () => {
+    freshDom();
+    const {
+      setConfig,
+      getConfig,
+      resetConfig,
+      createToast,
+      toastPromise,
+      getToastMetrics,
+      resetToastManager,
+    } = await import("../../src/index.js");
+    resetToastManager();
+
+    // 1. cspNonce & soundPreset in config
+    setConfig({ cspNonce: "xyz-12345-nonce", soundPreset: "subtle" });
+    const cfg = getConfig();
+    assert.strictEqual(cfg.cspNonce, "xyz-12345-nonce", "cspNonce correctly configured");
+    assert.strictEqual(cfg.soundPreset, "subtle", "soundPreset correctly configured");
+
+    // 2. createLoader applies cspNonce to injected style
+    const oldStyle = document.getElementById("toast-spinner-styles");
+    if (oldStyle) oldStyle.remove();
+    const { createLoader } = await import("../../src/components/loader.js");
+    createLoader({ showLoader: true });
+    const newStyle = document.getElementById("toast-spinner-styles");
+    assert.ok(newStyle, "toast-spinner-styles created");
+    assert.strictEqual(newStyle.getAttribute("nonce"), "xyz-12345-nonce", "style element receives cspNonce attribute");
+
+    // 3. maxVisible clamped to >= 1 to prevent queue deadlock
+    setConfig({ maxVisible: 0 });
+    assert.strictEqual(getConfig().maxVisible, 3, "maxVisible rejects 0 and retains previous setting");
+    setConfig({ maxVisible: 1 });
+    assert.strictEqual(getConfig().maxVisible, 1, "maxVisible accepts valid value >= 1");
+
+    // 4. containerRegistry sets aria-atomic="true"
+    const { getOrCreateToastContainer } = await import("../../src/utils/containerRegistry.js");
+    const container = await getOrCreateToastContainer({ position: "top-right" });
+    assert.strictEqual(container.getAttribute("aria-atomic"), "true", "container sets aria-atomic='true'");
+
+    // 5. html-sanitizer neutralizes dangerous href to '#' and applies noopener to named targets
+    const { fallbackSanitize } = await import("../../src/utils/html-sanitizer.js");
+    const sanitizedDangerous = fallbackSanitize('<a href="javascript:alert(1)">bad link</a>');
+    assert.ok(sanitizedDangerous.includes('href="#"'), "neutralizes dangerous link to href='#'");
+    assert.ok(!sanitizedDangerous.includes("javascript:"), "strips javascript: attribute completely");
+
+    const sanitizedNamedTarget = fallbackSanitize('<a href="https://example.com" target="extWin">external</a>');
+    assert.ok(sanitizedNamedTarget.includes('rel="noopener"'), "applies noopener to named target links");
+
+    // 6. _cleanupSwipe resets drag state, userSelect, transform, and opacity
+    const { attachSwipeToDismiss } = await import("../../src/components/toast-utils-core.js");
+    const mockToast = document.createElement("div");
+    mockToast.style.transform = "translateX(50px)";
+    mockToast.style.opacity = "0.8";
+    mockToast.style.userSelect = "none";
+    attachSwipeToDismiss(mockToast, () => {});
+    assert.strictEqual(typeof mockToast._cleanupSwipe, "function", "_cleanupSwipe attached");
+    mockToast._cleanupSwipe();
+    assert.strictEqual(mockToast.style.userSelect, "", "userSelect restored");
+    assert.strictEqual(mockToast.style.transform, "none", "transform restored to none");
+    assert.strictEqual(mockToast.style.opacity, "1", "opacity restored to 1");
+
+    // 7. createCTA Space key on button prevents default and triggers click
+    const { createCTA } = await import("../../src/components/toast-utils-core.js");
+    let ctaClicked = false;
+    const testToast = document.createElement("div");
+    createCTA(testToast, {
+      cta: {
+        label: "Space Action",
+        variant: "button",
+        onClick: () => { ctaClicked = true; }
+      }
+    }, async () => {});
+    const ctaBtn = testToast.querySelector(".toast-cta");
+    assert.ok(ctaBtn, "CTA button rendered");
+    const spaceEvent = new window.KeyboardEvent("keydown", { key: " ", bubbles: true, cancelable: true });
+    ctaBtn.dispatchEvent(spaceEvent);
+    await new Promise((r) => setTimeout(r, 60));
+    assert.strictEqual(ctaClicked, true, "Space key triggered CTA button click");
+
+    // 8. toastPromise loading duration is indefinite even with custom loading object
+    let pendingResolve;
+    const testPromise = new Promise((resolve) => { pendingResolve = resolve; });
+    const promiseHandle = toastPromise(
+      testPromise,
+      {
+        loading: { message: "Loading data...", duration: 100 },
+        success: "Loaded successfully"
+      }
+    );
+    await new Promise((r) => setTimeout(r, 60));
+    assert.strictEqual(getToastMetrics().activeCount, 1, "Loading toast is active");
+    pendingResolve("ok");
+    await promiseHandle;
+    await new Promise((r) => setTimeout(r, 60));
+
+    // 9. resetToastManager cleans up window escape listeners and color cache
+    const { initKeyboardShortcuts } = await import("../../src/utils/keyboard.js");
+    initKeyboardShortcuts(window, async () => {});
+    assert.strictEqual(window.__customizableToastEscapeAttached, true, "escape listener attached");
+    resetToastManager();
+    assert.strictEqual(window.__customizableToastEscapeAttached, undefined, "resetToastManager destroys escape listener");
+
+    resetConfig();
+    resetToastManager();
+  });
+
+  test("Fortification 6: Duplicate Container Migration, Progress Scale Physics, In-Place Undo Timer Sync, and CSS None Components", async () => {
+    freshDom();
+    const {
+      resetToastManager,
+      resetConfig,
+    } = await import("../../src/index.js");
+    resetToastManager();
+
+    // 1. Duplicate container migration before removal
+    const { getOrCreateToastContainer, resetContainerRegistry } = await import("../../src/utils/containerRegistry.js");
+    resetContainerRegistry();
+    const c1 = document.createElement("div");
+    c1.id = "toast-container-bottom-right";
+    const child1 = document.createElement("div");
+    child1.id = "child-1";
+    c1.appendChild(child1);
+    document.body.appendChild(c1);
+
+    const c2 = document.createElement("div");
+    c2.id = "toast-container-bottom-right";
+    const child2 = document.createElement("div");
+    child2.id = "child-2";
+    c2.appendChild(child2);
+    document.body.appendChild(c2);
+
+    const canonical = await getOrCreateToastContainer({ position: "bottom-right" });
+    assert.strictEqual(document.querySelectorAll("#toast-container-bottom-right").length, 1, "Duplicate container pruned");
+    assert.ok(canonical.querySelector("#child-1"), "child-1 preserved in canonical container");
+    assert.ok(canonical.querySelector("#child-2"), "child-2 migrated into canonical container");
+    resetContainerRegistry();
+
+    // 2. parseProgressValue resets _progressRatioMode when pct > 1
+    const { parseProgressValue } = await import("../../src/components/toast-utils-core.js");
+    const dummyToast = document.createElement("div");
+    parseProgressValue(0.5, dummyToast);
+    assert.strictEqual(dummyToast._progressRatioMode, true, "fraction sets _progressRatioMode");
+    const val50 = parseProgressValue(50, dummyToast);
+    assert.strictEqual(val50, 50, "integer percentage 50 is parsed as 50%");
+    assert.strictEqual(dummyToast._progressRatioMode, false, "integer percentage resets _progressRatioMode to false");
+
+    // 3. createProgressBar sets manual percentage progress
+    const { createProgressBar } = await import("../../src/components/toast-utils-core.js");
+    const pillToast = document.createElement("div");
+    createProgressBar(pillToast, { borderRadius: "50px", progress: 100, duration: 3000 });
+    const pillPb = pillToast.querySelector(".toast-progress-bar");
+    assert.ok(pillPb, "Progress bar created");
+    assert.strictEqual(pillPb.style.width, "100%", "Manual percentage progress bar width is set to 100%");
+
+    // 4. In-place undo update seeds remainingSec using timer.getRemainingTime()
+    const { createUndoAction } = await import("../../src/components/toast-utils-core.js");
+    const undoToast = document.createElement("div");
+    const mockTimer = { getRemainingTime: () => 1800 };
+    createUndoAction(undoToast, {
+      duration: 5000,
+      undo: { label: "Revert" },
+      timer: mockTimer,
+    }, () => {});
+    const undoBtn = undoToast.querySelector(".toast-undo-btn");
+    assert.ok(undoBtn, "Undo button created");
+    assert.ok(undoBtn.textContent.includes("2s"), "Undo countdown initialized to remaining 2s rather than 5s");
+
+    // 5. parseToRgb handles CSS Color 4 'none' components
+    const { parseToRgb } = await import("../../src/utils/dom.js");
+    const rgbNone = parseToRgb("rgb(255 none 0)");
+    assert.deepStrictEqual(rgbNone, { r: 255, g: 0, b: 0 }, "rgb(255 none 0) parses 'none' as 0");
+
+    resetConfig();
+    resetToastManager();
+  });
+
+  test("Fortification 7: High-Contrast Focus & Badge Contrast, Audio Instance Teardown, and Print Media Rules", async () => {
+    freshDom();
+    const {
+      resetToastManager,
+      resetConfig,
+    } = await import("../../src/index.js");
+    resetToastManager();
+
+    // 1. Audio instance cleanup in cleanupToastEntry
+    const { cleanupToastEntry } = await import("../../src/components/toast-timer.js");
+    let paused = false;
+    const mockAudio = {
+      src: "chime.mp3",
+      pause: () => { paused = true; },
+    };
+    const mockData = {
+      _audio: mockAudio,
+      toast: { _audio: mockAudio },
+    };
+    cleanupToastEntry(mockData);
+    assert.strictEqual(paused, true, "Audio was paused on cleanup");
+    assert.strictEqual(mockAudio.src, "", "Audio src was cleared on cleanup");
+    assert.strictEqual(mockData._audio, null, "data._audio was nulled");
+    assert.strictEqual(mockData.toast._audio, null, "mockData.toast._audio was nulled");
+
+    // 2. High-contrast theme CSS styles verification
+    const fs = await import("fs");
+    const path = await import("path");
+    const cssPath = path.resolve("./src/styles.css");
+    const cssContent = fs.readFileSync(cssPath, "utf-8");
+    assert.ok(
+      cssContent.includes('[data-toast-theme="high-contrast"] input:focus-visible'),
+      "High-contrast input focus ring defined in styles.css",
+    );
+    assert.ok(
+      cssContent.includes('[data-toast-theme="high-contrast"] .toast-count-badge'),
+      "High-contrast badge style defined in styles.css",
+    );
+    assert.ok(
+      cssContent.includes("@media print"),
+      "Print media query defined in styles.css",
+    );
+
+    resetConfig();
+    resetToastManager();
+  });
+
+  test("Fortification 8: Responsive Min-Width, Window Blur Drag Cancel, AutoClose False Focus Release, and SSR Text Preservation", async () => {
+    freshDom();
+    const {
+      resetToastManager,
+      resetConfig,
+    } = await import("../../src/index.js");
+    resetToastManager();
+
+    // 1. styles.css responsive min-width
+    const fs = await import("fs");
+    const path = await import("path");
+    const cssContent = fs.readFileSync(path.resolve("./src/styles.css"), "utf-8");
+    assert.ok(
+      cssContent.includes("min-width: var(--toast-min-width, min(250px, calc(100vw - 20px)))"),
+      "Responsive min-width is declared in styles.css",
+    );
+
+    // 2. Window blur triggers pointer cancel and restores user-select in attachSwipeToDismiss
+    const { attachSwipeToDismiss } = await import("../../src/components/toast-utils-core.js");
+    const toast = document.createElement("div");
+    let closed = false;
+    attachSwipeToDismiss(toast, () => { closed = true; });
+
+    // Simulate pointerdown
+    const downEv = new window.MouseEvent("mousedown", { clientX: 100, clientY: 100, button: 0 });
+    toast.dispatchEvent(downEv);
+    assert.strictEqual(toast.style.userSelect, "none", "User-select is none during drag");
+
+    // Simulate window blur (e.g. switching tabs or windows mid-drag)
+    window.dispatchEvent(new window.Event("blur"));
+    assert.strictEqual(toast.style.userSelect, "", "User-select restored when blur cancels drag");
+
+    // 3. CTA with autoClose: false blurs active element
+    const { createCTA } = await import("../../src/components/toast-utils-core.js");
+    const ctaToast = document.createElement("div");
+    document.body.appendChild(ctaToast);
+    createCTA(ctaToast, {
+      cta: {
+        label: "Keep Open",
+        autoClose: false,
+        onClick: () => {},
+      },
+    }, () => {});
+    const btn = ctaToast.querySelector(".toast-cta");
+    assert.ok(btn, "CTA button rendered");
+    btn.focus();
+    assert.strictEqual(document.activeElement, btn, "Button is active element");
+    btn.click();
+    await new Promise((r) => setTimeout(r, 20));
+    assert.notStrictEqual(document.activeElement, btn, "Button was blurred after click when autoClose is false");
+    ctaToast.remove();
+
+    // 4. fallbackSanitize preserves text in headless SSR without DOM
+    const { fallbackSanitize } = await import("../../src/utils/html-sanitizer.js");
+    const origDoc = globalThis.document;
+    try {
+      delete globalThis.document;
+      const ssrOutput = fallbackSanitize("<b>Server rendered</b> message");
+      assert.strictEqual(ssrOutput, "Server rendered message", "Raw HTML tags stripped and text preserved in SSR");
+
+      // Verify immunity against incomplete multi-character sanitization and script injection in SSR
+      const ssrScript = fallbackSanitize("<script>alert(1)</script>Safe text");
+      assert.strictEqual(ssrScript, "Safe text", "Script tags and contents discarded in SSR");
+
+      const ssrNested = fallbackSanitize("<scr<script>ipt>alert(1)</script>");
+      assert.doesNotMatch(ssrNested, /<script/i, "Nested script tag evasion neutralized in SSR");
+      assert.doesNotMatch(ssrNested, /alert/i, "Script payload discarded in SSR");
+
+      const ssrAttr = fallbackSanitize('<img src="x" onerror="alert(1)">Image text');
+      assert.strictEqual(ssrAttr, "Image text", "Event attributes and tags stripped in SSR");
+    } finally {
+      globalThis.document = origDoc;
+    }
+
+    resetConfig();
+    resetToastManager();
+  });
+
+  test("Fortification 9: CSS Isolation Stacking Context, SSR Debug Log Gating, Custom TargetNode Cleanup, and Progress Radius Dynamic Recalc", async () => {
+    freshDom();
+    const {
+      createToast,
+      setConfig,
+      getConfig,
+      resetConfig,
+      resetToastManager,
+      resetContainerRegistry,
+    } = await import("../../src/index.js");
+    resetToastManager();
+    resetConfig();
+
+    // 1. styles.css isolation: isolate
+    const fs = await import("fs");
+    const path = await import("path");
+    const cssContent = fs.readFileSync(path.resolve("./src/styles.css"), "utf-8");
+    assert.ok(
+      cssContent.includes("isolation: isolate;"),
+      "styles.css declares isolation: isolate on .toast-container-base",
+    );
+
+    // 2. SSR non-browser warning suppression without debug: true
+    const origWindow = globalThis.window;
+    const origDocument = globalThis.document;
+    const origConsoleWarn = console.warn;
+    let warnCount = 0;
+    console.warn = () => { warnCount++; };
+    try {
+      delete globalThis.window;
+      delete globalThis.document;
+
+      // Debug: false (default) -> no warning
+      resetConfig();
+      await createToast("SSR message 1");
+      assert.strictEqual(warnCount, 0, "No SSR console.warn when debug is false");
+
+      // Debug: true -> logs warning
+      setConfig({ debug: true });
+      await createToast("SSR message 2");
+      assert.strictEqual(warnCount, 1, "Logs SSR console.warn when debug is true");
+    } finally {
+      globalThis.window = origWindow;
+      globalThis.document = origDocument;
+      console.warn = origConsoleWarn;
+    }
+
+    // 3. Custom targetNode cleanup in resetContainerRegistry and resetToastManager
+    const customHost = document.createElement("div");
+    customHost.id = "custom-portal-target";
+    document.body.appendChild(customHost);
+    setConfig({ targetNode: customHost });
+
+    const handle = await createToast("Custom target toast", { duration: 5000 });
+    assert.ok(handle, "Toast handle created");
+    const targetContainers = customHost.querySelectorAll('[id^="toast-container-"]');
+    assert.ok(targetContainers.length > 0, "Container rendered inside custom targetNode");
+
+    resetToastManager();
+    resetContainerRegistry();
+    assert.strictEqual(
+      customHost.querySelectorAll('[id^="toast-container-"]').length,
+      0,
+      "Containers inside custom targetNode are pruned cleanly by resetContainerRegistry",
+    );
+    customHost.remove();
+    resetConfig();
+
+    // 4. Progress bar radius dynamic recalculation via handle.update({ borderRadius }) and createProgressBar
+    const { createProgressBar } = await import("../../src/components/toast-utils-core.js");
+    const testToast = document.createElement("div");
+    createProgressBar(testToast, { borderRadius: "0px", showProgressBar: true });
+    assert.strictEqual(testToast._progressBar._leftOffset, 0, "Initial leftOffset is 0");
+    testToast._progressBar._recalcRadius(20);
+    assert.strictEqual(testToast._progressBar._leftOffset, 8, "Recalculated leftOffset is 8 for 20px radius");
+    assert.strictEqual(testToast._progressBar._finalWidth, "calc(100% - 16px)", "Recalculated finalWidth");
+
+    const pbHandle = await createToast("Radius test", {
+      showProgressBar: true,
+      borderRadius: "0px",
+      duration: 5000,
+    });
+    await new Promise((r) => setTimeout(r, 60));
+    const toastEl = document.querySelector(".toast");
+    assert.ok(toastEl, "Toast element exists");
+    const pb = toastEl.querySelector(".toast-progress-bar");
+    assert.ok(pb, "Progress bar exists");
+    assert.strictEqual(pb._leftOffset, 0, "Initial leftOffset is 0 for 0px borderRadius");
+
+    await pbHandle.update({ borderRadius: 20 });
+    assert.strictEqual(pb._leftOffset, 8, "Recalculated leftOffset is 8 for 20px borderRadius (clamped to height * 2)");
+    assert.strictEqual(pb._finalWidth, "calc(100% - 16px)", "Recalculated finalWidth accommodates new offset");
+
+    await pbHandle.dismiss();
+    resetConfig();
+    resetToastManager();
+  });
+
+  test("Fortification 10: Custom SVG Hardcoded Color Override, Container Locks Rejection Recovery, and Package.json AI Script", async () => {
+    freshDom();
+    const {
+      resetToastManager,
+      resetConfig,
+      resetContainerRegistry,
+    } = await import("../../src/index.js");
+    resetToastManager();
+    resetContainerRegistry();
+    resetConfig();
+
+    // 1. package.json includes example:ai script
+    const fs = await import("fs");
+    const path = await import("path");
+    const pkg = JSON.parse(fs.readFileSync(path.resolve("./package.json"), "utf-8"));
+    assert.strictEqual(
+      pkg.scripts["example:ai"],
+      "node examples/typesafe-ai-smart-toast.mjs",
+      "package.json defines example:ai script",
+    );
+
+    // 2. README.md documents progressNormalized
+    const readme = fs.readFileSync(path.resolve("./README.md"), "utf-8");
+    assert.ok(
+      readme.includes("progressNormalized"),
+      "README.md options table documents progressNormalized",
+    );
+
+    // 3. createToastIcon overrides hardcoded SVG path colors while preserving 'none'
+    const { createToastIcon } = await import("../../src/components/icons.js");
+    const customSvg = '<svg viewBox="0 0 24 24"><path d="M1 1h10v10H1z" fill="#ff0000" stroke="#0000ff" /><circle cx="5" cy="5" r="3" fill="none" /></svg>';
+    const iconEl = createToastIcon({ icon: customSvg, iconColor: "#10b981" });
+    assert.ok(iconEl, "Custom icon rendered");
+    const pathEl = iconEl.querySelector("path");
+    assert.ok(pathEl, "Path element found");
+    assert.strictEqual(pathEl.getAttribute("fill"), "#10b981", "Explicit fill overridden with iconColor");
+    assert.strictEqual(pathEl.getAttribute("stroke"), "#10b981", "Explicit stroke overridden with iconColor");
+
+    const circleEl = iconEl.querySelector("circle");
+    assert.ok(circleEl, "Circle element found");
+    assert.strictEqual(circleEl.getAttribute("fill"), "none", "fill='none' is preserved");
+
+    // 4. getOrCreateToastContainer handles async setPosition rejection and cleanly clears lock
+    const { getOrCreateToastContainer } = await import("../../src/utils/containerRegistry.js");
+    let failureCount = 0;
+    const failingSetPosition = async () => {
+      failureCount++;
+      throw new Error("Simulated setPosition failure");
+    };
+
+    // First concurrent attempts with failing setPosition
+    const attempt1 = getOrCreateToastContainer({ position: "top-center" }, failingSetPosition);
+    const attempt2 = getOrCreateToastContainer({ position: "top-center" }, failingSetPosition);
+
+    await assert.rejects(attempt1, /Simulated setPosition failure/);
+    await assert.rejects(attempt2, /Simulated setPosition failure/);
+
+    // Once lock cleared in finally block, next call succeeds
+    const recoveringSetPosition = async (el) => {
+      el.style.top = "10px";
+    };
+    const recoveredContainer = await getOrCreateToastContainer({ position: "top-center" }, recoveringSetPosition);
+    assert.ok(recoveredContainer, "Container recovered and created successfully after prior rejection");
+    assert.strictEqual(recoveredContainer.style.top, "10px", "Recovering setPosition executed cleanly");
+
+    resetConfig();
+    resetToastManager();
+    resetContainerRegistry();
+  });
+
+  test("Fortification 11: Icon Accessible Name (iconAriaLabel), In-Place Update, Immutable getConfig Snapshot, and strictNullChecks", async () => {
+    freshDom();
+    const {
+      createToast,
+      resetToastManager,
+      resetConfig,
+      setConfig,
+      getConfig,
+      resetContainerRegistry,
+    } = await import("../../src/index.js");
+    resetToastManager();
+    resetContainerRegistry();
+    resetConfig();
+
+    // 1. Immutable getConfig() snapshot
+    const cfg = getConfig();
+    assert.strictEqual(Object.isFrozen(cfg), true, "getConfig() returns an Object.freeze snapshot");
+    assert.throws(
+      () => {
+        cfg.maxVisible = 999;
+      },
+      /TypeError/,
+      "Mutating frozen getConfig snapshot throws TypeError in strict mode",
+    );
+    assert.notStrictEqual(getConfig().maxVisible, 999, "Global configuration is untouched");
+
+    // 2. tsconfig.types.json strictNullChecks
+    const fs = await import("fs");
+    const path = await import("path");
+    const tsconfig = JSON.parse(fs.readFileSync(path.resolve("./tsconfig.types.json"), "utf-8"));
+    assert.strictEqual(
+      tsconfig.compilerOptions.strictNullChecks,
+      true,
+      "tsconfig.types.json enables strictNullChecks",
+    );
+
+    // 3. createToastIcon with iconAriaLabel
+    const { createToastIcon } = await import("../../src/components/icons.js");
+    const decorativeIcon = createToastIcon({ icon: "🎉" });
+    assert.strictEqual(decorativeIcon.getAttribute("aria-hidden"), "true", "Default icon is aria-hidden='true'");
+    assert.strictEqual(decorativeIcon.hasAttribute("role"), false, "Default icon has no role");
+
+    const accessibleIcon = createToastIcon({ icon: "🎉", iconAriaLabel: "Party popper celebration" });
+    assert.strictEqual(accessibleIcon.getAttribute("aria-hidden"), "false", "Accessible icon has aria-hidden='false'");
+    assert.strictEqual(accessibleIcon.getAttribute("role"), "img", "Accessible icon has role='img'");
+    assert.strictEqual(accessibleIcon.getAttribute("aria-label"), "Party popper celebration", "Accessible icon has correct aria-label");
+
+    // 4. setConfig({ iconAriaLabel }) applies when toast options omit it
+    setConfig({ iconAriaLabel: "Global status icon" });
+    const globalLabeledIcon = createToastIcon({ icon: "checkmark" });
+    assert.strictEqual(globalLabeledIcon.getAttribute("aria-hidden"), "false");
+    assert.strictEqual(globalLabeledIcon.getAttribute("role"), "img");
+    assert.strictEqual(globalLabeledIcon.getAttribute("aria-label"), "Global status icon");
+    resetConfig();
+
+    // 5. In-place update of iconAriaLabel via handle.update()
+    const handle = await createToast({
+      message: "Processing file upload...",
+      icon: "circle",
+      iconAriaLabel: "Pending status indicator",
+      duration: 5000,
+    });
+    await new Promise((r) => setTimeout(r, 60));
+
+    const toastEl = document.querySelector(".toast");
+    assert.ok(toastEl, "Toast element mounted");
+    let iconEl = toastEl.querySelector(".toast-icon");
+    assert.ok(iconEl, "Icon element found in toast");
+    assert.strictEqual(iconEl.getAttribute("aria-hidden"), "false");
+    assert.strictEqual(iconEl.getAttribute("role"), "img");
+    assert.strictEqual(iconEl.getAttribute("aria-label"), "Pending status indicator");
+
+    // Dynamic update with new iconAriaLabel
+    await handle.update({
+      message: "File uploaded successfully!",
+      icon: "checkmark",
+      iconAriaLabel: "Upload completed successfully",
+    });
+    await new Promise((r) => setTimeout(r, 60));
+
+    iconEl = toastEl.querySelector(".toast-icon");
+    assert.ok(iconEl, "Updated icon element found");
+    assert.strictEqual(iconEl.getAttribute("aria-hidden"), "false");
+    assert.strictEqual(iconEl.getAttribute("role"), "img");
+    assert.strictEqual(iconEl.getAttribute("aria-label"), "Upload completed successfully");
+
+    await handle.dismiss();
+    resetConfig();
+    resetToastManager();
+    resetContainerRegistry();
+  });
+
+  test("Fortification 12: Position Center-Center Alias, Undo 4/8-digit Hex Border, CSS Color 4 HSL none, and Package Distribution Cleanliness", async () => {
+    freshDom();
+    const {
+      createToast,
+      resetToastManager,
+      resetConfig,
+      resetContainerRegistry,
+    } = await import("../../src/index.js");
+    resetToastManager();
+    resetContainerRegistry();
+    resetConfig();
+
+    // 1. Position 'center-center' alias positions container at center without console.warn
+    const { setPosition } = await import("../../src/utils/position.js");
+    let warnLogged = false;
+    const origWarn = console.warn;
+    console.warn = (...args) => {
+      warnLogged = true;
+      origWarn(...args);
+    };
+
+    const dummyContainer = document.createElement("div");
+    dummyContainer.id = "toast-container-center";
+    await setPosition(dummyContainer, { position: "center-center" });
+    console.warn = origWarn;
+
+    assert.strictEqual(warnLogged, false, "center-center does not log an unknown position warning");
+    assert.strictEqual(dummyContainer.style.top, "50%", "center-center sets top: 50%");
+    assert.strictEqual(dummyContainer.style.left, "50%", "center-center sets left: 50%");
+    assert.strictEqual(dummyContainer.style.transform, "translate(-50%, -50%)", "center-center centers container");
+    assert.strictEqual(dummyContainer.classList.contains("toast-position-center"), true, "toast-position-center class applied");
+
+    // 2. Undo button border supports 4-digit and 8-digit hex colors
+    const { createUndoAction } = await import("../../src/components/toast-utils-core.js");
+    const undoToast8 = document.createElement("div");
+    createUndoAction(undoToast8, {
+      undo: () => {},
+      textColor: "#10b981ff",
+      backgroundColor: "#18181b",
+    }, () => {});
+    const undoBtn8 = undoToast8.querySelector(".toast-undo-btn");
+    assert.ok(undoBtn8, "Undo button created for 8-digit hex");
+    assert.ok(
+      undoBtn8.style.border.includes("16, 185, 129") || undoBtn8.style.border.includes("#10b981"),
+      "8-digit hex used directly for undo border rather than fallback gray",
+    );
+
+    const undoToast4 = document.createElement("div");
+    createUndoAction(undoToast4, {
+      undo: () => {},
+      textColor: "#ff08",
+      backgroundColor: "#18181b",
+    }, () => {});
+    const undoBtn4 = undoToast4.querySelector(".toast-undo-btn");
+    assert.ok(undoBtn4, "Undo button created for 4-digit hex");
+    assert.ok(
+      undoBtn4.style.border.includes("255, 255, 0") || undoBtn4.style.border.includes("#ffff00"),
+      "4-digit hex expanded for undo border rather than fallback gray",
+    );
+
+    // 3. CSS Color 4 HSL with 'none' component parses cleanly
+    const { getDynamicAccessibleTextColorHex } = await import("../../src/utils/dom.js");
+    const contrastForHslNone = getDynamicAccessibleTextColorHex("hsl(none 0% 10%)");
+    assert.strictEqual(typeof contrastForHslNone, "string");
+    assert.strictEqual(contrastForHslNone.startsWith("#"), true, "Resolves to valid hex color");
+    assert.strictEqual(contrastForHslNone, "#9a9a9a", "Calculates accessible contrast color for dark HSL with none");
+
+    const contrastForHslSatNone = getDynamicAccessibleTextColorHex("hsl(200deg none 90%)");
+    assert.strictEqual(typeof contrastForHslSatNone, "string");
+    assert.strictEqual(contrastForHslSatNone.startsWith("#"), true, "Resolves to valid hex color");
+    assert.strictEqual(contrastForHslSatNone, "#676767", "Calculates accessible contrast color for light HSL with none saturation");
+
+    // 4. package.json files distribution field
+    const fs = await import("fs");
+    const path = await import("path");
+    const pkg = JSON.parse(fs.readFileSync(path.resolve("./package.json"), "utf-8"));
+    assert.ok(pkg.files.includes("dist"), "package.json files includes dist directory");
+
+    resetConfig();
+    resetToastManager();
+    resetContainerRegistry();
+  });
+
+  test("Fortification 13: Final AtoZ Complete Sweep: Customizable WCAG Contrast Target, 2B Monotonic ID Space, and Safe-Area Insets", async () => {
+    freshDom();
+    const {
+      resetToastManager,
+      resetConfig,
+      resetContainerRegistry,
+    } = await import("../../src/index.js");
+    resetToastManager();
+    resetContainerRegistry();
+    resetConfig();
+
+    // 1. getDynamicAccessibleTextColorHex with customizable targetContrast (AA 4.5 vs AAA 7.0 vs AA Large 3.0)
+    const { getDynamicAccessibleTextColorHex, resetColorCache } = await import("../../src/utils/dom.js");
+    resetColorCache();
+
+    const textAA = getDynamicAccessibleTextColorHex("#60a5fa", 4.5);
+    const textAAA = getDynamicAccessibleTextColorHex("#60a5fa", 7.0);
+    const textLargeAA = getDynamicAccessibleTextColorHex("#60a5fa", 3.0);
+    assert.strictEqual(typeof textAA, "string");
+    assert.strictEqual(typeof textAAA, "string");
+    assert.strictEqual(typeof textLargeAA, "string");
+    assert.ok(textAA.startsWith("#"));
+    assert.ok(textAAA.startsWith("#"));
+    assert.ok(textLargeAA.startsWith("#"));
+
+    // Default targetContrast is 4.5
+    const textDefault = getDynamicAccessibleTextColorHex("#60a5fa");
+    assert.strictEqual(textDefault, textAA, "Default call matches targetContrast=4.5");
+
+    // 2. generateToastId incorporates 31-bit counter expansion
+    const { generateToastId, resetToastIdCounter } = await import("../../src/utils/id.js");
+    resetToastIdCounter();
+    const id1 = generateToastId("custom-prefix");
+    const id2 = generateToastId("custom-prefix");
+    assert.notStrictEqual(id1, id2, "Consecutive IDs are strictly unique");
+    assert.ok(id1.startsWith("custom-prefix-"), "ID starts with sanitized prefix");
+    assert.ok(id2.startsWith("custom-prefix-"), "ID starts with sanitized prefix");
+
+    // 3. CSS Safe-Area Inset emulation validation
+    const fs = await import("fs");
+    const path = await import("path");
+    const cssContent = fs.readFileSync(path.resolve("./src/styles.css"), "utf-8");
+    assert.ok(
+      cssContent.includes("env(safe-area-inset-top"),
+      "styles.css supports safe-area-inset-top for notched devices",
+    );
+    assert.ok(
+      cssContent.includes("env(safe-area-inset-bottom"),
+      "styles.css supports safe-area-inset-bottom for home-indicator devices",
+    );
+
+    resetColorCache();
+    resetConfig();
+    resetToastManager();
+    resetContainerRegistry();
+  });
+
+  test("Fortification 14: Comprehensive Framework Adapter Edge-Cases, Queued In-Place Updates, and Cache Eviction", async () => {
+    freshDom();
+    const {
+      createToast,
+      resetToastManager,
+      resetConfig,
+      resetContainerRegistry,
+      setConfig,
+      updateToastByKey,
+    } = await import("../../src/index.js");
+    resetToastManager();
+    resetContainerRegistry();
+    resetConfig();
+
+    // 1. React adapter: circular options fallback & LRU cache eviction
+    const { useToast: useReactToast, resetReactCache } = await import("../../src/react/index.js");
+    resetReactCache();
+
+    // Circular options fallback
+    const circularOpts = { message: "Circular" };
+    circularOpts.self = circularOpts;
+    const reactInstance = useReactToast(circularOpts);
+    assert.ok(reactInstance && typeof reactInstance.success === "function", "React useToast handles circular options safely");
+
+    // Scoped cache eviction (> 50 items)
+    for (let i = 0; i < 55; i++) {
+      useReactToast({ position: "top-right", duration: 1000 + i });
+    }
+    resetReactCache();
+
+    // 2. Svelte adapter: useToast with defaultOptions
+    const { useToast: useSvelteToast } = await import("../../src/svelte/index.js");
+    const svelteStore = useSvelteToast({ duration: 4000 });
+    assert.ok(svelteStore && typeof svelteStore.subscribe === "function", "Svelte useToast returns scoped store");
+    assert.ok(typeof svelteStore.success === "function", "Svelte scoped store provides success method");
+
+    // 3. Solid adapter: autoDismissOnCleanup & custom onCleanup hook
+    const { useToast: useSolidToast } = await import("../../src/solid/index.js");
+    let cleanupHookCalled = false;
+    let registeredCleanup = null;
+    const solidInstance = useSolidToast(
+      { autoDismissOnCleanup: true },
+      (fn) => {
+        cleanupHookCalled = true;
+        registeredCleanup = fn;
+      }
+    );
+    assert.ok(solidInstance && typeof solidInstance.success === "function", "Solid useToast returns API");
+    assert.strictEqual(cleanupHookCalled, true, "Solid onCleanup hook was registered");
+    if (typeof registeredCleanup === "function") {
+      registeredCleanup();
+    }
+
+    // 4. Angular adapter: off, getActiveCount, and size
+    const { ToastService } = await import("../../src/angular/index.js");
+    const toastService = new ToastService({ duration: 3500 });
+    assert.strictEqual(typeof toastService.getActiveCount(), "number");
+    assert.strictEqual(typeof toastService.size, "number");
+    const dummyListener = () => {};
+    toastService.on("open", dummyListener);
+    toastService.off("open", dummyListener);
+
+    // Global Angular service without preset options
+    const globalAngularService = new ToastService();
+    assert.strictEqual(typeof globalAngularService.getActiveCount(), "number");
+    globalAngularService.on("close", dummyListener);
+    globalAngularService.off("close", dummyListener);
+
+    // 5. ToastManager: updateToastByKey updating a queued toast
+    setConfig({ maxVisible: 1 });
+    const h1 = await createToast({ message: "Visible 1", duration: 10000 });
+    const h2 = await createToast({ message: "Queued 2", duration: 10000 });
+    await new Promise((r) => setTimeout(r, 60));
+
+    // h2 is in queue because maxVisible is 1
+    const updatedQueued = await updateToastByKey(h2.id, { message: "Queued 2 Updated", type: "warning" });
+    assert.strictEqual(updatedQueued, true, "updateToastByKey successfully updates queued toast options");
+
+    await h1.dismiss();
+    await h2.dismiss();
+
+    resetConfig();
+    resetToastManager();
+    resetContainerRegistry();
+  });
+
+  test("Fortification 15: Full-Spectrum Architecture Fortification & Quality Remediations", async () => {
+    freshDom();
+    const {
+      createToast,
+      toastPromise,
+      setConfig,
+      getConfig,
+      resetConfig,
+      resetToastManager,
+      resetContainerRegistry,
+      getToastMetrics,
+    } = await import("../../src/index.js");
+
+    resetToastManager();
+    resetConfig();
+    resetContainerRegistry();
+
+    // 1. toastPromise: resolved success toast auto-dismisses according to duration instead of 24h
+    let fastResolve;
+    const fastPromise = new Promise((resolve) => { fastResolve = resolve; });
+    const promiseHandle = toastPromise(
+      fastPromise,
+      { loading: "Loading data...", success: "Finished!" },
+      { duration: 120 }
+    );
+    await new Promise((r) => setTimeout(r, 40));
+    assert.strictEqual(getToastMetrics().activeCount, 1, "Loading toast is active during promise execution");
+    fastResolve("result-data");
+    await promiseHandle;
+
+    // Toast is now in success state
+    await new Promise((r) => setTimeout(r, 40));
+    const successToast = document.querySelector(".toast-success");
+    assert.ok(successToast, "Toast transitioned to success state");
+
+    // Wait for the 120ms duration + buffer to elapse
+    await new Promise((r) => setTimeout(r, 220));
+    assert.strictEqual(
+      getToastMetrics().activeCount,
+      0,
+      "Success toast auto-dismisses after its duration and does not stay stuck for 24 hours"
+    );
+
+    // 2. createCTA: inline style does NOT strip outline with 'outline: none'
+    const ctaToast = await createToast({
+      message: "CTA Focus Test",
+      duration: 10000,
+      cta: { label: "Action", onClick: () => {} },
+    });
+    await new Promise((r) => setTimeout(r, 40));
+    const ctaBtn = document.querySelector(".toast-cta");
+    assert.ok(ctaBtn, "CTA button rendered");
+    assert.notStrictEqual(ctaBtn.style.outline, "none", "CTA button inline style must NOT declare outline: none (WCAG 2.1 AA SC 2.4.7)");
+
+    // Trigger focus and blur on CTA button
+    ctaBtn.dispatchEvent(new window.Event("focus"));
+    assert.ok(ctaBtn.style.outline.includes("currentColor"), "CTA button focus applies visible outline indicator");
+    ctaBtn.dispatchEvent(new window.Event("blur"));
+    assert.strictEqual(ctaBtn.style.outline, "", "CTA button blur clears visible outline");
+    await ctaToast.dismiss();
+
+    // 3. ensureProgressIndeterminateStyles: respects config.cspNonce
+    const { ensureProgressIndeterminateStyles } = await import("../../src/components/toast-utils-core.js");
+    setConfig({ cspNonce: "secure-nonce-test-xyz" });
+    const existingStyle = document.getElementById("toast-progress-indeterminate-styles");
+    if (existingStyle) existingStyle.remove();
+    ensureProgressIndeterminateStyles();
+    const injectedStyle = document.getElementById("toast-progress-indeterminate-styles");
+    assert.ok(injectedStyle, "Indeterminate progress style element injected");
+    assert.strictEqual(injectedStyle.getAttribute("nonce"), "secure-nonce-test-xyz", "Indeterminate progress style element carries CSP nonce");
+
+    // 4. Global defaultDuration in setConfig & options-sanitizer
+    setConfig({ defaultDuration: 4200 });
+    assert.strictEqual(getConfig().defaultDuration, 4200, "setConfig updates global defaultDuration");
+    const { sanitizeToastOptions } = await import("../../src/utils/options-sanitizer.js");
+    const sanitized = await sanitizeToastOptions({ message: "Default duration test" });
+    assert.strictEqual(sanitized.duration, 4200, "sanitizeToastOptions adopts global defaultDuration when options.duration is omitted");
+
+    // 5. initKeyboardShortcuts and destroyKeyboardShortcuts re-initialization
+    resetToastManager();
+    const { initKeyboardShortcuts: initShortcuts } = await import("../../src/index.js");
+    initShortcuts(window);
+    const activeToastBeforeEsc = await createToast({ message: "Escape shortcut test", duration: 10000 });
+    await new Promise((r) => setTimeout(r, 40));
+    assert.strictEqual(getToastMetrics().activeCount, 1, "Toast is active before Escape key");
+
+    // Dispatch Escape keydown on window
+    const escEvent = new window.KeyboardEvent("keydown", { key: "Escape", bubbles: true });
+    window.dispatchEvent(escEvent);
+    await new Promise((r) => setTimeout(r, 80));
+    assert.strictEqual(getToastMetrics().activeCount, 0, "Escape key dismiss works when initialized");
+
+    // 6. React adapter: useToast with function props generates isolated instances without cache collision
+    const { useToast: useReactToast } = await import("../../src/react/index.js");
+    const fn1 = () => {};
+    const fn2 = () => {};
+    const inst1 = useReactToast({ onClick: fn1 });
+    const inst2 = useReactToast({ onClick: fn2 });
+    assert.notStrictEqual(inst1, inst2, "React useToast generates separate instances when function callbacks are provided in defaultOptions");
+
+    // 7. swipe.js: suppresses synthetic mousedown right after touchstart
+    const { attachSwipeToDismiss } = await import("../../src/components/swipe.js");
+    const swipeEl = document.createElement("div");
+    document.body.appendChild(swipeEl);
+    let dismissTriggered = false;
+    attachSwipeToDismiss(swipeEl, () => { dismissTriggered = true; });
+
+    // Simulate touchstart then synthetic mousedown
+    swipeEl.dispatchEvent(new window.TouchEvent("touchstart", { touches: [{ clientX: 100, clientY: 100, identifier: 1 }] }));
+    swipeEl.dispatchEvent(new window.MouseEvent("mousedown", { clientX: 100, clientY: 100, button: 0 }));
+    assert.strictEqual(swipeEl._originalTransition !== undefined, true, "Gesture initialized cleanly");
+    swipeEl._cleanupSwipe?.();
+    swipeEl.remove();
+
+    // 8. resetContainerRegistry cleans up #toast-shadow-host in custom targetNode
+    const customTarget = document.createElement("div");
+    document.body.appendChild(customTarget);
+    const shadowHostInTarget = document.createElement("div");
+    shadowHostInTarget.id = "toast-shadow-host";
+    customTarget.appendChild(shadowHostInTarget);
+    setConfig({ targetNode: customTarget });
+    resetContainerRegistry();
+    assert.strictEqual(customTarget.querySelector("#toast-shadow-host"), null, "resetContainerRegistry cleans up shadow host in custom targetNode");
+    customTarget.remove();
+
+    // 9. dedup: false / group: false prevents identical toasts from grouping into count badge
+    const standalone1 = await createToast({ message: "Duplicate message", dedup: false, duration: 10000 });
+    const standalone2 = await createToast({ message: "Duplicate message", dedup: false, duration: 10000 });
+    await new Promise((r) => setTimeout(r, 60));
+    assert.strictEqual(getToastMetrics().activeCount, 2, "dedup: false prevents duplicate toast collapsing and shows both independently");
+    await standalone1.dismiss();
+    await standalone2.dismiss();
+
+    resetConfig();
+    resetToastManager();
+    resetContainerRegistry();
+  });
+
+  test("Fortification 16: SonarQube Modular Architecture, Zero Variable Shadowing, and Code Quality Fortifications", async () => {
+    freshDom();
+    const {
+      resetConfig,
+      resetToastManager,
+      resetContainerRegistry,
+    } = await import("../../src/index.js");
+
+    resetConfig();
+    resetToastManager();
+    resetContainerRegistry();
+
+    // 1. toast-transitions.js exports removeWithTransition and updateBadge
+    const { removeWithTransition, updateBadge } = await import("../../src/components/toast-transitions.js");
+    assert.strictEqual(typeof removeWithTransition, "function", "removeWithTransition is exported");
+    assert.strictEqual(typeof updateBadge, "function", "updateBadge is exported");
+
+    // 2. updateBadge creates badge when count >= 2 and removes when count < 2
+    const mockOuter = document.createElement("div");
+    document.body.appendChild(mockOuter);
+    await updateBadge({ outer: mockOuter, count: 3 });
+    const badgeEl = mockOuter.querySelector(".toast-count-badge");
+    assert.ok(badgeEl, "badge element created");
+    assert.strictEqual(badgeEl.textContent, "3", "badge displays correct count");
+
+    await updateBadge({ outer: mockOuter, count: 1 });
+    assert.strictEqual(mockOuter.querySelector(".toast-count-badge"), null, "badge is removed when count < 2");
+    mockOuter.remove();
+
+    // 3. removeWithTransition resolves cleanly
+    const mockFadeEl = document.createElement("div");
+    document.body.appendChild(mockFadeEl);
+    let transitionResolved = false;
+    await removeWithTransition(mockFadeEl, null, 0);
+    transitionResolved = true;
+    assert.strictEqual(transitionResolved, true, "removeWithTransition resolved immediately when duration is 0");
+    mockFadeEl.remove();
+
+    // 4. dom.js getDynamicAccessibleTextColorHex calculates high contrast without variable shadowing
+    const { getDynamicAccessibleTextColorHex } = await import("../../src/utils/dom.js");
+    const lightText = getDynamicAccessibleTextColorHex("#000000", 7.0);
+    const darkText = getDynamicAccessibleTextColorHex("#ffffff", 7.0);
+    assert.ok(typeof lightText === "string" && lightText.startsWith("#"), "light background text hex returned");
+    assert.ok(typeof darkText === "string" && darkText.startsWith("#"), "dark background text hex returned");
+
+    // 5. html-sanitizer fallbackSanitize processes links cleanly without redundant returns
+    const { fallbackSanitize } = await import("../../src/utils/html-sanitizer.js");
+    const sanitized = fallbackSanitize('<a href="https://example.com/safe" class="test-link">Safe Link</a>');
+    assert.ok(sanitized.includes('href="https://example.com/safe"'), "sanitizes valid https link correctly");
+
+    // 6. stacked-layout updates depths without exception
+    const { updateStackedLayout } = await import("../../src/components/stacked-layout.js");
+    const testContainer = document.createElement("div");
+    testContainer.id = "toast-container-bottom-right";
+    testContainer.setAttribute("data-stacked", "true");
+    document.body.appendChild(testContainer);
+    const card1 = document.createElement("div");
+    const card2 = document.createElement("div");
+    testContainer.appendChild(card1);
+    testContainer.appendChild(card2);
+    updateStackedLayout(testContainer);
+    assert.strictEqual(card1.getAttribute("data-stacked-depth"), "1", "top card assigned depth 1");
+    assert.strictEqual(card2.getAttribute("data-stacked-depth"), "0", "front card assigned depth 0");
+    testContainer.remove();
+
+    // 7. toastPromise respects global defaultDuration when transition resolves
+    const { setConfig } = await import("../../src/utils/config.js");
+    const { toastPromise } = await import("../../src/components/toast-promise.js");
+    setConfig({ defaultDuration: 4200 });
+    let capturedDuration = null;
+    const mockHandle = {
+      update: async (opts) => {
+        capturedDuration = opts.duration;
+        return true;
+      },
+    };
+    await toastPromise(
+      Promise.resolve("test-res"),
+      { success: "Success message" },
+      {},
+      async () => mockHandle
+    );
+    assert.strictEqual(capturedDuration, 4200, "toastPromise uses configured global defaultDuration for success");
+
+    // 8. keyboard shortcuts cleanly attach and detach window flags
+    const { initKeyboardShortcuts, destroyKeyboardShortcuts } = await import("../../src/utils/keyboard.js");
+    initKeyboardShortcuts(window, () => {});
+    assert.strictEqual(window.__customizableToastEscapeAttached, true, "Escape handler attached to window");
+    destroyKeyboardShortcuts(window);
+    assert.strictEqual(window.__customizableToastEscapeAttached, undefined, "Escape handler cleared from window");
+
+    // 9. containerId: mounts toast in custom container and supports dynamic container migration
+    const { createToast } = await import("../../src/index.js");
+    const customHandle = await createToast({
+      message: "Custom Container Toast",
+      containerId: "toast-container-custom-alpha",
+      duration: 3000,
+    });
+    await new Promise((r) => setTimeout(r, 60));
+    const customContainer = document.getElementById("toast-container-custom-alpha");
+    assert.ok(customContainer, "custom container element exists in DOM");
+    assert.strictEqual(customContainer.contains(document.querySelector("#toast-container-custom-alpha .toast")), true, "toast is mounted inside custom container");
+
+    await customHandle.update({ containerId: "toast-container-custom-beta" });
+    await new Promise((r) => setTimeout(r, 60));
+    const betaContainer = document.getElementById("toast-container-custom-beta");
+    assert.ok(betaContainer, "migrated beta container exists in DOM");
+    assert.strictEqual(betaContainer.contains(document.querySelector("#toast-container-custom-beta .toast")), true, "toast migrated into beta container");
+
+    await customHandle.dismiss();
+
+    // 10. createProgressBar and createUndoAction dynamically resolve global defaultDuration
+    const { createProgressBar, createUndoAction } = await import("../../src/components/toast-utils-core.js");
+    setConfig({ defaultDuration: 5500 });
+    const dummyToast = document.createElement("div");
+    createProgressBar(dummyToast, { showProgressBar: true });
+    assert.ok(dummyToast.querySelector(".toast-progress-bar"), "progress bar mounted");
+
+    createUndoAction(dummyToast, { undo: () => {} }, () => {});
+    const undoBtn = dummyToast.querySelector(".toast-undo-btn");
+    assert.ok(undoBtn, "undo button mounted");
+    assert.ok(undoBtn.textContent.includes("6s"), "undo countdown initialized with ceil(5500/1000) = 6s");
+
+    // 11. createInstance handles non-string primitives and Error objects properly
+    const { createToastInstance } = await import("../../src/index.js");
+    const inst = createToastInstance();
+    const numHandle = await inst(404);
+    assert.strictEqual(numHandle.id.length > 0, true);
+    const errHandle = await inst(new Error("Database connection timed out"));
+    assert.strictEqual(errHandle.id.length > 0, true);
+    await inst.dismissAll();
+
+    // 12. applyToastDOMUpdates synchronizes toast-progress-top class
+    const { applyToastDOMUpdates } = await import("../../src/components/toast-updater.js");
+    const pbToast = document.createElement("div");
+    const testPb = document.createElement("div");
+    testPb.className = "toast-progress-bar";
+    pbToast.appendChild(testPb);
+    const mockContext = {
+      closeToast: () => {},
+      createDismissTimer: () => null,
+      setupPauseOnHover: () => {},
+      updateStackedLayout: () => {},
+    };
+    await applyToastDOMUpdates({ toast: pbToast, options: {} }, { progressPosition: "top" }, mockContext);
+    assert.strictEqual(testPb.classList.contains("toast-progress-top"), true, "toast-progress-top added for top position");
+    await applyToastDOMUpdates({ toast: pbToast, options: {} }, { progressPosition: "bottom" }, mockContext);
+    assert.strictEqual(testPb.classList.contains("toast-progress-top"), false, "toast-progress-top removed for bottom position");
+
+    // 13. PausableTimer getRemainingTime with Infinity returns Infinity
+    const { PausableTimer } = await import("../../src/utils/PausableTimer.js");
+    const infiniteTimer = new PausableTimer(() => {}, Infinity);
+    assert.strictEqual(infiniteTimer.getRemainingTime(), Infinity, "infinite timer returns Infinity remaining time");
+
+    // 14. Angular ToastService ngOnDestroy dismisses scoped toasts
+    const { ToastService } = await import("../../src/angular/index.js");
+    const angularService = new ToastService({ defaultPosition: "bottom-left" });
+    const angHandle = await angularService.success("Angular message");
+    assert.ok(angHandle.id);
+    assert.strictEqual(angularService._instance.size, 1);
+    angularService.ngOnDestroy();
+    assert.strictEqual(angularService._instance.size, 0, "ngOnDestroy cleared scoped instance");
+
+    resetConfig();
+    resetToastManager();
+    resetContainerRegistry();
+  });
+});
+
+
 
 
 

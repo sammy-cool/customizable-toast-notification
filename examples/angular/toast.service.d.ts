@@ -7,6 +7,7 @@ import type {
 } from 'customizable-toast-notification';
 
 export declare class ToastService {
+  constructor(defaultOptions?: Partial<ToastOptions>);
   success(message: string, options?: Partial<ToastOptions>): Promise<ToastHandle>;
   error(message: string, options?: Partial<ToastOptions>): Promise<ToastHandle>;
   warning(message: string, options?: Partial<ToastOptions>): Promise<ToastHandle>;

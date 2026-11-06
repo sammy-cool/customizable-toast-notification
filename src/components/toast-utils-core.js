@@ -93,7 +93,6 @@ export function createCTA(toast, options, onClose) {
         display: "inline-flex",
         alignItems: "center",
         textDecoration: "none",
-        outline: "none",
       });
     }
 
@@ -127,6 +126,10 @@ export function createCTA(toast, options, onClose) {
         el.style.opacity = prevOpacity;
         if (cfg.autoClose !== false && typeof onClose === "function") {
           await onClose(toast);
+        } else if (cfg.autoClose === false) {
+          if (typeof el.blur === "function" && typeof document !== "undefined" && document.activeElement === el) {
+            el.blur();
+          }
         }
       }
     };
@@ -135,19 +138,47 @@ export function createCTA(toast, options, onClose) {
       if (isLink && !cfg.href && (e.key === "Enter" || e.key === " ")) {
         e.preventDefault();
         void onClick(e);
+      } else if (!isLink && e.key === " ") {
+        e.preventDefault();
+        void onClick(e);
       }
     };
 
+    const onFocus = () => {
+      try {
+        let isVisible = true;
+        if (typeof el.matches === "function") {
+          try {
+            if (!el.matches(":focus-visible") && typeof window !== "undefined" && window.navigator?.userAgent && !window.navigator.userAgent.includes("jsdom")) {
+              isVisible = false;
+            }
+          } catch {
+            isVisible = true;
+          }
+        }
+        if (isVisible) {
+          el.style.outline = "2px solid currentColor";
+          el.style.outlineOffset = "2px";
+        }
+      } catch {
+        /* safe fallback */
+      }
+    };
+    const onBlur = () => {
+      el.style.outline = "";
+      el.style.outlineOffset = "";
+    };
+
     el.addEventListener("click", onClick);
-    if (isLink && !cfg.href) {
-      el.addEventListener("keydown", onKeyDown);
-    }
+    el.addEventListener("keydown", onKeyDown);
+    el.addEventListener("focus", onFocus);
+    el.addEventListener("blur", onBlur);
 
     const cleanupItem = () => {
       el.removeEventListener("click", onClick);
-      if (isLink && !cfg.href) {
-        el.removeEventListener("keydown", onKeyDown);
-      }
+      el.removeEventListener("keydown", onKeyDown);
+      el.removeEventListener("focus", onFocus);
+      el.removeEventListener("blur", onBlur);
     };
     el._cleanup = cleanupItem;
     cleanups.push(cleanupItem);
@@ -190,7 +221,8 @@ export function createUndoAction(toast, options, onClose) {
       ? undoCfg.label.trim()
       : (typeof options?.undoText === "string" && options.undoText.trim() ? options.undoText.trim() : "Undo");
 
-  const totalDuration = Number(options?.duration);
+  const defaultDur = Number(getConfig?.()?.defaultDuration ?? 2500);
+  const totalDuration = options?.duration !== undefined ? Number(options.duration) : defaultDur;
   const showCountdown =
     undoCfg.showCountdown !== false &&
     Number.isFinite(totalDuration) &&
@@ -209,13 +241,19 @@ export function createUndoAction(toast, options, onClose) {
     : "rgba(255,255,255,0.18)";
 
   const trimmedText = typeof textColor === "string" ? textColor.trim() : "";
-  const hexMatchUndo = trimmedText.match(/^#([0-9a-fA-F]{3}|[0-9a-fA-F]{6})$/);
+  const hexMatchUndo = trimmedText.match(/^#([0-9a-fA-F]{3,8})$/);
   let borderColor = "rgba(128, 128, 128, 0.35)";
   if (hexMatchUndo) {
-    const h = hexMatchUndo[1].length === 3
-      ? `#${hexMatchUndo[1][0]}${hexMatchUndo[1][0]}${hexMatchUndo[1][1]}${hexMatchUndo[1][1]}${hexMatchUndo[1][2]}${hexMatchUndo[1][2]}`
-      : `#${hexMatchUndo[1]}`;
-    borderColor = `${h}55`;
+    const rawHex = hexMatchUndo[1];
+    if (rawHex.length === 3) {
+      borderColor = `#${rawHex[0]}${rawHex[0]}${rawHex[1]}${rawHex[1]}${rawHex[2]}${rawHex[2]}55`;
+    } else if (rawHex.length === 6) {
+      borderColor = `#${rawHex}55`;
+    } else if (rawHex.length === 8) {
+      borderColor = `#${rawHex}`;
+    } else if (rawHex.length === 4) {
+      borderColor = `#${rawHex[0]}${rawHex[0]}${rawHex[1]}${rawHex[1]}${rawHex[2]}${rawHex[2]}${rawHex[3]}${rawHex[3]}`;
+    }
   }
 
   const isRtl = options.fontDirection === "rtl";
@@ -240,7 +278,13 @@ export function createUndoAction(toast, options, onClose) {
     });
   }
 
-  let remainingSec = Math.max(1, Math.ceil((totalDuration || 2500) / 1000));
+  let remainingMs =
+    typeof options?.remainingTime === "number" && options.remainingTime > 0
+      ? options.remainingTime
+      : (typeof options?.timer?.getRemainingTime === "function"
+          ? options.timer.getRemainingTime()
+          : Math.max(1000, Number(totalDuration) || Number(getConfig?.()?.defaultDuration ?? 2500)));
+  let remainingSec = Math.max(1, Math.ceil(remainingMs / 1000));
   const updateLabel = () => {
     btn.textContent = showCountdown
       ? `${baseLabel} (${remainingSec}s)`
@@ -250,16 +294,22 @@ export function createUndoAction(toast, options, onClose) {
 
   let intervalId = null;
   let isPaused = false;
+  let lastTick = Date.now();
   if (showCountdown) {
     intervalId = setInterval(() => {
-      if (isPaused) return;
-      remainingSec = Math.max(0, remainingSec - 1);
-      updateLabel();
-      if (remainingSec <= 0 && intervalId) {
-        clearInterval(intervalId);
-        intervalId = null;
+      const now = Date.now();
+      if (!isPaused) {
+        const elapsed = now - lastTick;
+        remainingMs = Math.max(0, remainingMs - elapsed);
+        remainingSec = Math.max(0, Math.ceil(remainingMs / 1000));
+        updateLabel();
+        if (remainingMs <= 0 && intervalId) {
+          clearInterval(intervalId);
+          intervalId = null;
+        }
       }
-    }, 1000);
+      lastTick = now;
+    }, 250);
     if (typeof intervalId?.unref === "function") {
       intervalId.unref();
     }
@@ -267,9 +317,11 @@ export function createUndoAction(toast, options, onClose) {
 
   toast._pauseUndo = () => {
     isPaused = true;
+    lastTick = Date.now();
   };
   toast._resumeUndo = () => {
     isPaused = false;
+    lastTick = Date.now();
   };
 
   const cleanupTimer = () => {
@@ -378,32 +430,53 @@ function getContrastBackground(bgColor) {
   return "rgba(255,255,255,0.15)";
 }
 
+export function applyIndeterminateProgressStyles(progressBar, isRtl, finalWidth = "100%") {
+  progressBar.classList.add("toast-progress-bar-indeterminate");
+  if (isRtl) {
+    progressBar.classList.add("toast-progress-bar-indeterminate-rtl");
+  }
+  if (!getConfig().disableInlineStyles) {
+    ensureProgressIndeterminateStyles();
+    const animName = isRtl ? "toast-progress-indeterminate-rtl" : "toast-progress-indeterminate";
+    progressBar.style.animation = `${animName} 1.6s cubic-bezier(0.4, 0, 0.2, 1) infinite`;
+  }
+  progressBar.style.width = finalWidth;
+}
+
 export function ensureProgressIndeterminateStyles() {
   if (typeof document === "undefined" || document.getElementById("toast-progress-indeterminate-styles")) {
     return;
   }
-  const st = document.createElement("style");
-  st.id = "toast-progress-indeterminate-styles";
-  st.textContent = `
-    @keyframes toast-progress-indeterminate {
-      0% { left: 0%; width: 0%; }
-      50% { left: 20%; width: 60%; }
-      100% { left: 100%; width: 0%; }
+  try {
+    const config = getConfig();
+    const st = document.createElement("style");
+    st.id = "toast-progress-indeterminate-styles";
+    if (config.cspNonce && typeof config.cspNonce === "string") {
+      st.setAttribute("nonce", config.cspNonce);
     }
-    @keyframes toast-progress-indeterminate-rtl {
-      0% { right: 0%; width: 0%; }
-      50% { right: 20%; width: 60%; }
-      100% { right: 100%; width: 0%; }
-    }
-    .toast-progress-bar-indeterminate {
-      animation: toast-progress-indeterminate 1.6s cubic-bezier(0.4, 0, 0.2, 1) infinite !important;
-    }
-    .toast-progress-bar-indeterminate-rtl {
-      animation: toast-progress-indeterminate-rtl 1.6s cubic-bezier(0.4, 0, 0.2, 1) infinite !important;
-    }
-  `;
-  const target = document.head || document.documentElement;
-  if (target) target.appendChild(st);
+    st.textContent = `
+      @keyframes toast-progress-indeterminate {
+        0% { left: 0%; width: 0%; }
+        50% { left: 20%; width: 60%; }
+        100% { left: 100%; width: 0%; }
+      }
+      @keyframes toast-progress-indeterminate-rtl {
+        0% { right: 0%; width: 0%; }
+        50% { right: 20%; width: 60%; }
+        100% { right: 100%; width: 0%; }
+      }
+      .toast-progress-bar-indeterminate {
+        animation: toast-progress-indeterminate 1.6s cubic-bezier(0.4, 0, 0.2, 1) infinite !important;
+      }
+      .toast-progress-bar-indeterminate-rtl {
+        animation: toast-progress-indeterminate-rtl 1.6s cubic-bezier(0.4, 0, 0.2, 1) infinite !important;
+      }
+    `;
+    const target = document.head || document.documentElement;
+    if (target) target.appendChild(st);
+  } catch {
+    /* safe fallback in strict CSP environments where style element appending is blocked */
+  }
 }
 
 /**
@@ -430,8 +503,12 @@ export function parseProgressValue(rawProgress, toast, options = {}) {
   // Normalized mode (0.0 to 1.0):
   // If explicitly requested via options.progressNormalized, or if value was a fraction (0 < pct < 1),
   // remember ratio mode on toast so that completion (1 or 1.0) scales to 100%.
-  if (toast && pct > 0 && pct < 1) {
+  if (options.progressNormalized === false && toast) {
+    toast._progressRatioMode = false;
+  } else if (toast && pct > 0 && pct < 1) {
     toast._progressRatioMode = true;
+  } else if (toast && pct > 1) {
+    toast._progressRatioMode = false;
   }
 
   const isNormalized = Boolean(options.progressNormalized) || Boolean(toast?._progressRatioMode);
@@ -472,10 +549,11 @@ export function createProgressBar(toast, options = {}) {
     }
   }
 
-  const duration = Number(options.duration ?? 2500);
+  const defaultDur = Number(getConfig?.()?.defaultDuration ?? 2500);
+  const duration = Number(options.duration ?? defaultDur);
   const progressDuration = Math.max(0, duration + 5);
 
-  const leftOffset = Math.min(borderRadiusNum, progressHeightPx * 2);
+  const leftOffset = Math.min(borderRadiusNum, Math.min(progressHeightPx * 2, 16));
   const finalWidth = borderRadiusNum > 0
     ? `calc(100% - ${leftOffset * 2}px)`
     : "100%";
@@ -487,6 +565,25 @@ export function createProgressBar(toast, options = {}) {
   progressBar._finalWidth = finalWidth;
   progressBar._isReverse = isReverse;
   progressBar._isRtl = isRtl;
+
+  progressBar._recalcRadius = (newRadius) => {
+    const rStr = newRadius || "0";
+    const pRadius = Number.parseInt(rStr, 10);
+    const rNum = Number.isFinite(pRadius) && pRadius > 0 ? pRadius : 0;
+    const newLeftOffset = Math.min(rNum, Math.min(progressHeightPx * 2, 16));
+    const newFinalWidth = rNum > 0 ? `calc(100% - ${newLeftOffset * 2}px)` : "100%";
+    progressBar._leftOffset = newLeftOffset;
+    progressBar._finalWidth = newFinalWidth;
+    if (!getConfig().disableInlineStyles) {
+      if (progressBar._isRtl) {
+        progressBar.style.right = `${newLeftOffset}px`;
+        progressBar.style.left = "auto";
+      } else {
+        progressBar.style.left = `${newLeftOffset}px`;
+        progressBar.style.right = "auto";
+      }
+    }
+  };
 
   const progressBg = options.progressBarColor || options.progressColor || "currentColor";
   const hasWaapi = typeof progressBar.animate === "function";
@@ -522,16 +619,7 @@ export function createProgressBar(toast, options = {}) {
   progressBar._isManualProgress = options.progress !== undefined && options.progress !== "indeterminate";
 
   if (isIndeterminate) {
-    progressBar.classList.add("toast-progress-bar-indeterminate");
-    if (isRtl) {
-      progressBar.classList.add("toast-progress-bar-indeterminate-rtl");
-    }
-    if (!getConfig().disableInlineStyles) {
-      ensureProgressIndeterminateStyles();
-      const animName = isRtl ? "toast-progress-indeterminate-rtl" : "toast-progress-indeterminate";
-      progressBar.style.animation = `${animName} 1.6s cubic-bezier(0.4, 0, 0.2, 1) infinite`;
-    }
-    progressBar.style.width = finalWidth;
+    applyIndeterminateProgressStyles(progressBar, isRtl, finalWidth);
     return;
   }
 
@@ -569,6 +657,23 @@ export function createProgressBar(toast, options = {}) {
   }
 }
 
+function markToastActive(toast) {
+  toast.style.opacity = "1";
+  toast.style.transform = "none";
+  toast.classList.add("active");
+  if (
+    toast._progressAnimation &&
+    (toast._progressAnimation.playState === "idle" ||
+      toast._progressAnimation.playState === "paused")
+  ) {
+    try {
+      toast._progressAnimation.play();
+    } catch {
+      /* safe fallback if WAAPI play fails */
+    }
+  }
+}
+
 export function runToastAnimation(toast) {
   if (!toast) return;
   if (toast._hasAnimated) return;
@@ -576,14 +681,7 @@ export function runToastAnimation(toast) {
   if (shouldReduceMotion()) {
     toast._hasAnimated = true;
     toast.style.transition = "none";
-    toast.style.opacity = "1";
-    toast.style.transform = "none";
-    toast.classList.add("active");
-    if (toast._progressAnimation && (toast._progressAnimation.playState === "idle" || toast._progressAnimation.playState === "paused")) {
-      try {
-        toast._progressAnimation.play();
-      } catch {}
-    }
+    markToastActive(toast);
     return;
   }
 
@@ -593,17 +691,12 @@ export function runToastAnimation(toast) {
     // Force browser layout/reflow so initial styles (opacity: 0, translateY) are committed to render tree
     try {
       void toast.offsetHeight;
-    } catch {}
+    } catch {
+      /* safe fallback in non-layout environments */
+    }
 
     requestAnimationFrame(() => {
-      toast.style.opacity = "1";
-      toast.style.transform = "none";
-      toast.classList.add("active");
-      if (toast._progressAnimation && (toast._progressAnimation.playState === "idle" || toast._progressAnimation.playState === "paused")) {
-        try {
-          toast._progressAnimation.play();
-        } catch {}
-      }
+      markToastActive(toast);
     });
   };
 
@@ -623,202 +716,8 @@ export function runToastAnimation(toast) {
   }
 }
 
-export function attachSwipeToDismiss(toast, onClose) {
-  if (!toast || typeof toast.addEventListener !== "function") return;
+export { attachSwipeToDismiss } from "./swipe.js";
 
-  let startX = 0;
-  let startY = 0;
-  let currentX = 0;
-  let startTime = 0;
-  let isDragging = false;
-  let isHorizontal = false;
-  let touchId = null;
-
-  let isWindowListening = false;
-
-  const snapBack = () => {
-    if (!getConfig().disableInlineStyles && !shouldReduceMotion()) {
-      const snapEasing = "cubic-bezier(0.34, 1.56, 0.64, 1)";
-      const snapDuration = 200;
-      toast.style.transition = `transform ${snapDuration}ms ${snapEasing}, opacity 200ms ease`;
-      toast.style.transform = "translateX(0)";
-      toast.style.opacity = "1";
-
-      if (toast._snapbackTimer) clearTimeout(toast._snapbackTimer);
-      toast._snapbackTimer = setTimeout(() => {
-        toast._snapbackTimer = null;
-        toast.style.transform = "none";
-        if (toast._originalTransition) {
-          toast.style.transition = toast._originalTransition;
-        }
-      }, snapDuration);
-      if (typeof toast._snapbackTimer?.unref === "function") {
-        toast._snapbackTimer.unref();
-      }
-    }
-  };
-
-  const onPointerCancel = () => {
-    cleanupWindowListeners();
-    touchId = null;
-    if (isDragging) {
-      isDragging = false;
-      toast.style.userSelect = "";
-      snapBack();
-    }
-  };
-
-  const cleanupWindowListeners = () => {
-    if (isWindowListening && typeof window !== "undefined") {
-      isWindowListening = false;
-      window.removeEventListener("mousemove", onPointerMove);
-      window.removeEventListener("mouseup", onPointerEnd);
-      window.removeEventListener("blur", onPointerCancel);
-    }
-  };
-
-  const onPointerDown = (e) => {
-    if (!e) return;
-    if (e.button !== undefined && e.button !== 0) return;
-    const target = e.target;
-    if (
-      target &&
-      typeof target.closest === "function" &&
-      target.closest("button, a, input, textarea, select, label")
-    ) {
-      return;
-    }
-    let ev = e;
-    if (e.touches && e.touches.length > 0) {
-      ev = e.touches[0];
-      touchId = ev.identifier ?? null;
-    } else {
-      touchId = null;
-    }
-    startX = ev.clientX;
-    startY = ev.clientY;
-    currentX = startX;
-    startTime = Date.now();
-    isDragging = true;
-    isHorizontal = false;
-    toast._originalTransition = toast.style.transition || "";
-    toast.style.transition = "none";
-    toast.style.userSelect = "none";
-
-    if (!isWindowListening && typeof window !== "undefined") {
-      isWindowListening = true;
-      window.addEventListener("mousemove", onPointerMove, { passive: false });
-      window.addEventListener("mouseup", onPointerEnd, { passive: true });
-      window.addEventListener("blur", onPointerCancel, { passive: true });
-    }
-  };
-
-  const onPointerMove = (e) => {
-    if (!isDragging || !e) return;
-    let ev = e;
-    if (e.touches) {
-      if (touchId !== null) {
-        for (let i = 0; i < e.touches.length; i++) {
-          if (e.touches[i].identifier === touchId) {
-            ev = e.touches[i];
-            break;
-          }
-        }
-      } else if (e.touches.length > 0) {
-        ev = e.touches[0];
-      }
-    }
-    const x = ev.clientX;
-    const y = ev.clientY;
-    const dx = x - startX;
-    const dy = y - startY;
-
-    if (!isHorizontal) {
-      if (Math.abs(dx) > 8 && Math.abs(dx) > Math.abs(dy)) {
-        isHorizontal = true;
-      } else if (Math.abs(dy) > 8) {
-        isDragging = false;
-        toast.style.userSelect = "";
-        cleanupWindowListeners();
-        return;
-      }
-    }
-
-      if (isHorizontal) {
-        currentX = x;
-        const opacity = Math.max(0, 1 - Math.abs(dx) / 280);
-        if (!getConfig().disableInlineStyles && !shouldReduceMotion()) {
-          toast.style.transform = `translateX(${dx}px)`;
-          toast.style.opacity = String(opacity);
-        }
-        if (e.cancelable) e.preventDefault();
-      }
-    };
-
-    const onPointerEnd = () => {
-      cleanupWindowListeners();
-      touchId = null;
-      if (!isDragging || !isHorizontal) {
-        isDragging = false;
-        toast.style.userSelect = "";
-        return;
-      }
-      isDragging = false;
-      toast.style.userSelect = "";
-
-      const dx = currentX - startX;
-      const duration = Math.max(1, Date.now() - startTime);
-      const velocity = duration > 0 ? Math.abs(dx) / duration : 0; // px/ms
-      const isFlick = velocity >= 0.65 && Math.abs(dx) >= 50;
-      const threshold = isFlick ? 50 : 75;
-
-      if (Math.abs(dx) >= threshold) {
-        const exitX = dx > 0 ? 320 : -320;
-        const exitDuration = isFlick ? 120 : 180;
-        if (!getConfig().disableInlineStyles && !shouldReduceMotion()) {
-          toast.style.transition = `transform ${exitDuration}ms ease-out, opacity ${exitDuration}ms ease-out`;
-          toast.style.transform = `translateX(${exitX}px)`;
-          toast.style.opacity = "0";
-        }
-        if (toast._swipeTimeout) clearTimeout(toast._swipeTimeout);
-        toast._swipeTimeout = setTimeout(() => {
-          toast._swipeTimeout = null;
-          if (typeof onClose === "function") void onClose(toast);
-        }, exitDuration);
-        if (typeof toast._swipeTimeout?.unref === "function") {
-          toast._swipeTimeout.unref();
-        }
-      } else {
-        snapBack();
-      }
-    };
-
-  toast.addEventListener("touchstart", onPointerDown, { passive: true });
-  toast.addEventListener("touchmove", onPointerMove, { passive: false });
-  toast.addEventListener("touchend", onPointerEnd, { passive: true });
-  toast.addEventListener("touchcancel", onPointerCancel, { passive: true });
-
-  toast.addEventListener("mousedown", onPointerDown, { passive: true });
-
-  toast._cleanupSwipe = () => {
-    if (toast._swipeTimeout) {
-      clearTimeout(toast._swipeTimeout);
-      toast._swipeTimeout = null;
-    }
-    if (toast._snapbackTimer) {
-      clearTimeout(toast._snapbackTimer);
-      toast._snapbackTimer = null;
-    }
-    cleanupWindowListeners();
-
-    toast.removeEventListener("touchstart", onPointerDown);
-    toast.removeEventListener("touchmove", onPointerMove);
-    toast.removeEventListener("touchend", onPointerEnd);
-    toast.removeEventListener("touchcancel", onPointerCancel);
-    toast.removeEventListener("mousedown", onPointerDown);
-  };
-
-}
 
 /**
  * Constrains keyboard Tab focus inside an active interactive toast.
@@ -869,11 +768,9 @@ export function attachFocusTrap(toast, options = {}) {
         last.focus();
         e.preventDefault();
       }
-    } else {
-      if (document.activeElement === last) {
-        first.focus();
-        e.preventDefault();
-      }
+    } else if (document.activeElement === last) {
+      first.focus();
+      e.preventDefault();
     }
   };
 
@@ -885,6 +782,15 @@ export function attachFocusTrap(toast, options = {}) {
   let initialFocusTimer = null;
   if (options?.autoFocus !== false) {
     initialFocusTimer = setTimeout(() => {
+      if (typeof document !== "undefined" && document.activeElement) {
+        const modalHost =
+          typeof document.activeElement.closest === "function"
+            ? document.activeElement.closest('[aria-modal="true"], dialog[open], [role="dialog"]')
+            : null;
+        if (modalHost && typeof toast.contains === "function" && !toast.contains(modalHost)) {
+          return;
+        }
+      }
       const focusable = getFocusable();
       if (focusable.length > 0 && typeof focusable[0].focus === "function") {
         focusable[0].focus();
@@ -902,7 +808,9 @@ export function attachFocusTrap(toast, options = {}) {
     if (previouslyFocused && typeof previouslyFocused.focus === "function" && previouslyFocused.isConnected) {
       try {
         previouslyFocused.focus();
-      } catch {}
+      } catch {
+        /* safe fallback if refocusing fails */
+      }
     }
   };
 

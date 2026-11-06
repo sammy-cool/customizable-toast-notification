@@ -33,7 +33,12 @@
  * @property {boolean} swipeToDismiss
  * @property {boolean} sound
  * @property {boolean} [icon]
+ * @property {string} [iconColor]
+ * @property {string | null} [iconAriaLabel]
+ * @property {string|null} [cspNonce]
+ * @property {string} [soundPreset]
  * @property {boolean} [pauseOnHover]
+ * @property {number} [defaultDuration]
  * @property {boolean} priorityQueue
  * @property {boolean} [shadowDom]
  * @property {boolean} [trapFocus]
@@ -45,6 +50,7 @@
 const DEFAULT_GLOBAL_CONFIG = Object.freeze({
   maxVisible: 3,
   maxQueueSize: 100,
+  defaultDuration: 2500,
   zIndex: 9999,
   targetNode: null,
   disableInlineStyles: false,
@@ -56,6 +62,9 @@ const DEFAULT_GLOBAL_CONFIG = Object.freeze({
   sound: false,
   icon: true,
   iconColor: undefined,
+  iconAriaLabel: null,
+  cspNonce: null,
+  soundPreset: "default",
   pauseOnHover: false,
   priorityQueue: false,
   shadowDom: false,
@@ -84,6 +93,7 @@ export function setConfig(options = {}) {
   const {
     maxVisible,
     maxQueueSize,
+    defaultDuration,
     zIndex,
     targetNode,
     disableInlineStyles,
@@ -95,6 +105,9 @@ export function setConfig(options = {}) {
     sound,
     icon,
     iconColor,
+    iconAriaLabel,
+    cspNonce,
+    soundPreset,
     pauseOnHover,
     priorityQueue,
     shadowDom,
@@ -118,8 +131,8 @@ export function setConfig(options = {}) {
 
   if (maxVisible !== undefined) {
     const v = Number(maxVisible);
-    if (Number.isFinite(v) && v >= 0) {
-      globalConfig.maxVisible = Math.max(0, Math.floor(v));
+    if (Number.isFinite(v) && v >= 1) {
+      globalConfig.maxVisible = Math.max(1, Math.floor(v));
     }
   }
 
@@ -127,6 +140,13 @@ export function setConfig(options = {}) {
     const q = Number(maxQueueSize);
     if (Number.isFinite(q) && q >= 0) {
       globalConfig.maxQueueSize = Math.floor(q);
+    }
+  }
+
+  if (defaultDuration !== undefined) {
+    const d = Number(defaultDuration);
+    if (Number.isFinite(d) && d >= 0) {
+      globalConfig.defaultDuration = d;
     }
   }
 
@@ -199,6 +219,18 @@ export function setConfig(options = {}) {
     globalConfig.iconColor = typeof iconColor === "string" ? iconColor.trim() : (iconColor === null ? null : undefined);
   }
 
+  if (iconAriaLabel !== undefined) {
+    globalConfig.iconAriaLabel = typeof iconAriaLabel === "string" ? iconAriaLabel.trim() : null;
+  }
+
+  if (cspNonce !== undefined) {
+    globalConfig.cspNonce = typeof cspNonce === "string" ? cspNonce.trim() : null;
+  }
+
+  if (soundPreset !== undefined) {
+    globalConfig.soundPreset = typeof soundPreset === "string" ? soundPreset.trim() : "default";
+  }
+
   if (pauseOnHover !== undefined) {
     globalConfig.pauseOnHover = Boolean(pauseOnHover);
   }
@@ -237,7 +269,7 @@ export function resetConfig() {
  * @returns {ToastGlobalConfig}
  */
 export function getConfig() {
-  return { ...globalConfig };
+  return Object.freeze({ ...globalConfig });
 }
 
 /**

@@ -12,13 +12,13 @@ export interface ToastStoreState {
 
 export interface SvelteToastStore {
   subscribe: (run: (value: ToastStoreState) => void) => () => void;
-  success: (messageOrOptions: string | ToastOptions, options?: Partial<ToastOptions>) => Promise<ToastHandle>;
-  error: (messageOrOptions: string | ToastOptions, options?: Partial<ToastOptions>) => Promise<ToastHandle>;
-  warning: (messageOrOptions: string | ToastOptions, options?: Partial<ToastOptions>) => Promise<ToastHandle>;
-  info: (messageOrOptions: string | ToastOptions, options?: Partial<ToastOptions>) => Promise<ToastHandle>;
-  loading: (messageOrOptions: string | ToastOptions, options?: Partial<ToastOptions>) => Promise<ToastHandle>;
-  custom: (messageOrOptions: string | ToastOptions, options?: Partial<ToastOptions>) => Promise<ToastHandle>;
-  show: (options: ToastOptions) => Promise<ToastHandle>;
+  success: (messageOrOptions?: string | ToastOptions, options?: Partial<ToastOptions>) => Promise<ToastHandle>;
+  error: (messageOrOptions?: string | ToastOptions, options?: Partial<ToastOptions>) => Promise<ToastHandle>;
+  warning: (messageOrOptions?: string | ToastOptions, options?: Partial<ToastOptions>) => Promise<ToastHandle>;
+  info: (messageOrOptions?: string | ToastOptions, options?: Partial<ToastOptions>) => Promise<ToastHandle>;
+  loading: (messageOrOptions?: string | ToastOptions, options?: Partial<ToastOptions>) => Promise<ToastHandle>;
+  custom: (messageOrOptions?: string | ToastOptions, options?: Partial<ToastOptions>) => Promise<ToastHandle>;
+  show: (options?: ToastOptions) => Promise<ToastHandle>;
   promise: <T>(
     promiseOrFn: Promise<T> | (() => Promise<T> | T),
     messages?: ToastPromiseMessages,
@@ -27,6 +27,10 @@ export interface SvelteToastStore {
   dismiss: (target?: string | ToastHandle | HTMLElement | Promise<ToastHandle>) => Promise<void>;
   dismissAll: () => Promise<void>;
   clear: () => Promise<void>;
+  on: (event: 'open' | 'show' | 'close' | 'queue' | 'drop', listener: (data: any) => void) => () => void;
+  off: (event: 'open' | 'show' | 'close' | 'queue' | 'drop', listener: (data: any) => void) => void;
+  getActiveCount: () => number;
+  readonly size: number;
   setConfig: (options?: Partial<ToastGlobalConfig>) => ToastGlobalConfig;
   getConfig: () => ToastGlobalConfig;
   resetConfig: () => ToastGlobalConfig;
@@ -36,22 +40,37 @@ export interface SvelteToastStore {
   version: string;
 }
 
-export function createToastStore(): SvelteToastStore;
+export function createToastStore(defaultOptions?: Partial<ToastOptions>): SvelteToastStore;
 
 export const toast: SvelteToastStore;
-export const useToast: () => SvelteToastStore;
+export const toastStore: SvelteToastStore;
+export const useToast: (defaultOptions?: Partial<ToastOptions>) => SvelteToastStore;
 
 export {
   createToast,
+  createToastAPI,
+  createToastInstance,
+  on,
+  off,
+  toastStore,
+  success,
+  error,
+  warning,
+  info,
+  loading,
+  custom,
   toastPromise,
   dismiss,
   dismissAll,
   clear,
+  getActiveCount,
   setConfig,
   getConfig,
   resetConfig,
   getToastMetrics,
   setDefaultColors,
   setDefaultMessages,
+  initKeyboardShortcuts,
+  destroyKeyboardShortcuts,
   version,
 } from '../index.js';
