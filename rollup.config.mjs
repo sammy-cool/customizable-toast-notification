@@ -36,7 +36,7 @@ const esbuildPlugin = (target) => ({
     if (id.includes("node_modules")) return null;
     const result = await esbuild.transform(code, {
       loader: id.endsWith(".ts") ? "ts" : "js",
-      target: target === "cjs" ? "node14" : "es2020",
+      target: "es2018",
       sourcemap: true,
       sourcefile: id,
     });
@@ -48,7 +48,7 @@ const esbuildPlugin = (target) => ({
   async renderChunk(code, chunk) {
     const result = await esbuild.transform(code, {
       minify: true,
-      target: target === "cjs" ? "node14" : "es2020",
+      target: "es2018",
       sourcemap: true,
       sourcefile: chunk.fileName,
       legalComments: "inline",

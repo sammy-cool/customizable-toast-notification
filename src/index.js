@@ -226,6 +226,11 @@ import { createInstance, buildToastAPI } from "./utils/instance-factory.js";
  */
 
 /**
+ * A thenable Promise handle returned by toast creation methods.
+ * @typedef {Promise<ToastHandle> & ToastHandle} ToastPromiseHandle
+ */
+
+/**
  * @typedef {Object} ToastPromiseMessages
  * @property {string | Partial<ToastOptions>} [loading]
  * @property {string | Partial<ToastOptions> | ((result: unknown) => string | Partial<ToastOptions>)} [success]
@@ -419,66 +424,79 @@ async function runWithClosePriority(fn, positionKey) {
 const originalCreateToast = createToast;
 
 /**
+ * Decorates a toast creation promise with synchronous handle methods (.dismiss and .update).
+ * @param {Promise<ToastHandle>} p
+ * @param {() => (string | undefined)} getKey
+ * @returns {ToastPromiseHandle}
+ */
+function decorateToastPromise(p, getKey) {
+  Object.defineProperty(p, "id", { get: getKey, configurable: true });
+  p.dismiss = async () => {
+    try {
+      const h = await p;
+      if (h && typeof h.dismiss === "function") await h.dismiss();
+    } catch { /* ignore dismissal errors */ }
+  };
+  p.update = async (opts, uOpts) => {
+    try {
+      const h = await p;
+      return h && typeof h.update === "function" ? await h.update(opts, uOpts) : false;
+    } catch { return false; }
+  };
+  return p;
+}
+
+/**
  * Creates and displays a toast notification.
  * Supports string shorthand: `createToast("Message")` or full options `createToast({ message: "..." })`.
  * Also provides ergonomic shorthand methods: `createToast.success(...)`, `createToast.error(...)`, etc.
  * @param {string | ToastOptions} [messageOrOptions]
  * @param {Partial<ToastOptions>} [maybeOptions]
- * @returns {Promise<ToastHandle>}
+ * @returns {ToastPromiseHandle}
  */
-async function createToastWithPriority(messageOrOptions = {}, maybeOptions) {
-  if (!checkBrowserEnvironment()) {
-    return SSR_NOOP_HANDLE;
-  }
-  const normalized = normalizeToastOptions(messageOrOptions, maybeOptions);
-  const posKey = normalizePositionKey(normalized.position);
-  let key = await runWithClosePriority(() => originalCreateToast(normalized), posKey);
-  let lastOptions = { ...normalized };
-
-  return {
-    get id() {
-      return key;
-    },
-    dismiss: () => (key ? closeToastByKey(key) : Promise.resolve()),
-    update: async (newOptions, updateOpts) => {
-      if (key) {
-        const updated = await updateToastByKey(key, newOptions);
-        if (updated) {
-          if (newOptions && typeof newOptions === "object") {
-            lastOptions = { ...lastOptions, ...newOptions };
-          }
+function createToastWithPriority(messageOrOptions = {}, maybeOptions) {
+  let resolvedKey;
+  const p = (async () => {
+    if (!checkBrowserEnvironment()) return SSR_NOOP_HANDLE;
+    const normalized = normalizeToastOptions(messageOrOptions, maybeOptions);
+    const posKey = normalizePositionKey(normalized.position);
+    let key = await runWithClosePriority(() => originalCreateToast(normalized), posKey);
+    resolvedKey = key;
+    let lastOptions = { ...normalized };
+    return {
+      get id() { return key; },
+      dismiss: () => (key ? closeToastByKey(key) : Promise.resolve()),
+      update: async (newOptions, updateOpts) => {
+        if (key && (await updateToastByKey(key, newOptions))) {
+          if (newOptions && typeof newOptions === "object") lastOptions = { ...lastOptions, ...newOptions };
           return true;
         }
-      }
-      if (updateOpts?.fallback !== false && newOptions && typeof newOptions === "object") {
-        const spawnOptions = { ...lastOptions, ...newOptions };
-        const isResolvingLoading =
-          (newOptions.type && newOptions.type !== "loading") ||
-          newOptions.showLoader === false ||
-          newOptions.loader === null;
-        if (
-          (spawnOptions.duration === 0 || spawnOptions.duration >= 86400000) &&
-          newOptions.duration === undefined &&
-          isResolvingLoading
-        ) {
-          spawnOptions.duration = Number(getConfig?.()?.defaultDuration ?? 2500);
-          spawnOptions.showLoader = false;
+        if (updateOpts?.fallback !== false && newOptions && typeof newOptions === "object") {
+          const spawnOptions = { ...lastOptions, ...newOptions };
+          const isResolvingLoading = (newOptions.type && newOptions.type !== "loading") ||
+            newOptions.showLoader === false || newOptions.loader === null;
+          if ((spawnOptions.duration === 0 || spawnOptions.duration >= 86400000) && newOptions.duration === undefined && isResolvingLoading) {
+            spawnOptions.duration = Number(getConfig?.()?.defaultDuration ?? 2500);
+            spawnOptions.showLoader = false;
+          }
+          const newHandle = await createToastWithPriority(spawnOptions);
+          key = newHandle.id;
+          resolvedKey = key;
+          lastOptions = spawnOptions;
+          return true;
         }
-        const newHandle = await createToastWithPriority(spawnOptions);
-        key = newHandle.id;
-        lastOptions = spawnOptions;
-        return true;
-      }
-      return false;
-    },
-  };
+        return false;
+      },
+    };
+  })();
+  return decorateToastPromise(p, () => resolvedKey);
 }
 
 /**
  * Displays a success toast notification.
  * @param {string | ToastOptions} [messageOrOptions]
  * @param {Partial<ToastOptions>} [options]
- * @returns {Promise<ToastHandle>}
+ * @returns {ToastPromiseHandle}
  */
 createToastWithPriority.success = (messageOrOptions, options) => {
   const normalized = normalizeToastOptions(messageOrOptions, options);
@@ -489,7 +507,7 @@ createToastWithPriority.success = (messageOrOptions, options) => {
  * Displays an error toast notification.
  * @param {string | ToastOptions} [messageOrOptions]
  * @param {Partial<ToastOptions>} [options]
- * @returns {Promise<ToastHandle>}
+ * @returns {ToastPromiseHandle}
  */
 createToastWithPriority.error = (messageOrOptions, options) => {
   const normalized = normalizeToastOptions(messageOrOptions, options);
@@ -500,7 +518,7 @@ createToastWithPriority.error = (messageOrOptions, options) => {
  * Displays a warning toast notification.
  * @param {string | ToastOptions} [messageOrOptions]
  * @param {Partial<ToastOptions>} [options]
- * @returns {Promise<ToastHandle>}
+ * @returns {ToastPromiseHandle}
  */
 createToastWithPriority.warning = (messageOrOptions, options) => {
   const normalized = normalizeToastOptions(messageOrOptions, options);
@@ -511,7 +529,7 @@ createToastWithPriority.warning = (messageOrOptions, options) => {
  * Displays an informational toast notification.
  * @param {string | ToastOptions} [messageOrOptions]
  * @param {Partial<ToastOptions>} [options]
- * @returns {Promise<ToastHandle>}
+ * @returns {ToastPromiseHandle}
  */
 createToastWithPriority.info = (messageOrOptions, options) => {
   const normalized = normalizeToastOptions(messageOrOptions, options);
@@ -522,7 +540,7 @@ createToastWithPriority.info = (messageOrOptions, options) => {
  * Displays a persistent loading toast with an animated spinner.
  * @param {string | ToastOptions} [messageOrOptions]
  * @param {Partial<ToastOptions>} [options]
- * @returns {Promise<ToastHandle>}
+ * @returns {ToastPromiseHandle}
  */
 createToastWithPriority.loading = (messageOrOptions, options) => {
   const normalized = normalizeToastOptions(messageOrOptions, options);
@@ -540,7 +558,7 @@ createToastWithPriority.loading = (messageOrOptions, options) => {
  * Displays a custom styled HTML toast notification.
  * @param {string | ToastOptions} [messageOrOptions]
  * @param {Partial<ToastOptions>} [options]
- * @returns {Promise<ToastHandle>}
+ * @returns {ToastPromiseHandle}
  */
 createToastWithPriority.custom = (messageOrOptions, options) => {
   const normalized = normalizeToastOptions(messageOrOptions, options);
@@ -550,24 +568,13 @@ createToastWithPriority.custom = (messageOrOptions, options) => {
   });
 };
 
-const success = createToastWithPriority.success;
-const error = createToastWithPriority.error;
-const warning = createToastWithPriority.warning;
-const info = createToastWithPriority.info;
-const loading = createToastWithPriority.loading;
-const custom = createToastWithPriority.custom;
+const { success, error, warning, info, loading, custom } = createToastWithPriority;
 
 export {
   createToastWithPriority as createToast,
-  success,
-  error,
-  warning,
-  info,
-  loading,
-  custom,
+  success, error, warning, info, loading, custom,
+  setDefaultColors, setDefaultMessages, decorateToastPromise,
 };
-
-export { setDefaultColors, setDefaultMessages };
 
 /**
  * Dismisses a toast by its key/id, handle, element, or dismisses the most recent toast if target is omitted.
@@ -760,17 +767,11 @@ if (typeof window !== "undefined" && typeof document !== "undefined") {
 }
 
 const targetGlobal =
-  typeof window !== "undefined"
-    ? window
-    : typeof globalThis !== "undefined"
-      ? globalThis
-      : null;
+  typeof window !== "undefined" ? window : typeof globalThis !== "undefined" ? globalThis : null;
 
 try {
   if (targetGlobal) {
-    targetGlobal.customizableToast = Object.assign(
-      targetGlobal.customizableToast || {},
-      {
+    targetGlobal.customizableToast = Object.assign(targetGlobal.customizableToast || {}, {
         setConfig,
         getConfig,
         resetConfig,

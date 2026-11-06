@@ -216,6 +216,7 @@ export async function applyRichStyling(toast, options, onClose) {
       boxShadow: "0 4px 6px rgba(0, 0, 0, 0.1)",
       minWidth: "250px",
       maxWidth,
+      maxHeight: "min(85vh, 600px)",
       opacity: "0",
       position: "relative",
       cursor: "default",
