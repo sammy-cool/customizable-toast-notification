@@ -277,6 +277,7 @@
   box-shadow: var(--toast-shadow, 0 4px 6px rgba(0, 0, 0, 0.1));
   min-width: var(--toast-min-width, min(250px, calc(100vw - 20px)));
   max-width: var(--toast-max-width, 400px);
+  max-height: min(85vh, 600px);
   opacity: 0;
   position: relative;
   cursor: default;
@@ -374,6 +375,9 @@
   cursor: pointer;
   white-space: nowrap;
   flex-shrink: 0;
+  max-width: var(--toast-cta-max-width, 180px);
+  overflow: hidden;
+  text-overflow: ellipsis;
   text-decoration: none;
   transition: background 0.2s ease;
 }

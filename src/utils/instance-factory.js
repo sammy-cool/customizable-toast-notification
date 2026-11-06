@@ -79,22 +79,36 @@ export function createInstance(defaultOptions = {}, deps) {
     return { ...safeDefaults, ...normalized, _instanceId: instanceId };
   };
 
-  const trackHandle = async (handlePromise) => {
-    const handle = await handlePromise;
-    if (handle?.id) {
-      instanceKeys.add(handle.id);
-      return {
-        get id() {
-          return handle.id;
-        },
-        update: handle.update,
-        dismiss: async () => {
-          instanceKeys.delete(handle.id);
-          return handle.dismiss();
-        },
-      };
-    }
-    return handle;
+  const trackHandle = (handlePromise) => {
+    let resolvedKey;
+    const p = (async () => {
+      const handle = await handlePromise;
+      if (handle?.id) {
+        resolvedKey = handle.id;
+        instanceKeys.add(handle.id);
+        return {
+          get id() {
+            return handle.id;
+          },
+          update: handle.update,
+          dismiss: async () => {
+            instanceKeys.delete(handle.id);
+            return handle.dismiss();
+          },
+        };
+      }
+      return handle;
+    })();
+
+    Object.defineProperty(p, "id", {
+      get: () => resolvedKey,
+      configurable: true,
+    });
+    p.dismiss = () => p.then((h) => (h && typeof h.dismiss === "function" ? h.dismiss() : Promise.resolve()));
+    p.update = (newOptions, updateOpts) =>
+      p.then((h) => (h && typeof h.update === "function" ? h.update(newOptions, updateOpts) : Promise.resolve(false)));
+
+    return p;
   };
 
   /** @type {any} */

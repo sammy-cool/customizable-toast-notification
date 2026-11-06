@@ -8559,6 +8559,23 @@ describe("Architectural Fortification: Updating Dismissed Toasts & Fallback Spaw
     angularService.ngOnDestroy();
     assert.strictEqual(angularService._instance.size, 0, "ngOnDestroy cleared scoped instance");
 
+    // 15. Fluent thenable promise handle allows synchronous handle.dismiss() and handle.update() without await
+    const unawaitedPromise = createToast({ message: "Sync dismiss test", duration: 10000 });
+    assert.strictEqual(typeof unawaitedPromise.dismiss, "function", "unawaited promise has .dismiss()");
+    assert.strictEqual(typeof unawaitedPromise.update, "function", "unawaited promise has .update()");
+    const dismissPromise = unawaitedPromise.dismiss();
+    assert.strictEqual(typeof dismissPromise?.then, "function", "unawaited dismiss returns a Promise");
+    await dismissPromise;
+    await new Promise((r) => setTimeout(r, 60));
+
+    // 16. Fluent thenable handle on createToastInstance
+    const testInst = createToastInstance();
+    const instPromise = testInst.success("Instance sync dismiss test", { duration: 10000 });
+    assert.strictEqual(typeof instPromise.dismiss, "function", "instance promise has .dismiss()");
+    assert.strictEqual(typeof instPromise.update, "function", "instance promise has .update()");
+    await instPromise.dismiss();
+    await new Promise((r) => setTimeout(r, 60));
+
     resetConfig();
     resetToastManager();
     resetContainerRegistry();
