@@ -639,7 +639,7 @@ const dismissAll = noopAll;
 export { dismissToast as dismiss, noopAll as noop, dismissAll, clear };
 
 /** @type {string} */
-const version = typeof __VERSION__ !== "undefined" ? __VERSION__ : "4.0.3";
+const version = typeof __VERSION__ !== "undefined" ? __VERSION__ : "4.1.0";
 
 /**
  * Wraps a promise or function with automatic loading, success, and error toasts.

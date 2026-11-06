@@ -1,3 +1,43 @@
+# [4.1.0](https://github.com/sammy-cool/customizable-toast-notification/compare/v4.0.3...v4.1.0) (2026-11-06)
+
+
+### Bug Fixes
+
+* **arch:** modularize transitions, resolve variable shadowing, and enforce strict eslint rules ([4276008](https://github.com/sammy-cool/customizable-toast-notification/commit/4276008b7d4021d2b68747da2f6e0ef74406eab5))
+* **core:** dynamic defaultDuration resolution, custom containerId mounting, and in-place migration ([79df3d9](https://github.com/sammy-cool/customizable-toast-notification/commit/79df3d968ef2965b80c3e19a797e8a7360044f80))
+* **core:** eliminate dangling closeTask promise to resolve SonarCloud S6544 ([51e82df](https://github.com/sammy-cool/customizable-toast-notification/commit/51e82df55d4d80a3f5003d2bfaa3fef1f2172b32))
+* **core:** enable fallback spawn and id update on dismissed toast updates ([1a0b758](https://github.com/sammy-cool/customizable-toast-notification/commit/1a0b758a9ee039356b422cc0c3bf800736b0de38))
+* **core:** enforce promise guards, mobile touch bounds, fifo queue, and sync dom ([fe7f794](https://github.com/sammy-cool/customizable-toast-notification/commit/fe7f794d4a25d907de006d54882c3de3029e5be8))
+* **core:** normalize instance messages, sync progress class, and lifecycle teardown ([9e5bb35](https://github.com/sammy-cool/customizable-toast-notification/commit/9e5bb35ada90f6a4e928b4f5a14786f00668aaed))
+* **core:** resolve toastPromise fallback duration, type safety, and test inclusions ([9cb3ca2](https://github.com/sammy-cool/customizable-toast-notification/commit/9cb3ca2111c5d8c099fd90f1e3d6d12b893cb1a9))
+* **core:** resolve toastPromise stuck timer, cta a11y focus, csp nonce, and react scope ([8e15a51](https://github.com/sammy-cool/customizable-toast-notification/commit/8e15a51a096d20ee950b5dede8ff768c50b7f96f))
+* **core:** scope dismiss locks per container position to prevent multi-container blocking ([8e16d5c](https://github.com/sammy-cool/customizable-toast-notification/commit/8e16d5c4a6e63913383463d45e7a8f29d058f301))
+* **css:** enforce robust RTL selectors, semantic dir attribute, and toast-rtl class ([0804491](https://github.com/sammy-cool/customizable-toast-notification/commit/0804491b019b478b000a9471a3333fc3a3df5708))
+* **deps:** configure targeted overrides for transitive devDependencies ([#75](https://github.com/sammy-cool/customizable-toast-notification/issues/75)) ([ea35264](https://github.com/sammy-cool/customizable-toast-notification/commit/ea35264bf5a3af930c10ed57f6a91d1c4404011a))
+* **security:** eliminate incomplete sanitization and redos regex in ssr fallback ([d97efa0](https://github.com/sammy-cool/customizable-toast-notification/commit/d97efa073917903ddecbc31bfa878c32ebfde581))
+
+
+### Features
+
+* **a11y:** add icon accessible name (iconAriaLabel), freeze config snapshot, and strictNullChecks ([d0b9bf7](https://github.com/sammy-cool/customizable-toast-notification/commit/d0b9bf75b1989005b7884f934881c534fa672756))
+* **adapters:** eliminate code duplication via shared createToastAPI helper ([40f9a5e](https://github.com/sammy-cool/customizable-toast-notification/commit/40f9a5ec873eab2929a9b625e46c38022ef60b30))
+* **adapters:** export shorthands and optional params typing across adapters ([0ac4494](https://github.com/sammy-cool/customizable-toast-notification/commit/0ac44940766ff4f1f47d04539a706befb82cb8a8))
+* **core:** add createToastInstance factory and lifecycle event pub-sub ([a351b33](https://github.com/sammy-cool/customizable-toast-notification/commit/a351b3370ae21ea3905365d2f0be002e300ca3a3))
+* **core:** harden accessible contrast targets, monotonic counter space, and safe-area insets ([a030fdc](https://github.com/sammy-cool/customizable-toast-notification/commit/a030fdc356caeac4d6fa7d28f159c0e5f2d2bb7e))
+* **core:** harden center-center alias, undo border hex colors, css none hsl, and dist files ([1d1743c](https://github.com/sammy-cool/customizable-toast-notification/commit/1d1743c2b98907012fc2dcb44cfa29df4b85593b))
+* **core:** harden container child migration, loader spacers, and CSS color 4 parser ([5f20b2d](https://github.com/sammy-cool/customizable-toast-notification/commit/5f20b2d2301f631e5f9685a05b989e44639c1aad))
+* **core:** harden CSP nonce, queue clamping, swipe state cleanup, and CTA space key ([ce354ad](https://github.com/sammy-cool/customizable-toast-notification/commit/ce354ade85bc69b55b5836ce9b74cdd093762ce5))
+* **core:** harden css isolation, ssr log gating, custom target teardown, and dynamic radius recalc ([5a08189](https://github.com/sammy-cool/customizable-toast-notification/commit/5a08189046eae8c49599ffab75b04d1b848753c0))
+* **core:** harden custom svg color overrides, container lock recovery, and docs sync ([58770f1](https://github.com/sammy-cool/customizable-toast-notification/commit/58770f1d985775c86e0304e81f4e10150e0b867d))
+* **core:** harden high-contrast focus rings, count badge contrast, and audio teardown ([9694e02](https://github.com/sammy-cool/customizable-toast-notification/commit/9694e02a84d30496a69a87cf59aa56abefb9c394)), closes [hi#contrast](https://github.com/hi/issues/contrast)
+* **core:** harden responsive min-width, cta focus release, and ssr text preservation ([1c86cc1](https://github.com/sammy-cool/customizable-toast-notification/commit/1c86cc137c0c54819a429fe7c6611fa3a94a34f7))
+* **core:** harden scoped dismiss, landmark selector, and framework subpath exports ([c954375](https://github.com/sammy-cool/customizable-toast-notification/commit/c95437584baa4e82682b2f1d81ae547d945a1238))
+* **core:** harden scoped promise tracking, adapter pub-sub parity, and svelte store ([5fb1bce](https://github.com/sammy-cool/customizable-toast-notification/commit/5fb1bce78928e70b352102446af2a560b1ba2bb6))
+* **core:** isolate scoped instances, harden ssr handles, and add native audio chime ([671005b](https://github.com/sammy-cool/customizable-toast-notification/commit/671005b993a377cca8d6b5b4b95df83137c77e84))
+* **core:** remediate 22 approved shortcomings across core, adapters, and docs ([c62e114](https://github.com/sammy-cool/customizable-toast-notification/commit/c62e114edb575982bccbb6d3e01bb431b2dbd31b))
+* **core:** standardize lifecycle pub-sub, svelte/angular scoped options, and playground ([3afe889](https://github.com/sammy-cool/customizable-toast-notification/commit/3afe889f62d711e1b666f72fc8d67c8f76f40db4))
+* **docs:** add scoped instance, lifecycle pub-sub, and options to playground ([c2bb1ea](https://github.com/sammy-cool/customizable-toast-notification/commit/c2bb1ea44322df1f53af2933a59ee63f74c02bb2))
+
 ## [4.0.3](https://github.com/sammy-cool/customizable-toast-notification/compare/v4.0.2...v4.0.3) (2026-10-29)
 
 
