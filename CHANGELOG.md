@@ -1,3 +1,13 @@
+## [4.1.1](https://github.com/sammy-cool/customizable-toast-notification/compare/v4.1.0...v4.1.1) (2026-11-09)
+
+
+### Bug Fixes
+
+* **build:** target es2018 for universal bundler compatibility and fix svg loader spin ([899ea28](https://github.com/sammy-cool/customizable-toast-notification/commit/899ea28f1440045c3214439881e1679b7ac90ab0))
+* explicitly mark Object.defineProperty promise returns with void for sonarqube s6544 ([bd96689](https://github.com/sammy-cool/customizable-toast-notification/commit/bd96689cafc2638ed0998f7dbaf87fbd4fee1f56))
+* resolve floating promises in handle decorator for sonarqube s6544 ([059d541](https://github.com/sammy-cool/customizable-toast-notification/commit/059d5418c77481ecb2215aab00bb65fdaa75a341))
+* support synchronous promise handle dismiss and add ui guards ([0cd28ed](https://github.com/sammy-cool/customizable-toast-notification/commit/0cd28ed867f1726ddc29b4ad20bd9d71149160f5))
+
 # [4.1.0](https://github.com/sammy-cool/customizable-toast-notification/compare/v4.0.3...v4.1.0) (2026-11-06)
 
 
