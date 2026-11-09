@@ -105,7 +105,7 @@ export function createInstance(defaultOptions = {}, deps) {
       }
     );
 
-    Object.defineProperty(p, "id", {
+    void Object.defineProperty(p, "id", {
       get: () => resolvedKey,
       configurable: true,
     });

@@ -430,7 +430,7 @@ const originalCreateToast = createToast;
  * @returns {ToastPromiseHandle}
  */
 function decorateToastPromise(p, getKey) {
-  Object.defineProperty(p, "id", { get: getKey, configurable: true });
+  void Object.defineProperty(p, "id", { get: getKey, configurable: true });
   p.dismiss = async () => {
     try {
       const h = await p;
