@@ -9,9 +9,7 @@ export function createCTA(toast, options, onClose) {
     ? rawCfg.filter((item) => item && typeof item === "object")
     : [rawCfg];
   if (configs.length === 0) return;
-
   const cleanups = [];
-
   configs.forEach((raw, idx) => {
     if (!raw || typeof raw !== "object") return;
     const cfg = { ...raw };
@@ -77,7 +75,7 @@ export function createCTA(toast, options, onClose) {
     const isRtl = options.fontDirection === "rtl";
     if (!getConfig().disableInlineStyles) {
       Object.assign(el.style, {
-        marginLeft: isRtl ? "0px" : (idx === 0 ? "10px" : "6px"),
+        marginLeft: isRtl ? "0px" : idx === 0 ? "10px" : "6px",
         marginRight: isRtl ? (idx === 0 ? "10px" : "6px") : "0px",
         padding: "6px 10px",
         borderRadius: "6px",
@@ -90,6 +88,9 @@ export function createCTA(toast, options, onClose) {
         cursor: "pointer",
         whiteSpace: "nowrap",
         flexShrink: "0",
+        maxWidth: "180px",
+        overflow: "hidden",
+        textOverflow: "ellipsis",
         display: "inline-flex",
         alignItems: "center",
         textDecoration: "none",
@@ -717,7 +718,6 @@ export function runToastAnimation(toast) {
 }
 
 export { attachSwipeToDismiss } from "./swipe.js";
-
 
 /**
  * Constrains keyboard Tab focus inside an active interactive toast.
